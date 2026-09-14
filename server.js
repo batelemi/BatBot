@@ -131,6 +131,8 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+app.set("trust proxy", 1);
+
 app.use(session({
   store: new SQLiteStore({ db: "sessions.sqlite", dir: __dirname }),
   secret: process.env.SESSION_SECRET || "CHANGE_THIS_SECRET_IN_PRODUCTION",
@@ -503,12 +505,12 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   res.json({ message: "Configuration enregistrée.", settings: getSettings() });
 });
 
-app.use(express.static(path.join(__dirname, "publique")));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "publique", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`S-Drive démarré sur le port ${PORT}`);
 });
