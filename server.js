@@ -505,10 +505,10 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   res.json({ message: "Configuration enregistrée.", settings: getSettings() });
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "publique")));
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "publique", "index.html"));
 });
 
 app.listen(PORT, "0.0.0.0", () => {
