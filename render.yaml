@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: s-drive
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: SESSION_SECRET
+        sync: false
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: WHATSAPP_NUMBER
+        sync: false
+      - key: TELEGRAM_URL
+        sync: false
+      - key: WHATSAPP_GROUP_URL
+        sync: false
+      - key: TELEGRAM_GROUP_URL
+        sync: false
