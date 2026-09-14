@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071321">
+<meta name="description" content="S-Drive — analyse professionnelle de matchs et Loto.">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<title>S-Drive — Analyse de matchs</title>
+<style>
+:root{--bg:#050a12;--panel:#0c1624;--panel2:#101e30;--line:rgba(255,255,255,.09);--text:#f4f8ff;--muted:#91a4ba;--blue:#19b9ff;--green:#7dff1d;--gold:#ffd45b;--danger:#ff6878;--shadow:0 18px 55px rgba(0,0,0,.35)}
+*{box-sizing:border-box}html,body{margin:0;background:radial-gradient(circle at 20% 0,#0c2945 0,transparent 32%),radial-gradient(circle at 100% 30%,#08251c 0,transparent 28%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}body{min-height:100vh}.hidden{display:none!important}
+button,input,textarea{font:inherit}button{border:0;cursor:pointer;color:var(--text)}a{text-decoration:none;color:inherit}
+.splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#02060b;transition:opacity .45s}.splash img{width:min(58vw,260px);border-radius:50%;filter:drop-shadow(0 0 35px rgba(0,196,255,.45));animation:logoIn 1.1s ease both}.splash .loader{position:absolute;bottom:13%;width:170px;height:4px;background:#142335;border-radius:10px;overflow:hidden}.splash .loader:after{content:"";display:block;height:100%;width:40%;background:linear-gradient(90deg,var(--blue),var(--green));animation:load 1.8s infinite}@keyframes load{to{transform:translateX(330%)}}@keyframes logoIn{from{transform:scale(.78);opacity:0}to{transform:scale(1);opacity:1}}
+.top{position:sticky;top:0;z-index:50;background:rgba(5,10,18,.82);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}.nav{max-width:1180px;margin:auto;padding:12px 18px;display:flex;align-items:center;gap:12px}.brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.4px}.brand img{width:42px;height:42px;border-radius:50%;box-shadow:0 0 20px rgba(25,185,255,.25)}.spacer{flex:1}
+.iconbtn,.btn{border:1px solid var(--line);background:linear-gradient(145deg,#17283b,#09131f);box-shadow:inset 0 1px rgba(255,255,255,.08),0 7px 20px rgba(0,0,0,.22);border-radius:14px;padding:11px 15px}.iconbtn{width:44px;height:44px;padding:0;display:grid;place-items:center}.btn:hover,.iconbtn:hover{transform:translateY(-1px)}.btn.primary{background:linear-gradient(145deg,#19b9ff,#0874bd);border-color:rgba(86,210,255,.4)}.btn.green{background:linear-gradient(145deg,#a1ff3b,#39a800);color:#071000}.btn.gold{background:linear-gradient(145deg,#ffe58b,#b97b00);color:#171000}.btn.danger{background:linear-gradient(145deg,#ff7180,#a72538)}
+main{max-width:1180px;margin:auto;padding:22px 18px 90px}.hero{display:grid;grid-template-columns:1.4fr .6fr;gap:18px;margin-bottom:20px}.card{background:linear-gradient(145deg,rgba(16,30,48,.95),rgba(7,15,25,.95));border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:22px}.hero h1{font-size:clamp(28px,5vw,54px);line-height:1.02;margin:0 0 12px}.hero p{color:var(--muted);font-size:16px;line-height:1.6}.badge{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:rgba(125,255,29,.1);color:var(--green);border:1px solid rgba(125,255,29,.2);font-size:12px;font-weight:800}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 12px}.section-title h2{font-size:19px;margin:0}.muted{color:var(--muted)}.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.action{min-height:110px;text-align:left;padding:18px;border-radius:20px;position:relative;overflow:hidden}.action strong{display:block;margin-top:10px}.action small{display:block;color:#9db0c5;margin-top:4px}.action .shine{position:absolute;width:90px;height:90px;border-radius:50%;right:-25px;top:-25px;background:rgba(255,255,255,.07)}
+.socials{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.social{padding:13px;border-radius:16px;border:1px solid var(--line);background:#0b1522;display:flex;gap:9px;align-items:center}.social svg{width:23px;height:23px;flex:none}
+.bookmakers{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.book{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px;border:1px solid var(--line);border-radius:17px;background:#0a1420}.book b{display:block}.book small{color:var(--green)}.odds{font-size:20px;font-weight:900;color:var(--gold)}
+form{display:grid;gap:12px}label{font-size:13px;color:#b7c5d5;font-weight:700}input,textarea,select{width:100%;border:1px solid var(--line);outline:none;background:#07111d;color:var(--text);border-radius:14px;padding:13px}textarea{min-height:130px;resize:vertical}input:focus,textarea:focus,select:focus{border-color:rgba(25,185,255,.65);box-shadow:0 0 0 3px rgba(25,185,255,.08)}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.paygrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.pay{padding:16px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(145deg,#132238,#08111b);text-align:left}.pay b{display:block}.pay small{color:var(--muted)}
+.matches{display:grid;gap:10px}.match{border:1px solid var(--line);border-radius:18px;padding:15px;background:rgba(255,255,255,.025)}.match-head{display:flex;justify-content:space-between;gap:10px}.prob{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.prob div{padding:9px;border-radius:12px;background:#08121e;text-align:center}.prob b{display:block;font-size:17px}.pick{margin-top:10px;color:var(--green);font-weight:800}.notice{padding:13px 15px;border-radius:14px;background:rgba(255,212,91,.08);border:1px solid rgba(255,212,91,.18);color:#ffe8a6;font-size:13px;line-height:1.5}
+.modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.72);backdrop-filter:blur(7px);display:grid;place-items:center;padding:18px}.modal-box{width:min(680px,100%);max-height:90vh;overflow:auto}.close{float:right}.toast{position:fixed;z-index:500;right:16px;bottom:18px;background:#101f31;border:1px solid var(--line);box-shadow:var(--shadow);padding:13px 16px;border-radius:14px;max-width:340px}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px}.admin-table th,.admin-table td{padding:10px;border-bottom:1px solid var(--line);text-align:left}.admin-table th{color:#8ea4bb}.admin-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}.pill{padding:6px 9px;border-radius:999px;background:#15263a;font-size:11px}.premium{color:#ffe18a;border-color:rgba(255,212,91,.3);background:rgba(255,212,91,.08)}
+.bottom{position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(5,10,18,.92);border-top:1px solid var(--line);backdrop-filter:blur(16px)}.bottom nav{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr)}.bottom button{background:transparent;padding:9px 4px;color:#8296ab;font-size:11px}.bottom button.active{color:var(--blue)}.bottom .bi{display:block;font-size:21px;margin-bottom:2px}
+@media(max-width:800px){.hero,.grid{grid-template-columns:1fr}.socials{grid-template-columns:1fr 1fr}.bookmakers{grid-template-columns:1fr}.paygrid{grid-template-columns:1fr}.actions{grid-template-columns:1fr 1fr}.nav{padding-left:12px;padding-right:12px}main{padding-left:12px;padding-right:12px}.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:1/-1}}
+@media(max-width:450px){.actions{grid-template-columns:1fr}.socials{grid-template-columns:1fr}.row{grid-template-columns:1fr}.brand span{display:none}}
+.password-wrap{position:relative}.password-wrap input{padding-right:52px}.password-wrap .eye{position:absolute;right:8px;top:7px;width:42px;height:42px;padding:0;background:transparent;border:0;font-size:19px}.password-wrap .eye:hover{transform:none}<style>
+</head>
+<body>
+<div id="splash" class="splash">
+  <img src="/icon-512.png" alt="S-Drive">
+  <div class="loader"></div>
+</div>
+
+<header class="top">
+  <div class="nav">
+    <button class="iconbtn" onclick="goBack()" aria-label="Retour">←</button>
+    <a class="brand" href="#" onclick="showPage('home');return false"><img src="/icon-192.png" alt=""><span>S-Drive</span></a>
+    <div class="spacer"></div>
+    <span id="premiumBadge" class="badge premium hidden">★ PREMIUM</span>
+    <button class="iconbtn" onclick="openModal('profileModal')" aria-label="Profil">◉</button>
+  </div>
+</header>
+
+<main>
+  <section id="home" class="page">
+    <div class="hero">
+      <div class="card">
+        <span class="badge">⚡ ANALYSE PROFESSIONNELLE</span>
+        <h1>Analyse tes matchs.<br><span style="color:var(--blue)">Décide avec méthode.</span></h1>
+        <p>S-Drive centralise tes demandes d'analyse Football et Loto, les offres Premium, les moyens de paiement et les contacts des agents.</p>
+        <div class="actions">
+          <button class="btn primary action" onclick="showPage('football')"><span style="font-size:27px">⚽</span><strong>Analyse Football</strong><small>Envoyer une capture ou écrire les matchs</small><i class="shine"></i></button>
+          <button class="btn green action" onclick="showPage('loto')"><span style="font-size:27px">🎱</span><strong>Analyse Loto</strong><small>Envoyer les 3 derniers résultats</small><i class="shine"></i></button>
+        </div>
+      </div>
+      <div class="card">
+        <span class="badge">S-DESK</span>
+        <h2 style="margin:12px 0 6px">Ton espace</h2>
+        <p class="muted" style="line-height:1.6">Accède aux demandes, au Premium et aux liens utiles.</p>
+        <div class="stats">
+          <div class="stat"><b id="userState">—</b><span>Compte</span></div>
+          <div class="stat"><b id="matchCount">0</b><span>Matchs du jour</span></div>
+          <div class="stat"><b>2–10</b><span>Fourchette de cotes</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title"><h2>⭐ Premium</h2><span class="badge">1 semaine · 1 000 F</span></div>
+        <p class="muted">Un badge Premium sur ton profil et un accès à l'espace Premium.</p>
+        <button class="btn gold" onclick="showPage('payment')">Activer Premium</button>
+      </div>
+      <div class="card">
+        <div class="section-title"><h2>💳 Paiement rapide</h2><span class="badge">Wave</span></div>
+        <p class="muted">Paiement journalier : 500 F. Premium : 1 000 F / semaine.</p>
+        <button class="btn primary" onclick="showPage('payment')">Voir les paiements</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="section-title"><h2>🔗 Réseaux sociaux</h2><span class="muted">Suivre S-Drive</span></div>
+      <div id="socials" class="socials"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="section-title"><h2>🎯 Bookmakers partenaires</h2><span class="muted">Liens externes</span></div>
+      <div id="bookmakers" class="bookmakers"></div>
+      <div class="notice" style="margin-top:12px">18+. Les paris comportent des risques financiers. Les offres et bonus affichés sont susceptibles de changer selon les opérateurs et les conditions applicables.</div>
+    </div>
+  </section>
+
+  <section id="football" class="page hidden">
+    <div class="section-title"><h2>⚽ Demande d'analyse Football</h2><button class="btn" onclick="showPage('home')">Retour</button></div>
+    <div class="grid">
+      <div class="card">
+        <h3>Option 1 — Capture</h3>
+        <p class="muted">Prépare ta capture des matchs dans WhatsApp ou Telegram avec l'agent.</p>
+        <button class="btn primary" onclick="openWhatsApp('Bonjour S-Drive 👋, je souhaite demander une analyse Football. Je vais envoyer ma capture des matchs.')">📲 Envoyer ma capture sur WhatsApp</button>
+        <button class="btn" style="margin-top:8px" onclick="openTelegram()">✈️ Contacter l'agent sur Telegram</button>
+      </div>
+      <div class="card">
+        <h3>Option 2 — Écrire les matchs</h3>
+        <p class="muted">Si tu ne peux pas envoyer une capture, écris ici les matchs que tu souhaites analyser.</p>
+        <form onsubmit="sendFootball(event)">
+          <textarea id="footballText" placeholder="Exemple :&#10;PSG - Marseille&#10;Real Madrid - Barcelona&#10;&#10;Tu peux préciser : cote souhaitée, type de pari, etc."></textarea>
+          <button class="btn green" type="submit">💬 Envoyer les matchs sur WhatsApp</button>
+        </form>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="section-title"><h2>📊 Matchs publiés aujourd'hui</h2><button class="btn" onclick="loadMatches()">Actualiser</button></div>
+      <div id="matches" class="matches"><p class="muted">Chargement…</p></div>
+    </div>
+  </section>
+
+  <section id="loto" class="page hidden">
+    <div class="section-title"><h2>🎱 Demande d'analyse Loto</h2><button class="btn" onclick="showPage('home')">Retour</button></div>
+    <div class="card">
+      <div class="notice"><b>Important :</b> pour chaque analyse Loto, envoie les <b>3 derniers résultats du tirage</b> du jeu que tu souhaites analyser. Comme plusieurs tirages peuvent avoir lieu dans la journée, précise aussi le nom du jeu.</div>
+      <form onsubmit="sendLoto(event)" style="margin-top:14px">
+        <label>Nom du jeu Loto</label>
+        <input id="lotoGame" placeholder="Exemple : Loto / jeu concerné">
+        <label>Les 3 derniers résultats</label>
+        <textarea id="lotoText" placeholder="Résultat 1 : ...&#10;Résultat 2 : ...&#10;Résultat 3 : ..."></textarea>
+        <button class="btn green" type="submit">💬 Envoyer la demande sur WhatsApp</button>
+        <button class="btn" type="button" onclick="openTelegram()">✈️ Envoyer via Telegram</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="payment" class="page hidden">
+    <div class="section-title"><h2>💳 Paiements S-Drive</h2><button class="btn" onclick="showPage('home')">Retour</button></div>
+    <div class="card">
+      <h3>Paiement Wave</h3>
+      <div class="paygrid">
+        <a id="wave500" class="pay" target="_blank" rel="noopener"><b>Analyse journalière</b><strong style="font-size:24px">500 F</strong><small>Payer avec Wave</small></a>
+        <a id="wave1000" class="pay" target="_blank" rel="noopener"><b>Premium</b><strong style="font-size:24px">1 000 F</strong><small>7 jours · badge Premium</small></a>
+        <div class="pay"><b>Codes promo</b><strong>WAVE22</strong><small>Autre code : 45CFA</small></div>
+      </div>
+      <h3 style="margin-top:22px">Paiement Mobile Money manuel</h3>
+      <p class="muted">Choisis ton moyen de paiement. Le bouton ouvre WhatsApp avec un message prérempli pour demander les instructions à un agent.</p>
+      <div class="paygrid">
+        <button class="pay" onclick="manualPay('Orange Money')"><b>🟠 Orange Money</b><small>Demander le numéro de paiement</small></button>
+        <button class="pay" onclick="manualPay('Moov Money')"><b>🟢 Moov Money</b><small>Demander le numéro de paiement</small></button>
+        <button class="pay" onclick="manualPay('MTN Money')"><b>🟡 MTN Money</b><small>Demander le numéro de paiement</small></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="profile" class="page hidden">
+    <div class="section-title"><h2>👤 Mon profil</h2><button class="btn" onclick="showPage('home')">Retour</button></div>
+    <div class="card" id="profileCard"></div>
+  </section>
+
+  <section id="admin" class="page hidden">
+    <div class="section-title"><h2>🛡️ Administration S-Drive</h2><button class="btn" onclick="adminLogout()">Déconnexion</button></div>
+    <div id="adminContent"></div>
+  </section>
+</main>
+
+<div class="bottom">
+  <nav>
+    <button class="active" data-page="home" onclick="showPage('home')"><span class="bi">⌂</span>Accueil</button>
+    <button data-page="football" onclick="showPage('football')"><span class="bi">⚽</span>Football</button>
+    <button data-page="loto" onclick="showPage('loto')"><span class="bi">🎱</span>Loto</button>
+    <button data-page="payment" onclick="showPage('payment')"><span class="bi">▣</span>Paiement</button>
+  </nav>
+</div>
+
+<div id="authModal" class="modal hidden">
+  <div class="modal-box card">
+    <button class="iconbtn close" onclick="closeModal('authModal')">×</button>
+    <h2 id="authTitle">Connexion</h2><p class="muted">Nom d’utilisateur + mot de passe. Aucun numéro de téléphone n’est demandé.</p>
+    <form id="authForm" onsubmit="authSubmit(event)">
+      <input id="authUsername" placeholder="Nom d'utilisateur" required>
+      <div class="password-wrap"><input id="authPassword" type="password" placeholder="Mot de passe" autocomplete="current-password" required><button class="eye" type="button" onclick="togglePassword('authPassword',this)">👁</button></div>
+      <button class="btn primary" type="submit">Continuer</button>
+    </form>
+    <button class="btn" style="margin-top:10px" onclick="toggleAuth()">Créer un compte</button>
+    <button class="btn" style="margin-top:10px" onclick="showReset()">Mot de passe oublié</button>
+  </div>
+</div>
+
+<div id="resetModal" class="modal hidden">
+  <div class="modal-box card">
+    <button class="iconbtn close" onclick="closeModal('resetModal')">×</button>
+    <h2>Réinitialiser le mot de passe</h2><p class="muted">Entrez votre nom d’utilisateur. L’administration traitera la demande.</p>
+    <form onsubmit="resetPassword(event)">
+      <input id="resetUsername" placeholder="Nom d’utilisateur" autocomplete="username" required>
+      <button class="btn primary">Envoyer la demande</button>
+    </form>
+  </div>
+</div>
+
+<div id="profileModal" class="modal hidden">
+  <div class="modal-box card">
+    <button class="iconbtn close" onclick="closeModal('profileModal')">×</button>
+    <h2>Compte</h2>
+    <div id="profileQuick"></div>
+    <button id="authButton" class="btn primary" style="margin-top:14px" onclick="authAction()">Connexion / Inscription</button>
+    <button id="adminButton" class="btn" style="margin-top:8px" onclick="openAdminLogin()">Administration</button>
+  </div>
+</div>
+
+<div id="adminLoginModal" class="modal hidden">
+  <div class="modal-box card">
+    <button class="iconbtn close" onclick="closeModal('adminLoginModal')">×</button>
+    <h2>Accès administrateur</h2>
+    <form onsubmit="adminLogin(event)">
+      <input id="adminPhone" placeholder="Téléphone administrateur" required>
+      <div class="password-wrap"><input id="adminPassword" type="password" placeholder="Mot de passe administrateur" autocomplete="current-password" required><button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button></div>
+      <button class="btn gold">Ouvrir l'administration</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+let config = {};
+let me = null;
+let authMode = "login";
+let historyPages = [];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+function toast(message, good=true){
+  $("toast").textContent = message;
+  $("toast").classList.remove("hidden");
+  $("toast").style.borderColor = good ? "rgba(125,255,29,.35)" : "rgba(255,104,120,.35)";
+  setTimeout(()=>$("toast").classList.add("hidden"), 3200);
+}
+async function api(url, options={}){
+  const r = await fetch(url,{headers:{"Content-Type":"application/json"},...options});
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error || "Une erreur est survenue.");
+  return data;
+}
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));
+  $(id).classList.remove("hidden");
+  document.querySelectorAll(".bottom button").forEach(b=>b.classList.toggle("active",b.dataset.page===id));
+  historyPages.push(id);
+  if(id==="football") loadMatches();
+  if(id==="profile") renderProfile();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function goBack(){
+  historyPages.pop();
+  const prev = historyPages.pop() || "home";
+  showPage(prev);
+}
+function openModal(id){$(id).classList.remove("hidden")}
+function closeModal(id){$(id).classList.add("hidden")}
+function openWhatsApp(text){
+  if(!config.whatsapp) return toast("Le contact WhatsApp n'est pas configuré.",false);
+  const phone=String(config.whatsapp).replace(/\D/g,"");
+  location.href=`https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+function openTelegram(){
+  if(!config.telegram) return toast("Le contact Telegram n'est pas configuré.",false);
+  location.href=`https://t.me/${String(config.telegram).replace(/^@/,"")}`;
+}
+function toggleAuth(){
+  authMode=authMode==="login"?"register":"login";
+  $("authTitle").textContent=authMode==="login"?"Connexion":"Créer un compte";
+  $("authPassword").placeholder=authMode==="login"?"Mot de passe":"Mot de passe (6 caractères minimum)";
+}
+function authAction(){
+  if(me){closeModal("profileModal");showPage("profile");}else{closeModal("profileModal");openModal("authModal")}
+}
+async function authSubmit(e){
+  e.preventDefault();
+  try{
+    const body={username:$("authUsername").value,password:$("authPassword").value};
+    const data=await api(authMode==="login"?"/api/login":"/api/register",{method:"POST",body:JSON.stringify(body)});
+    me=data.user; closeModal("authModal"); refreshUI(); toast(data.message);
+  }catch(err){toast(err.message,false)}
+}
+function showReset(){closeModal("authModal");openModal("resetModal")}
+async function resetPassword(e){
+  e.preventDefault();
+  try{
+    const data=await api("/api/password-reset",{method:"POST",body:JSON.stringify({username:$("resetUsername").value})});
+    closeModal("resetModal");toast(data.message);
+  }catch(err){toast(err.message,false)}
+}
+async function loadMe(){
+  try{me=(await api("/api/me")).user}catch{me=null}
+  refreshUI();
+}
+function refreshUI(){
+  $("premiumBadge").classList.toggle("hidden",!me?.subscription_active);
+  $("userState").textContent=me?("@" + me.username):"Invité";
+  $("profileQuick").innerHTML=me
+    ? `<div class="notice"><b>@${esc(me.username)}</b><br>${me.subscription_active?'★ Premium actif jusqu’au '+new Date(me.premium_until).toLocaleDateString('fr-FR'):'Compte gratuit'}</div>`
+    : `<p class="muted">Connecte-toi pour utiliser les demandes d'analyse et consulter les données du jour.</p>`;
+  $("authButton").textContent=me?"Voir mon profil":"Connexion / Inscription";
+}
+async function loadConfig(){
+  config=await api("/api/config");
+  $("wave500").href=config.wave500;
+  $("wave1000").href=config.wave1000;
+  $("socials").innerHTML=[
+    ["TikTok",config.tiktok,"♪"],["Facebook",config.facebook,"f"],["Instagram",config.instagram,"◎"]
+  ].map(x=>`<a class="social" href="${esc(x[1])}" target="_blank" rel="noopener"><b style="font-size:22px">${x[2]}</b><span>${x[0]}</span></a>`).join("");
+  $("bookmakers").innerHTML=(config.bookmakers||[]).map(b=>`
+    <a class="book" href="${esc(b.url)}" target="_blank" rel="noopener">
+      <span><b>${esc(b.name)}</b><small>${esc(b.bonus||"Lien disponible")}</small></span>
+      <span class="odds">›</span>
+    </a>`).join("");
+}
+async function loadMatches(){
+  if(!me){$("matches").innerHTML='<p class="muted">Connecte-toi pour voir les matchs publiés.</p>';return}
+  try{
+    const data=await api("/api/daily-matches");
+    $("matchCount").textContent=data.matches.length;
+    $("matches").innerHTML=data.matches.length?data.matches.map(m=>`
+      <div class="match">
+        <div class="match-head"><b>${esc(m.match_name)}</b>${m.odds?`<span class="odds">${Number(m.odds).toFixed(2)}</span>`:""}</div>
+        <div class="prob">
+          <div><b>${Number(m.home_probability).toFixed(0)}%</b><span>1</span></div>
+          <div><b>${Number(m.draw_probability).toFixed(0)}%</b><span>X</span></div>
+          <div><b>${Number(m.away_probability).toFixed(0)}%</b><span>2</span></div>
+        </div>
+        <div class="pick">Suggestion publiée : ${esc(m.recommended_pick)}</div>
+      </div>`).join(""):'<p class="muted">Aucun match publié aujourd’hui.</p>';
+  }catch(err){toast(err.message,false)}
+}
+async function sendFootball(e){
+  e.preventDefault();
+  if(!me){openModal("authModal");toast("Connecte-toi d'abord.",false);return}
+  const content=$("footballText").value.trim();
+  if(!content)return toast("Écris au moins un match.",false);
+  try{
+    const d=await api("/api/analysis-requests",{method:"POST",body:JSON.stringify({type:"football",content})});
+    openWhatsApp(`Bonjour S-Drive 👋\n\nJe souhaite demander une analyse Football.\n\n${content}\n\nRéférence S-Drive #${d.request_id}`);
+  }catch(err){toast(err.message,false)}
+}
+async function sendLoto(e){
+  e.preventDefault();
+  if(!me){openModal("authModal");toast("Connecte-toi d'abord.",false);return}
+  const game=$("lotoGame").value.trim(), results=$("lotoText").value.trim();
+  if(!game||!results)return toast("Indique le jeu et les 3 derniers résultats.",false);
+  const content=`Jeu : ${game}\n\n3 derniers résultats :\n${results}`;
+  try{
+    const d=await api("/api/analysis-requests",{method:"POST",body:JSON.stringify({type:"loto",content})});
+    openWhatsApp(`Bonjour S-Drive 👋\n\nJe souhaite demander une analyse Loto.\n\n${content}\n\nRéférence S-Drive #${d.request_id}`);
+  }catch(err){toast(err.message,false)}
+}
+function manualPay(method){
+  openWhatsApp(`Bonjour S-Drive 👋\n\nJe souhaite payer manuellement par ${method}.\n\nMerci de m'envoyer le numéro de paiement et les instructions.\n\nMon choix : analyse journalière 500 F / Premium 1 000 F.`);
+}
+function renderProfile(){
+  if(!me){$("profileCard").innerHTML='<p class="muted">Tu dois te connecter pour accéder au profil.</p><button class="btn primary" onclick="openModal(\'authModal\')">Connexion</button>';return}
+  $("profileCard").innerHTML=`
+    <div class="hero" style="margin:0">
+      <div><span class="badge">${me.subscription_active?'★ PREMIUM ACTIF':'COMPTE GRATUIT'}</span><h2>@${esc(me.username)}</h2><p class="muted">Compte protégé par nom d’utilisateur + mot de passe.</p></div>
+      <div class="card" style="padding:16px">${me.subscription_active?`Premium jusqu’au <b>${new Date(me.premium_until).toLocaleDateString('fr-FR')}</b>`:'Active Premium pour obtenir ton badge.'}</div>
+    </div>
+    <button class="btn danger" onclick="logout()">Se déconnecter</button>`;
+}
+async function logout(){
+  await api("/api/logout",{method:"POST"});me=null;refreshUI();renderProfile();toast("Déconnexion réussie.");showPage("home");
+}
+async function openAdminLogin(){
+  closeModal("profileModal");openModal("adminLoginModal");
+}
+async function adminLogin(e){
+  e.preventDefault();
+  try{await api("/api/admin/login",{method:"POST",body:JSON.stringify({phone:$("adminPhone").value,password:$("adminPassword").value})});closeModal("adminLoginModal");showPage("admin");loadAdmin()}
+  catch(err){toast(err.message,false)}
+}
+async function adminLogout(){await api("/api/admin/logout",{method:"POST"});showPage("home");toast("Administration déconnectée.")}
+async function loadAdmin(){
+  try{
+    const [stats,users,reqs,reset,matches,settings]=await Promise.all([
+      api("/api/admin/stats"),api("/api/admin/users"),api("/api/admin/requests"),
+      api("/api/admin/password-resets"),api("/api/admin/daily-matches"),api("/api/admin/settings")
+    ]);
+    $("adminContent").innerHTML=`
+      <div class="stats" style="margin-bottom:16px">
+        <div class="stat"><b>${stats.users}</b><span>Utilisateurs</span></div>
+        <div class="stat"><b>${stats.analyses}</b><span>Demandes d'analyse</span></div>
+        <div class="stat"><b>${stats.pending}</b><span>Demandes en attente</span></div>
+      </div>
+      <div class="grid">
+        <div class="card"><h3>Ajouter un match du jour</h3>
+          <form onsubmit="addMatch(event)">
+            <input id="mName" placeholder="Équipe A - Équipe B" required>
+            <div class="row"><input id="p1" type="number" min="0" max="100" placeholder="1 %" required><input id="px" type="number" min="0" max="100" placeholder="X %" required></div>
+            <div class="row"><input id="p2" type="number" min="0" max="100" placeholder="2 %" required><input id="mOdds" type="number" min="1" step=".01" placeholder="Cote (optionnel)"></div>
+            <input id="mPick" placeholder="Suggestion : 1 / X / 2 / Double chance..." required>
+            <button class="btn green">Publier</button>
+          </form>
+        </div>
+        <div class="card"><h3>Modifier les contacts et liens</h3>
+          <form onsubmit="saveSettings(event)">
+            ${settingsForm(settings.settings)}
+            <button class="btn primary">Enregistrer la configuration</button>
+          </form>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px"><h3>Demandes d'analyse</h3>${requestsTable(reqs.requests)}</div>
+      <div class="card" style="margin-top:16px"><h3>Utilisateurs</h3>${usersTable(users.users)}</div>
+      <div class="card" style="margin-top:16px"><h3>Matchs publiés aujourd'hui</h3>${matchesTable(matches.matches)}</div>
+      <div class="card" style="margin-top:16px"><h3>Réinitialisations en attente</h3>${resetsTable(reset.requests)}</div>`;
+  }catch(err){toast(err.message,false);showPage("home")}
+}
+function settingsForm(s){
+  const f=[
+    ["whatsapp","WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Groupe WhatsApp"],
+    ["telegramGroup","Groupe Telegram"],["tiktok","TikTok"],["facebook","Facebook"],["instagram","Instagram"],
+    ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave Premium 1 000 F"],["wavePromo","Code promo Wave"],
+    ["promoFee","Autre code promo"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],
+    ["mtnMoney","Numéro MTN Money"],["adminPhone","Téléphone administrateur"]
+  ];
+  return f.map(([k,l])=>`<label>${l}<input name="${k}" value="${esc(s[k]||"")}"></label>`).join("");
+}
+function requestsTable(rows){
+  if(!rows.length)return '<p class="muted">Aucune demande.</p>';
+  return `<div style="overflow:auto"><table class="admin-table"><tr><th>#</th><th>Type</th><th>Client</th><th>Demande</th><th>Statut</th></tr>${rows.map(r=>`
+  <tr><td>#${r.id}</td><td>${esc(r.type)}</td><td>${esc(r.username||"—")}</td><td style="min-width:240px">${esc(r.content).replace(/\n/g,"<br>")}</td><td><select onchange="setRequest(${r.id},this.value)">${["pending","processing","completed","cancelled"].map(x=>`<option ${r.status===x?"selected":""}>${x}</option>`).join("")}</select></td></tr>`).join("")}</table></div>`;
+}
+function usersTable(rows){
+  if(!rows.length)return '<p class="muted">Aucun utilisateur.</p>';
+  return `<div style="overflow:auto"><table class="admin-table"><tr><th>Client</th><th>Premium</th><th>Actions</th></tr>${rows.map(u=>`
+  <tr><td>@${esc(u.username)}</td><td>${u.subscription_active?'★ Actif':'—'}</td><td><button class="btn green" onclick="premium(${u.id},true)">+7j</button> <button class="btn danger" onclick="premium(${u.id},false)">Retirer</button> <button class="btn" onclick="deleteUser(${u.id})">Suppr.</button></td></tr>`).join("")}</table></div>`;
+}
+function matchesTable(rows){
+  if(!rows.length)return '<p class="muted">Aucun match.</p>';
+  return `<div style="overflow:auto"><table class="admin-table"><tr><th>Match</th><th>1</th><th>X</th><th>2</th><th>Cote</th><th></th></tr>${rows.map(m=>`<tr><td>${esc(m.match_name)}</td><td>${m.home_probability}%</td><td>${m.draw_probability}%</td><td>${m.away_probability}%</td><td>${m.odds||"—"}</td><td><button class="btn danger" onclick="deleteMatch(${m.id})">Suppr.</button></td></tr>`).join("")}</table></div>`;
+}
+function resetsTable(rows){
+  if(!rows.length)return '<p class="muted">Aucune demande en attente.</p>';
+  return `<div style="overflow:auto"><table class="admin-table"><tr><th>Client</th><th>Date</th><th></th></tr>${rows.map(r=>`<tr><td>@${esc(r.username)}</td><td>${esc(r.created_at)}</td><td><button class="btn primary" onclick="resolveReset(${r.id})">Traiter</button></td></tr>`).join("")}</table></div>`;
+}
+async function addMatch(e){
+  e.preventDefault();
+  try{await api("/api/admin/daily-matches",{method:"POST",body:JSON.stringify({
+    match_name:$("mName").value,home_probability:$("p1").value,draw_probability:$("px").value,
+    away_probability:$("p2").value,recommended_pick:$("mPick").value,odds:$("mOdds").value
+  })});toast("Match publié.");loadAdmin()}catch(err){toast(err.message,false)}
+}
+async function saveSettings(e){
+  e.preventDefault();const body=Object.fromEntries(new FormData(e.target).entries());
+  try{await api("/api/admin/settings",{method:"PATCH",body:JSON.stringify(body)});config=await api("/api/config");loadConfig();toast("Configuration enregistrée.");loadAdmin()}catch(err){toast(err.message,false)}
+}
+async function premium(id,active){try{await api("/api/admin/subscription",{method:"POST",body:JSON.stringify({user_id:id,active})});toast("Statut Premium mis à jour.");loadAdmin()}catch(err){toast(err.message,false)}}
+async function deleteUser(id){if(!confirm("Supprimer cet utilisateur ?"))return;try{await api("/api/admin/users/"+id,{method:"DELETE"});loadAdmin()}catch(err){toast(err.message,false)}}
+async function deleteMatch(id){if(!confirm("Supprimer ce match ?"))return;try{await api("/api/admin/daily-matches/"+id,{method:"DELETE"});loadAdmin()}catch(err){toast(err.message,false)}}
+async function setRequest(id,status){try{await api("/api/admin/requests/"+id,{method:"PATCH",body:JSON.stringify({status})});toast("Statut mis à jour.")}catch(err){toast(err.message,false)}}
+async function resolveReset(id){try{await api("/api/admin/password-resets/"+id,{method:"PATCH",body:JSON.stringify({status:"resolved"})});toast("Demande traitée.");loadAdmin()}catch(err){toast(err.message,false)}}
+
+window.addEventListener("load",async()=>{
+  try{await loadConfig();await loadMe();}catch(e){toast(e.message,false)}
+  setTimeout(()=>{$("splash").style.opacity="0";setTimeout(()=>$("splash").remove(),500)},2300);
+  historyPages=["home"];
+});
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+  }
+</script>
+</body>
+</html>
