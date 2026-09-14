@@ -9,13 +9,13 @@
   "description": "Application S-Drive d'analyse Football et Loto.",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icôn-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icôn-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
