@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 `);
 
 const defaults = {
-  whatsapp: "2250152171774",
+  whatsapp: "2250152171974",
   telegram: "@Sdrive12",
   whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
   telegramGroup: "https://t.me/sdrive123",
@@ -71,7 +71,7 @@ const defaults = {
   orangeMoney: "",
   moovMoney: "",
   mtnMoney: "",
-  adminPhone: process.env.ADMIN_PHONE || "2250152171774"
+  adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
 const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
