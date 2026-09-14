@@ -2,7 +2,7 @@
   "name": "s-drive",
   "version": "2.0.0",
   "private": true,
-  "description": "S-Drive — application web/mobile d'analyse Football et Loto",
+  "description": "S-Drive — application web/mobile d'analyse de matchs",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
