@@ -785,11 +785,11 @@ async function submitForgotPassword(){
   setLoading("forgotButton",true,"📩 Envoyer la demande");
 
   try{
-    const response=await fetch("/api/forgot-password",{
+    const response=await fetch("/api/password-reset",{
       method:"POST",
       headers:{"Content-Type":"application/json","Accept":"application/json"},
       credentials:"same-origin",
-      body:JSON.stringify({username,phone:username})
+      body:JSON.stringify({username})
     });
 
     const data=await readApiResponse(response);
@@ -973,6 +973,7 @@ async function loadAdmin(){
             <div class="reset-request">
               <strong>🔐 ${escapeHtml(request.username||request.name||"Utilisateur")}</strong>
               ${request.phone?`<br><span class="admin-small">📱 ${escapeHtml(request.phone)}</span>`:""}
+              ${request.created_at?`<br><span class="admin-small">📅 Demande : ${escapeHtml(formatDateTime(request.created_at))}</span>`:""}
               <br>
               <span class="admin-small">Demande de réinitialisation en attente</span>
               <button class="btn green" type="button" onclick="resolveReset(${Number(request.id)})">
@@ -1193,6 +1194,13 @@ async function deleteDailyMatch(id){
   }
 }
 
+function formatDateTime(value){
+  if(!value)return "";
+  const date=new Date(String(value).replace(" ","T")+"Z");
+  if(Number.isNaN(date.getTime()))return String(value);
+  return date.toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"});
+}
+
 async function resolveReset(id){
   if(!id)return;
   if(!confirm("Générer un nouveau mot de passe pour cet utilisateur ?"))return;
@@ -1214,7 +1222,8 @@ async function resolveReset(id){
     let message=data.message||"Demande traitée avec succès.";
 
     if(data.new_password){
-      message+="\n\nNouveau mot de passe : "+data.new_password;
+      message+="\n\nNouveau mot de passe temporaire : "+data.new_password;
+      message+="\n\n⚠️ Note ce mot de passe maintenant : il n'est affiché qu'au moment de sa génération.";
     }
 
     alert(message);
