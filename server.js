@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 `);
 
 const defaults = {
-  whatsapp: "2250152171974",
+  whatsapp: "2250152171774",
   telegram: "@Sdrive12",
   whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
   telegramGroup: "https://t.me/sdrive123",
@@ -71,7 +71,7 @@ const defaults = {
   orangeMoney: "",
   moovMoney: "",
   mtnMoney: "",
-  adminPhone: process.env.ADMIN_PHONE || "2250152171974"
+  adminPhone: process.env.ADMIN_PHONE || "2250152171774"
 };
 
 const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
@@ -130,8 +130,6 @@ function requireAdmin(req, res, next) {
   }
   next();
 }
-
-app.set("trust proxy", 1);
 
 app.use(session({
   store: new SQLiteStore({ db: "sessions.sqlite", dir: __dirname }),
@@ -209,6 +207,28 @@ app.post("/api/password-reset", (req, res) => {
   }
 
   DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
+  res.json({ message: "Demande envoyée à l'administration." });
+});
+
+// Compatibilité avec les anciennes versions de l'interface.
+app.post("/api/forgot-password", (req, res) => {
+  const username = String(req.body.username || "").trim();
+  const user = DB.prepare("SELECT id FROM users WHERE username=?").get(username);
+
+  if (!user) {
+    return res.status(404).json({
+      error: "Utilisateur introuvable avec ces informations."
+    });
+  }
+
+  const existing = DB.prepare(
+    "SELECT id FROM password_resets WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1"
+  ).get(user.id);
+
+  if (!existing) {
+    DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
+  }
+
   res.json({ message: "Demande envoyée à l'administration." });
 });
 
@@ -371,6 +391,59 @@ app.get("/api/admin/password-resets", requireAdmin, (req, res) => {
   });
 });
 
+// Alias utilisé par l'interface actuelle.
+app.get("/api/admin/reset-requests", requireAdmin, (req, res) => {
+  res.json({
+    requests: DB.prepare(`
+      SELECT pr.*, u.username, u.phone
+      FROM password_resets pr
+      JOIN users u ON u.id=pr.user_id
+      WHERE pr.status='pending'
+      ORDER BY pr.id DESC
+    `).all()
+  });
+});
+
+app.post("/api/admin/reset-requests/:id/resolve", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const request = DB.prepare(`
+    SELECT pr.id, pr.user_id, pr.status, u.username
+    FROM password_resets pr
+    JOIN users u ON u.id=pr.user_id
+    WHERE pr.id=?
+  `).get(id);
+
+  if (!request) {
+    return res.status(404).json({ error: "Demande introuvable." });
+  }
+
+  if (request.status !== "pending") {
+    return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+  }
+
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let temporaryPassword = "SD-";
+  const bytes = crypto.randomBytes(8);
+  for (const byte of bytes) {
+    temporaryPassword += alphabet[byte % alphabet.length];
+  }
+
+  const transaction = DB.transaction(() => {
+    DB.prepare("UPDATE users SET password_hash=? WHERE id=?")
+      .run(bcrypt.hashSync(temporaryPassword, 12), request.user_id);
+    DB.prepare("UPDATE password_resets SET status='resolved' WHERE id=?")
+      .run(id);
+  });
+
+  transaction();
+
+  res.json({
+    message: `Nouveau mot de passe généré pour ${request.username}.`,
+    username: request.username,
+    new_password: temporaryPassword
+  });
+});
+
 app.patch("/api/admin/password-resets/:id", requireAdmin, (req, res) => {
   const status = req.body.status === "resolved" ? "resolved" : "pending";
   DB.prepare(
@@ -505,12 +578,12 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   res.json({ message: "Configuration enregistrée.", settings: getSettings() });
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "publique")));
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "publique", "index.html"));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
   console.log(`S-Drive démarré sur le port ${PORT}`);
 });
