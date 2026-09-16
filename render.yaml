@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: S-Drive-12
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    autoDeployTrigger: commit
