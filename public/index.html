@@ -205,8 +205,7 @@ textarea{min-height:120px;resize:vertical}
 .hidden{display:none!important}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
 footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
-.admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;font-size:14px;opacity:.32;z-index:20;display:flex;align-items:center;justify-content:center;gap:0;padding:0;box-shadow:none}
-.admin-secret span{font-size:9px;margin-left:-2px}
+.admin-secret{position:fixed;right:10px;bottom:10px;width:30px;height:30px;border-radius:50%;font-size:13px;opacity:.28;z-index:20;display:flex;align-items:center;justify-content:center;gap:0;padding:0;box-shadow:none}
 .admin-secret:active{opacity:.8;transform:scale(.96)}
 
 @media(max-width:380px){
@@ -220,6 +219,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .bookmaker{align-items:flex-start;flex-direction:column}
   .bookmaker .btn{width:100%}
 }
+
+.modal{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;padding:14px}.modal-card{position:relative;width:min(100%,560px);max-height:88vh;overflow:auto;background:#102B4C;border:1px solid #315D82;border-radius:22px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.45)}.modal-close{position:absolute;right:10px;top:8px;width:38px;height:38px;border-radius:50%;border:0;background:#193A5C;color:white;font-size:26px}.modal-card h2{padding-right:40px}.admin-user{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:9px 0}.admin-user-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.admin-actions .btn{margin:0;min-height:42px;font-size:12px}.admin-small{color:var(--muted);font-size:12px;line-height:1.5}.modal-link{margin:8px 0}.modal-link .btn{margin:0}
 </style>
 </head>
 
@@ -227,7 +228,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
 <div id="loadingScreen">
   <div class="loading-logo">
-    <img src="icon-192.png" alt="S-Drive"
+    <img src="logo.png" alt="S-Drive"
       onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
     <span class="logo-fallback hidden-fallback" aria-hidden="true">⚽</span>
   </div>
@@ -242,7 +243,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div class="center">
     <div class="logo">
-      <img src="icon-192.png" alt="S-Drive"
+      <img src="logo.png" alt="S-Drive"
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true">⚽</span>
     </div>
@@ -321,7 +322,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div class="center">
     <div class="logo">
-      <img src="icon-192.png" alt="S-Drive"
+      <img src="logo.png" alt="S-Drive"
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true">⚽</span>
     </div>
@@ -475,14 +476,19 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div class="card">
-    <h2>📋 Conditions d'utilisation</h2>
-    <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
-    <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
-    <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
-    <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
-    <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
+  <div class="card payment-card">
+    <h2>💳 Dépôt / Rechargement</h2>
+    <p class="muted">Effectuez un dépôt depuis cet espace pour recharger votre compte ou régler un service S-Drive.</p>
+    <button class="btn wave" type="button" onclick="openDeposit()">💰 Appuyer ici pour effectuer un dépôt</button>
   </div>
+
+  <div class="card">
+    <h2>🔗 Nos liens</h2>
+    <p class="muted">Retrouvez tous nos accès officiels au même endroit.</p>
+    <button class="btn primary" type="button" onclick="openLinks()">📲 Appuyer ici pour nos réseaux et bookmakers</button>
+  </div>
+
+  <div class="card"><h2>📋 Conditions d'utilisation</h2><p class="muted">Les règles du service sont accessibles ici.</p><button class="btn secondary" type="button" onclick="showModal('conditionsModal')">📖 Appuyer ici pour lire les conditions d'utilisation</button></div>
 
   <div class="card">
     <h2>ℹ️ Comment ça fonctionne ?</h2>
@@ -496,54 +502,70 @@ PSG vs Marseille"></textarea>
 </section>
 
 <section id="admin" class="hidden">
-
   <div class="center">
     <div class="admin-header-icon">🛠️</div>
     <h1>Administration</h1>
-    <p class="muted">Gestion des membres S-Drive</p>
+    <p class="muted">Gestion complète de S-Drive</p>
   </div>
 
   <div id="adminLoginBox" class="card">
-    <h2>🔐 Connexion administrateur</h2>
+    <h2>🔐 Accès administrateur</h2>
     <input id="adminPhone" type="text" autocomplete="username" placeholder="Identifiant administrateur">
-    <div class="password-wrap">
-      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur">
-      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button>
-    </div>
-    <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Accéder à l'administration</button>
+    <div class="password-wrap"><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur"><button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button></div>
+    <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Se connecter</button>
     <div id="adminLoginStatus" class="status"></div>
   </div>
 
   <div id="adminPanel" class="hidden">
+    <div class="card"><h2>📊 Tableau de bord</h2><div id="adminStats" class="notice">Chargement...</div></div>
 
     <div class="card">
-      <h2>📊 Tableau de bord</h2>
-      <div id="adminStats" class="notice">Chargement...</div>
+      <h2>🔎 Rechercher un utilisateur</h2>
+      <input id="userSearch" type="search" placeholder="Rechercher par nom d'utilisateur">
+      <button class="btn primary" type="button" onclick="searchUsers()">🔍 Rechercher</button>
+      <button class="btn secondary" type="button" onclick="loadUsers('')">Afficher tous les utilisateurs</button>
+    </div>
+
+    <div class="card"><h2>👥 Membres inscrits</h2><div id="usersList">Chargement...</div></div>
+    <div class="card"><h2>🔑 Demandes de mot de passe</h2><div id="resetList">Chargement...</div></div>
+
+    <div class="card">
+      <h2>⭐ Gestion Premium</h2>
+      <div class="notice">Recherchez un utilisateur puis activez son badge Premium. La durée standard est de <strong>7 jours</strong>. Les dates d'activation et d'expiration sont enregistrées.</div>
+      <div id="premiumStatus" class="status"></div>
     </div>
 
     <div class="card">
-      <h2>👥 Membres inscrits</h2>
-      <div id="usersList">Chargement...</div>
-    </div>
-
-    <div class="card">
-      <h2>🔑 Demandes de mot de passe</h2>
-      <p class="muted">Les demandes des utilisateurs qui ont oublié leur mot de passe apparaissent ici.</p>
-      <div id="resetList">Chargement...</div>
-    </div>
-
-    <div class="card">
-      <h2>📊 Ajouter les probabilités du jour</h2>
-
+      <h2>📊 Probabilités du jour</h2>
       <input id="matchName" type="text" placeholder="Match — Exemple : Real Madrid vs Barça">
       <input id="homeProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 1 (%)">
       <input id="drawProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité match nul (%)">
       <input id="awayProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 2 (%)">
       <input id="recommendedPick" type="text" placeholder="Pronostic recommandé">
-
       <button id="addMatchButton" class="btn green" type="button" onclick="addDailyMatch()">➕ Ajouter le match</button>
-      <div id="matchAdminStatus" class="status"></div>
-      <div id="adminDailyMatches"></div>
+      <div id="matchAdminStatus" class="status"></div><div id="adminDailyMatches"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔗 Gestion des liens et contacts</h2>
+      <p class="muted">L'administrateur peut modifier les liens affichés aux utilisateurs sans modifier le code.</p>
+      <input id="setWhatsapp" placeholder="WhatsApp agent (ex: 2250152171974)">
+      <input id="setTelegram" placeholder="Telegram agent">
+      <input id="setWhatsappGroup" placeholder="Groupe WhatsApp">
+      <input id="setTelegramGroup" placeholder="Groupe Telegram">
+      <input id="setTiktok" placeholder="TikTok">
+      <input id="setFacebook" placeholder="Facebook">
+      <input id="setInstagram" placeholder="Instagram">
+      <input id="setWaveDay" placeholder="Lien Wave analyse du jour">
+      <input id="setWavePremium" placeholder="Lien Wave Premium">
+      <input id="setPaymentNumber" placeholder="Numéro de dépôt Mobile Money">
+      <input id="setPaymentLabel" placeholder="Libellé des moyens de paiement">
+      <h3>Bookmakers</h3>
+      <input id="setBm1Name" placeholder="Bookmaker 1 — nom"><input id="setBm1Url" placeholder="Bookmaker 1 — lien">
+      <input id="setBm2Name" placeholder="Bookmaker 2 — nom"><input id="setBm2Url" placeholder="Bookmaker 2 — lien">
+      <input id="setBm3Name" placeholder="Bookmaker 3 — nom"><input id="setBm3Url" placeholder="Bookmaker 3 — lien">
+      <button class="btn green" type="button" onclick="saveSettings()">💾 Enregistrer les paramètres</button>
+      <div id="settingsStatus" class="status"></div>
     </div>
 
     <button class="btn danger" type="button" onclick="adminLogout()">🚪 Quitter l'administration</button>
@@ -553,7 +575,7 @@ PSG vs Marseille"></textarea>
 <footer>
   S-Drive — Analyse de matchs
   <br>
-  <button class="admin-secret" type="button" onclick="openAdmin()" aria-label="Accès sécurisé">🔒<span>🔑</span></button>
+  <button class="admin-secret" type="button" onclick="openAdmin()" aria-label="Accès sécurisé">®</button>
 </footer>
 
 </main>
@@ -688,6 +710,7 @@ function showDashboard(user){
   }
 
   loadDailyMatches();
+  loadSettings();
   window.scrollTo(0,0);
 }
 
@@ -727,18 +750,11 @@ async function register(){
 
     showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
 
-    if(data.user){
-      setTimeout(function(){
-        showDashboard(data.user);
-        hideLoading();
-      },350);
-    }else{
-      setTimeout(function(){
-        showLogin();
-        document.getElementById("loginUsername").value=username;
-        document.getElementById("loginPassword").value="";
-      },700);
-    }
+    setTimeout(function(){
+      showLogin();
+      document.getElementById("loginUsername").value=username;
+      document.getElementById("loginPassword").value="";
+    },700);
 
   }catch(error){
     console.error("REGISTER:",error);
@@ -762,7 +778,7 @@ async function login(){
       method:"POST",
       headers:{"Content-Type":"application/json","Accept":"application/json"},
       credentials:"same-origin",
-      body:JSON.stringify({username,password})
+      body:JSON.stringify({username,password,phone:username})
     });
 
     const data=await readApiResponse(response);
@@ -904,17 +920,14 @@ async function openAdmin(){
     }
   }catch(_){}
 
-  document.getElementById("auth").classList.add("hidden");
+  document.getElementById("auth").classList.remove("hidden");
   document.getElementById("dashboard").classList.add("hidden");
-  document.getElementById("admin").classList.remove("hidden");
-  document.getElementById("adminLoginBox").classList.remove("hidden");
-  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("admin").classList.add("hidden");
   const msg=document.getElementById("adminLoginStatus");
   if(msg){
-    msg.textContent="Accès sécurisé : connectez-vous avec les identifiants administrateur.";
-    msg.className="status";
+    msg.textContent="Accès sécurisé : authentification administrateur requise.";
+    msg.className="status error";
   }
-  window.scrollTo(0,0);
 }
 
 async function adminLogin(){
@@ -1014,6 +1027,8 @@ async function loadAdmin(){
     }
 
     await loadAdminDailyMatches();
+    await loadUsers("");
+    await loadAdminSettings();
 
   }catch(error){
     console.error("ADMIN:",error);
@@ -1285,17 +1300,22 @@ async function adminLogout(){
 
 async function checkSession(){
   try{
-    const response=await fetch("/api/me",{
+    const response=await fetch("/api/session",{
       method:"GET",credentials:"same-origin",cache:"no-store"
     });
 
     const data=await readApiResponse(response);
 
-    if(response.ok && data.user){
-      showDashboard(data.user);
+    if(response.ok&&(
+      data.authenticated===true||
+      data.logged_in===true||
+      data.user
+    )){
+      showDashboard(data.user||data);
       hideLoading();
       return;
     }
+
   }catch(error){
     console.error("SESSION:",error);
   }
@@ -1303,6 +1323,7 @@ async function checkSession(){
   showAuth();
   showRegister();
   hideLoading();
+  loadSettings();
 }
 
 document.addEventListener("DOMContentLoaded",function(){
@@ -1346,5 +1367,9 @@ document.addEventListener("keydown",function(event){
 });
 </script>
 
+
+<div id="depositModal" class="modal hidden" onclick="closeModal(event,'depositModal')"><div class="modal-card" onclick="event.stopPropagation()"><button class="modal-close" onclick="hideModal('depositModal')">×</button><h2>💳 Dépôt / Rechargement</h2><p class="muted">Choisissez votre moyen de paiement.</p><div id="depositContent"></div></div></div>
+<div id="linksModal" class="modal hidden" onclick="closeModal(event,'linksModal')"><div class="modal-card" onclick="event.stopPropagation()"><button class="modal-close" onclick="hideModal('linksModal')">×</button><h2>🔗 Nos liens</h2><div id="linksContent"></div></div></div>
+<div id="conditionsModal" class="modal hidden" onclick="closeModal(event,'conditionsModal')"><div class="modal-card" onclick="event.stopPropagation()"><button class="modal-close" onclick="hideModal('conditionsModal')">×</button><h2>📋 Conditions d'utilisation</h2><div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie 500 F pour recevoir l'analyse du jour.</div><div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte 1 000 F pour 7 jours et donne accès au badge Premium pendant la période active.</div><div class="notice"><strong>3. Analyses</strong><br><br>Les analyses sont basées sur les informations disponibles et ne garantissent pas le résultat d'un pari.</div><div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement selon les moyens indiqués dans l'application.</div><div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser le service de manière responsable.</div></div></div>
 </body>
 </html>
