@@ -205,9 +205,6 @@ textarea{min-height:120px;resize:vertical}
 .hidden{display:none!important}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
 footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
-.admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;font-size:14px;opacity:.32;z-index:20;display:flex;align-items:center;justify-content:center;gap:0;padding:0;box-shadow:none}
-.admin-secret span{font-size:9px;margin-left:-2px}
-.admin-secret:active{opacity:.8;transform:scale(.96)}
 
 @media(max-width:380px){
   .two-columns{gap:6px}
@@ -553,7 +550,7 @@ PSG vs Marseille"></textarea>
 <footer>
   S-Drive — Analyse de matchs
   <br>
-  <button class="admin-secret" type="button" onclick="openAdmin()" aria-label="Accès sécurisé">🔒<span>🔑</span></button>
+  <button type="button" onclick="openAdmin()">Administration</button>
 </footer>
 
 </main>
@@ -727,18 +724,11 @@ async function register(){
 
     showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
 
-    if(data.user){
-      setTimeout(function(){
-        showDashboard(data.user);
-        hideLoading();
-      },350);
-    }else{
-      setTimeout(function(){
-        showLogin();
-        document.getElementById("loginUsername").value=username;
-        document.getElementById("loginPassword").value="";
-      },700);
-    }
+    setTimeout(function(){
+      showLogin();
+      document.getElementById("loginUsername").value=username;
+      document.getElementById("loginPassword").value="";
+    },700);
 
   }catch(error){
     console.error("REGISTER:",error);
@@ -762,7 +752,7 @@ async function login(){
       method:"POST",
       headers:{"Content-Type":"application/json","Accept":"application/json"},
       credentials:"same-origin",
-      body:JSON.stringify({username,password})
+      body:JSON.stringify({username,password,phone:username})
     });
 
     const data=await readApiResponse(response);
@@ -889,31 +879,12 @@ async function logout(){
   setTimeout(function(){location.reload();},300);
 }
 
-async function openAdmin(){
-  try{
-    const response=await fetch("/api/admin/me",{credentials:"same-origin",cache:"no-store"});
-    if(response.ok){
-      document.getElementById("auth").classList.add("hidden");
-      document.getElementById("dashboard").classList.add("hidden");
-      document.getElementById("admin").classList.remove("hidden");
-      document.getElementById("adminLoginBox").classList.add("hidden");
-      document.getElementById("adminPanel").classList.remove("hidden");
-      window.scrollTo(0,0);
-      await loadAdmin();
-      return;
-    }
-  }catch(_){}
-
+function openAdmin(){
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.add("hidden");
   document.getElementById("admin").classList.remove("hidden");
   document.getElementById("adminLoginBox").classList.remove("hidden");
   document.getElementById("adminPanel").classList.add("hidden");
-  const msg=document.getElementById("adminLoginStatus");
-  if(msg){
-    msg.textContent="Accès sécurisé : connectez-vous avec les identifiants administrateur.";
-    msg.className="status";
-  }
   window.scrollTo(0,0);
 }
 
@@ -1285,17 +1256,22 @@ async function adminLogout(){
 
 async function checkSession(){
   try{
-    const response=await fetch("/api/me",{
+    const response=await fetch("/api/session",{
       method:"GET",credentials:"same-origin",cache:"no-store"
     });
 
     const data=await readApiResponse(response);
 
-    if(response.ok && data.user){
-      showDashboard(data.user);
+    if(response.ok&&(
+      data.authenticated===true||
+      data.logged_in===true||
+      data.user
+    )){
+      showDashboard(data.user||data);
       hideLoading();
       return;
     }
+
   }catch(error){
     console.error("SESSION:",error);
   }
