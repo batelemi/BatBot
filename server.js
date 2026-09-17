@@ -81,7 +81,7 @@ try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); 
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
 
 const defaults = {
-  whatsapp: "2250152171774",
+  whatsapp: "2250152171974",
   telegram: "@Sdrive12",
   whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
   telegramGroup: "https://t.me/sdrive123",
@@ -97,7 +97,7 @@ const defaults = {
   mtnMoney: "0554740711",
   sdriveLink: "",
   sdriveInviteMessage: "Invite tes amis à rejoindre S-Drive et profite de tes avantages.",
-  adminPhone: process.env.ADMIN_PHONE || "2250152171774"
+  adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
 const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
@@ -107,6 +107,21 @@ const setSetting = DB.prepare(
 for (const [key, value] of Object.entries(defaults)) {
   if (!getSetting.get(key)) setSetting.run(key, String(value));
 }
+
+// Correction automatique des anciennes coordonnées WhatsApp/admin enregistrées
+// dans la base de données lors d'une précédente version.
+try {
+  const oldNumber = "2250152171774";
+  const newNumber = "2250152171974";
+  const currentWhatsapp = getSetting.get("whatsapp");
+  const currentAdminPhone = getSetting.get("adminPhone");
+  if (currentWhatsapp && String(currentWhatsapp.value) === oldNumber) {
+    setSetting.run("whatsapp", newNumber);
+  }
+  if (currentAdminPhone && String(currentAdminPhone.value) === oldNumber) {
+    setSetting.run("adminPhone", newNumber);
+  }
+} catch (_) {}
 
 if (!getSetting.get("adminPasswordHash")) {
   setSetting.run(
