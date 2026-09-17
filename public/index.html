@@ -417,25 +417,21 @@ PSG vs Marseille"></textarea>
   </div>
 
   <div class="card">
-    <h2>🏆 Meilleurs bookmakers</h2>
-    <p class="muted">
-      Quelques bookmakers proposés aux utilisateurs. Vérifiez toujours les conditions et bonus avant toute utilisation.
-    </p>
+    <h2>🏆 Bookmakers disponibles</h2>
+    <p class="muted">Découvrez les plateformes proposées. Vérifiez toujours les conditions et bonus avant utilisation.</p>
+    <div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
+  </div>
 
-    <div class="bookmaker">
-      <div><div class="bookmaker-name">1win</div><span class="bookmaker-bonus">🎁 Bonus jusqu'à 500%</span></div>
-      <a class="btn green" href="https://one-vv3942.com/?p=gc9k&sub1=DM07" target="_blank" rel="noopener noreferrer">Ouvrir</a>
-    </div>
+  <div class="card">
+    <h2>🎁 Codes coupons disponibles</h2>
+    <p class="muted">Copiez un code, ouvrez la plateforme ou partagez l’offre.</p>
+    <div id="couponsList"><div class="notice">Chargement des coupons...</div></div>
+  </div>
 
-    <div class="bookmaker">
-      <div><div class="bookmaker-name">Paripesa</div><span class="bookmaker-bonus">🎁 Bonus jusqu'à 300%</span></div>
-      <a class="btn green" href="https://combodef.com/L?tag=d_4081071m_60651c_&site=4081071&ad=60651" target="_blank" rel="noopener noreferrer">Ouvrir</a>
-    </div>
-
-    <div class="bookmaker">
-      <div><div class="bookmaker-name">Afropari</div><span class="bookmaker-bonus">🎁 Bonus jusqu'à 200%</span></div>
-      <a class="btn green" href="https://apaff.top/L?tag=d_3763651m_70055c_&site=70055&ad=70055" target="_blank" rel="noopener noreferrer">Ouvrir</a>
-    </div>
+  <div id="sdriveReferralCard" class="card hidden">
+    <h2>🚀 Rejoindre S-Drive</h2>
+    <p id="sdriveInviteMessage" class="muted"></p>
+    <div id="sdriveReferralActions"></div>
   </div>
 
   <div class="card">
@@ -531,6 +527,27 @@ PSG vs Marseille"></textarea>
       <div id="settingsList">Chargement...</div>
       <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
       <div id="settingsStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏆 Gestion des bookmakers</h2>
+      <input id="bmName" placeholder="Nom de la plateforme (ex. 1xBet)">
+      <input id="bmBonus" placeholder="Bonus / description">
+      <input id="bmUrl" type="url" placeholder="Lien officiel HTTPS">
+      <button class="btn green" type="button" onclick="saveBookmaker()">➕ Ajouter le bookmaker</button>
+      <div id="bookmakerAdminStatus" class="status"></div>
+      <div id="adminBookmakersList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎁 Gestion des coupons</h2>
+      <input id="couponPlatform" placeholder="Nom de la plateforme (ex. 1xBet)">
+      <input id="couponCode" placeholder="Code coupon">
+      <input id="couponUrl" type="url" placeholder="Lien officiel de la plateforme">
+      <textarea id="couponDescription" placeholder="Description ou instructions d'utilisation"></textarea>
+      <button class="btn green" type="button" onclick="saveCoupon()">➕ Ajouter le coupon</button>
+      <div id="couponAdminStatus" class="status"></div>
+      <div id="adminCouponsList"></div>
     </div>
 
     <div class="card">
@@ -882,6 +899,54 @@ function requestPaymentNumber(){
   showStatus("paymentNumberStatus","WhatsApp a été ouvert pour recevoir le numéro de dépôt.","success");
 }
 
+
+async function loadBookmakers(){
+  const box=document.getElementById("bookmakersList"); if(!box)return;
+  try{
+    const r=await fetch("/api/config",{cache:"no-store"}); const d=await readApiResponse(r);
+    const items=Array.isArray(d.bookmakers)?d.bookmakers:[];
+    box.innerHTML=items.map(b=>`<div class="bookmaker"><div><div class="bookmaker-name">${escapeHtml(b.name)}</div><span class="bookmaker-bonus">${escapeHtml(b.bonus||"Consulter les conditions")}</span></div><a class="btn green" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer">Ouvrir</a></div>`).join("")||'<div class="notice">Aucun bookmaker disponible.</div>';
+  }catch(e){box.innerHTML='<div class="notice">Impossible de charger les bookmakers.</div>';}
+}
+async function loadCoupons(){
+  const box=document.getElementById("couponsList"); if(!box)return;
+  try{
+    const r=await fetch("/api/coupons",{credentials:"same-origin",cache:"no-store"}); const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Erreur");
+    const items=Array.isArray(d.coupons)?d.coupons:[];
+    box.innerHTML=items.map(c=>`<div class="match-card"><strong>${escapeHtml(c.platform_name)}</strong><div class="notice">Code à utiliser sur ${escapeHtml(c.platform_name)} : <strong>${escapeHtml(c.code)}</strong></div>${c.description?`<p class="muted">${escapeHtml(c.description)}</p>`:""}<button class="btn primary" onclick="copyText('${String(c.code).replace(/'/g,"\\'")}')">📋 Copier le code</button><button class="btn secondary" onclick="copyText('${String(c.platform_url).replace(/'/g,"\\'")}')">🔗 Copier le lien</button><a class="btn green" href="${escapeHtml(c.platform_url)}" target="_blank" rel="noopener noreferrer">Ouvrir la plateforme</a><button class="btn telegram" onclick="shareCoupon('${String(c.platform_name).replace(/'/g,"\\'")}','${String(c.code).replace(/'/g,"\\'")}','${String(c.platform_url).replace(/'/g,"\\'")}')">📤 Partager</button></div>`).join("")||'<div class="notice">Aucun code coupon disponible.</div>';
+  }catch(e){box.innerHTML='<div class="notice">Aucun coupon disponible pour le moment.</div>';}
+}
+async function copyText(value){try{await navigator.clipboard.writeText(value);alert("Copié avec succès.");}catch(e){prompt("Copiez ce texte :",value);}}
+function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon S-Drive",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
+function renderSdriveReferral(data){
+  const card=document.getElementById("sdriveReferralCard"); if(!card)return;
+  if(!data.sdriveLink){card.classList.add("hidden");return;}
+  card.classList.remove("hidden");
+  document.getElementById("sdriveInviteMessage").textContent=data.sdriveInviteMessage||"Rejoins S-Drive.";
+  document.getElementById("sdriveReferralActions").innerHTML=`<button class="btn primary" onclick="copyText('${String(data.sdriveLink).replace(/'/g,"\\'")}')">📋 Copier le lien</button><button class="btn green" onclick="window.open('${String(data.sdriveLink).replace(/'/g,"\\'")}','_blank')">🚀 Ouvrir S-Drive</button><button class="btn telegram" onclick="shareCoupon('S-Drive','','${String(data.sdriveLink).replace(/'/g,"\\'")}')">📤 Partager</button>`;
+}
+async function toggleUserDisabled(id,disabled){
+  try{const r=await fetch("/api/admin/users/"+id+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({disabled})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible");await loadAdmin();}catch(e){alert(e.message);}
+}
+async function saveBookmaker(){
+  const body={name:document.getElementById("bmName").value.trim(),bonus:document.getElementById("bmBonus").value.trim(),url:document.getElementById("bmUrl").value.trim(),active:true};
+  try{const r=await fetch("/api/admin/bookmakers",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("bookmakerAdminStatus",d.message||"Ajouté","success");await loadAdminBookmakers();await loadBookmakers();}catch(e){showStatus("bookmakerAdminStatus",e.message,"error");}
+}
+async function saveCoupon(){
+  const body={platform_name:document.getElementById("couponPlatform").value.trim(),code:document.getElementById("couponCode").value.trim(),platform_url:document.getElementById("couponUrl").value.trim(),description:document.getElementById("couponDescription").value.trim(),active:true};
+  try{const r=await fetch("/api/admin/coupons",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("couponAdminStatus",d.message||"Ajouté","success");await loadAdminCoupons();await loadCoupons();}catch(e){showStatus("couponAdminStatus",e.message,"error");}
+}
+async function loadAdminBookmakers(){
+  const box=document.getElementById("adminBookmakersList");if(!box)return;const r=await fetch("/api/admin/bookmakers",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
+  box.innerHTML=(d.bookmakers||[]).map(b=>`<div class="member-card"><strong>${escapeHtml(b.name)}</strong><div class="admin-small">${escapeHtml(b.url)}</div><button class="btn danger" onclick="deleteBookmaker(${b.id})">🗑️ Supprimer</button></div>`).join("")||'<p class="muted">Aucun bookmaker.</p>';
+}
+async function deleteBookmaker(id){if(!confirm("Supprimer ce bookmaker ?"))return;await fetch("/api/admin/bookmakers/"+id,{method:"DELETE",credentials:"same-origin"});await loadAdminBookmakers();await loadBookmakers();}
+async function loadAdminCoupons(){
+  const box=document.getElementById("adminCouponsList");if(!box)return;const r=await fetch("/api/admin/coupons",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
+  box.innerHTML=(d.coupons||[]).map(c=>`<div class="member-card"><strong>${escapeHtml(c.platform_name)} — ${escapeHtml(c.code)}</strong><div class="admin-small">${escapeHtml(c.platform_url)}</div><button class="btn danger" onclick="deleteCoupon(${c.id})">🗑️ Supprimer</button></div>`).join("")||'<p class="muted">Aucun coupon.</p>';
+}
+async function deleteCoupon(id){if(!confirm("Supprimer ce coupon ?"))return;await fetch("/api/admin/coupons/"+id,{method:"DELETE",credentials:"same-origin"});await loadAdminCoupons();await loadCoupons();}
 function filterAdminUsers(){
   const q=(document.getElementById("userSearch").value||"").trim().toLowerCase();
   renderAdminUsers(adminUsersCache.filter(u=>String(u.username||u.name||"").toLowerCase().includes(q)));
@@ -896,11 +961,11 @@ function renderAdminUsers(users){
         <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre S-Drive'}</span>
       </div>
       <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
-      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
+      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
       <div class="admin-actions">
-        <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer 7 jours</button>
+        <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium</button>
         <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
-        <button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
+        <button class="btn secondary" type="button" onclick="toggleUserDisabled(${Number(user.id)},${user.disabled?false:true})">${user.disabled?"▶️ Réactiver":"⛔ Désactiver"}</button><button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
       </div>
     </div>`;
   }).join("")||'<p class="muted">Aucun client trouvé.</p>';
@@ -908,7 +973,7 @@ function renderAdminUsers(users){
 
 async function setPremium(id,enabled){
   try{
-    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled})});
+    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:enabled?(Number(prompt("Durée Premium en jours :", "7"))||7):7})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
     alert(data.message||"Statut Premium mis à jour.");
@@ -930,7 +995,7 @@ function renderSettingsForm(settings){
   const fields=[
     ["whatsapp","Numéro WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Lien groupe WhatsApp"],["telegramGroup","Lien groupe Telegram"],
     ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
-    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["adminPhone","Numéro administrateur"]
+    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien S-Drive"],["sdriveInviteMessage","Message S-Drive"],["adminPhone","Numéro administrateur"]
   ];
   return '<div class="settings-grid">'+fields.map(([k,label])=>`<label>${label}<input data-setting="${k}" value="${escapeHtml(settings[k]||'')}"></label>`).join('')+'</div>';
 }
@@ -1054,6 +1119,8 @@ async function loadAdmin(){
         }).join("")||'<p class="muted">Aucune demande en attente.</p>';
     }
 
+    await loadAdminBookmakers();
+    await loadAdminCoupons();
     await loadAdminDailyMatches();
 
   }catch(error){
@@ -1364,6 +1431,9 @@ async function loadPublicConfig(){
     const tg=document.getElementById("telegramContact");if(tg)tg.href=TELEGRAM_CONTACT;
     const groupWa=document.querySelector('a[href*="chat.whatsapp.com"]');if(groupWa&&data.whatsappGroup)groupWa.href=data.whatsappGroup;
     const groupTg=document.querySelector('a[href="https://t.me/sdrive123"]');if(groupTg&&data.telegramGroup)groupTg.href=data.telegramGroup;
+    renderSdriveReferral(data);
+    loadBookmakers();
+    loadCoupons();
     const socialMap={"TikTok":data.tiktok,"Facebook":data.facebook,"Instagram":data.instagram};
     document.querySelectorAll('.social-grid a').forEach(a=>{const key=a.textContent.trim().replace(/^🎵 |^🔵 |^📸 /,'');if(socialMap[key])a.href=socialMap[key];});
   }catch(e){console.error("CONFIG:",e);}
