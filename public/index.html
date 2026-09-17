@@ -1027,7 +1027,7 @@ async function saveAdminSettings(){
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||'Enregistrement impossible.');
     showStatus('settingsStatus','Paramètres enregistrés avec succès.','success');
-    await loadConfig();
+    window.location.reload();
   }catch(e){showStatus('settingsStatus',e.message,'error');}
 }
 
