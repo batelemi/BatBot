@@ -412,19 +412,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
   </div>
 
-  <section class="partners-space" aria-label="Espace partenaires et bookmakers">
-    <div class="section-kicker">Espace partenaires</div>
-    <h2>🛡️ Partenaires authentifiés</h2>
-    <div class="professional-note">✓ Liens partenaires présentés par S-Drive®. Avant toute inscription ou utilisation, consultez les conditions de chaque plateforme et vérifiez qu'elle est autorisée dans votre pays.</div>
-  <div class="card">
-    <h2>🏆 Bookmakers disponibles</h2>
-    <p class="muted">Découvrez les plateformes proposées. Vérifiez toujours les conditions et bonus avant utilisation.</p>
-    <div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
-  </div>
-
-
-  </section>
-
   <div id="sdriveReferralCard" class="card hidden">
     <h2>🚀 Rejoindre S-Drive</h2>
     <p id="sdriveInviteMessage" class="muted"></p>
@@ -445,18 +432,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   </div>
 
 
-
-  <div class="card compact-conditions">
-    <h2>📋 Conditions d'utilisation</h2>
-    <details>
-      <summary>🔎 Cliquez ici pour lire les conditions</summary>
-    <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
-    <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
-    <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
-    <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
-    <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
-    </details>
-  </div>
 
   <div class="card">
     <h2>ℹ️ Comment ça fonctionne ?</h2>
@@ -529,11 +504,30 @@ PSG vs Marseille"></textarea>
 
   <div id="servicesModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="servicesModalTitle" onclick="closeModalOnBackdrop(event,this)">
     <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="servicesModalTitle">☰ Services S-Drive®</h2><button class="btn modal-close" type="button" onclick="closeAppModal('servicesModal')">×</button></div>
-      <button class="modal-option" type="button" onclick="goToAppSection('partners-space');closeAppModal('servicesModal')">🏆 <span>Bookmakers partenaires<small>Consulter les liens et les offres disponibles</small></span></button>
-      <button class="modal-option" type="button" onclick="goToAppSection('conditions-card');closeAppModal('servicesModal')">📋 <span>Conditions d'utilisation<small>Lire les règles de fonctionnement de S-Drive®</small></span></button>
-      <button class="modal-option" type="button" onclick="goToAppSection('contact-agent');closeAppModal('servicesModal')">📞 <span>Contacter un agent<small>WhatsApp et Telegram</small></span></button>
-      <button class="modal-option" type="button" onclick="closeAppModal('servicesModal');openAppModal('analysisModal')">📊 <span>Demander une analyse<small>Envoyer les matchs à analyser</small></span></button>
+      <div class="app-modal-head"><h2 id="servicesModalTitle">☰ Autres options</h2><button class="btn modal-close" type="button" onclick="closeAppModal('servicesModal')">×</button></div>
+      <button class="modal-option" type="button" onclick="closeAppModal('servicesModal');openAppModal('bookmakersModal')">🏆 <span>Bookmakers partenaires<small>Consulter les bookmakers et leurs liens</small></span></button>
+      <button class="modal-option" type="button" onclick="copySdriveLink()">🔗 <span>Copier le lien S-Drive<small>Copier le lien de l’application pour le partager avec vos amis</small></span></button>
+      <button class="modal-option" type="button" onclick="closeAppModal('servicesModal');openAppModal('conditionsModal')">📋 <span>Conditions d’utilisation<small>Lire les règles de fonctionnement de S-Drive®</small></span></button>
+      <div id="copyLinkStatus" class="status"></div>
+    </div>
+  </div>
+
+  <div id="bookmakersModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="bookmakersModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="bookmakersModalTitle">🏆 Bookmakers partenaires</h2><button class="btn modal-close" type="button" onclick="closeAppModal('bookmakersModal')">×</button></div>
+      <p class="modal-note">Consultez les bookmakers et leurs liens. Vérifiez toujours les conditions et la légalité dans votre pays.</p>
+      <div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
+    </div>
+  </div>
+
+  <div id="conditionsModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="conditionsModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="conditionsModalTitle">📋 Conditions d’utilisation</h2><button class="btn modal-close" type="button" onclick="closeAppModal('conditionsModal')">×</button></div>
+      <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
+      <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>. Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong>.</div>
+      <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
+      <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens indiqués dans l'application.</div>
+      <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
     </div>
   </div>
 </section>
@@ -1542,6 +1536,17 @@ function openAppModal(id){const el=document.getElementById(id);if(el){el.classLi
 function closeAppModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');}if(!document.querySelector('.app-modal.open'))document.body.style.overflow='';}
 function closeModalOnBackdrop(event,el){if(event.target===el)closeAppModal(el.id);}
 function syncAgentModalLinks(){const w=document.getElementById('whatsappContact');const wm=document.getElementById('whatsappContactModal');if(w&&wm&&w.href)wm.href=w.href;const t=document.getElementById('telegramContact');const tm=document.getElementById('telegramContactModal');if(t&&tm&&t.href)tm.href=t.href;}
+async function copySdriveLink(){
+  const link=window.location.origin+window.location.pathname;
+  try{
+    await navigator.clipboard.writeText(link);
+    const status=document.getElementById("copyLinkStatus");
+    if(status)status.textContent="✅ Lien S-Drive copié. Vous pouvez maintenant le partager.";
+  }catch(e){
+    window.prompt("Copiez le lien S-Drive :",link);
+  }
+}
+
 function goToAppSection(kind){const map={'partners-space':'.partners-space','conditions-card':'.compact-conditions','contact-agent':'#whatsappContact','analysis-card':'#matches'};const target=document.querySelector(map[kind]);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});}
 document.addEventListener('DOMContentLoaded',syncAgentModalLinks);
 setTimeout(syncAgentModalLinks,1000);
