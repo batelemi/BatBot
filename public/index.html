@@ -205,8 +205,6 @@ textarea{min-height:120px;resize:vertical}
 .hidden{display:none!important}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
 footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
-.admin-secret{position:fixed;right:10px;bottom:10px;width:30px;height:30px;border-radius:50%;font-size:13px;opacity:.28;z-index:20;display:flex;align-items:center;justify-content:center;gap:0;padding:0;box-shadow:none}
-.admin-secret:active{opacity:.8;transform:scale(.96)}
 
 @media(max-width:380px){
   .two-columns{gap:6px}
@@ -219,8 +217,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .bookmaker{align-items:flex-start;flex-direction:column}
   .bookmaker .btn{width:100%}
 }
-
-.modal{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;padding:14px}.modal-card{position:relative;width:min(100%,560px);max-height:88vh;overflow:auto;background:#102B4C;border:1px solid #315D82;border-radius:22px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.45)}.modal-close{position:absolute;right:10px;top:8px;width:38px;height:38px;border-radius:50%;border:0;background:#193A5C;color:white;font-size:26px}.modal-card h2{padding-right:40px}.admin-user{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:9px 0}.admin-user-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.admin-actions .btn{margin:0;min-height:42px;font-size:12px}.admin-small{color:var(--muted);font-size:12px;line-height:1.5}.modal-link{margin:8px 0}.modal-link .btn{margin:0}
+.admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 </style>
 </head>
 
@@ -342,8 +339,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="notice">
       📌 Effectuez le paiement de <strong>500 F</strong> avant d'envoyer votre demande d'analyse.
     </div>
-    <a class="btn wave"
-      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500."
+    <a id="waveDayButton" class="btn wave"
+      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500"
       target="_blank" rel="noopener noreferrer">💙 Payer 500 F avec Wave</a>
     <div class="payment-confirm">
       ✅ Paiement manuel. Après le paiement, revenez dans l'application et envoyez vos matchs à analyser.
@@ -362,8 +359,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <br><br>
       Votre profil reçoit également un <strong>badge bleu</strong>.
     </div>
-    <a class="btn wave"
-      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000."
+    <a id="wavePremiumButton" class="btn wave"
+      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
       target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
     <div class="payment-confirm">
       📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
@@ -476,19 +473,14 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div class="card payment-card">
-    <h2>💳 Dépôt / Rechargement</h2>
-    <p class="muted">Effectuez un dépôt depuis cet espace pour recharger votre compte ou régler un service S-Drive.</p>
-    <button class="btn wave" type="button" onclick="openDeposit()">💰 Appuyer ici pour effectuer un dépôt</button>
-  </div>
-
   <div class="card">
-    <h2>🔗 Nos liens</h2>
-    <p class="muted">Retrouvez tous nos accès officiels au même endroit.</p>
-    <button class="btn primary" type="button" onclick="openLinks()">📲 Appuyer ici pour nos réseaux et bookmakers</button>
+    <h2>📋 Conditions d'utilisation</h2>
+    <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
+    <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
+    <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
+    <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
+    <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
   </div>
-
-  <div class="card"><h2>📋 Conditions d'utilisation</h2><p class="muted">Les règles du service sont accessibles ici.</p><button class="btn secondary" type="button" onclick="showModal('conditionsModal')">📖 Appuyer ici pour lire les conditions d'utilisation</button></div>
 
   <div class="card">
     <h2>ℹ️ Comment ça fonctionne ?</h2>
@@ -502,70 +494,63 @@ PSG vs Marseille"></textarea>
 </section>
 
 <section id="admin" class="hidden">
+
   <div class="center">
     <div class="admin-header-icon">🛠️</div>
     <h1>Administration</h1>
-    <p class="muted">Gestion complète de S-Drive</p>
+    <p class="muted">Gestion des membres S-Drive</p>
   </div>
 
   <div id="adminLoginBox" class="card">
-    <h2>🔐 Accès administrateur</h2>
+    <h2>🔐 Connexion administrateur</h2>
     <input id="adminPhone" type="text" autocomplete="username" placeholder="Identifiant administrateur">
-    <div class="password-wrap"><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur"><button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button></div>
-    <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Se connecter</button>
+    <div class="password-wrap">
+      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur">
+      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button>
+    </div>
+    <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Accéder à l'administration</button>
     <div id="adminLoginStatus" class="status"></div>
   </div>
 
   <div id="adminPanel" class="hidden">
-    <div class="card"><h2>📊 Tableau de bord</h2><div id="adminStats" class="notice">Chargement...</div></div>
 
     <div class="card">
-      <h2>🔎 Rechercher un utilisateur</h2>
-      <input id="userSearch" type="search" placeholder="Rechercher par nom d'utilisateur">
-      <button class="btn primary" type="button" onclick="searchUsers()">🔍 Rechercher</button>
-      <button class="btn secondary" type="button" onclick="loadUsers('')">Afficher tous les utilisateurs</button>
-    </div>
-
-    <div class="card"><h2>👥 Membres inscrits</h2><div id="usersList">Chargement...</div></div>
-    <div class="card"><h2>🔑 Demandes de mot de passe</h2><div id="resetList">Chargement...</div></div>
-
-    <div class="card">
-      <h2>⭐ Gestion Premium</h2>
-      <div class="notice">Recherchez un utilisateur puis activez son badge Premium. La durée standard est de <strong>7 jours</strong>. Les dates d'activation et d'expiration sont enregistrées.</div>
-      <div id="premiumStatus" class="status"></div>
+      <h2>📊 Tableau de bord</h2>
+      <div id="adminStats" class="notice">Chargement...</div>
     </div>
 
     <div class="card">
-      <h2>📊 Probabilités du jour</h2>
+      <h2>👥 Membres inscrits</h2>
+      <input id="userSearch" type="search" placeholder="🔎 Rechercher un client par son nom..." oninput="filterAdminUsers()">
+      <div id="usersList">Chargement...</div>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Paramètres modifiables</h2>
+      <p class="muted">Modifiez les numéros WhatsApp, Telegram, les liens Wave, les réseaux sociaux et les numéros Mobile Money sans toucher au code.</p>
+      <div id="settingsList">Chargement...</div>
+      <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
+      <div id="settingsStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔑 Demandes de mot de passe</h2>
+      <p class="muted">Les demandes des utilisateurs qui ont oublié leur mot de passe apparaissent ici.</p>
+      <div id="resetList">Chargement...</div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Ajouter les probabilités du jour</h2>
+
       <input id="matchName" type="text" placeholder="Match — Exemple : Real Madrid vs Barça">
       <input id="homeProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 1 (%)">
       <input id="drawProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité match nul (%)">
       <input id="awayProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 2 (%)">
       <input id="recommendedPick" type="text" placeholder="Pronostic recommandé">
-      <button id="addMatchButton" class="btn green" type="button" onclick="addDailyMatch()">➕ Ajouter le match</button>
-      <div id="matchAdminStatus" class="status"></div><div id="adminDailyMatches"></div>
-    </div>
 
-    <div class="card">
-      <h2>🔗 Gestion des liens et contacts</h2>
-      <p class="muted">L'administrateur peut modifier les liens affichés aux utilisateurs sans modifier le code.</p>
-      <input id="setWhatsapp" placeholder="WhatsApp agent (ex: 2250152171974)">
-      <input id="setTelegram" placeholder="Telegram agent">
-      <input id="setWhatsappGroup" placeholder="Groupe WhatsApp">
-      <input id="setTelegramGroup" placeholder="Groupe Telegram">
-      <input id="setTiktok" placeholder="TikTok">
-      <input id="setFacebook" placeholder="Facebook">
-      <input id="setInstagram" placeholder="Instagram">
-      <input id="setWaveDay" placeholder="Lien Wave analyse du jour">
-      <input id="setWavePremium" placeholder="Lien Wave Premium">
-      <input id="setPaymentNumber" placeholder="Numéro de dépôt Mobile Money">
-      <input id="setPaymentLabel" placeholder="Libellé des moyens de paiement">
-      <h3>Bookmakers</h3>
-      <input id="setBm1Name" placeholder="Bookmaker 1 — nom"><input id="setBm1Url" placeholder="Bookmaker 1 — lien">
-      <input id="setBm2Name" placeholder="Bookmaker 2 — nom"><input id="setBm2Url" placeholder="Bookmaker 2 — lien">
-      <input id="setBm3Name" placeholder="Bookmaker 3 — nom"><input id="setBm3Url" placeholder="Bookmaker 3 — lien">
-      <button class="btn green" type="button" onclick="saveSettings()">💾 Enregistrer les paramètres</button>
-      <div id="settingsStatus" class="status"></div>
+      <button id="addMatchButton" class="btn green" type="button" onclick="addDailyMatch()">➕ Ajouter le match</button>
+      <div id="matchAdminStatus" class="status"></div>
+      <div id="adminDailyMatches"></div>
     </div>
 
     <button class="btn danger" type="button" onclick="adminLogout()">🚪 Quitter l'administration</button>
@@ -575,7 +560,7 @@ PSG vs Marseille"></textarea>
 <footer>
   S-Drive — Analyse de matchs
   <br>
-  <button class="admin-secret" type="button" onclick="openAdmin()" aria-label="Accès sécurisé">®</button>
+  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="openAdmin()">🔒🔑</button>
 </footer>
 
 </main>
@@ -583,11 +568,12 @@ PSG vs Marseille"></textarea>
 <script>
 "use strict";
 
-const WHATSAPP_NUMBER="2250152171974";
-const TELEGRAM_CONTACT="https://t.me/sdrive12";
-const WAVE_PAYMENT_DAY_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500.";
-const WAVE_PAYMENT_7_DAYS_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000.";
+let WHATSAPP_NUMBER="2250152171974";
+let TELEGRAM_CONTACT="https://t.me/sdrive12";
+let WAVE_PAYMENT_DAY_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500";
+let WAVE_PAYMENT_7_DAYS_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000";
 const PAYMENT_NUMBER="0152171974";
+let adminUsersCache=[];
 
 function readApiResponse(response){
   return response.text().then(function(text){
@@ -710,7 +696,6 @@ function showDashboard(user){
   }
 
   loadDailyMatches();
-  loadSettings();
   window.scrollTo(0,0);
 }
 
@@ -893,8 +878,73 @@ function showFileName(){
 
 function requestPaymentNumber(){
   const message="Bonjour S-Drive 👋\n\nJe souhaite recevoir le numéro de dépôt pour effectuer mon paiement par Orange Money, Moov Money ou MTN Money.";
-  window.open(createWhatsAppUrl(message),"_blank");
+  window.location.href=createWhatsAppUrl(message);
   showStatus("paymentNumberStatus","WhatsApp a été ouvert pour recevoir le numéro de dépôt.","success");
+}
+
+function filterAdminUsers(){
+  const q=(document.getElementById("userSearch").value||"").trim().toLowerCase();
+  renderAdminUsers(adminUsersCache.filter(u=>String(u.username||u.name||"").toLowerCase().includes(q)));
+}
+
+function renderAdminUsers(users){
+  document.getElementById("usersList").innerHTML=users.map(function(user){
+    const active=Boolean(user.subscription_active||user.is_subscribed||user.subscribed);
+    return `<div class="member-card">
+      <div class="member-card-top">
+        <div class="member-username">👤 ${escapeHtml(user.username||user.name||"Utilisateur")}</div>
+        <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre S-Drive'}</span>
+      </div>
+      <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
+      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
+      <div class="admin-actions">
+        <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer 7 jours</button>
+        <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
+        <button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
+      </div>
+    </div>`;
+  }).join("")||'<p class="muted">Aucun client trouvé.</p>';
+}
+
+async function setPremium(id,enabled){
+  try{
+    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled})});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Action impossible.");
+    alert(data.message||"Statut Premium mis à jour.");
+    await loadAdmin();
+  }catch(e){alert(e.message);}
+}
+
+async function deleteAdminUser(id){
+  if(!confirm("Supprimer définitivement ce client ?"))return;
+  try{
+    const response=await fetch("/api/admin/users/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin"});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Suppression impossible.");
+    await loadAdmin();
+  }catch(e){alert(e.message);}
+}
+
+function renderSettingsForm(settings){
+  const fields=[
+    ["whatsapp","Numéro WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Lien groupe WhatsApp"],["telegramGroup","Lien groupe Telegram"],
+    ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
+    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["adminPhone","Numéro administrateur"]
+  ];
+  return '<div class="settings-grid">'+fields.map(([k,label])=>`<label>${label}<input data-setting="${k}" value="${escapeHtml(settings[k]||'')}"></label>`).join('')+'</div>';
+}
+
+async function saveAdminSettings(){
+  const body={};
+  document.querySelectorAll('[data-setting]').forEach(el=>body[el.dataset.setting]=el.value.trim());
+  try{
+    const response=await fetch('/api/admin/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||'Enregistrement impossible.');
+    showStatus('settingsStatus','Paramètres enregistrés avec succès.','success');
+    await loadConfig();
+  }catch(e){showStatus('settingsStatus',e.message,'error');}
 }
 
 async function logout(){
@@ -905,29 +955,13 @@ async function logout(){
   setTimeout(function(){location.reload();},300);
 }
 
-async function openAdmin(){
-  try{
-    const response=await fetch("/api/admin/me",{credentials:"same-origin",cache:"no-store"});
-    if(response.ok){
-      document.getElementById("auth").classList.add("hidden");
-      document.getElementById("dashboard").classList.add("hidden");
-      document.getElementById("admin").classList.remove("hidden");
-      document.getElementById("adminLoginBox").classList.add("hidden");
-      document.getElementById("adminPanel").classList.remove("hidden");
-      window.scrollTo(0,0);
-      await loadAdmin();
-      return;
-    }
-  }catch(_){}
-
-  document.getElementById("auth").classList.remove("hidden");
+function openAdmin(){
+  document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.add("hidden");
-  document.getElementById("admin").classList.add("hidden");
-  const msg=document.getElementById("adminLoginStatus");
-  if(msg){
-    msg.textContent="Accès sécurisé : authentification administrateur requise.";
-    msg.className="status error";
-  }
+  document.getElementById("admin").classList.remove("hidden");
+  document.getElementById("adminLoginBox").classList.remove("hidden");
+  document.getElementById("adminPanel").classList.add("hidden");
+  window.scrollTo(0,0);
 }
 
 async function adminLogin(){
@@ -985,22 +1019,16 @@ async function loadAdmin(){
     }
 
     const users=Array.isArray(data.users)?data.users:[];
-
+    adminUsersCache=users;
     document.getElementById("adminStats").textContent=
       "Nombre total de membres inscrits : "+users.length;
+    renderAdminUsers(users);
 
-    document.getElementById("usersList").innerHTML=
-      users.map(function(user){
-        return `
-          <div class="member-card">
-            <div class="member-card-top">
-              <div class="member-username">👤 ${escapeHtml(user.username||user.name||"Utilisateur")}</div>
-              <span class="badge">🏅 ${escapeHtml(user.badge||"Membre S-Drive")}</span>
-            </div>
-            ${user.phone?`<div class="admin-small">📱 ${escapeHtml(user.phone)}</div>`:""}
-          </div>
-        `;
-      }).join("")||'<p class="muted">Aucun membre inscrit.</p>';
+    const settingsResponse=await fetch("/api/admin/settings",{credentials:"same-origin",cache:"no-store"});
+    const settingsData=await readApiResponse(settingsResponse);
+    if(settingsResponse.ok){
+      document.getElementById("settingsList").innerHTML=renderSettingsForm(settingsData.settings||{});
+    }
 
     const resetResponse=await fetch("/api/admin/reset-requests",{credentials:"same-origin",cache:"no-store"});
     const resetData=await readApiResponse(resetResponse);
@@ -1027,8 +1055,6 @@ async function loadAdmin(){
     }
 
     await loadAdminDailyMatches();
-    await loadUsers("");
-    await loadAdminSettings();
 
   }catch(error){
     console.error("ADMIN:",error);
@@ -1323,10 +1349,28 @@ async function checkSession(){
   showAuth();
   showRegister();
   hideLoading();
-  loadSettings();
+}
+
+async function loadPublicConfig(){
+  try{
+    const response=await fetch("/api/config",{cache:"no-store"});
+    const data=await readApiResponse(response);
+    if(!response.ok)return;
+    if(data.whatsapp)WHATSAPP_NUMBER=String(data.whatsapp);
+    if(data.telegram)TELEGRAM_CONTACT="https://t.me/"+String(data.telegram).replace(/^@/,"");
+    if(data.wave500){WAVE_PAYMENT_DAY_URL=data.wave500;const el=document.getElementById("waveDayButton");if(el)el.href=data.wave500;}
+    if(data.wave1000){WAVE_PAYMENT_7_DAYS_URL=data.wave1000;const el=document.getElementById("wavePremiumButton");if(el)el.href=data.wave1000;}
+    const wa=document.getElementById("whatsappContact");if(wa)wa.href=createWhatsAppUrl("Bonjour S-Drive 👋\n\nJe souhaite contacter un agent.");
+    const tg=document.getElementById("telegramContact");if(tg)tg.href=TELEGRAM_CONTACT;
+    const groupWa=document.querySelector('a[href*="chat.whatsapp.com"]');if(groupWa&&data.whatsappGroup)groupWa.href=data.whatsappGroup;
+    const groupTg=document.querySelector('a[href="https://t.me/sdrive123"]');if(groupTg&&data.telegramGroup)groupTg.href=data.telegramGroup;
+    const socialMap={"TikTok":data.tiktok,"Facebook":data.facebook,"Instagram":data.instagram};
+    document.querySelectorAll('.social-grid a').forEach(a=>{const key=a.textContent.trim().replace(/^🎵 |^🔵 |^📸 /,'');if(socialMap[key])a.href=socialMap[key];});
+  }catch(e){console.error("CONFIG:",e);}
 }
 
 document.addEventListener("DOMContentLoaded",function(){
+  loadPublicConfig();
   showLoading("Connexion en cours…");
 
   const whatsappContact=document.getElementById("whatsappContact");
@@ -1367,9 +1411,5 @@ document.addEventListener("keydown",function(event){
 });
 </script>
 
-
-<div id="depositModal" class="modal hidden" onclick="closeModal(event,'depositModal')"><div class="modal-card" onclick="event.stopPropagation()"><button class="modal-close" onclick="hideModal('depositModal')">×</button><h2>💳 Dépôt / Rechargement</h2><p class="muted">Choisissez votre moyen de paiement.</p><div id="depositContent"></div></div></div>
-<div id="linksModal" class="modal hidden" onclick="closeModal(event,'linksModal')"><div class="modal-card" onclick="event.stopPropagation()"><button class="modal-close" onclick="hideModal('linksModal')">×</button><h2>🔗 Nos liens</h2><div id="linksContent"></div></div></div>
-<div id="conditionsModal" class="modal hidden" onclick="closeModal(event,'conditionsModal')"><div class="modal-card" onclick="event.stopPropagation()"><button class="modal-close" onclick="hideModal('conditionsModal')">×</button><h2>📋 Conditions d'utilisation</h2><div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie 500 F pour recevoir l'analyse du jour.</div><div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte 1 000 F pour 7 jours et donne accès au badge Premium pendant la période active.</div><div class="notice"><strong>3. Analyses</strong><br><br>Les analyses sont basées sur les informations disponibles et ne garantissent pas le résultat d'un pari.</div><div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement selon les moyens indiqués dans l'application.</div><div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser le service de manière responsable.</div></div></div>
 </body>
 </html>
