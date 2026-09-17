@@ -7,6 +7,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 const DB = new Database(path.join(__dirname, "sdrive.db"));
 
@@ -335,18 +336,24 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
 
 app.post("/api/admin/login", (req, res) => {
   const settings = getSettings();
-  const phone = String(req.body.phone || "").trim();
+  const phone = cleanPhone(req.body.phone);
   const password = String(req.body.password || "");
 
   if (
-    phone !== settings.adminPhone ||
+    phone !== cleanPhone(settings.adminPhone) ||
     !bcrypt.compareSync(password, settings.adminPasswordHash)
   ) {
     return res.status(401).json({ error: "Accès administrateur refusé." });
   }
 
   req.session.admin = true;
-  res.json({ message: "Administration ouverte." });
+  req.session.save((saveError) => {
+    if (saveError) {
+      console.error("ADMIN SESSION SAVE:", saveError);
+      return res.status(500).json({ error: "Session administrateur impossible à enregistrer." });
+    }
+    res.json({ message: "Administration ouverte." });
+  });
 });
 
 app.get("/api/admin/me", (req, res) => {
