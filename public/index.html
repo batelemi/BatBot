@@ -1,11 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#071A2D">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="#071A2D" name="theme-color"/>
 <title>S-Drive — Analyse de matchs</title>
-
 <style>
     .inline-logo{width:1.35em;height:1.35em;object-fit:contain;vertical-align:-0.25em;margin-right:.25em;border-radius:50%;}
 
@@ -223,408 +223,369 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
 </style>
-
 <style id="professional-modal-styles">
 .quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.quick-actions .btn{margin:0;min-height:58px;font-size:14px}.deposit-main-btn{background:linear-gradient(135deg,#16a34a,#22c55e);box-shadow:0 6px 0 #08752f}.services-main-btn{background:linear-gradient(135deg,#155e9e,#238bd0);box-shadow:0 6px 0 #0a416e}.app-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,10,20,.78);padding:18px;align-items:flex-end;justify-content:center}.app-modal.open{display:flex}.app-modal-box{width:100%;max-width:520px;max-height:86vh;overflow:auto;background:#0d2b49;border:1px solid #3c789f;border-radius:24px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.5);animation:modalUp .18s ease-out}.app-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.app-modal-head h2{margin:0;font-size:21px}.modal-close{width:42px!important;min-height:42px!important;margin:0!important;padding:0!important;border-radius:50%!important;background:#183e60!important;box-shadow:none!important;font-size:23px!important}.modal-option{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:15px;margin:8px 0;border-radius:15px;border:1px solid #3a6d91;background:#123653;color:#fff;font-weight:800;cursor:pointer}.modal-option small{display:block;color:#b9cee0;font-weight:500;margin-top:3px}.modal-section{border:1px solid #315d82;border-radius:16px;padding:13px;margin:10px 0;background:#102f4f}.modal-section h3{margin:0 0 6px}.modal-section .btn{margin-top:8px}.modal-note{color:#c5d7e7;font-size:13px;line-height:1.45}@keyframes modalUp{from{transform:translateY(18px);opacity:.5}to{transform:translateY(0);opacity:1}}@media(max-width:390px){.quick-actions{grid-template-columns:1fr}.quick-actions .btn{min-height:52px}}
 </style>
-
-
 <style id="modal-cleanup-styles">
 .hidden-by-modal{display:none!important}.analysis-main-btn{background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 6px 0 #54218f}.analysis-modal-upload{border:2px dashed #18c8ff;border-radius:18px;padding:20px;text-align:center;margin:12px 0;background:#0b2946}.analysis-modal-upload strong{display:block;font-size:18px;margin-bottom:8px}.analysis-modal-upload small{display:block;color:#bdd0e2;line-height:1.5}.analysis-modal-upload input{display:block;width:100%;margin-top:14px}.analysis-modal-upload .file-name{margin-top:8px;color:#6ee7a0}
 </style>
-</head>
-
+<style id="admin-organized-styles">
+.admin-quick-actions{margin:14px 0 18px}.admin-quick-actions .btn{min-height:58px;font-size:14px}.admin-overview-card{margin-bottom:10px}.admin-quick-actions+.app-modal{margin-top:0}.deposit-conditions-first{border:1px solid #4b8a69;background:linear-gradient(145deg,#103d37,#102f4f)}.deposit-conditions-first .notice{margin:9px 0}.deposit-conditions-first .professional-note{margin-bottom:0}
+</style></head>
 <body>
-
 <div id="loadingScreen">
-  <div class="loading-logo">
-    <img src="logo.png" alt="S-Drive"
-      onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
-    <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
-  </div>
-  <div class="loading-title">S-Drive</div>
-  <div id="loadingMessage" class="loading-message">Connexion en cours…</div>
-  <div class="loading-spinner"></div>
+<div class="loading-logo">
+<img alt="S-Drive" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');" src="logo.png"/>
+<span aria-hidden="true" class="logo-fallback hidden-fallback"><img alt="S-Drive" aria-hidden="true" class="inline-logo" src="logo.png"/></span>
 </div>
-
+<div class="loading-title">S-Drive</div>
+<div class="loading-message" id="loadingMessage">Connexion en cours…</div>
+<div class="loading-spinner"></div>
+</div>
 <main class="container">
-
 <section id="auth">
-
-  <div class="center">
-    <div class="logo">
-      <img src="logo.png" alt="S-Drive"
-        onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
-      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
-    </div>
-    <h1>S-Drive<sup class="brand-mark">®</sup></h1>
-    <p class="muted">Analyse professionnelle de vos matchs</p>
-  </div>
-
-  <div id="registerBox" class="card">
-    <h2>👤 Créer un compte</h2>
-    <p class="muted">Créez votre compte S-Drive pour accéder à l'application.</p>
-
-    <input id="registerUsername" type="text" autocomplete="username" autocapitalize="none"
-      maxlength="30" placeholder="Nom d'utilisateur">
-
-    <div class="password-wrap">
-      <input id="registerPassword" type="password" autocomplete="new-password"
-        placeholder="Mot de passe — 6 caractères minimum">
-      <button class="eye" type="button" onclick="togglePassword('registerPassword',this)">👁</button>
-    </div>
-
-    <div class="password-wrap">
-      <input id="registerPassword2" type="password" autocomplete="new-password"
-        placeholder="Confirmer le mot de passe">
-      <button class="eye" type="button" onclick="togglePassword('registerPassword2',this)">👁</button>
-    </div>
-
-    <button id="registerButton" class="btn primary" type="button" onclick="register()">✨ Créer mon compte</button>
-    <div id="registerStatus" class="status"></div>
-
-    <button class="btn secondary" type="button" onclick="showLogin()">🔐 J'ai déjà un compte</button>
-  </div>
-
-  <div id="loginBox" class="card hidden">
-    <button class="btn secondary back-button" type="button" onclick="showRegister()">← Retour</button>
-    <h2>🔐 Connexion</h2>
-
-    <input id="loginUsername" type="text" autocomplete="username" autocapitalize="none"
-      placeholder="Nom d'utilisateur">
-
-    <div class="password-wrap">
-      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Mot de passe">
-      <button class="eye" type="button" onclick="togglePassword('loginPassword',this)">👁</button>
-    </div>
-
-    <button id="loginButton" class="btn primary" type="button" onclick="login()">🚀 Se connecter</button>
-
-    <a class="forgot" onclick="forgotPassword()">🔑 Mot de passe oublié ?</a>
-    <div id="loginStatus" class="status"></div>
-  </div>
-
-  <div id="forgotBox" class="card hidden">
-    <h2>🔑 Mot de passe oublié</h2>
-    <p class="muted">
+<div class="center">
+<div class="logo">
+<img alt="S-Drive" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');" src="logo.png"/>
+<span aria-hidden="true" class="logo-fallback hidden-fallback"><img alt="S-Drive" aria-hidden="true" class="inline-logo" src="logo.png"/></span>
+</div>
+<h1>S-Drive<sup class="brand-mark">®</sup></h1>
+<p class="muted">Analyse professionnelle de vos matchs</p>
+</div>
+<div class="card" id="registerBox">
+<h2>👤 Créer un compte</h2>
+<p class="muted">Créez votre compte S-Drive pour accéder à l'application.</p>
+<input autocapitalize="none" autocomplete="username" id="registerUsername" maxlength="30" placeholder="Nom d'utilisateur" type="text"/>
+<div class="password-wrap">
+<input autocomplete="new-password" id="registerPassword" placeholder="Mot de passe — 6 caractères minimum" type="password"/>
+<button class="eye" onclick="togglePassword('registerPassword',this)" type="button">👁</button>
+</div>
+<div class="password-wrap">
+<input autocomplete="new-password" id="registerPassword2" placeholder="Confirmer le mot de passe" type="password"/>
+<button class="eye" onclick="togglePassword('registerPassword2',this)" type="button">👁</button>
+</div>
+<button class="btn primary" id="registerButton" onclick="register()" type="button">✨ Créer mon compte</button>
+<div class="status" id="registerStatus"></div>
+<button class="btn secondary" onclick="showLogin()" type="button">🔐 J'ai déjà un compte</button>
+</div>
+<div class="card hidden" id="loginBox">
+<button class="btn secondary back-button" onclick="showRegister()" type="button">← Retour</button>
+<h2>🔐 Connexion</h2>
+<input autocapitalize="none" autocomplete="username" id="loginUsername" placeholder="Nom d'utilisateur" type="text"/>
+<div class="password-wrap">
+<input autocomplete="current-password" id="loginPassword" placeholder="Mot de passe" type="password"/>
+<button class="eye" onclick="togglePassword('loginPassword',this)" type="button">👁</button>
+</div>
+<button class="btn primary" id="loginButton" onclick="login()" type="button">🚀 Se connecter</button>
+<a class="forgot" onclick="forgotPassword()">🔑 Mot de passe oublié ?</a>
+<div class="status" id="loginStatus"></div>
+</div>
+<div class="card hidden" id="forgotBox">
+<h2>🔑 Mot de passe oublié</h2>
+<p class="muted">
       Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation à l'administrateur.
     </p>
-
-    <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
-      placeholder="Votre nom d'utilisateur">
-
-    <button id="forgotButton" class="btn primary" type="button" onclick="submitForgotPassword()">
+<input autocapitalize="none" autocomplete="username" id="forgotUsername" placeholder="Votre nom d'utilisateur" type="text"/>
+<button class="btn primary" id="forgotButton" onclick="submitForgotPassword()" type="button">
       📩 Envoyer la demande
     </button>
-
-    <div id="forgotStatus" class="status"></div>
-
-    <a id="forgotWhatsApp" class="btn whatsapp hidden" target="_blank" rel="noopener noreferrer">
+<div class="status" id="forgotStatus"></div>
+<a class="btn whatsapp hidden" id="forgotWhatsApp" rel="noopener noreferrer" target="_blank">
       💬 Contacter l'administrateur sur WhatsApp
     </a>
-
-    <button class="btn secondary" type="button" onclick="hideForgot()">← Retour à la connexion</button>
-  </div>
-
+<button class="btn secondary" onclick="hideForgot()" type="button">← Retour à la connexion</button>
+</div>
 </section>
-
-<section id="dashboard" class="hidden">
-
-  <div class="center">
-    <div class="logo">
-      <img src="logo.png" alt="S-Drive"
-        onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
-      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
-    </div>
-    <h1>S-Drive<sup class="brand-mark">®</sup></h1>
-    <p id="welcomeText" class="muted">Bienvenue</p>
-    <span id="profileBadge" class="badge">🏅 Membre S-Drive</span>
-  </div>
-
-  <div id="userBox" class="user-box">👤 Compte connecté</div>
-
-  <div class="quick-actions" aria-label="Accès rapides">
-    <button class="btn deposit-main-btn" type="button" onclick="openAppModal('depositModal')">➕ Effectuer un dépôt</button>
-    <button class="btn analysis-main-btn" type="button" onclick="openAppModal('analysisModal')">📊 Demander une analyse</button>
-    <button class="btn services-main-btn" type="button" onclick="openAppModal('servicesModal')">☰ Autres options</button>
-    <button class="btn services-main-btn" type="button" onclick="openAppModal('couponsModal')">🎁 Codes coupons</button>
-    <button class="btn services-main-btn" type="button" onclick="openAppModal('groupsModal')">👥 Nos groupes</button>
-    <button class="btn services-main-btn" type="button" onclick="openAppModal('agentModal')">📞 Contacter un agent</button>
-  </div>
-
-  <section class="deposit-space hidden-by-modal" aria-label="Espace de dépôt et de paiement">
-    <div class="section-kicker">Espace sécurisé</div>
-    <h2>💳 Dépôts & paiements</h2>
-    <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
-  <div class="card payment-card">
-    <h2>💳 Analyse du jour</h2>
-    <div class="payment-price">
-      <strong>500 F</strong>
-      <span>Paiement pour recevoir l'analyse du jour</span>
-    </div>
-    <div class="notice">
+<section class="hidden" id="dashboard">
+<div class="center">
+<div class="logo">
+<img alt="S-Drive" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');" src="logo.png"/>
+<span aria-hidden="true" class="logo-fallback hidden-fallback"><img alt="S-Drive" aria-hidden="true" class="inline-logo" src="logo.png"/></span>
+</div>
+<h1>S-Drive<sup class="brand-mark">®</sup></h1>
+<p class="muted" id="welcomeText">Bienvenue</p>
+<span class="badge" id="profileBadge">🏅 Membre S-Drive</span>
+</div>
+<div class="user-box" id="userBox">👤 Compte connecté</div>
+<div aria-label="Accès rapides" class="quick-actions">
+<button class="btn deposit-main-btn" onclick="openAppModal('depositModal')" type="button">➕ Effectuer un dépôt</button>
+<button class="btn analysis-main-btn" onclick="openAppModal('analysisModal')" type="button">📊 Demander une analyse</button>
+<button class="btn services-main-btn" onclick="openAppModal('servicesModal')" type="button">☰ Autres options</button>
+<button class="btn services-main-btn" onclick="openAppModal('couponsModal')" type="button">🎁 Codes coupons</button>
+<button class="btn services-main-btn" onclick="openAppModal('groupsModal')" type="button">👥 Nos groupes</button>
+<button class="btn services-main-btn" onclick="openAppModal('agentModal')" type="button">📞 Contacter un agent</button>
+</div>
+<section aria-label="Espace de dépôt et de paiement" class="deposit-space hidden-by-modal">
+<div class="section-kicker">Espace sécurisé</div>
+<h2>💳 Dépôts &amp; paiements</h2>
+<div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
+<div class="card payment-card">
+<h2>💳 Analyse du jour</h2>
+<div class="payment-price">
+<strong>500 F</strong>
+<span>Paiement pour recevoir l'analyse du jour</span>
+</div>
+<div class="notice">
       📌 Effectuez le paiement de <strong>500 F</strong> avant d'envoyer votre demande d'analyse.
     </div>
-    <a id="waveDayButton" class="btn wave"
-      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500"
-      target="_blank" rel="noopener noreferrer">💙 Payer 500 F avec Wave</a>
-    <div class="payment-confirm">
+<a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500" id="waveDayButton" rel="noopener noreferrer" target="_blank">💙 Payer 500 F avec Wave</a>
+<div class="payment-confirm">
       ✅ Paiement manuel. Après le paiement, revenez dans l'application et envoyez vos matchs à analyser.
     </div>
-    <div id="paymentStatus" class="status"></div>
-  </div>
-
-  <div class="card subscription-card">
-    <h2>⭐ Abonnement 7 jours</h2>
-    <div class="subscription-price">
-      <strong>1 000 F</strong>
-      <span>Accès pendant 7 jours</span>
-    </div>
-    <div class="notice">
+<div class="status" id="paymentStatus"></div>
+</div>
+<div class="card subscription-card">
+<h2>⭐ Abonnement 7 jours</h2>
+<div class="subscription-price">
+<strong>1 000 F</strong>
+<span>Accès pendant 7 jours</span>
+</div>
+<div class="notice">
       🏅 Avec l'abonnement, vous n'avez pas besoin de payer <strong>500 F</strong> chaque jour pendant les 7 jours.
-      <br><br>
+      <br/><br/>
       Votre profil reçoit également un <strong>badge bleu</strong>.
     </div>
-    <a id="wavePremiumButton" class="btn wave"
-      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
-      target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
-    <div class="payment-confirm">
+<a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000" id="wavePremiumButton" rel="noopener noreferrer" target="_blank">💙 Souscrire 7 jours — 1 000 F</a>
+<div class="payment-confirm">
       📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
     </div>
-  </div>
-
-  <div class="card">
-    <h2>💰 Autres moyens de paiement</h2>
-    <div class="notice">
+</div>
+<div class="card">
+<h2>💰 Autres moyens de paiement</h2>
+<div class="notice">
       📱 Vous pouvez également payer par <strong>Orange Money, Moov Money ou MTN Money</strong>.
-      <br><br>
+      <br/><br/>
       Appuyez sur le bouton ci-dessous pour recevoir le numéro de dépôt avec un message prédéfini.
     </div>
-    <button class="btn orange" type="button" onclick="requestPaymentNumber()">📲 Recevoir le numéro de dépôt</button>
-    <div id="paymentNumberStatus" class="status"></div>
-  </div>
+<button class="btn orange" onclick="requestPaymentNumber()" type="button">📲 Recevoir le numéro de dépôt</button>
+<div class="status" id="paymentNumberStatus"></div>
+</div>
+</section>
+<div class="card">
+<h2>📊 Probabilités des matchs du jour</h2>
+<p class="muted">Retrouvez ici les probabilités ajoutées par l'administrateur.</p>
+<div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
+</div>
+<div class="card hidden" id="sdriveReferralCard">
+<h2>🚀 Rejoindre S-Drive</h2>
+<p class="muted" id="sdriveInviteMessage"></p>
+<div id="sdriveReferralActions"></div>
+</div>
+<div class="card">
+<h2>📱 Nos réseaux sociaux</h2>
+<p class="muted">Suivez S-Drive sur nos réseaux sociaux.</p>
+<div class="social-grid">
+<a class="btn social-btn" href="https://www.tiktok.com/@batelemi92?_r=1&amp;_t=ZS-99ezQTy3tTh" rel="noopener noreferrer" style="background:#000;color:white;box-shadow:0 6px 0 #333;" target="_blank">🎵 TikTok</a>
+<a class="btn social-btn" href="https://www.facebook.com/share/1KDERc7ZAP/" rel="noopener noreferrer" style="background:#1877F2;color:white;box-shadow:0 6px 0 #0A4A9A;" target="_blank">🔵 Facebook</a>
+<a class="btn social-btn" href="https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==" rel="noopener noreferrer" style="background:linear-gradient(145deg,#E1306C,#833AB4);color:white;box-shadow:0 6px 0 #54206F;" target="_blank">📸 Instagram</a>
+</div>
+</div>
+<div class="card">
+<h2>ℹ️ Comment ça fonctionne ?</h2>
 
-  </section>
-
-  <div class="card">
-    <h2>📊 Probabilités des matchs du jour</h2>
-    <p class="muted">Retrouvez ici les probabilités ajoutées par l'administrateur.</p>
-    <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
-  </div>
-
-  <div id="sdriveReferralCard" class="card hidden">
-    <h2>🚀 Rejoindre S-Drive</h2>
-    <p id="sdriveInviteMessage" class="muted"></p>
-    <div id="sdriveReferralActions"></div>
-  </div>
-
-  <div class="card">
-    <h2>📱 Nos réseaux sociaux</h2>
-    <p class="muted">Suivez S-Drive sur nos réseaux sociaux.</p>
-    <div class="social-grid">
-      <a class="btn social-btn" style="background:#000;color:white;box-shadow:0 6px 0 #333;"
-        href="https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99ezQTy3tTh" target="_blank" rel="noopener noreferrer">🎵 TikTok</a>
-      <a class="btn social-btn" style="background:#1877F2;color:white;box-shadow:0 6px 0 #0A4A9A;"
-        href="https://www.facebook.com/share/1KDERc7ZAP/" target="_blank" rel="noopener noreferrer">🔵 Facebook</a>
-      <a class="btn social-btn" style="background:linear-gradient(145deg,#E1306C,#833AB4);color:white;box-shadow:0 6px 0 #54206F;"
-        href="https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==" target="_blank" rel="noopener noreferrer">📸 Instagram</a>
-    </div>
-  </div>
-
-
-
-  <div class="card">
-    <h2>ℹ️ Comment ça fonctionne ?</h2>
-    <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Créez votre compte</strong><span>Inscrivez-vous avec votre nom d'utilisateur et votre mot de passe.</span></div></div>
-    <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Payez 500 F ou abonnez-vous</strong><span>Choisissez le paiement du jour à 500 F ou l'abonnement 7 jours à 1 000 F.</span></div></div>
-    <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d'écran.</span></div></div>
-    <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
-  </div>
-
-  <button class="btn danger" type="button" onclick="logout()">🚪 Se déconnecter</button>
-
-  <div id="couponsModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="couponsModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="couponsModalTitle">🎁 Codes coupons disponibles</h2><button class="btn modal-close" type="button" onclick="closeAppModal('couponsModal')">×</button></div>
-      <p class="modal-note">Copiez un code, ouvrez la plateforme ou partagez l’offre. Les coupons affichés sont ceux publiés par l’administrateur.</p>
-      <div id="couponsList"><div class="notice">Chargement des coupons...</div></div>
-    </div>
-  </div>
-
-  <div id="groupsModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="groupsModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="groupsModalTitle">👥 Nos groupes S-Drive®</h2><button class="btn modal-close" type="button" onclick="closeAppModal('groupsModal')">×</button></div>
-      <p class="modal-note">Rejoignez nos communautés officielles pour recevoir les informations et les annonces.</p>
-      <div class="modal-section"><h3>💬 Groupe WhatsApp</h3><a class="btn whatsapp" href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noopener noreferrer">Rejoindre sur WhatsApp</a></div>
-      <div class="modal-section"><h3>✈️ Groupe Telegram</h3><a class="btn telegram" href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">Rejoindre sur Telegram</a></div>
-    </div>
-  </div>
-
-  <div id="agentModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="agentModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="agentModalTitle">📞 Contacter un agent</h2><button class="btn modal-close" type="button" onclick="closeAppModal('agentModal')">×</button></div>
-      <p class="modal-note">Besoin d’aide ? Choisissez un moyen pour contacter directement notre équipe S-Drive®.</p>
-      <div class="modal-section"><h3>💬 WhatsApp</h3><a id="whatsappContactModal" class="btn whatsapp" target="_blank" rel="noopener noreferrer">Contacter via WhatsApp</a></div>
-      <div class="modal-section"><h3>✈️ Telegram</h3><a id="telegramContactModal" class="btn telegram" href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">Contacter via Telegram</a></div>
-    </div>
-  </div>
-
-  <div id="depositModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="depositModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="depositModalTitle">💳 Effectuer un dépôt</h2><button class="btn modal-close" type="button" onclick="closeAppModal('depositModal')">×</button></div>
-      <p class="modal-note">Choisissez le moyen de paiement que vous souhaitez utiliser. Vérifiez le numéro, le montant et conservez votre preuve de paiement.</p>
-      <div class="modal-section"><h3>💙 Wave</h3><p class="modal-note">Paiement rapide pour l'analyse du jour ou l'abonnement.</p><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500" target="_blank" rel="noopener noreferrer">Payer 500 F avec Wave</a><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000" target="_blank" rel="noopener noreferrer">Payer 1 000 F avec Wave</a></div>
-      <div class="modal-section"><h3>📱 Orange Money / Moov Money / MTN Money</h3><p class="modal-note">Pour recevoir les informations de dépôt et contacter l'agent, utilisez le bouton ci-dessous.</p><button class="btn orange" type="button" onclick="requestPaymentNumber();closeAppModal('depositModal')">📲 Recevoir les coordonnées de dépôt</button></div>
-      <div class="modal-section"><h3>🔐 Sécurité</h3><p class="modal-note">Ne partagez jamais votre code secret. Ne confirmez aucun paiement sans vérifier le bénéficiaire.</p></div>
-    </div>
-  </div>
-
-  <div id="analysisModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="analysisModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="analysisModalTitle">📊 Demander une analyse</h2><button class="btn modal-close" type="button" onclick="closeAppModal('analysisModal')">×</button></div>
-      <p class="modal-note">📌 Appuyez ici pour envoyer vos matchs à analyser. Après votre paiement, vous pouvez envoyer une capture ou écrire les noms des matchs.</p>
-      <label class="analysis-modal-upload" for="capture">
-        <strong>📷 Envoyer une capture en premier</strong>
-        <small>Sélectionnez la photo de vos matchs. Cette option est placée en haut pour un accès rapide.</small>
-        <input id="capture" type="file" accept="image/*" onchange="showFileName()">
-        <div id="fileName" class="file-name"></div>
-      </label>
-      <label>
-        <span class="muted">Écrire les matchs à analyser</span>
-        <textarea id="matches" placeholder="Exemple :
+<div class="step"><div class="step-number">1</div><div class="step-text"><strong>Payez 500 F ou abonnez-vous</strong><span>Choisissez le paiement du jour à 500 F ou l'abonnement 7 jours à 1 000 F.</span></div></div>
+<div class="step"><div class="step-number">2</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d'écran.</span></div></div>
+<div class="step"><div class="step-number">3</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
+</div>
+<button class="btn danger" onclick="logout()" type="button">🚪 Se déconnecter</button>
+<div aria-labelledby="couponsModalTitle" aria-modal="true" class="app-modal" id="couponsModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box">
+<div class="app-modal-head"><h2 id="couponsModalTitle">🎁 Codes coupons disponibles</h2><button class="btn modal-close" onclick="closeAppModal('couponsModal')" type="button">×</button></div>
+<p class="modal-note">Copiez un code, ouvrez la plateforme ou partagez l’offre. Les coupons affichés sont ceux publiés par l’administrateur.</p>
+<div id="couponsList"><div class="notice">Chargement des coupons...</div></div>
+</div>
+</div>
+<div aria-labelledby="groupsModalTitle" aria-modal="true" class="app-modal" id="groupsModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box">
+<div class="app-modal-head"><h2 id="groupsModalTitle">👥 Nos groupes S-Drive®</h2><button class="btn modal-close" onclick="closeAppModal('groupsModal')" type="button">×</button></div>
+<p class="modal-note">Rejoignez nos communautés officielles pour recevoir les informations et les annonces.</p>
+<div class="modal-section"><h3>💬 Groupe WhatsApp</h3><a class="btn whatsapp" href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&amp;p=a&amp;mlu=4&amp;ilr=4" rel="noopener noreferrer" target="_blank">Rejoindre sur WhatsApp</a></div>
+<div class="modal-section"><h3>✈️ Groupe Telegram</h3><a class="btn telegram" href="https://t.me/sdrive123" rel="noopener noreferrer" target="_blank">Rejoindre sur Telegram</a></div>
+</div>
+</div>
+<div aria-labelledby="agentModalTitle" aria-modal="true" class="app-modal" id="agentModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box">
+<div class="app-modal-head"><h2 id="agentModalTitle">📞 Contacter un agent</h2><button class="btn modal-close" onclick="closeAppModal('agentModal')" type="button">×</button></div>
+<p class="modal-note">Besoin d’aide ? Choisissez un moyen pour contacter directement notre équipe S-Drive®.</p>
+<div class="modal-section"><h3>💬 WhatsApp</h3><a class="btn whatsapp" id="whatsappContactModal" rel="noopener noreferrer" target="_blank">Contacter via WhatsApp</a></div>
+<div class="modal-section"><h3>✈️ Telegram</h3><a class="btn telegram" href="https://t.me/sdrive12" id="telegramContactModal" rel="noopener noreferrer" target="_blank">Contacter via Telegram</a></div>
+</div>
+</div>
+<div aria-labelledby="depositModalTitle" aria-modal="true" class="app-modal" id="depositModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box"><div class="app-modal-head"><h2 id="depositModalTitle">💳 Effectuer un dépôt</h2><button class="btn modal-close" onclick="closeAppModal('depositModal')" type="button">×</button></div>
+<div class="modal-section deposit-conditions-first">
+<h3>📋 Conditions avant le dépôt</h3>
+<p class="modal-note">Merci de lire ces quelques informations avant de procéder à votre paiement.</p>
+<div class="notice"><strong>1. Choisissez votre formule</strong><br/><br/>• Analyse du jour : <strong>500 F</strong>.<br/>• Abonnement de 7 jours : <strong>1 000 F</strong>.</div>
+<div class="notice"><strong>2. Effectuez le paiement</strong><br/><br/>Utilisez l’un des moyens de paiement proposés ci-dessous et vérifiez soigneusement le numéro du bénéficiaire ainsi que le montant.</div>
+<div class="notice"><strong>3. Conservez votre preuve</strong><br/><br/>Après le paiement, gardez la capture ou la preuve de transaction, puis envoyez votre demande avec les noms des matchs ou une capture d’écran.</div>
+<div class="notice"><strong>4. Traitement de la demande</strong><br/><br/>Après vérification du paiement, notre équipe reçoit votre demande et prépare votre analyse.</div>
+<p class="professional-note">💚 Merci pour votre confiance. Nous sommes heureux de vous accompagner dans vos analyses sportives.</p>
+</div>
+<div class="modal-section"><h3>💙 Wave</h3><p class="modal-note">Paiement rapide pour l’analyse du jour ou l’abonnement.</p><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500" rel="noopener noreferrer" target="_blank">Payer 500 F avec Wave</a><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000" rel="noopener noreferrer" target="_blank">Payer 1 000 F avec Wave</a></div>
+<div class="modal-section"><h3>📱 Orange Money / Moov Money / MTN Money</h3><p class="modal-note">Pour recevoir les informations de dépôt et contacter l’agent, utilisez le bouton ci-dessous.</p><button class="btn orange" onclick="requestPaymentNumber();closeAppModal('depositModal')" type="button">📲 Recevoir les coordonnées de dépôt</button></div>
+<div class="modal-section"><h3>🔐 Rappel de sécurité</h3><p class="modal-note">Ne partagez jamais votre code secret. Ne confirmez aucun paiement sans vérifier le bénéficiaire.</p></div>
+</div>
+</div>
+<div aria-labelledby="analysisModalTitle" aria-modal="true" class="app-modal" id="analysisModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box">
+<div class="app-modal-head"><h2 id="analysisModalTitle">📊 Demander une analyse</h2><button class="btn modal-close" onclick="closeAppModal('analysisModal')" type="button">×</button></div>
+<p class="modal-note">📌 Appuyez ici pour envoyer vos matchs à analyser. Après votre paiement, vous pouvez envoyer une capture ou écrire les noms des matchs.</p>
+<label class="analysis-modal-upload" for="capture">
+<strong>📷 Envoyer une capture en premier</strong>
+<small>Sélectionnez la photo de vos matchs. Cette option est placée en haut pour un accès rapide.</small>
+<input accept="image/*" id="capture" onchange="showFileName()" type="file"/>
+<div class="file-name" id="fileName"></div>
+</label>
+<label>
+<span class="muted">Écrire les matchs à analyser</span>
+<textarea id="matches" placeholder="Exemple :
 Real Madrid vs FC Barcelone
 PSG vs Marseille"></textarea>
-      </label>
-      <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
-      <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
-      <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
-      <div id="analysisStatus" class="status"></div>
-    </div>
-  </div>
-
-  <div id="servicesModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="servicesModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="servicesModalTitle">☰ Autres options</h2><button class="btn modal-close" type="button" onclick="closeAppModal('servicesModal')">×</button></div>
-      <button class="modal-option" type="button" onclick="closeAppModal('servicesModal');openAppModal('bookmakersModal')">🏆 <span>Bookmakers partenaires<small>Consulter les bookmakers et leurs liens</small></span></button>
-      <button class="modal-option" type="button" onclick="copySdriveLink()">🔗 <span>Copier le lien S-Drive<small>Copier le lien de l’application pour le partager avec vos amis</small></span></button>
-      <button class="modal-option" type="button" onclick="closeAppModal('servicesModal');openAppModal('conditionsModal')">📋 <span>Conditions d’utilisation<small>Lire les règles de fonctionnement de S-Drive®</small></span></button>
-      <div id="copyLinkStatus" class="status"></div>
-    </div>
-  </div>
-
-  <div id="bookmakersModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="bookmakersModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="bookmakersModalTitle">🏆 Bookmakers partenaires</h2><button class="btn modal-close" type="button" onclick="closeAppModal('bookmakersModal')">×</button></div>
-      <p class="modal-note">Consultez les bookmakers et leurs liens. Vérifiez toujours les conditions et la légalité dans votre pays.</p>
-      <div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
-    </div>
-  </div>
-
-  <div id="conditionsModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="conditionsModalTitle" onclick="closeModalOnBackdrop(event,this)">
-    <div class="app-modal-box">
-      <div class="app-modal-head"><h2 id="conditionsModalTitle">📋 Conditions d’utilisation</h2><button class="btn modal-close" type="button" onclick="closeAppModal('conditionsModal')">×</button></div>
-      <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
-      <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>. Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong>.</div>
-      <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
-      <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens indiqués dans l'application.</div>
-      <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
-    </div>
-  </div>
+</label>
+<div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
+<button class="btn whatsapp" onclick="sendAnalysisWhatsApp()" type="button">💬 WhatsApp — Envoyer ma demande</button>
+<button class="btn telegram" onclick="sendAnalysisTelegram()" type="button">✈️ Telegram — Envoyer ma demande</button>
+<div class="status" id="analysisStatus"></div>
+</div>
+</div>
+<div aria-labelledby="servicesModalTitle" aria-modal="true" class="app-modal" id="servicesModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box">
+<div class="app-modal-head"><h2 id="servicesModalTitle">☰ Autres options</h2><button class="btn modal-close" onclick="closeAppModal('servicesModal')" type="button">×</button></div>
+<button class="modal-option" onclick="closeAppModal('servicesModal');openAppModal('bookmakersModal')" type="button">🏆 <span>Bookmakers partenaires<small>Consulter les bookmakers et leurs liens</small></span></button>
+<button class="modal-option" onclick="copySdriveLink()" type="button">🔗 <span>Copier le lien S-Drive<small>Copier le lien de l’application pour le partager avec vos amis</small></span></button>
+<button class="modal-option" onclick="closeAppModal('servicesModal');openAppModal('conditionsModal')" type="button">📋 <span>Conditions d’utilisation<small>Lire les règles de fonctionnement de S-Drive®</small></span></button>
+<div class="status" id="copyLinkStatus"></div>
+</div>
+</div>
+<div aria-labelledby="bookmakersModalTitle" aria-modal="true" class="app-modal" id="bookmakersModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box">
+<div class="app-modal-head"><h2 id="bookmakersModalTitle">🏆 Bookmakers partenaires</h2><button class="btn modal-close" onclick="closeAppModal('bookmakersModal')" type="button">×</button></div>
+<p class="modal-note">Consultez les bookmakers et leurs liens. Vérifiez toujours les conditions et la légalité dans votre pays.</p>
+<div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
+</div>
+</div>
+<div aria-labelledby="conditionsModalTitle" aria-modal="true" class="app-modal" id="conditionsModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box">
+<div class="app-modal-head"><h2 id="conditionsModalTitle">📋 Conditions d’utilisation</h2><button class="btn modal-close" onclick="closeAppModal('conditionsModal')" type="button">×</button></div>
+<div class="notice"><strong>1. Paiement quotidien</strong><br/><br/>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
+<div class="notice"><strong>2. Abonnement</strong><br/><br/>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>. Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong>.</div>
+<div class="notice"><strong>3. Analyse</strong><br/><br/>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
+<div class="notice"><strong>4. Paiements</strong><br/><br/>Les paiements sont effectués manuellement par les moyens indiqués dans l'application.</div>
+<div class="notice"><strong>5. Responsabilité</strong><br/><br/>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
+</div>
+</div>
 </section>
-
-<section id="admin" class="hidden">
-
-  <div class="center">
-    <div class="admin-header-icon">🛠️</div>
-    <h1>Administration<sup class="brand-mark">®</sup></h1>
-    <p class="muted">Gestion des membres S-Drive</p>
-  </div>
-
-  <div id="adminLoginBox" class="card">
-    <h2>🔐 Connexion administrateur</h2>
-    <input id="adminPhone" type="text" autocomplete="username" placeholder="Identifiant administrateur">
-    <div class="password-wrap">
-      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur">
-      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button>
-    </div>
-    <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Accéder à l'administration</button>
-    <div id="adminLoginStatus" class="status"></div>
-  </div>
-
-  <div id="adminPanel" class="hidden">
-
-    <div class="card">
-      <h2>📊 Tableau de bord</h2>
-      <div id="adminStats" class="notice">Chargement...</div>
-    </div>
-
-    <div class="card">
-      <h2>👥 Membres inscrits</h2>
-      <input id="userSearch" type="search" placeholder="🔎 Rechercher un client par son nom..." oninput="filterAdminUsers()">
-      <div id="usersList">Chargement...</div>
-    </div>
-
-    <div class="card">
-      <h2>⚙️ Paramètres modifiables</h2>
-      <p class="muted">Modifiez les numéros WhatsApp, Telegram, les liens Wave, les réseaux sociaux et les numéros Mobile Money sans toucher au code.</p>
-      <div id="settingsList">Chargement...</div>
-      <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
-      <div id="settingsStatus" class="status"></div>
-    </div>
-
-    <div class="card">
-      <h2>🏆 Gestion des bookmakers</h2>
-      <input id="bmName" placeholder="Nom de la plateforme (ex. 1xBet)">
-      <input id="bmBonus" placeholder="Bonus / description">
-      <input id="bmUrl" type="url" placeholder="Lien officiel HTTPS">
-      <button class="btn green" type="button" onclick="saveBookmaker()">➕ Ajouter le bookmaker</button>
-      <div id="bookmakerAdminStatus" class="status"></div>
-      <div id="adminBookmakersList"></div>
-    </div>
-
-    <div class="card">
-      <h2>🎁 Gestion des coupons</h2>
-      <input id="couponPlatform" placeholder="Nom de la plateforme (ex. 1xBet)">
-      <input id="couponCode" placeholder="Code coupon">
-      <input id="couponUrl" type="url" placeholder="Lien officiel de la plateforme">
-      <textarea id="couponDescription" placeholder="Description ou instructions d'utilisation"></textarea>
-      <button class="btn green" type="button" onclick="saveCoupon()">➕ Ajouter le coupon</button>
-      <div id="couponAdminStatus" class="status"></div>
-      <div id="adminCouponsList"></div>
-    </div>
-
-    <div class="card">
-      <h2>🔑 Demandes de mot de passe</h2>
-      <p class="muted">Les demandes des utilisateurs qui ont oublié leur mot de passe apparaissent ici.</p>
-      <div id="resetList">Chargement...</div>
-    </div>
-
-    <div class="card">
-      <h2>📊 Ajouter les probabilités du jour</h2>
-
-      <input id="matchName" type="text" placeholder="Match — Exemple : Real Madrid vs Barça">
-      <input id="homeProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 1 (%)">
-      <input id="drawProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité match nul (%)">
-      <input id="awayProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 2 (%)">
-      <input id="recommendedPick" type="text" placeholder="Pronostic recommandé">
-
-      <button id="addMatchButton" class="btn green" type="button" onclick="addDailyMatch()">➕ Ajouter le match</button>
-      <div id="matchAdminStatus" class="status"></div>
-      <div id="adminDailyMatches"></div>
-    </div>
-
-    <button class="btn danger" type="button" onclick="adminLogout()">🚪 Quitter l'administration</button>
-  </div>
+<section class="hidden" id="admin">
+<div class="center">
+<div class="admin-header-icon">🛠️</div>
+<h1>Administration<sup class="brand-mark">®</sup></h1>
+<p class="muted">Gestion des membres S-Drive</p>
+</div>
+<div class="card" id="adminLoginBox">
+<h2>🔐 Connexion administrateur</h2>
+<input autocomplete="username" id="adminPhone" placeholder="Identifiant administrateur" type="text"/>
+<div class="password-wrap">
+<input autocomplete="current-password" id="adminPassword" placeholder="Mot de passe administrateur" type="password"/>
+<button class="eye" onclick="togglePassword('adminPassword',this)" type="button">👁</button>
+</div>
+<button class="btn primary" id="adminLoginButton" onclick="adminLogin()" type="button">🔐 Accéder à l'administration</button>
+<div class="status" id="adminLoginStatus"></div>
+</div>
+<div class="hidden" id="adminPanel">
+<div class="card admin-overview-card">
+<div class="section-kicker">Espace sécurisé</div>
+<h2>📊 Tableau de bord</h2>
+<div class="notice" id="adminStats">Chargement...</div>
+</div>
+<div aria-label="Accès rapides administrateur" class="quick-actions admin-quick-actions">
+<button class="btn services-main-btn" onclick="openAppModal('adminMembersModal')" type="button">👥 Membres</button>
+<button class="btn services-main-btn" onclick="openAppModal('adminSettingsModal')" type="button">⚙️ Paramètres</button>
+<button class="btn services-main-btn" onclick="openAppModal('adminBookmakersModal')" type="button">🏆 Bookmakers</button>
+<button class="btn services-main-btn" onclick="openAppModal('adminCouponsModal')" type="button">🎁 Coupons</button>
+<button class="btn services-main-btn" onclick="openAppModal('adminResetsModal')" type="button">🔑 Mots de passe</button>
+<button class="btn services-main-btn" onclick="openAppModal('adminMatchesModal')" type="button">📊 Matchs du jour</button>
+</div>
+<div aria-labelledby="adminMembersTitle" aria-modal="true" class="app-modal" id="adminMembersModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box"><div class="app-modal-head"><h2 id="adminMembersTitle">👥 Membres inscrits</h2><button class="btn modal-close" onclick="closeAppModal('adminMembersModal')" type="button">×</button></div>
+<div class="card">
+<h2>👥 Membres inscrits</h2>
+<input id="userSearch" oninput="filterAdminUsers()" placeholder="🔎 Rechercher un client par son nom..." type="search"/>
+<div id="usersList">Chargement...</div>
+</div>
+</div>
+</div>
+<div aria-labelledby="adminSettingsTitle" aria-modal="true" class="app-modal" id="adminSettingsModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box"><div class="app-modal-head"><h2 id="adminSettingsTitle">⚙️ Paramètres modifiables</h2><button class="btn modal-close" onclick="closeAppModal('adminSettingsModal')" type="button">×</button></div>
+<div class="card">
+<h2>⚙️ Paramètres modifiables</h2>
+<p class="muted">Modifiez les numéros WhatsApp, Telegram, les liens Wave, les réseaux sociaux et les numéros Mobile Money sans toucher au code.</p>
+<div id="settingsList">Chargement...</div>
+<button class="btn primary" onclick="saveAdminSettings()" type="button">💾 Enregistrer les paramètres</button>
+<div class="status" id="settingsStatus"></div>
+</div>
+</div>
+</div>
+<div aria-labelledby="adminBookmakersTitle" aria-modal="true" class="app-modal" id="adminBookmakersModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box"><div class="app-modal-head"><h2 id="adminBookmakersTitle">🏆 Gestion des bookmakers</h2><button class="btn modal-close" onclick="closeAppModal('adminBookmakersModal')" type="button">×</button></div>
+<div class="card">
+<h2>🏆 Gestion des bookmakers</h2>
+<input id="bmName" placeholder="Nom de la plateforme (ex. 1xBet)"/>
+<input id="bmBonus" placeholder="Bonus / description"/>
+<input id="bmUrl" placeholder="Lien officiel HTTPS" type="url"/>
+<button class="btn green" onclick="saveBookmaker()" type="button">➕ Ajouter le bookmaker</button>
+<div class="status" id="bookmakerAdminStatus"></div>
+<div id="adminBookmakersList"></div>
+</div>
+</div>
+</div>
+<div aria-labelledby="adminCouponsTitle" aria-modal="true" class="app-modal" id="adminCouponsModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box"><div class="app-modal-head"><h2 id="adminCouponsTitle">🎁 Gestion des coupons</h2><button class="btn modal-close" onclick="closeAppModal('adminCouponsModal')" type="button">×</button></div>
+<div class="card">
+<h2>🎁 Gestion des coupons</h2>
+<input id="couponPlatform" placeholder="Nom de la plateforme (ex. 1xBet)"/>
+<input id="couponCode" placeholder="Code coupon"/>
+<input id="couponUrl" placeholder="Lien officiel de la plateforme" type="url"/>
+<textarea id="couponDescription" placeholder="Description ou instructions d'utilisation"></textarea>
+<button class="btn green" onclick="saveCoupon()" type="button">➕ Ajouter le coupon</button>
+<div class="status" id="couponAdminStatus"></div>
+<div id="adminCouponsList"></div>
+</div>
+</div>
+</div>
+<div aria-labelledby="adminResetsTitle" aria-modal="true" class="app-modal" id="adminResetsModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box"><div class="app-modal-head"><h2 id="adminResetsTitle">🔑 Demandes de mot de passe</h2><button class="btn modal-close" onclick="closeAppModal('adminResetsModal')" type="button">×</button></div>
+<div class="card">
+<h2>🔑 Demandes de mot de passe</h2>
+<p class="muted">Les demandes des utilisateurs qui ont oublié leur mot de passe apparaissent ici.</p>
+<div id="resetList">Chargement...</div>
+</div>
+</div>
+</div>
+<div aria-labelledby="adminMatchesTitle" aria-modal="true" class="app-modal" id="adminMatchesModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+<div class="app-modal-box"><div class="app-modal-head"><h2 id="adminMatchesTitle">📊 Probabilités du jour</h2><button class="btn modal-close" onclick="closeAppModal('adminMatchesModal')" type="button">×</button></div>
+<div class="card">
+<h2>📊 Ajouter les probabilités du jour</h2>
+<input id="matchName" placeholder="Match — Exemple : Real Madrid vs Barça" type="text"/>
+<input id="homeProbability" max="100" min="0" placeholder="Probabilité équipe 1 (%)" step="0.01" type="number"/>
+<input id="drawProbability" max="100" min="0" placeholder="Probabilité match nul (%)" step="0.01" type="number"/>
+<input id="awayProbability" max="100" min="0" placeholder="Probabilité équipe 2 (%)" step="0.01" type="number"/>
+<input id="recommendedPick" placeholder="Pronostic recommandé" type="text"/>
+<button class="btn green" id="addMatchButton" onclick="addDailyMatch()" type="button">➕ Ajouter le match</button>
+<div class="status" id="matchAdminStatus"></div>
+<div id="adminDailyMatches"></div>
+</div>
+</div>
+</div>
+<button class="btn danger" onclick="adminLogout()" type="button">🚪 Quitter l’administration</button>
+</div>
 </section>
-
 <footer>
   S-Drive — Analyse de matchs
-  <br>
-  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="adminSecretTap()">®</button>
+  <br/>
+<button aria-label="Accès sécurisé" class="admin-secret" onclick="openAdmin()" title="Accès sécurisé" type="button">®</button>
 </footer>
-
 </main>
-
 <script>
 "use strict";
 
@@ -1067,18 +1028,6 @@ async function logout(){
   }catch(_){}
   showLoading("Déconnexion en cours…");
   setTimeout(function(){location.reload();},300);
-}
-
-let adminTapCount=0;
-let adminTapTimer=null;
-function adminSecretTap(){
-  adminTapCount++;
-  clearTimeout(adminTapTimer);
-  adminTapTimer=setTimeout(()=>{adminTapCount=0;},3000);
-  if(adminTapCount>=10){
-    adminTapCount=0;
-    openAdmin();
-  }
 }
 
 function openAdmin(){
@@ -1541,8 +1490,6 @@ document.addEventListener("keydown",function(event){
   }
 });
 </script>
-
-
 <script id="professional-modal-functions">
 function openAppModal(id){const el=document.getElementById(id);if(el){el.classList.add('open');document.body.style.overflow='hidden';}}
 function closeAppModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');}if(!document.querySelector('.app-modal.open'))document.body.style.overflow='';}
