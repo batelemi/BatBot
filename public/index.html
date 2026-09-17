@@ -231,7 +231,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 </style>
 <style id="admin-organized-styles">
 .admin-quick-actions{margin:14px 0 18px}.admin-quick-actions .btn{min-height:58px;font-size:14px}.admin-overview-card{margin-bottom:10px}.admin-quick-actions+.app-modal{margin-top:0}.deposit-conditions-first{border:1px solid #4b8a69;background:linear-gradient(145deg,#103d37,#102f4f)}.deposit-conditions-first .notice{margin:9px 0}.deposit-conditions-first .professional-note{margin-bottom:0}
-</style></head>
+</style><style id="deposit-conditions-toggle-styles">.conditions-toggle-btn{width:100%;margin:10px 0;background:linear-gradient(135deg,#0ea5e9,#0284c7);box-shadow:0 5px 0 #075985;font-size:14px;min-height:48px}.deposit-conditions-first{margin:0}</style></head>
 <body>
 <div id="loadingScreen">
 <div class="loading-logo">
@@ -382,7 +382,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 </div>
 <div class="card">
 <h2>ℹ️ Comment ça fonctionne ?</h2>
-
 <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Payez 500 F ou abonnez-vous</strong><span>Choisissez le paiement du jour à 500 F ou l'abonnement 7 jours à 1 000 F.</span></div></div>
 <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d'écran.</span></div></div>
 <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
@@ -413,7 +412,13 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 </div>
 <div aria-labelledby="depositModalTitle" aria-modal="true" class="app-modal" id="depositModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
 <div class="app-modal-box"><div class="app-modal-head"><h2 id="depositModalTitle">💳 Effectuer un dépôt</h2><button class="btn modal-close" onclick="closeAppModal('depositModal')" type="button">×</button></div>
-<div class="modal-section deposit-conditions-first">
+<button class="btn conditions-toggle-btn" onclick="openAppModal('depositConditionsModal')" type="button">📋 Lire attentivement les conditions de dépôt</button>
+<div class="modal-section"><h3>💙 Wave</h3><p class="modal-note">Paiement rapide pour l’analyse du jour ou l’abonnement.</p><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500" rel="noopener noreferrer" target="_blank">Payer 500 F avec Wave</a><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000" rel="noopener noreferrer" target="_blank">Payer 1 000 F avec Wave</a></div>
+<div class="modal-section"><h3>📱 Orange Money / Moov Money / MTN Money</h3><p class="modal-note">Pour recevoir les informations de dépôt et contacter l’agent, utilisez le bouton ci-dessous.</p><button class="btn orange" onclick="requestPaymentNumber();closeAppModal('depositModal')" type="button">📲 Recevoir les coordonnées de dépôt</button></div>
+<div class="modal-section"><h3>🔐 Rappel de sécurité</h3><p class="modal-note">Ne partagez jamais votre code secret. Ne confirmez aucun paiement sans vérifier le bénéficiaire.</p></div>
+</div>
+</div>
+<div aria-labelledby="depositConditionsModalTitle" aria-modal="true" class="app-modal" id="depositConditionsModal" onclick="closeModalOnBackdrop(event,this)" role="dialog"><div class="app-modal-box"><div class="app-modal-head"><h2 id="depositConditionsModalTitle">📋 Conditions avant le dépôt</h2><button class="btn modal-close" onclick="closeAppModal('depositConditionsModal')" type="button">×</button></div><div class="modal-section deposit-conditions-first">
 <h3>📋 Conditions avant le dépôt</h3>
 <p class="modal-note">Merci de lire ces quelques informations avant de procéder à votre paiement.</p>
 <div class="notice"><strong>1. Choisissez votre formule</strong><br/><br/>• Analyse du jour : <strong>500 F</strong>.<br/>• Abonnement de 7 jours : <strong>1 000 F</strong>.</div>
@@ -421,13 +426,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 <div class="notice"><strong>3. Conservez votre preuve</strong><br/><br/>Après le paiement, gardez la capture ou la preuve de transaction, puis envoyez votre demande avec les noms des matchs ou une capture d’écran.</div>
 <div class="notice"><strong>4. Traitement de la demande</strong><br/><br/>Après vérification du paiement, notre équipe reçoit votre demande et prépare votre analyse.</div>
 <p class="professional-note">💚 Merci pour votre confiance. Nous sommes heureux de vous accompagner dans vos analyses sportives.</p>
-</div>
-<div class="modal-section"><h3>💙 Wave</h3><p class="modal-note">Paiement rapide pour l’analyse du jour ou l’abonnement.</p><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500" rel="noopener noreferrer" target="_blank">Payer 500 F avec Wave</a><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000" rel="noopener noreferrer" target="_blank">Payer 1 000 F avec Wave</a></div>
-<div class="modal-section"><h3>📱 Orange Money / Moov Money / MTN Money</h3><p class="modal-note">Pour recevoir les informations de dépôt et contacter l’agent, utilisez le bouton ci-dessous.</p><button class="btn orange" onclick="requestPaymentNumber();closeAppModal('depositModal')" type="button">📲 Recevoir les coordonnées de dépôt</button></div>
-<div class="modal-section"><h3>🔐 Rappel de sécurité</h3><p class="modal-note">Ne partagez jamais votre code secret. Ne confirmez aucun paiement sans vérifier le bénéficiaire.</p></div>
-</div>
-</div>
-<div aria-labelledby="analysisModalTitle" aria-modal="true" class="app-modal" id="analysisModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
+</div></div></div><div aria-labelledby="analysisModalTitle" aria-modal="true" class="app-modal" id="analysisModal" onclick="closeModalOnBackdrop(event,this)" role="dialog">
 <div class="app-modal-box">
 <div class="app-modal-head"><h2 id="analysisModalTitle">📊 Demander une analyse</h2><button class="btn modal-close" onclick="closeAppModal('analysisModal')" type="button">×</button></div>
 <p class="modal-note">📌 Appuyez ici pour envoyer vos matchs à analyser. Après votre paiement, vous pouvez envoyer une capture ou écrire les noms des matchs.</p>
@@ -583,7 +582,7 @@ PSG vs Marseille"></textarea>
 <footer>
   S-Drive — Analyse de matchs
   <br/>
-<button aria-label="Accès sécurisé" class="admin-secret" onclick="openAdmin()" title="Accès sécurisé" type="button">®</button>
+<button aria-label="Accès sécurisé" class="admin-secret" onclick="openAdmin()" title="Accès sécurisé — appuyez 10 fois" type="button">®</button>
 </footer>
 </main>
 <script>
@@ -595,6 +594,8 @@ let WAVE_PAYMENT_DAY_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=
 let WAVE_PAYMENT_7_DAYS_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000";
 const PAYMENT_NUMBER="0152171974";
 let adminUsersCache=[];
+let adminTapCount=0;
+let adminTapTimer=null;
 
 function readApiResponse(response){
   return response.text().then(function(text){
@@ -1031,6 +1032,11 @@ async function logout(){
 }
 
 function openAdmin(){
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer=setTimeout(function(){adminTapCount=0;},5000);
+  if(adminTapCount<10)return;
+  adminTapCount=0;
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.add("hidden");
   document.getElementById("admin").classList.remove("hidden");
@@ -1506,7 +1512,7 @@ async function copySdriveLink(){
   }
 }
 
-function goToAppSection(kind){const map={'partners-space':'.partners-space','conditions-card':'.compact-conditions','contact-agent':'#whatsappContact','analysis-card':'#matches'};const target=document.querySelector(map[kind]);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});}
+function goToAppSection(kind){const map={'partners-space':'.partners-space','conditions-card':'#depositConditionsModal','contact-agent':'#whatsappContact','analysis-card':'#matches'};const target=document.querySelector(map[kind]);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});}
 document.addEventListener('DOMContentLoaded',syncAgentModalLinks);
 setTimeout(syncAgentModalLinks,1000);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.app-modal.open').forEach(m=>closeAppModal(m.id));}});
