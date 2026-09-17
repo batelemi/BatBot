@@ -222,9 +222,12 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
-.quick-menu{position:relative;margin:14px 0;z-index:20}.quick-menu-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#102f4f;border:1px solid #2f789f;color:#fff;border-radius:16px;padding:15px 17px;font-weight:900;cursor:pointer;box-shadow:0 5px 0 #092238}.quick-menu-toggle span:last-child{font-size:24px;line-height:1}.quick-menu-panel{display:none;margin-top:8px;padding:10px;border:1px solid #315d82;border-radius:16px;background:#0b223d;box-shadow:0 12px 25px rgba(0,0,0,.25)}.quick-menu-panel.open{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick-menu-item{display:flex;align-items:center;gap:8px;min-height:48px;padding:10px;border-radius:12px;border:1px solid #315d82;background:#123653;color:#fff;font-weight:800;font-size:12px;cursor:pointer}.quick-menu-item:active{transform:scale(.98)}@media(max-width:380px){.quick-menu-panel.open{grid-template-columns:1fr}.quick-menu-item{font-size:13px}}
-
 </style>
+
+<style id="professional-modal-styles">
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.quick-actions .btn{margin:0;min-height:58px;font-size:14px}.deposit-main-btn{background:linear-gradient(135deg,#16a34a,#22c55e);box-shadow:0 6px 0 #08752f}.services-main-btn{background:linear-gradient(135deg,#155e9e,#238bd0);box-shadow:0 6px 0 #0a416e}.app-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,10,20,.78);padding:18px;align-items:flex-end;justify-content:center}.app-modal.open{display:flex}.app-modal-box{width:100%;max-width:520px;max-height:86vh;overflow:auto;background:#0d2b49;border:1px solid #3c789f;border-radius:24px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.5);animation:modalUp .18s ease-out}.app-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.app-modal-head h2{margin:0;font-size:21px}.modal-close{width:42px!important;min-height:42px!important;margin:0!important;padding:0!important;border-radius:50%!important;background:#183e60!important;box-shadow:none!important;font-size:23px!important}.modal-option{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:15px;margin:8px 0;border-radius:15px;border:1px solid #3a6d91;background:#123653;color:#fff;font-weight:800;cursor:pointer}.modal-option small{display:block;color:#b9cee0;font-weight:500;margin-top:3px}.modal-section{border:1px solid #315d82;border-radius:16px;padding:13px;margin:10px 0;background:#102f4f}.modal-section h3{margin:0 0 6px}.modal-section .btn{margin-top:8px}.modal-note{color:#c5d7e7;font-size:13px;line-height:1.45}@keyframes modalUp{from{transform:translateY(18px);opacity:.5}to{transform:translateY(0);opacity:1}}@media(max-width:390px){.quick-actions{grid-template-columns:1fr}.quick-actions .btn{min-height:52px}}
+</style>
+
 </head>
 
 <body>
@@ -336,19 +339,12 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
 
-  <div class="quick-menu" id="quickMenu">
-    <button class="quick-menu-toggle" type="button" aria-expanded="false" onclick="toggleQuickMenu()">
-      <span>☰ Accès rapides</span><span>⋮</span>
-    </button>
-    <div class="quick-menu-panel" id="quickMenuPanel">
-      <button class="quick-menu-item" type="button" onclick="goToSection('depositSpace')">💳 Moyens de dépôt</button>
-      <button class="quick-menu-item" type="button" onclick="goToSection('partnersSpace')">🏆 Bookmakers</button>
-      <button class="quick-menu-item" type="button" onclick="goToSection('conditionsCard')">📋 Conditions</button>
-      <button class="quick-menu-item" type="button" onclick="goToSection('contactAgentCard')">📞 Contacter un agent</button>
-    </div>
+  <div class="quick-actions" aria-label="Accès rapides">
+    <button class="btn deposit-main-btn" type="button" onclick="openAppModal('depositModal')">➕ Effectuer un dépôt</button>
+    <button class="btn services-main-btn" type="button" onclick="openAppModal('servicesModal')">☰ Autres options</button>
   </div>
 
-  <section id="depositSpace" class="deposit-space" aria-label="Espace de dépôt et de paiement">
+  <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
     <div class="section-kicker">Espace sécurisé</div>
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
@@ -440,7 +436,7 @@ PSG vs Marseille"></textarea>
     <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
   </div>
 
-  <section id="partnersSpace" class="partners-space" aria-label="Espace partenaires et bookmakers">
+  <section class="partners-space" aria-label="Espace partenaires et bookmakers">
     <div class="section-kicker">Espace partenaires</div>
     <h2>🛡️ Partenaires authentifiés</h2>
     <div class="professional-note">✓ Liens partenaires présentés par S-Drive®. Avant toute inscription ou utilisation, consultez les conditions de chaque plateforme et vérifiez qu'elle est autorisée dans votre pays.</div>
@@ -489,7 +485,7 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div id="contactAgentCard" class="card">
+  <div class="card">
     <h2>📞 Contacter un agent</h2>
     <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
     <div class="two-columns">
@@ -499,7 +495,7 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div id="conditionsCard" class="card compact-conditions">
+  <div class="card compact-conditions">
     <h2>📋 Conditions d'utilisation</h2>
     <details>
       <summary>🔎 Cliquez ici pour lire les conditions</summary>
@@ -520,6 +516,26 @@ PSG vs Marseille"></textarea>
   </div>
 
   <button class="btn danger" type="button" onclick="logout()">🚪 Se déconnecter</button>
+
+  <div id="depositModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="depositModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="depositModalTitle">💳 Effectuer un dépôt</h2><button class="btn modal-close" type="button" onclick="closeAppModal('depositModal')">×</button></div>
+      <p class="modal-note">Choisissez le moyen de paiement que vous souhaitez utiliser. Vérifiez le numéro, le montant et conservez votre preuve de paiement.</p>
+      <div class="modal-section"><h3>💙 Wave</h3><p class="modal-note">Paiement rapide pour l'analyse du jour ou l'abonnement.</p><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500" target="_blank" rel="noopener noreferrer">Payer 500 F avec Wave</a><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000" target="_blank" rel="noopener noreferrer">Payer 1 000 F avec Wave</a></div>
+      <div class="modal-section"><h3>📱 Orange Money / Moov Money / MTN Money</h3><p class="modal-note">Pour recevoir les informations de dépôt et contacter l'agent, utilisez le bouton ci-dessous.</p><button class="btn orange" type="button" onclick="requestPaymentNumber();closeAppModal('depositModal')">📲 Recevoir les coordonnées de dépôt</button></div>
+      <div class="modal-section"><h3>🔐 Sécurité</h3><p class="modal-note">Ne partagez jamais votre code secret. Ne confirmez aucun paiement sans vérifier le bénéficiaire.</p></div>
+    </div>
+  </div>
+
+  <div id="servicesModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="servicesModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="servicesModalTitle">☰ Services S-Drive®</h2><button class="btn modal-close" type="button" onclick="closeAppModal('servicesModal')">×</button></div>
+      <button class="modal-option" type="button" onclick="goToAppSection('partners-space');closeAppModal('servicesModal')">🏆 <span>Bookmakers partenaires<small>Consulter les liens et les offres disponibles</small></span></button>
+      <button class="modal-option" type="button" onclick="goToAppSection('conditions-card');closeAppModal('servicesModal')">📋 <span>Conditions d'utilisation<small>Lire les règles de fonctionnement de S-Drive®</small></span></button>
+      <button class="modal-option" type="button" onclick="goToAppSection('contact-agent');closeAppModal('servicesModal')">📞 <span>Contacter un agent<small>WhatsApp et Telegram</small></span></button>
+      <button class="modal-option" type="button" onclick="goToAppSection('analysis-card');closeAppModal('servicesModal')">📊 <span>Demander une analyse<small>Envoyer les matchs à analyser</small></span></button>
+    </div>
+  </div>
 </section>
 
 <section id="admin" class="hidden">
@@ -704,33 +720,6 @@ function forgotPassword(){
 function hideForgot(){
   document.getElementById("forgotBox").classList.add("hidden");
 }
-
-function toggleQuickMenu(){
-  const panel=document.getElementById("quickMenuPanel");
-  const button=document.querySelector(".quick-menu-toggle");
-  if(!panel)return;
-  const open=panel.classList.toggle("open");
-  if(button)button.setAttribute("aria-expanded",String(open));
-}
-
-function goToSection(id){
-  const target=document.getElementById(id);
-  const panel=document.getElementById("quickMenuPanel");
-  const button=document.querySelector(".quick-menu-toggle");
-  if(target)target.scrollIntoView({behavior:"smooth",block:"start"});
-  if(panel)panel.classList.remove("open");
-  if(button)button.setAttribute("aria-expanded","false");
-}
-
-document.addEventListener("click",function(event){
-  const menu=document.getElementById("quickMenu");
-  const panel=document.getElementById("quickMenuPanel");
-  const button=document.querySelector(".quick-menu-toggle");
-  if(menu&&panel&&!menu.contains(event.target)){
-    panel.classList.remove("open");
-    if(button)button.setAttribute("aria-expanded","false");
-  }
-});
 
 function showAuth(){
   document.getElementById("auth").classList.remove("hidden");
@@ -1058,6 +1047,12 @@ function renderSettingsForm(settings){
     ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien S-Drive"],["sdriveInviteMessage","Message S-Drive"],["adminPhone","Numéro administrateur"]
   ];
   return '<div class="settings-grid">'+fields.map(([k,label])=>`<label>${label}<input data-setting="${k}" value="${escapeHtml(settings[k]||'')}"></label>`).join('')+'</div>';
+}
+
+// Compatibilité : certaines actions d’administration utilisent encore loadConfig.
+// On redirige vers le chargement public de la configuration.
+async function loadConfig(){
+  return loadPublicConfig();
 }
 
 async function saveAdminSettings(){
@@ -1541,5 +1536,13 @@ document.addEventListener("keydown",function(event){
 });
 </script>
 
+
+<script id="professional-modal-functions">
+function openAppModal(id){const el=document.getElementById(id);if(el){el.classList.add('open');document.body.style.overflow='hidden';}}
+function closeAppModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');}if(!document.querySelector('.app-modal.open'))document.body.style.overflow='';}
+function closeModalOnBackdrop(event,el){if(event.target===el)closeAppModal(el.id);}
+function goToAppSection(kind){const map={'partners-space':'.partners-space','conditions-card':'.compact-conditions','contact-agent':'#whatsappContact','analysis-card':'#matches'};const target=document.querySelector(map[kind]);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.app-modal.open').forEach(m=>closeAppModal(m.id));}});
+</script>
 </body>
 </html>
