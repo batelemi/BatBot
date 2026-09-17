@@ -228,6 +228,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.quick-actions .btn{margin:0;min-height:58px;font-size:14px}.deposit-main-btn{background:linear-gradient(135deg,#16a34a,#22c55e);box-shadow:0 6px 0 #08752f}.services-main-btn{background:linear-gradient(135deg,#155e9e,#238bd0);box-shadow:0 6px 0 #0a416e}.app-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,10,20,.78);padding:18px;align-items:flex-end;justify-content:center}.app-modal.open{display:flex}.app-modal-box{width:100%;max-width:520px;max-height:86vh;overflow:auto;background:#0d2b49;border:1px solid #3c789f;border-radius:24px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.5);animation:modalUp .18s ease-out}.app-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.app-modal-head h2{margin:0;font-size:21px}.modal-close{width:42px!important;min-height:42px!important;margin:0!important;padding:0!important;border-radius:50%!important;background:#183e60!important;box-shadow:none!important;font-size:23px!important}.modal-option{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:15px;margin:8px 0;border-radius:15px;border:1px solid #3a6d91;background:#123653;color:#fff;font-weight:800;cursor:pointer}.modal-option small{display:block;color:#b9cee0;font-weight:500;margin-top:3px}.modal-section{border:1px solid #315d82;border-radius:16px;padding:13px;margin:10px 0;background:#102f4f}.modal-section h3{margin:0 0 6px}.modal-section .btn{margin-top:8px}.modal-note{color:#c5d7e7;font-size:13px;line-height:1.45}@keyframes modalUp{from{transform:translateY(18px);opacity:.5}to{transform:translateY(0);opacity:1}}@media(max-width:390px){.quick-actions{grid-template-columns:1fr}.quick-actions .btn{min-height:52px}}
 </style>
 
+
+<style id="modal-cleanup-styles">
+.hidden-by-modal{display:none!important}.analysis-main-btn{background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 6px 0 #54218f}.analysis-modal-upload{border:2px dashed #18c8ff;border-radius:18px;padding:20px;text-align:center;margin:12px 0;background:#0b2946}.analysis-modal-upload strong{display:block;font-size:18px;margin-bottom:8px}.analysis-modal-upload small{display:block;color:#bdd0e2;line-height:1.5}.analysis-modal-upload input{display:block;width:100%;margin-top:14px}.analysis-modal-upload .file-name{margin-top:8px;color:#6ee7a0}
+</style>
 </head>
 
 <body>
@@ -341,10 +345,11 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div class="quick-actions" aria-label="Accès rapides">
     <button class="btn deposit-main-btn" type="button" onclick="openAppModal('depositModal')">➕ Effectuer un dépôt</button>
+    <button class="btn analysis-main-btn" type="button" onclick="openAppModal('analysisModal')">📊 Demander une analyse</button>
     <button class="btn services-main-btn" type="button" onclick="openAppModal('servicesModal')">☰ Autres options</button>
   </div>
 
-  <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
+  <section class="deposit-space hidden-by-modal" aria-label="Espace de dépôt et de paiement">
     <div class="section-kicker">Espace sécurisé</div>
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
@@ -397,38 +402,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   </div>
 
   </section>
-
-  <div class="card">
-    <h2><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
-    <p class="muted">
-      Après votre paiement de <strong>500 F</strong>, envoyez les différents noms des matchs que vous souhaitez faire analyser.
-    </p>
-
-    <div class="range">
-      <div class="range-box"><strong>2</strong><span>Cote minimum</span></div>
-      <div class="range-box"><strong>10</strong><span>Cote maximum</span></div>
-    </div>
-
-    <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
-
-    <label>
-      <span class="muted">Écrire les matchs à analyser</span>
-      <textarea id="matches" placeholder="Exemple :
-Real Madrid vs FC Barcelone
-PSG vs Marseille"></textarea>
-    </label>
-
-    <label class="upload" for="capture">
-      <strong>📷 Envoyer une capture</strong>
-      <small>Sélectionnez la capture de vos matchs si vous préférez cette méthode.</small>
-      <input id="capture" type="file" accept="image/*" onchange="showFileName()">
-      <div id="fileName" class="file-name"></div>
-    </label>
-
-    <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
-    <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
-    <div id="analysisStatus" class="status"></div>
-  </div>
 
   <div class="card">
     <h2>📊 Probabilités des matchs du jour</h2>
@@ -527,13 +500,36 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
+  <div id="analysisModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="analysisModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="analysisModalTitle">📊 Demander une analyse</h2><button class="btn modal-close" type="button" onclick="closeAppModal('analysisModal')">×</button></div>
+      <p class="modal-note">📌 Appuyez ici pour envoyer vos matchs à analyser. Après votre paiement, vous pouvez envoyer une capture ou écrire les noms des matchs.</p>
+      <label class="analysis-modal-upload" for="capture">
+        <strong>📷 Envoyer une capture en premier</strong>
+        <small>Sélectionnez la photo de vos matchs. Cette option est placée en haut pour un accès rapide.</small>
+        <input id="capture" type="file" accept="image/*" onchange="showFileName()">
+        <div id="fileName" class="file-name"></div>
+      </label>
+      <label>
+        <span class="muted">Écrire les matchs à analyser</span>
+        <textarea id="matches" placeholder="Exemple :
+Real Madrid vs FC Barcelone
+PSG vs Marseille"></textarea>
+      </label>
+      <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
+      <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
+      <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
+      <div id="analysisStatus" class="status"></div>
+    </div>
+  </div>
+
   <div id="servicesModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="servicesModalTitle" onclick="closeModalOnBackdrop(event,this)">
     <div class="app-modal-box">
       <div class="app-modal-head"><h2 id="servicesModalTitle">☰ Services S-Drive®</h2><button class="btn modal-close" type="button" onclick="closeAppModal('servicesModal')">×</button></div>
       <button class="modal-option" type="button" onclick="goToAppSection('partners-space');closeAppModal('servicesModal')">🏆 <span>Bookmakers partenaires<small>Consulter les liens et les offres disponibles</small></span></button>
       <button class="modal-option" type="button" onclick="goToAppSection('conditions-card');closeAppModal('servicesModal')">📋 <span>Conditions d'utilisation<small>Lire les règles de fonctionnement de S-Drive®</small></span></button>
       <button class="modal-option" type="button" onclick="goToAppSection('contact-agent');closeAppModal('servicesModal')">📞 <span>Contacter un agent<small>WhatsApp et Telegram</small></span></button>
-      <button class="modal-option" type="button" onclick="goToAppSection('analysis-card');closeAppModal('servicesModal')">📊 <span>Demander une analyse<small>Envoyer les matchs à analyser</small></span></button>
+      <button class="modal-option" type="button" onclick="closeAppModal('servicesModal');openAppModal('analysisModal')">📊 <span>Demander une analyse<small>Envoyer les matchs à analyser</small></span></button>
     </div>
   </div>
 </section>
