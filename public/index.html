@@ -220,6 +220,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .bookmaker .btn{width:100%}
 }
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
+
+.brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
 </style>
 </head>
 
@@ -246,7 +248,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
     </div>
-    <h1>S-Drive</h1>
+    <h1>S-Drive<sup class="brand-mark">®</sup></h1>
     <p class="muted">Analyse professionnelle de vos matchs</p>
   </div>
 
@@ -325,13 +327,17 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
     </div>
-    <h1>S-Drive</h1>
+    <h1>S-Drive<sup class="brand-mark">®</sup></h1>
     <p id="welcomeText" class="muted">Bienvenue</p>
     <span id="profileBadge" class="badge">🏅 Membre S-Drive</span>
   </div>
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
 
+  <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
+    <div class="section-kicker">Espace sécurisé</div>
+    <h2>💳 Dépôts & paiements</h2>
+    <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
   <div class="card payment-card">
     <h2>💳 Analyse du jour</h2>
     <div class="payment-price">
@@ -380,6 +386,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div id="paymentNumberStatus" class="status"></div>
   </div>
 
+  </section>
+
   <div class="card">
     <h2><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
     <p class="muted">
@@ -418,6 +426,10 @@ PSG vs Marseille"></textarea>
     <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
   </div>
 
+  <section class="partners-space" aria-label="Espace partenaires et bookmakers">
+    <div class="section-kicker">Espace partenaires</div>
+    <h2>🛡️ Partenaires authentifiés</h2>
+    <div class="professional-note">✓ Liens partenaires présentés par S-Drive®. Avant toute inscription ou utilisation, consultez les conditions de chaque plateforme et vérifiez qu'elle est autorisée dans votre pays.</div>
   <div class="card">
     <h2>🏆 Bookmakers disponibles</h2>
     <p class="muted">Découvrez les plateformes proposées. Vérifiez toujours les conditions et bonus avant utilisation.</p>
@@ -429,6 +441,8 @@ PSG vs Marseille"></textarea>
     <p class="muted">Copiez un code, ouvrez la plateforme ou partagez l’offre.</p>
     <div id="couponsList"><div class="notice">Chargement des coupons...</div></div>
   </div>
+
+  </section>
 
   <div id="sdriveReferralCard" class="card hidden">
     <h2>🚀 Rejoindre S-Drive</h2>
@@ -471,13 +485,16 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div class="card">
+  <div class="card compact-conditions">
     <h2>📋 Conditions d'utilisation</h2>
+    <details>
+      <summary>🔎 Cliquez ici pour lire les conditions</summary>
     <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
     <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
     <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
     <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
     <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
+    </details>
   </div>
 
   <div class="card">
@@ -495,7 +512,7 @@ PSG vs Marseille"></textarea>
 
   <div class="center">
     <div class="admin-header-icon">🛠️</div>
-    <h1>Administration</h1>
+    <h1>Administration<sup class="brand-mark">®</sup></h1>
     <p class="muted">Gestion des membres S-Drive</p>
   </div>
 
@@ -579,7 +596,7 @@ PSG vs Marseille"></textarea>
 <footer>
   S-Drive — Analyse de matchs
   <br>
-  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="openAdmin()">🔒🔑</button>
+  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="openAdmin()">®</button>
 </footer>
 
 </main>
