@@ -432,15 +432,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   </div>
 
 
-
-  <div class="card">
-    <h2>ℹ️ Comment ça fonctionne ?</h2>
-    <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Créez votre compte</strong><span>Inscrivez-vous avec votre nom d'utilisateur et votre mot de passe.</span></div></div>
-    <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Payez 500 F ou abonnez-vous</strong><span>Choisissez le paiement du jour à 500 F ou l'abonnement 7 jours à 1 000 F.</span></div></div>
-    <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d'écran.</span></div></div>
-    <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
-  </div>
-
   <button class="btn danger" type="button" onclick="logout()">🚪 Se déconnecter</button>
 
   <div id="couponsModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="couponsModalTitle" onclick="closeModalOnBackdrop(event,this)">
@@ -475,6 +466,9 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <p class="modal-note">Choisissez le moyen de paiement que vous souhaitez utiliser. Vérifiez le numéro, le montant et conservez votre preuve de paiement.</p>
       <div class="modal-section"><h3>💙 Wave</h3><p class="modal-note">Paiement rapide pour l'analyse du jour ou l'abonnement.</p><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500" target="_blank" rel="noopener noreferrer">Payer 500 F avec Wave</a><a class="btn wave" href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000" target="_blank" rel="noopener noreferrer">Payer 1 000 F avec Wave</a></div>
       <div class="modal-section"><h3>📱 Orange Money / Moov Money / MTN Money</h3><p class="modal-note">Pour recevoir les informations de dépôt et contacter l'agent, utilisez le bouton ci-dessous.</p><button class="btn orange" type="button" onclick="requestPaymentNumber();closeAppModal('depositModal')">📲 Recevoir les coordonnées de dépôt</button></div>
+      <div class="modal-section compact-howto">
+        <button class="modal-option" type="button" onclick="closeAppModal('depositModal');openAppModal('howItWorksModal')">📖 <span>Lisez d’abord comment ça fonctionne<small>Comprendre le paiement de 500 F et l’abonnement premium de 1 000 F.</small></span></button>
+      </div>
       <div class="modal-section"><h3>🔐 Sécurité</h3><p class="modal-note">Ne partagez jamais votre code secret. Ne confirmez aucun paiement sans vérifier le bénéficiaire.</p></div>
     </div>
   </div>
@@ -517,6 +511,18 @@ PSG vs Marseille"></textarea>
       <div class="app-modal-head"><h2 id="bookmakersModalTitle">🏆 Bookmakers partenaires</h2><button class="btn modal-close" type="button" onclick="closeAppModal('bookmakersModal')">×</button></div>
       <p class="modal-note">Consultez les bookmakers et leurs liens. Vérifiez toujours les conditions et la légalité dans votre pays.</p>
       <div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
+    </div>
+  </div>
+
+  <div id="howItWorksModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="howItWorksModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="howItWorksModalTitle">📖 Comment ça fonctionne ?</h2><button class="btn modal-close" type="button" onclick="closeAppModal('howItWorksModal')">×</button></div>
+      <p class="modal-note">Lisez ces informations avant d’effectuer votre paiement.</p>
+      <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Créez votre compte</strong><span>Inscrivez-vous avec votre nom d’utilisateur et votre mot de passe.</span></div></div>
+      <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Paiement du jour : 500 F</strong><span>Après le paiement, vous pouvez demander l’analyse des matchs du jour.</span></div></div>
+      <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Abonnement premium : 1 000 F</strong><span>L’abonnement active un accès de 7 jours. Vous ne payez pas 500 F chaque jour pendant cette période.</span></div></div>
+      <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d’écran via WhatsApp ou Telegram.</span></div></div>
+      <div class="step"><div class="step-number">5</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L’agent reçoit votre demande et procède à l’analyse. Aucun résultat de pari n’est garanti.</span></div></div>
     </div>
   </div>
 
