@@ -347,6 +347,9 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <button class="btn deposit-main-btn" type="button" onclick="openAppModal('depositModal')">➕ Effectuer un dépôt</button>
     <button class="btn analysis-main-btn" type="button" onclick="openAppModal('analysisModal')">📊 Demander une analyse</button>
     <button class="btn services-main-btn" type="button" onclick="openAppModal('servicesModal')">☰ Autres options</button>
+    <button class="btn services-main-btn" type="button" onclick="openAppModal('couponsModal')">🎁 Codes coupons</button>
+    <button class="btn services-main-btn" type="button" onclick="openAppModal('groupsModal')">👥 Nos groupes</button>
+    <button class="btn services-main-btn" type="button" onclick="openAppModal('agentModal')">📞 Contacter un agent</button>
   </div>
 
   <section class="deposit-space hidden-by-modal" aria-label="Espace de dépôt et de paiement">
@@ -419,11 +422,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
   </div>
 
-  <div class="card">
-    <h2>🎁 Codes coupons disponibles</h2>
-    <p class="muted">Copiez un code, ouvrez la plateforme ou partagez l’offre.</p>
-    <div id="couponsList"><div class="notice">Chargement des coupons...</div></div>
-  </div>
 
   </section>
 
@@ -446,27 +444,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
   </div>
 
-  <div class="card">
-    <h2>👥 Nos groupes</h2>
-    <p class="muted">Rejoignez nos communautés S-Drive.</p>
-    <div class="two-columns">
-      <a class="btn contact-button whatsapp"
-        href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
-        target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a class="btn contact-button telegram"
-        href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
-    </div>
-  </div>
 
-  <div class="card">
-    <h2>📞 Contacter un agent</h2>
-    <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
-    <div class="two-columns">
-      <a id="whatsappContact" class="btn contact-button whatsapp" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a id="telegramContact" class="btn contact-button telegram"
-        href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
-    </div>
-  </div>
 
   <div class="card compact-conditions">
     <h2>📋 Conditions d'utilisation</h2>
@@ -489,6 +467,32 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   </div>
 
   <button class="btn danger" type="button" onclick="logout()">🚪 Se déconnecter</button>
+
+  <div id="couponsModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="couponsModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="couponsModalTitle">🎁 Codes coupons disponibles</h2><button class="btn modal-close" type="button" onclick="closeAppModal('couponsModal')">×</button></div>
+      <p class="modal-note">Copiez un code, ouvrez la plateforme ou partagez l’offre. Les coupons affichés sont ceux publiés par l’administrateur.</p>
+      <div id="couponsList"><div class="notice">Chargement des coupons...</div></div>
+    </div>
+  </div>
+
+  <div id="groupsModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="groupsModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="groupsModalTitle">👥 Nos groupes S-Drive®</h2><button class="btn modal-close" type="button" onclick="closeAppModal('groupsModal')">×</button></div>
+      <p class="modal-note">Rejoignez nos communautés officielles pour recevoir les informations et les annonces.</p>
+      <div class="modal-section"><h3>💬 Groupe WhatsApp</h3><a class="btn whatsapp" href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noopener noreferrer">Rejoindre sur WhatsApp</a></div>
+      <div class="modal-section"><h3>✈️ Groupe Telegram</h3><a class="btn telegram" href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">Rejoindre sur Telegram</a></div>
+    </div>
+  </div>
+
+  <div id="agentModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="agentModalTitle" onclick="closeModalOnBackdrop(event,this)">
+    <div class="app-modal-box">
+      <div class="app-modal-head"><h2 id="agentModalTitle">📞 Contacter un agent</h2><button class="btn modal-close" type="button" onclick="closeAppModal('agentModal')">×</button></div>
+      <p class="modal-note">Besoin d’aide ? Choisissez un moyen pour contacter directement notre équipe S-Drive®.</p>
+      <div class="modal-section"><h3>💬 WhatsApp</h3><a id="whatsappContactModal" class="btn whatsapp" target="_blank" rel="noopener noreferrer">Contacter via WhatsApp</a></div>
+      <div class="modal-section"><h3>✈️ Telegram</h3><a id="telegramContactModal" class="btn telegram" href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">Contacter via Telegram</a></div>
+    </div>
+  </div>
 
   <div id="depositModal" class="app-modal" role="dialog" aria-modal="true" aria-labelledby="depositModalTitle" onclick="closeModalOnBackdrop(event,this)">
     <div class="app-modal-box">
@@ -1537,7 +1541,10 @@ document.addEventListener("keydown",function(event){
 function openAppModal(id){const el=document.getElementById(id);if(el){el.classList.add('open');document.body.style.overflow='hidden';}}
 function closeAppModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');}if(!document.querySelector('.app-modal.open'))document.body.style.overflow='';}
 function closeModalOnBackdrop(event,el){if(event.target===el)closeAppModal(el.id);}
+function syncAgentModalLinks(){const w=document.getElementById('whatsappContact');const wm=document.getElementById('whatsappContactModal');if(w&&wm&&w.href)wm.href=w.href;const t=document.getElementById('telegramContact');const tm=document.getElementById('telegramContactModal');if(t&&tm&&t.href)tm.href=t.href;}
 function goToAppSection(kind){const map={'partners-space':'.partners-space','conditions-card':'.compact-conditions','contact-agent':'#whatsappContact','analysis-card':'#matches'};const target=document.querySelector(map[kind]);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});}
+document.addEventListener('DOMContentLoaded',syncAgentModalLinks);
+setTimeout(syncAgentModalLinks,1000);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.app-modal.open').forEach(m=>closeAppModal(m.id));}});
 </script>
 </body>
