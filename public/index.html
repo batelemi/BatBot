@@ -74,7 +74,7 @@ button,a{-webkit-tap-highlight-color:transparent}
 
 .container{width:min(calc(100% - 24px),560px);margin:auto;padding:18px 0 35px}
 .center{text-align:center}
-h1{margin:5px 0;font-size:32px}
+h1{margin:5px 0;font-size:32px;white-space:nowrap;display:inline-block;line-height:1.2}
 h2{margin:0 0 10px;font-size:20px}
 h3{margin:0 0 8px;font-size:17px}
 .muted{color:var(--muted);line-height:1.55}
@@ -214,7 +214,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .container{width:calc(100% - 18px)}
   .card{padding:15px}
   .payment-number strong{font-size:17px}
-  h1{font-size:29px}
+  h1{font-size:29px;white-space:nowrap}
   .payment-price strong{font-size:34px}
   .bookmaker{align-items:flex-start;flex-direction:column}
   .bookmaker .btn{width:100%}
@@ -222,6 +222,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
+.quick-menu{position:relative;margin:14px 0;z-index:20}.quick-menu-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#102f4f;border:1px solid #2f789f;color:#fff;border-radius:16px;padding:15px 17px;font-weight:900;cursor:pointer;box-shadow:0 5px 0 #092238}.quick-menu-toggle span:last-child{font-size:24px;line-height:1}.quick-menu-panel{display:none;margin-top:8px;padding:10px;border:1px solid #315d82;border-radius:16px;background:#0b223d;box-shadow:0 12px 25px rgba(0,0,0,.25)}.quick-menu-panel.open{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick-menu-item{display:flex;align-items:center;gap:8px;min-height:48px;padding:10px;border-radius:12px;border:1px solid #315d82;background:#123653;color:#fff;font-weight:800;font-size:12px;cursor:pointer}.quick-menu-item:active{transform:scale(.98)}@media(max-width:380px){.quick-menu-panel.open{grid-template-columns:1fr}.quick-menu-item{font-size:13px}}
+
 </style>
 </head>
 
@@ -334,7 +336,19 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
 
-  <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
+  <div class="quick-menu" id="quickMenu">
+    <button class="quick-menu-toggle" type="button" aria-expanded="false" onclick="toggleQuickMenu()">
+      <span>☰ Accès rapides</span><span>⋮</span>
+    </button>
+    <div class="quick-menu-panel" id="quickMenuPanel">
+      <button class="quick-menu-item" type="button" onclick="goToSection('depositSpace')">💳 Moyens de dépôt</button>
+      <button class="quick-menu-item" type="button" onclick="goToSection('partnersSpace')">🏆 Bookmakers</button>
+      <button class="quick-menu-item" type="button" onclick="goToSection('conditionsCard')">📋 Conditions</button>
+      <button class="quick-menu-item" type="button" onclick="goToSection('contactAgentCard')">📞 Contacter un agent</button>
+    </div>
+  </div>
+
+  <section id="depositSpace" class="deposit-space" aria-label="Espace de dépôt et de paiement">
     <div class="section-kicker">Espace sécurisé</div>
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
@@ -426,7 +440,7 @@ PSG vs Marseille"></textarea>
     <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
   </div>
 
-  <section class="partners-space" aria-label="Espace partenaires et bookmakers">
+  <section id="partnersSpace" class="partners-space" aria-label="Espace partenaires et bookmakers">
     <div class="section-kicker">Espace partenaires</div>
     <h2>🛡️ Partenaires authentifiés</h2>
     <div class="professional-note">✓ Liens partenaires présentés par S-Drive®. Avant toute inscription ou utilisation, consultez les conditions de chaque plateforme et vérifiez qu'elle est autorisée dans votre pays.</div>
@@ -475,7 +489,7 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div class="card">
+  <div id="contactAgentCard" class="card">
     <h2>📞 Contacter un agent</h2>
     <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
     <div class="two-columns">
@@ -485,7 +499,7 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div class="card compact-conditions">
+  <div id="conditionsCard" class="card compact-conditions">
     <h2>📋 Conditions d'utilisation</h2>
     <details>
       <summary>🔎 Cliquez ici pour lire les conditions</summary>
@@ -690,6 +704,33 @@ function forgotPassword(){
 function hideForgot(){
   document.getElementById("forgotBox").classList.add("hidden");
 }
+
+function toggleQuickMenu(){
+  const panel=document.getElementById("quickMenuPanel");
+  const button=document.querySelector(".quick-menu-toggle");
+  if(!panel)return;
+  const open=panel.classList.toggle("open");
+  if(button)button.setAttribute("aria-expanded",String(open));
+}
+
+function goToSection(id){
+  const target=document.getElementById(id);
+  const panel=document.getElementById("quickMenuPanel");
+  const button=document.querySelector(".quick-menu-toggle");
+  if(target)target.scrollIntoView({behavior:"smooth",block:"start"});
+  if(panel)panel.classList.remove("open");
+  if(button)button.setAttribute("aria-expanded","false");
+}
+
+document.addEventListener("click",function(event){
+  const menu=document.getElementById("quickMenu");
+  const panel=document.getElementById("quickMenuPanel");
+  const button=document.querySelector(".quick-menu-toggle");
+  if(menu&&panel&&!menu.contains(event.target)){
+    panel.classList.remove("open");
+    if(button)button.setAttribute("aria-expanded","false");
+  }
+});
 
 function showAuth(){
   document.getElementById("auth").classList.remove("hidden");
@@ -1027,7 +1068,7 @@ async function saveAdminSettings(){
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||'Enregistrement impossible.');
     showStatus('settingsStatus','Paramètres enregistrés avec succès.','success');
-    window.location.reload();
+    await loadConfig();
   }catch(e){showStatus('settingsStatus',e.message,'error');}
 }
 
