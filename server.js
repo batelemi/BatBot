@@ -1,110 +1,589 @@
-const express = require('express');
-const session = require('express-session');
-const bcrypt = require('bcryptjs');
-const Database = require('better-sqlite3');
-const path = require('path');
-const crypto = require('crypto');
+const express = require("express");
+const session = require("express-session");
+const SQLiteStore = require("connect-sqlite3")(session);
+const bcrypt = require("bcryptjs");
+const Database = require("better-sqlite3");
+const path = require("path");
+const crypto = require("crypto");
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
-const ADMIN_PHONE = process.env.ADMIN_PHONE || '2250152171974';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const DEFAULTS = {
-  whatsapp_number:'2250152171974',
-  telegram_contact:'https://t.me/sdrive12',
-  whatsapp_group:'https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4',
-  telegram_group:'https://t.me/sdrive123',
-  tiktok:'https://www.tiktok.com/@batelemi92',
-  facebook:'https://www.facebook.com/share/1KDERc7ZAP/',
-  instagram:'https://www.instagram.com/wonda_boss_officil/',
-  wave_day:'https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500',
-  wave_premium:'https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000',
-  payment_number:'0152171974',
-  payment_label:'Orange Money / Moov Money / MTN Money',
-  bookmaker1_name:'1win', bookmaker1_url:'https://one-vv3942.com/?p=gc9k&sub1=DM07',
-  bookmaker2_name:'Paripesa', bookmaker2_url:'https://combodef.com/L?tag=d_4081071m_60651c_&site=4081071&ad=60651',
-  bookmaker3_name:'Afropari', bookmaker3_url:'https://apaff.top/L?tag=d_3763651m_70055c_&site=70055&ad=70055'
+const PORT = process.env.PORT || 3000;
+const DB = new Database(path.join(__dirname, "sdrive.db"));
+
+app.disable("x-powered-by");
+app.use(express.json({ limit: "8mb" }));
+app.use(express.urlencoded({ extended: true, limit: "8mb" }));
+
+DB.pragma("journal_mode = WAL");
+DB.pragma("foreign_keys = ON");
+
+DB.exec(`
+CREATE TABLE IF NOT EXISTS users(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  phone TEXT DEFAULT "",
+  password_hash TEXT NOT NULL,
+  premium_until TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS daily_matches(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  match_name TEXT NOT NULL,
+  home_probability REAL NOT NULL,
+  draw_probability REAL NOT NULL,
+  away_probability REAL NOT NULL,
+  recommended_pick TEXT NOT NULL,
+  odds REAL,
+  match_date TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS password_resets(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS analysis_requests(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  type TEXT NOT NULL,
+  content TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+`);
+
+const defaults = {
+  whatsapp: "2250152171774",
+  telegram: "@Sdrive12",
+  whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
+  telegramGroup: "https://t.me/sdrive123",
+  tiktok: "https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99cD47Jhd00",
+  facebook: "https://www.facebook.com/share/1L96SqLnZT/",
+  instagram: "https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==",
+  wave500: "https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500",
+  wave1000: "https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000",
+  wavePromo: "WAVE22",
+  promoFee: "45CFA",
+  orangeMoney: "",
+  moovMoney: "",
+  mtnMoney: "",
+  adminPhone: process.env.ADMIN_PHONE || "2250152171774"
 };
 
-app.set('trust proxy',1);
-app.use(express.json({limit:'2mb'}));
-app.use(express.urlencoded({extended:false}));
-app.use(session({secret:SESSION_SECRET,resave:false,saveUninitialized:false,cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:30*24*60*60*1000}}));
+const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
+const setSetting = DB.prepare(
+  "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+);
+for (const [key, value] of Object.entries(defaults)) setSetting.run(key, String(value));
 
-const db = new Database(path.join(__dirname,'sdrive.db'));
-db.pragma('foreign_keys = ON');
-
-function tableColumns(table){return db.prepare(`PRAGMA table_info(${table})`).all().map(x=>x.name)}
-function migrateUsers(){
-  const exists=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
-  if(!exists){
-    db.exec(`CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT NOT NULL UNIQUE,name TEXT NOT NULL,phone TEXT,password_hash TEXT NOT NULL,badge TEXT NOT NULL DEFAULT 'Membre S-Drive',is_premium INTEGER NOT NULL DEFAULT 0,premium_started_at TEXT,premium_expires_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);return;
-  }
-  const cols=tableColumns('users');
-  if(cols.includes('username') && cols.includes('is_premium')) return;
-  db.pragma('foreign_keys = OFF');
-  db.exec('ALTER TABLE users RENAME TO users_legacy');
-  db.exec(`CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT NOT NULL UNIQUE,name TEXT NOT NULL,phone TEXT,password_hash TEXT NOT NULL,badge TEXT NOT NULL DEFAULT 'Membre S-Drive',is_premium INTEGER NOT NULL DEFAULT 0,premium_started_at TEXT,premium_expires_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
-  const legacyCols=tableColumns('users_legacy');
-  const rows=db.prepare('SELECT * FROM users_legacy').all();
-  for(const r of rows){
-    const base=String(r.name||r.username||('user'+r.id)).trim() || ('user'+r.id);
-    let username=base.replace(/\s+/g,'_').slice(0,30) || ('user'+r.id);
-    let n=1; while(db.prepare('SELECT id FROM users WHERE username=?').get(username)){username=(base.slice(0,25)+'_'+n++).slice(0,30)}
-    db.prepare('INSERT INTO users(id,username,name,phone,password_hash,badge,created_at) VALUES(?,?,?,?,?,?,?)').run(r.id,username,base,r.phone||'',r.password_hash,r.badge||'Membre S-Drive',r.created_at||new Date().toISOString());
-  }
-  db.exec('DROP TABLE users_legacy');
-  db.pragma('foreign_keys = ON');
+if (!getSetting.get("adminPasswordHash")) {
+  setSetting.run(
+    "adminPasswordHash",
+    bcrypt.hashSync(process.env.ADMIN_PASSWORD || "ChangeMe123!", 12)
+  );
 }
 
-migrateUsers();
-db.exec(`
-CREATE TABLE IF NOT EXISTS password_resets(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'pending',admin_password_hash TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,resolved_at TEXT,FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
-CREATE TABLE IF NOT EXISTS daily_matches(id INTEGER PRIMARY KEY AUTOINCREMENT,match_name TEXT NOT NULL,home_probability REAL NOT NULL,draw_probability REAL NOT NULL,away_probability REAL NOT NULL,recommended_pick TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS app_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-`);
-for(const [k,v] of Object.entries(DEFAULTS)) db.prepare('INSERT OR IGNORE INTO app_settings(key,value) VALUES(?,?)').run(k,v);
+function getSettings() {
+  return Object.fromEntries(
+    DB.prepare("SELECT key,value FROM settings").all().map(x => [x.key, x.value])
+  );
+}
 
-function setting(key){return db.prepare('SELECT value FROM app_settings WHERE key=?').get(key)?.value ?? DEFAULTS[key] ?? ''}
-function allSettings(){const out={...DEFAULTS};for(const r of db.prepare('SELECT key,value FROM app_settings').all())out[r.key]=r.value;return out}
-function normalizePhone(v){let p=String(v||'').replace(/[^\d+]/g,'').trim();if(p.startsWith('+225'))p=p.slice(1);if(p.startsWith('0'))p='225'+p.slice(1);return p}
-function whatsappLink(message){const n=normalizePhone(setting('whatsapp_number'));return n?'https://wa.me/'+n+'?text='+encodeURIComponent(message):'#'}
-function currentUser(req){if(!req.session.userId)return null;return db.prepare('SELECT * FROM users WHERE id=?').get(req.session.userId)}
-function safeUser(u){if(!u)return null;const premium=Number(u.is_premium)===1 && (!u.premium_expires_at || new Date(u.premium_expires_at)>new Date());return {id:u.id,username:u.username,name:u.name,badge:premium?'Premium':'Membre S-Drive',is_premium:premium,premium_started_at:u.premium_started_at,premium_expires_at:u.premium_expires_at,created_at:u.created_at}}
-function requireAuth(req,res,next){if(!req.session.userId)return res.status(401).json({error:'Connexion requise.'});next()}
-function requireAdmin(req,res,next){if(!req.session.admin)return res.status(403).json({error:'Accès administrateur requis.'});next()}
-function sendSession(res){res.json({success:true})}
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-app.use(express.static(path.join(__dirname,'public'),{index:'index.html',maxAge:0}));
-app.get('/',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
+function cleanPhone(value) {
+  return String(value || "").replace(/[^\d]/g, "");
+}
 
-app.post('/api/register',async(req,res)=>{try{const username=String(req.body.username||'').trim().toLowerCase();const password=String(req.body.password||'');if(username.length<3)return res.status(400).json({error:'Le nom d’utilisateur doit contenir au moins 3 caractères.'});if(password.length<6)return res.status(400).json({error:'Le mot de passe doit contenir au moins 6 caractères.'});if(!/^[a-z0-9_.-]+$/.test(username))return res.status(400).json({error:'Utilisez seulement lettres, chiffres, point, tiret ou underscore.'});if(db.prepare('SELECT id FROM users WHERE username=?').get(username))return res.status(409).json({error:'Ce nom d’utilisateur existe déjà.'});const hash=await bcrypt.hash(password,12);const r=db.prepare('INSERT INTO users(username,name,phone,password_hash,badge) VALUES(?,?,?,?,?)').run(username,username,'',hash,'Membre S-Drive');req.session.userId=Number(r.lastInsertRowid);req.session.save(()=>res.status(201).json({success:true,message:'Compte créé avec succès.',user:safeUser(currentUser(req))}));}catch(e){console.error(e);res.status(500).json({error:'Erreur serveur lors de la création du compte.'})}});
+function userView(user) {
+  if (!user) return null;
+  const active = !!(user.premium_until && new Date(user.premium_until) > new Date());
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.username,
+    phone: user.phone,
+    premium_until: user.premium_until,
+    is_subscribed: active,
+    subscribed: active,
+    subscription_active: active,
+    created_at: user.created_at
+  };
+}
 
-app.post('/api/login',async(req,res)=>{try{const username=String(req.body.username||'').trim().toLowerCase();const password=String(req.body.password||'');const u=db.prepare('SELECT * FROM users WHERE username=?').get(username);if(!u||!(await bcrypt.compare(password,u.password_hash)))return res.status(401).json({error:'Nom d’utilisateur ou mot de passe incorrect.'});req.session.userId=u.id;req.session.save(()=>res.json({success:true,user:safeUser(u)}));}catch(e){console.error(e);res.status(500).json({error:'Erreur serveur.'})}});
-app.get('/api/me',(req,res)=>{const u=currentUser(req);if(!u)return res.status(401).json({error:'Non connecté.'});res.json({success:true,user:safeUser(u)})});
-app.post('/api/logout',(req,res)=>req.session.destroy(()=>res.json({success:true})));
-app.post('/api/password-reset',(req,res)=>{const username=String(req.body.username||'').trim().toLowerCase();const u=db.prepare('SELECT id FROM users WHERE username=?').get(username);if(u)db.prepare("INSERT INTO password_resets(user_id,status) VALUES(?,'pending')").run(u.id);res.json({success:true,message:'Demande envoyée à l’administrateur.',whatsapp_url:whatsappLink(`Bonjour S-Drive 👋\n\nJe souhaite réinitialiser mon mot de passe.\n\nNom d'utilisateur : ${username}`)})});
-app.get('/api/settings',requireAuth,(req,res)=>res.json({success:true,settings:allSettings()}));
-app.get('/api/daily-matches',requireAuth,(req,res)=>res.json(db.prepare('SELECT * FROM daily_matches ORDER BY id DESC').all()));
+function requireUser(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Connexion requise." });
+  }
+  next();
+}
 
-app.post('/api/admin/login',(req,res)=>{const phone=normalizePhone(req.body.phone),password=String(req.body.password||'');if(!ADMIN_PASSWORD)return res.status(503).json({error:'ADMIN_PASSWORD n’est pas configuré dans Render.'});if(phone!==normalizePhone(ADMIN_PHONE)||password!==ADMIN_PASSWORD)return res.status(401).json({error:'Identifiants administrateur incorrects.'});req.session.admin=true;req.session.save(()=>res.json({success:true}))});
-app.post('/api/admin/logout',(req,res)=>{req.session.admin=false;req.session.save(()=>res.json({success:true}))});
-app.get('/api/admin/me',requireAdmin,(req,res)=>res.json({success:true}));
-app.get('/api/admin/users',requireAdmin,(req,res)=>{const q=String(req.query.q||'').trim().toLowerCase();let sql='SELECT id,username,name,phone,badge,is_premium,premium_started_at,premium_expires_at,created_at FROM users';const params=[];if(q){sql+=' WHERE lower(username) LIKE ? OR lower(name) LIKE ?';params.push('%'+q+'%','%'+q+'%')}sql+=' ORDER BY id DESC';const users=db.prepare(sql).all(...params).map(u=>({...u,is_premium:Number(u.is_premium)===1 && (!u.premium_expires_at||new Date(u.premium_expires_at)>new Date()),badge:(Number(u.is_premium)===1&&(!u.premium_expires_at||new Date(u.premium_expires_at)>new Date()))?'Premium':'Membre S-Drive'}));res.json({success:true,users})});
-app.get('/api/admin/reset-requests',requireAdmin,(req,res)=>res.json({success:true,requests:db.prepare("SELECT pr.id,u.username,pr.created_at FROM password_resets pr JOIN users u ON u.id=pr.user_id WHERE pr.status='pending' ORDER BY pr.id DESC").all()}));
-app.post('/api/admin/reset-requests/:id/resolve',requireAdmin,async(req,res)=>{const x=db.prepare("SELECT pr.id,pr.user_id,u.username FROM password_resets pr JOIN users u ON u.id=pr.user_id WHERE pr.id=? AND pr.status='pending'").get(req.params.id);if(!x)return res.status(404).json({error:'Demande introuvable.'});const temp='SD-'+crypto.randomBytes(4).toString('hex').toUpperCase();const hash=await bcrypt.hash(temp,12);db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash,x.user_id);db.prepare("UPDATE password_resets SET status='resolved',admin_password_hash=?,resolved_at=CURRENT_TIMESTAMP WHERE id=?").run(hash,x.id);res.json({success:true,message:'Nouveau mot de passe généré pour '+x.username+'.',new_password:temp})});
+function requireAdmin(req, res, next) {
+  if (!req.session.admin) {
+    return res.status(401).json({ error: "Accès administrateur refusé." });
+  }
+  next();
+}
 
-app.post('/api/admin/users/:id/premium',requireAdmin,(req,res)=>{const id=Number(req.params.id);const days=Math.max(1,Number(req.body.days||7));const u=db.prepare('SELECT * FROM users WHERE id=?').get(id);if(!u)return res.status(404).json({error:'Utilisateur introuvable.'});const start=new Date();const end=new Date(start.getTime()+days*86400000);db.prepare("UPDATE users SET is_premium=1,badge='Premium',premium_started_at=?,premium_expires_at=? WHERE id=?").run(start.toISOString(),end.toISOString(),id);res.json({success:true,message:'Badge Premium activé pour '+days+' jours.',user:safeUser(currentUser({session:{userId:id}}))})});
-app.post('/api/admin/users/:id/premium/deactivate',requireAdmin,(req,res)=>{const id=Number(req.params.id);db.prepare("UPDATE users SET is_premium=0,badge='Membre S-Drive',premium_started_at=NULL,premium_expires_at=NULL WHERE id=?").run(id);res.json({success:true,message:'Abonnement Premium désactivé.'})});
-app.delete('/api/admin/users/:id',requireAdmin,(req,res)=>{db.prepare('DELETE FROM users WHERE id=?').run(Number(req.params.id));res.json({success:true,message:'Utilisateur supprimé.'})});
+app.use(session({
+  store: new SQLiteStore({ db: "sessions.sqlite", dir: __dirname }),
+  secret: process.env.SESSION_SECRET || "CHANGE_THIS_SECRET_IN_PRODUCTION",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  }
+}));
 
-app.get('/api/admin/settings',requireAdmin,(req,res)=>res.json({success:true,settings:allSettings()}));
-app.post('/api/admin/settings',requireAdmin,(req,res)=>{const allowed=new Set(Object.keys(DEFAULTS));const incoming=req.body||{};const tx=db.transaction(()=>{for(const [k,v] of Object.entries(incoming)){if(allowed.has(k))db.prepare('INSERT INTO app_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k,String(v||''))}});tx();res.json({success:true,settings:allSettings()})});
-app.post('/api/admin/daily-matches',requireAdmin,(req,res)=>{const name=String(req.body.match_name||'').trim();const h=Number(req.body.home_probability),d=Number(req.body.draw_probability),a=Number(req.body.away_probability);const pick=String(req.body.recommended_pick||'').trim();if(!name||![h,d,a].every(Number.isFinite)||Math.abs(h+d+a-100)>0.01||[h,d,a].some(x=>x<0||x>100))return res.status(400).json({error:'Données de probabilités invalides. Le total doit être 100 %.'});const r=db.prepare('INSERT INTO daily_matches(match_name,home_probability,draw_probability,away_probability,recommended_pick) VALUES(?,?,?,?,?)').run(name,h,d,a,pick);res.json({success:true,id:r.lastInsertRowid,message:'Match ajouté.'})});
-app.get('/api/admin/daily-matches',requireAdmin,(req,res)=>res.json(db.prepare('SELECT * FROM daily_matches ORDER BY id DESC').all()));
-app.delete('/api/admin/daily-matches/:id',requireAdmin,(req,res)=>{db.prepare('DELETE FROM daily_matches WHERE id=?').run(Number(req.params.id));res.json({success:true,message:'Match supprimé.'})});
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, service: "S-Drive", time: new Date().toISOString() });
+});
 
-app.get('/api/health',(req,res)=>res.json({success:true,message:'S-Drive fonctionne.',time:new Date().toISOString()}));
-app.use((req,res)=>req.path.startsWith('/api/')?res.status(404).json({error:'Route API introuvable.'}):res.sendFile(path.join(__dirname,'public','index.html')));
-app.listen(PORT,'0.0.0.0',()=>console.log('S-Drive démarré sur le port '+PORT));
+app.post("/api/register", (req, res) => {
+  const username = String(req.body.username || "").trim();
+  const password = String(req.body.password || "");
+
+  if (!username || password.length < 6) {
+    return res.status(400).json({
+      error: "Nom d'utilisateur et mot de passe valides requis (6 caractères minimum)."
+    });
+  }
+
+  try {
+    const result = DB.prepare(
+      "INSERT INTO users(username,phone,password_hash) VALUES(?,?,?)"
+    ).run(username, "", bcrypt.hashSync(password, 12));
+
+    req.session.userId = Number(result.lastInsertRowid);
+    const user = DB.prepare("SELECT * FROM users WHERE id=?").get(result.lastInsertRowid);
+    res.status(201).json({ message: "Compte créé avec succès.", user: userView(user) });
+  } catch (error) {
+    res.status(409).json({ error: "Ce nom d'utilisateur existe déjà." });
+  }
+});
+
+app.post("/api/login", (req, res) => {
+  const username = String(req.body.username || "").trim();
+  const password = String(req.body.password || "");
+  const user = DB.prepare("SELECT * FROM users WHERE username=?").get(username);
+
+  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(401).json({ error: "Identifiants incorrects." });
+  }
+
+  req.session.userId = user.id;
+  res.json({ message: "Connexion réussie.", user: userView(user) });
+});
+
+app.post("/api/logout", (req, res) => {
+  req.session.destroy(() => res.json({ message: "Déconnexion réussie." }));
+});
+
+app.get("/api/me", requireUser, (req, res) => {
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  if (!user) return res.status(401).json({ error: "Session invalide." });
+  res.json({ user: userView(user) });
+});
+
+app.post("/api/password-reset", (req, res) => {
+  const username = String(req.body.username || "").trim();
+  const user = DB.prepare(
+    "SELECT id FROM users WHERE username=?"
+  ).get(username);
+
+  if (!user) {
+    return res.status(404).json({
+      error: "Utilisateur introuvable avec ces informations."
+    });
+  }
+
+  DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
+  res.json({ message: "Demande envoyée à l'administration." });
+});
+
+// Compatibilité avec les anciennes versions de l'interface.
+app.post("/api/forgot-password", (req, res) => {
+  const username = String(req.body.username || "").trim();
+  const user = DB.prepare("SELECT id FROM users WHERE username=?").get(username);
+
+  if (!user) {
+    return res.status(404).json({
+      error: "Utilisateur introuvable avec ces informations."
+    });
+  }
+
+  const existing = DB.prepare(
+    "SELECT id FROM password_resets WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1"
+  ).get(user.id);
+
+  if (!existing) {
+    DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
+  }
+
+  res.json({ message: "Demande envoyée à l'administration." });
+});
+
+app.get("/api/daily-matches", requireUser, (req, res) => {
+  res.json({
+    matches: DB.prepare(
+      "SELECT * FROM daily_matches WHERE match_date=? ORDER BY id DESC"
+    ).all(today())
+  });
+});
+
+app.post("/api/analysis-requests", requireUser, (req, res) => {
+  const type = req.body.type === "loto" ? "loto" : "football";
+  const content = String(req.body.content || "").trim();
+
+  if (!content) {
+    return res.status(400).json({
+      error: type === "loto"
+        ? "Envoyez les trois derniers résultats du tirage à analyser."
+        : "Écrivez les matchs ou informations à analyser."
+    });
+  }
+
+  if (type === "loto" && content.length < 10) {
+    return res.status(400).json({
+      error: "Pour une analyse Loto, indiquez les 3 derniers résultats du tirage."
+    });
+  }
+
+  const id = DB.prepare(
+    "INSERT INTO analysis_requests(user_id,type,content) VALUES(?,?,?)"
+  ).run(req.session.userId, type, content).lastInsertRowid;
+
+  const settings = getSettings();
+  const phone = cleanPhone(settings.whatsapp);
+  const label = type === "loto" ? "Loto" : "Football";
+  const text =
+    `Bonjour S-Drive 👋\n\n` +
+    `Je souhaite demander une analyse ${label}.\n\n` +
+    `${content}\n\n` +
+    `Référence de ma demande : S-Drive #${id}`;
+
+  res.status(201).json({
+    message: "Demande enregistrée.",
+    request_id: Number(id),
+    whatsapp: phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+      : "",
+    telegram: settings.telegram
+      ? `https://t.me/${String(settings.telegram).replace(/^@/, "")}`
+      : ""
+  });
+});
+
+app.post("/api/admin/login", (req, res) => {
+  const settings = getSettings();
+  const phone = String(req.body.phone || "").trim();
+  const password = String(req.body.password || "");
+
+  if (
+    phone !== settings.adminPhone ||
+    !bcrypt.compareSync(password, settings.adminPasswordHash)
+  ) {
+    return res.status(401).json({ error: "Accès administrateur refusé." });
+  }
+
+  req.session.admin = true;
+  res.json({ message: "Administration ouverte." });
+});
+
+app.get("/api/admin/me", (req, res) => {
+  if (!req.session.admin) return res.status(401).json({ error: "Non connecté." });
+  res.json({ admin: true });
+});
+
+app.post("/api/admin/logout", (req, res) => {
+  req.session.admin = false;
+  res.json({ message: "Administration déconnectée." });
+});
+
+app.get("/api/admin/stats", requireAdmin, (req, res) => {
+  res.json({
+    users: DB.prepare("SELECT COUNT(*) AS n FROM users").get().n,
+    analyses: DB.prepare("SELECT COUNT(*) AS n FROM analysis_requests").get().n,
+    pending: DB.prepare(
+      "SELECT COUNT(*) AS n FROM analysis_requests WHERE status='pending'"
+    ).get().n,
+    password_resets: DB.prepare(
+      "SELECT COUNT(*) AS n FROM password_resets WHERE status='pending'"
+    ).get().n
+  });
+});
+
+app.get("/api/admin/users", requireAdmin, (req, res) => {
+  res.json({
+    users: DB.prepare("SELECT * FROM users ORDER BY id DESC").all().map(userView)
+  });
+});
+
+app.post("/api/admin/subscription", requireAdmin, (req, res) => {
+  const id = Number(req.body.user_id);
+  const active = !!req.body.active;
+  const until = active
+    ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
+  const result = DB.prepare(
+    "UPDATE users SET premium_until=? WHERE id=?"
+  ).run(until, id);
+
+  if (!result.changes) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
+
+  res.json({
+    message: active
+      ? "Premium activé pour 7 jours."
+      : "Premium désactivé."
+  });
+});
+
+app.post("/api/admin/reset-password", requireAdmin, (req, res) => {
+  const password = String(req.body.password || "");
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Minimum 6 caractères." });
+  }
+
+  const result = DB.prepare(
+    "UPDATE users SET password_hash=? WHERE id=?"
+  ).run(bcrypt.hashSync(password, 12), Number(req.body.user_id));
+
+  if (!result.changes) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
+
+  res.json({ message: "Mot de passe modifié avec succès." });
+});
+
+app.delete("/api/admin/users/:id", requireAdmin, (req, res) => {
+  const result = DB.prepare(
+    "DELETE FROM users WHERE id=?"
+  ).run(Number(req.params.id));
+
+  if (!result.changes) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
+
+  res.json({ message: "Membre supprimé." });
+});
+
+app.get("/api/admin/password-resets", requireAdmin, (req, res) => {
+  res.json({
+    requests: DB.prepare(`
+      SELECT pr.*, u.username, u.phone
+      FROM password_resets pr
+      JOIN users u ON u.id=pr.user_id
+      WHERE pr.status='pending'
+      ORDER BY pr.id DESC
+    `).all()
+  });
+});
+
+// Alias utilisé par l'interface actuelle.
+app.get("/api/admin/reset-requests", requireAdmin, (req, res) => {
+  res.json({
+    requests: DB.prepare(`
+      SELECT pr.*, u.username, u.phone
+      FROM password_resets pr
+      JOIN users u ON u.id=pr.user_id
+      WHERE pr.status='pending'
+      ORDER BY pr.id DESC
+    `).all()
+  });
+});
+
+app.post("/api/admin/reset-requests/:id/resolve", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const request = DB.prepare(`
+    SELECT pr.id, pr.user_id, pr.status, u.username
+    FROM password_resets pr
+    JOIN users u ON u.id=pr.user_id
+    WHERE pr.id=?
+  `).get(id);
+
+  if (!request) {
+    return res.status(404).json({ error: "Demande introuvable." });
+  }
+
+  if (request.status !== "pending") {
+    return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+  }
+
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let temporaryPassword = "SD-";
+  const bytes = crypto.randomBytes(8);
+  for (const byte of bytes) {
+    temporaryPassword += alphabet[byte % alphabet.length];
+  }
+
+  const transaction = DB.transaction(() => {
+    DB.prepare("UPDATE users SET password_hash=? WHERE id=?")
+      .run(bcrypt.hashSync(temporaryPassword, 12), request.user_id);
+    DB.prepare("UPDATE password_resets SET status='resolved' WHERE id=?")
+      .run(id);
+  });
+
+  transaction();
+
+  res.json({
+    message: `Nouveau mot de passe généré pour ${request.username}.`,
+    username: request.username,
+    new_password: temporaryPassword
+  });
+});
+
+app.patch("/api/admin/password-resets/:id", requireAdmin, (req, res) => {
+  const status = req.body.status === "resolved" ? "resolved" : "pending";
+  DB.prepare(
+    "UPDATE password_resets SET status=? WHERE id=?"
+  ).run(status, Number(req.params.id));
+  res.json({ message: "Demande traitée." });
+});
+
+app.get("/api/admin/requests", requireAdmin, (req, res) => {
+  res.json({
+    requests: DB.prepare(`
+      SELECT ar.*, u.username, u.phone
+      FROM analysis_requests ar
+      LEFT JOIN users u ON u.id=ar.user_id
+      ORDER BY ar.id DESC
+    `).all()
+  });
+});
+
+app.patch("/api/admin/requests/:id", requireAdmin, (req, res) => {
+  const allowed = ["pending", "processing", "completed", "cancelled"];
+  const status = allowed.includes(req.body.status)
+    ? req.body.status
+    : "pending";
+
+  DB.prepare(
+    "UPDATE analysis_requests SET status=? WHERE id=?"
+  ).run(status, Number(req.params.id));
+
+  res.json({ message: "Demande mise à jour." });
+});
+
+app.post("/api/admin/daily-matches", requireAdmin, (req, res) => {
+  const name = String(req.body.match_name || "").trim();
+  const pick = String(req.body.recommended_pick || "").trim();
+  const h = Number(req.body.home_probability);
+  const d = Number(req.body.draw_probability);
+  const a = Number(req.body.away_probability);
+  const odds = req.body.odds === "" || req.body.odds === undefined
+    ? null
+    : Number(req.body.odds);
+
+  if (
+    !name || !pick ||
+    ![h, d, a].every(Number.isFinite) ||
+    h < 0 || h > 100 ||
+    d < 0 || d > 100 ||
+    a < 0 || a > 100 ||
+    Math.abs(h + d + a - 100) > 0.01
+  ) {
+    return res.status(400).json({
+      error: "Probabilités invalides : elles doivent totaliser 100%."
+    });
+  }
+
+  if (odds !== null && (!Number.isFinite(odds) || odds < 1)) {
+    return res.status(400).json({ error: "Cote invalide." });
+  }
+
+  DB.prepare(`
+    INSERT INTO daily_matches(
+      match_name, home_probability, draw_probability,
+      away_probability, recommended_pick, odds, match_date
+    ) VALUES(?,?,?,?,?,?,?)
+  `).run(name, h, d, a, pick, odds, today());
+
+  res.status(201).json({ message: "Match ajouté avec succès." });
+});
+
+app.get("/api/admin/daily-matches", requireAdmin, (req, res) => {
+  res.json({
+    matches: DB.prepare(
+      "SELECT * FROM daily_matches WHERE match_date=? ORDER BY id DESC"
+    ).all(today())
+  });
+});
+
+app.delete("/api/admin/daily-matches/:id", requireAdmin, (req, res) => {
+  DB.prepare(
+    "DELETE FROM daily_matches WHERE id=?"
+  ).run(Number(req.params.id));
+  res.json({ message: "Match supprimé." });
+});
+
+app.get("/api/config", (req, res) => {
+  const s = getSettings();
+  res.json({
+    whatsapp: s.whatsapp,
+    telegram: s.telegram,
+    whatsappGroup: s.whatsappGroup,
+    telegramGroup: s.telegramGroup,
+    tiktok: s.tiktok,
+    facebook: s.facebook,
+    instagram: s.instagram,
+    wave500: s.wave500,
+    wave1000: s.wave1000,
+    wavePromo: s.wavePromo,
+    promoFee: s.promoFee,
+    orangeMoney: s.orangeMoney,
+    moovMoney: s.moovMoney,
+    mtnMoney: s.mtnMoney,
+    bookmakers: [
+      { name: "1WIN", bonus: "500%", url: "https://1wyvrz.life/?p=gc9k" },
+      { name: "PARIPESA", bonus: "500%", url: "https://combodef.com/L?tag=d_4081071m_60651c_&site=4081071&ad=60651" },
+      { name: "AFROPARI", bonus: "300%", url: "https://apaff.top/L?tag=d_3763651m_70055c_&site=3763651&ad=70055" },
+      { name: "MELBET", bonus: "200%", url: "https://refpa3665.com/L?tag=d_4685320m_66335c_&site=4685320&ad=66335" },
+      { name: "LOTO", bonus: "", url: "https://jdnlotto.com/register?promo=123" }
+    ]
+  });
+});
+
+app.get("/api/admin/settings", requireAdmin, (req, res) => {
+  const s = getSettings();
+  delete s.adminPasswordHash;
+  res.json({ settings: s });
+});
+
+app.patch("/api/admin/settings", requireAdmin, (req, res) => {
+  const allowed = [
+    "whatsapp", "telegram", "whatsappGroup", "telegramGroup",
+    "tiktok", "facebook", "instagram",
+    "wave500", "wave1000", "wavePromo", "promoFee",
+    "orangeMoney", "moovMoney", "mtnMoney", "adminPhone"
+  ];
+
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) {
+      setSetting.run(key, String(req.body[key]));
+    }
+  }
+
+  res.json({ message: "Configuration enregistrée.", settings: getSettings() });
+});
+
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.listen(PORT, () => {
+  console.log(`S-Drive démarré sur le port ${PORT}`);
+});
