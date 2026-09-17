@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS users(
   phone TEXT DEFAULT "",
   password_hash TEXT NOT NULL,
   premium_until TEXT,
+  premium_started_at TEXT,
+  disabled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS daily_matches(
@@ -54,7 +56,29 @@ CREATE TABLE IF NOT EXISTS analysis_requests(
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS bookmakers(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  bonus TEXT DEFAULT "",
+  url TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS coupons(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  platform_name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  platform_url TEXT NOT NULL,
+  description TEXT DEFAULT "",
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `);
+
+// Migrations pour les bases déjà existantes
+try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
 
 const defaults = {
   whatsapp: "2250152171774",
@@ -68,9 +92,11 @@ const defaults = {
   wave1000: "https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000",
   wavePromo: "WAVE22",
   promoFee: "45CFA",
-  orangeMoney: "",
-  moovMoney: "",
-  mtnMoney: "",
+  orangeMoney: "0759060289",
+  moovMoney: "0152171974",
+  mtnMoney: "0554740711",
+  sdriveLink: "",
+  sdriveInviteMessage: "Invite tes amis à rejoindre S-Drive et profite de tes avantages.",
   adminPhone: process.env.ADMIN_PHONE || "2250152171774"
 };
 
@@ -78,7 +104,9 @@ const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
 const setSetting = DB.prepare(
   "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
 );
-for (const [key, value] of Object.entries(defaults)) setSetting.run(key, String(value));
+for (const [key, value] of Object.entries(defaults)) {
+  if (!getSetting.get(key)) setSetting.run(key, String(value));
+}
 
 if (!getSetting.get("adminPasswordHash")) {
   setSetting.run(
@@ -110,7 +138,9 @@ function userView(user) {
     name: user.username,
     phone: user.phone,
     premium_until: user.premium_until,
-    is_subscribed: active,
+    premium_started_at: user.premium_started_at || null,
+    disabled: Boolean(user.disabled),
+    is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
     subscription_active: active,
     created_at: user.created_at
@@ -120,6 +150,11 @@ function userView(user) {
 function requireUser(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Connexion requise." });
+  }
+  const user = DB.prepare("SELECT id, disabled FROM users WHERE id=?").get(req.session.userId);
+  if (!user || user.disabled) {
+    req.session.destroy(() => {});
+    return res.status(403).json({ error: "Ce compte est désactivé ou introuvable." });
   }
   next();
 }
@@ -176,8 +211,8 @@ app.post("/api/login", (req, res) => {
   const password = String(req.body.password || "");
   const user = DB.prepare("SELECT * FROM users WHERE username=?").get(username);
 
-  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).json({ error: "Identifiants incorrects." });
+  if (!user || user.disabled || !bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
   }
 
   req.session.userId = user.id;
@@ -330,24 +365,27 @@ app.get("/api/admin/users", requireAdmin, (req, res) => {
 
 app.post("/api/admin/subscription", requireAdmin, (req, res) => {
   const id = Number(req.body.user_id);
-  const active = !!req.body.active;
+  const active = Boolean(req.body.active);
+  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
+  const startedAt = active ? new Date() : null;
   const until = active
-    ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    ? new Date(startedAt.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
     : null;
 
   const result = DB.prepare(
-    "UPDATE users SET premium_until=? WHERE id=?"
-  ).run(until, id);
+    "UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?"
+  ).run(startedAt ? startedAt.toISOString() : null, until, id);
 
-  if (!result.changes) {
-    return res.status(404).json({ error: "Utilisateur introuvable." });
-  }
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: active ? `Premium activé pour ${durationDays} jour(s).` : "Premium désactivé." });
+});
 
-  res.json({
-    message: active
-      ? "Premium activé pour 7 jours."
-      : "Premium désactivé."
-  });
+app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
+  const disabled = Boolean(req.body.disabled);
+  const result = DB.prepare("UPDATE users SET disabled=? WHERE id=?")
+    .run(disabled ? 1 : 0, Number(req.params.id));
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: disabled ? "Compte désactivé." : "Compte réactivé." });
 });
 
 app.post("/api/admin/reset-password", requireAdmin, (req, res) => {
@@ -528,54 +566,136 @@ app.delete("/api/admin/daily-matches/:id", requireAdmin, (req, res) => {
   res.json({ message: "Match supprimé." });
 });
 
+function validHttpUrl(value) {
+  try {
+    const u = new URL(String(value));
+    return ["http:", "https:"].includes(u.protocol);
+  } catch (_) {
+    return false;
+  }
+}
+
+// Initialisation des bookmakers existants, une seule fois.
+if (DB.prepare("SELECT COUNT(*) AS n FROM bookmakers").get().n === 0) {
+  const seed = [
+    ["1WIN", "500%", "https://1wyvrz.life/?p=gc9k"],
+    ["PARIPESA", "500%", "https://combodef.com/L?tag=d_4081071m_60651c_&site=4081071&ad=60651"],
+    ["AFROPARI", "300%", "https://apaff.top/L?tag=d_3763651m_70055c_&site=3763651&ad=70055"],
+    ["MELBET", "200%", "https://refpa3665.com/L?tag=d_4685320m_66335c_&site=4685320&ad=663"],
+    ["LOTO", "", "https://jdnlotto.com/register?promo=123"]
+  ];
+  const insert = DB.prepare("INSERT INTO bookmakers(name,bonus,url) VALUES(?,?,?)");
+  const seedMany = DB.transaction(rows => rows.forEach(row => insert.run(...row)));
+  seedMany(seed);
+}
+
 app.get("/api/config", (req, res) => {
   const s = getSettings();
   res.json({
-    whatsapp: s.whatsapp,
-    telegram: s.telegram,
-    whatsappGroup: s.whatsappGroup,
-    telegramGroup: s.telegramGroup,
-    tiktok: s.tiktok,
-    facebook: s.facebook,
-    instagram: s.instagram,
-    wave500: s.wave500,
-    wave1000: s.wave1000,
-    wavePromo: s.wavePromo,
-    promoFee: s.promoFee,
-    orangeMoney: s.orangeMoney,
-    moovMoney: s.moovMoney,
-    mtnMoney: s.mtnMoney,
-    bookmakers: [
-      { name: "1WIN", bonus: "500%", url: "https://1wyvrz.life/?p=gc9k" },
-      { name: "PARIPESA", bonus: "500%", url: "https://combodef.com/L?tag=d_4081071m_60651c_&site=4081071&ad=60651" },
-      { name: "AFROPARI", bonus: "300%", url: "https://apaff.top/L?tag=d_3763651m_70055c_&site=3763651&ad=70055" },
-      { name: "MELBET", bonus: "200%", url: "https://refpa3665.com/L?tag=d_4685320m_66335c_&site=4685320&ad=66335" },
-      { name: "LOTO", bonus: "", url: "https://jdnlotto.com/register?promo=123" }
-    ]
+    whatsapp: s.whatsapp, telegram: s.telegram,
+    whatsappGroup: s.whatsappGroup, telegramGroup: s.telegramGroup,
+    tiktok: s.tiktok, facebook: s.facebook, instagram: s.instagram,
+    wave500: s.wave500, wave1000: s.wave1000, wavePromo: s.wavePromo,
+    promoFee: s.promoFee, orangeMoney: s.orangeMoney,
+    moovMoney: s.moovMoney, mtnMoney: s.mtnMoney,
+    sdriveLink: s.sdriveLink || "", sdriveInviteMessage: s.sdriveInviteMessage || "",
+    bookmakers: DB.prepare("SELECT id,name,bonus,url FROM bookmakers WHERE active=1 ORDER BY id DESC").all()
   });
 });
 
+app.get("/api/coupons", requireUser, (req, res) => {
+  res.json({ coupons: DB.prepare(
+    "SELECT id,platform_name,code,platform_url,description FROM coupons WHERE active=1 ORDER BY id DESC"
+  ).all() });
+});
+
+app.get("/api/admin/bookmakers", requireAdmin, (req, res) => {
+  res.json({ bookmakers: DB.prepare("SELECT * FROM bookmakers ORDER BY id DESC").all() });
+});
+
+app.post("/api/admin/bookmakers", requireAdmin, (req, res) => {
+  const name = String(req.body.name || "").trim();
+  const bonus = String(req.body.bonus || "").trim();
+  const url = String(req.body.url || "").trim();
+  if (!name || !validHttpUrl(url)) return res.status(400).json({ error: "Nom et lien HTTP/HTTPS valides requis." });
+  const result = DB.prepare("INSERT INTO bookmakers(name,bonus,url,active) VALUES(?,?,?,?)")
+    .run(name, bonus, url, req.body.active === false ? 0 : 1);
+  res.status(201).json({ id: result.lastInsertRowid, message: "Bookmaker ajouté." });
+});
+
+app.patch("/api/admin/bookmakers/:id", requireAdmin, (req, res) => {
+  const current = DB.prepare("SELECT * FROM bookmakers WHERE id=?").get(Number(req.params.id));
+  if (!current) return res.status(404).json({ error: "Bookmaker introuvable." });
+  const name = String(req.body.name ?? current.name).trim();
+  const bonus = String(req.body.bonus ?? current.bonus).trim();
+  const url = String(req.body.url ?? current.url).trim();
+  if (!name || !validHttpUrl(url)) return res.status(400).json({ error: "Nom et lien valides requis." });
+  DB.prepare("UPDATE bookmakers SET name=?,bonus=?,url=?,active=? WHERE id=?")
+    .run(name, bonus, url, req.body.active === undefined ? current.active : (req.body.active ? 1 : 0), current.id);
+  res.json({ message: "Bookmaker modifié." });
+});
+
+app.delete("/api/admin/bookmakers/:id", requireAdmin, (req, res) => {
+  DB.prepare("DELETE FROM bookmakers WHERE id=?").run(Number(req.params.id));
+  res.json({ message: "Bookmaker supprimé." });
+});
+
+app.get("/api/admin/coupons", requireAdmin, (req, res) => {
+  res.json({ coupons: DB.prepare("SELECT * FROM coupons ORDER BY id DESC").all() });
+});
+
+app.post("/api/admin/coupons", requireAdmin, (req, res) => {
+  const platformName = String(req.body.platform_name || "").trim();
+  const code = String(req.body.code || "").trim();
+  const platformUrl = String(req.body.platform_url || "").trim();
+  const description = String(req.body.description || "").trim();
+  if (!platformName || !code || !validHttpUrl(platformUrl)) {
+    return res.status(400).json({ error: "Plateforme, code et lien valides requis." });
+  }
+  const result = DB.prepare(
+    "INSERT INTO coupons(platform_name,code,platform_url,description,active) VALUES(?,?,?,?,?)"
+  ).run(platformName, code, platformUrl, description, req.body.active === false ? 0 : 1);
+  res.status(201).json({ id: result.lastInsertRowid, message: "Coupon ajouté." });
+});
+
+app.patch("/api/admin/coupons/:id", requireAdmin, (req, res) => {
+  const c = DB.prepare("SELECT * FROM coupons WHERE id=?").get(Number(req.params.id));
+  if (!c) return res.status(404).json({ error: "Coupon introuvable." });
+  const data = {
+    platform_name: String(req.body.platform_name ?? c.platform_name).trim(),
+    code: String(req.body.code ?? c.code).trim(),
+    platform_url: String(req.body.platform_url ?? c.platform_url).trim(),
+    description: String(req.body.description ?? c.description).trim(),
+    active: req.body.active === undefined ? c.active : (req.body.active ? 1 : 0)
+  };
+  if (!data.platform_name || !data.code || !validHttpUrl(data.platform_url)) {
+    return res.status(400).json({ error: "Données de coupon invalides." });
+  }
+  DB.prepare("UPDATE coupons SET platform_name=?,code=?,platform_url=?,description=?,active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    .run(data.platform_name, data.code, data.platform_url, data.description, data.active, c.id);
+  res.json({ message: "Coupon modifié." });
+});
+
+app.delete("/api/admin/coupons/:id", requireAdmin, (req, res) => {
+  DB.prepare("DELETE FROM coupons WHERE id=?").run(Number(req.params.id));
+  res.json({ message: "Coupon supprimé." });
+});
+
 app.get("/api/admin/settings", requireAdmin, (req, res) => {
-  const s = getSettings();
-  delete s.adminPasswordHash;
+  const s = getSettings(); delete s.adminPasswordHash;
   res.json({ settings: s });
 });
 
 app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   const allowed = [
     "whatsapp", "telegram", "whatsappGroup", "telegramGroup",
-    "tiktok", "facebook", "instagram",
-    "wave500", "wave1000", "wavePromo", "promoFee",
-    "orangeMoney", "moovMoney", "mtnMoney", "adminPhone"
+    "tiktok", "facebook", "instagram", "wave500", "wave1000",
+    "wavePromo", "promoFee", "orangeMoney", "moovMoney", "mtnMoney",
+    "adminPhone", "sdriveLink", "sdriveInviteMessage"
   ];
-
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) {
-      setSetting.run(key, String(req.body[key]));
-    }
-  }
-
-  res.json({ message: "Configuration enregistrée.", settings: getSettings() });
+  for (const key of allowed) if (req.body[key] !== undefined) setSetting.run(key, String(req.body[key]));
+  const settings = getSettings(); delete settings.adminPasswordHash;
+  res.json({ message: "Configuration enregistrée.", settings });
 });
 
 app.use(express.static(path.join(__dirname, "public")));
