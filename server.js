@@ -400,12 +400,29 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   "6. Risques et conclusion"
 ].join("\n");
   try {
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" + encodeURIComponent(apiKey), {
+    let response;
+let data;
+
+for (let attempt = 1; attempt <= 3; attempt++) {
+  response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    const data = await response.json();
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
+  );
+
+  data = await response.json();
+
+  if (response.ok || response.status !== 503 || attempt === 3) {
+    break;
+  }
+
+  await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+}
     if (!response.ok) {
       console.error("GEMINI_ERROR", response.status, data);
       return res.status(502).json({ error: "S-Drive IA reçoit trop de demandes pour l’instant. Réessayez dans quelques secondes." });
