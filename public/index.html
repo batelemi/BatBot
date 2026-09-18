@@ -716,7 +716,7 @@ async function submitAIRequest(){
   const team2=document.getElementById("aiTeam2").value.trim();
   const context=document.getElementById("aiContext").value.trim();
   if(!team1||!team2)return showStatus("aiStatus","Indiquez les deux équipes.","error");
-  showStatus("aiStatus","Analyse Gemini en cours…","");
+  showStatus("aiStatus","🤖 S-Drive IA : analyse en cours… Patientez quelques secondes.","");
   const result=document.getElementById("aiResult");
   if(result)result.textContent="";
   try{
