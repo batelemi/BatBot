@@ -367,14 +367,38 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(503).json({ error: "Le moteur IA n'est pas configuré par l'administrateur." });
   const prompt = [
-    "Tu es un assistant d'analyse football prudent.",
-    `Match: ${homeTeam} contre ${awayTeam}.`,
-    `Contexte fourni: ${context || "Aucun"}.`,
-    "N'invente aucune statistique et ne prétends pas disposer de données en direct.",
-    "Distingue faits, hypothèses et informations manquantes.",
-    "Ne garantis jamais un résultat et rappelle que les paris comportent un risque.",
-    "Réponds en français clair avec: résumé, facteurs à vérifier, scénarios possibles, limites et conclusion prudente."
-  ].join("\n");
+  "Tu es un expert en analyse football et en statistiques sportives.",
+  `Match : ${homeTeam} contre ${awayTeam}.`,
+  `Contexte fourni : ${context || "Aucun"}.`,
+
+  "Analyse le match avec une approche structurée et détaillée.",
+  "N'invente aucune statistique et distingue les informations vérifiées des hypothèses.",
+
+  "Examine si possible : forme récente, confrontations directes, buts marqués et encaissés, absences, motivation, domicile et extérieur, ainsi que les risques tactiques.",
+
+  "Présente plusieurs marchés de paris pertinents lorsque les informations disponibles le permettent.",
+
+  "Pour chaque proposition, indique :",
+  "- Le marché concerné.",
+  "- Une probabilité estimée en pourcentage.",
+  "- Une cote indicative calculée à partir de cette probabilité.",
+  "- Les arguments favorables.",
+  "- Les principaux risques.",
+
+  "Utilise la formule suivante pour une cote indicative : 1 ÷ probabilité décimale.",
+  "Exemple : une probabilité estimée à 60 % correspond à une cote indicative de 1.67.",
+
+  "Ne présente pas une cote indicative comme une cote réelle de bookmaker.",
+  "Si les informations sont insuffisantes, indique clairement les limites de l'estimation.",
+
+  "Réponds en français clair avec cette structure :",
+  "1. Résumé du match",
+  "2. Analyse des équipes",
+  "3. Facteurs importants",
+  "4. Marchés et probabilités estimées",
+  "5. Cotes indicatives",
+  "6. Risques et conclusion"
+].join("\n");
   try {
     const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" + encodeURIComponent(apiKey), {
       method: "POST",
