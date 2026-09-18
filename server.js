@@ -408,7 +408,7 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
     const data = await response.json();
     if (!response.ok) {
       console.error("GEMINI_ERROR", response.status, data);
-      return res.status(502).json({ error: "Le service Gemini a refusé la demande." });
+      return res.status(502).json({ error: "S-Drive IA reçoit trop de demandes pour l’instant. Réessayez dans quelques secondes." });
     }
     const text = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("\n").trim();
     if (!text) return res.status(502).json({ error: "Gemini n'a pas retourné de résultat exploitable." });
