@@ -177,6 +177,17 @@ textarea{min-height:120px;resize:vertical}
   background:#123B60;border:1px solid var(--blue);font-size:12px;font-weight:800;
 }
 .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
+.badge-ai{background:linear-gradient(135deg,#176A52,#0E9F6E);border-color:#65F0B1;color:#F1FFF8;box-shadow:0 3px 12px rgba(34,197,94,.24)}
+.badge-soft{background:linear-gradient(135deg,#513A72,#7652A8);border-color:#D2B5FF;color:#FFF7FF}
+.profile-card{margin:14px 0;padding:18px;border-radius:20px;background:linear-gradient(145deg,rgba(19,61,91,.96),rgba(9,31,53,.98));border:1px solid rgba(76,211,255,.24);box-shadow:0 12px 28px rgba(0,0,0,.16)}
+.profile-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.profile-card-title{font-size:17px;font-weight:900}
+.profile-badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+.profile-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.profile-meta-item{padding:11px;border-radius:13px;background:rgba(7,26,45,.58);border:1px solid rgba(49,93,130,.65)}
+.profile-meta-item small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
+.profile-meta-item strong{font-size:13px}
+@media(max-width:480px){.profile-meta{grid-template-columns:1fr}}
 .user-box{background:rgba(7,26,45,.65);border:1px solid var(--line);padding:14px;border-radius:14px;margin-bottom:15px;text-align:center}
 
 .match-card{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:10px 0}
@@ -329,7 +340,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <h1>S-Drive<sup class="brand-mark">®</sup></h1>
     <p id="welcomeText" class="muted">Bienvenue</p>
-    <span id="profileBadge" class="badge">🏅 Membre S-Drive</span>
+    <div id="profileBadges" class="profile-badges" aria-label="Badges du profil">
+      <span id="profileBadge" class="badge">🏅 Membre S-Drive</span>
+      <span id="profileAIBadge" class="badge badge-ai hidden">🤖 IA activée</span>
+    </div>
   </div>
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
@@ -397,6 +411,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <label><span class="muted">Équipe 2</span><input id="aiTeam2" type="text" placeholder="Ex. FC Barcelone"></label>
     </div>
     <label><span class="muted">Contexte facultatif</span><textarea id="aiContext" placeholder="Compétition, date, informations utiles…"></textarea></label>
+    <label class="upload" for="aiCapture"><strong>📷 Ajouter une capture (facultatif)</strong><small>Joignez une image du match ou des cotes.</small><input id="aiCapture" type="file" accept="image/*" onchange="showAIFileName()"><div id="aiFileName" class="file-name"></div></label>
     <button class="btn primary" type="button" onclick="submitAIRequest()">🔎 Préparer mon analyse IA</button>
     <div id="aiStatus" class="status"></div><pre id="aiResult" class="notice" style="white-space:pre-wrap"></pre>
   </div>
@@ -715,17 +730,28 @@ async function submitAIRequest(){
   const team1=document.getElementById("aiTeam1").value.trim();
   const team2=document.getElementById("aiTeam2").value.trim();
   const context=document.getElementById("aiContext").value.trim();
-  if(!team1||!team2)return showStatus("aiStatus","Indiquez les deux équipes.","error");
-  showStatus("aiStatus","🤖 S-Drive IA : analyse en cours… Patientez quelques secondes.","");
-  const result=document.getElementById("aiResult");
-  if(result)result.textContent="";
+  const capture=document.getElementById("aiCapture");
+  if(!team1||!team2)return showStatus("aiStatus","Veuillez renseigner les deux équipes.","error");
+  showStatus("aiStatus","S-Drive IA est en cours d’analyse. Veuillez patienter quelques secondes.","");
+  const result=document.getElementById("aiResult"); if(result)result.textContent="";
   try{
-    const response=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:team1,away_team:team2,context})});
+    let image_data="", image_mime="image/jpeg";
+    if(capture&&capture.files&&capture.files[0]){
+      const file=capture.files[0];
+      if(file.size>5*1024*1024)throw new Error("La capture ne doit pas dépasser 5 Mo.");
+      image_mime=file.type||"image/jpeg";
+      image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
+    }
+    const response=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:team1,away_team:team2,context,image_data,image_mime})});
     const data=await readApiResponse(response);
-    if(!response.ok)throw new Error(data.error||"Analyse impossible.");
-    showStatus("aiStatus","Analyse terminée.","success");
-    if(result)result.textContent=data.analysis||"Aucun résultat.";
-  }catch(error){showStatus("aiStatus",error.message,"error");}
+    if(!response.ok)throw new Error(data.error||"Analyse indisponible.");
+    showStatus("aiStatus","Analyse terminée.","success"); if(result)result.textContent=data.analysis||"Aucun résultat.";
+  }catch(error){showStatus("aiStatus",error.message||"S-Drive IA est momentanément très sollicitée. Veuillez réessayer dans quelques secondes.","error");}
+}
+
+function showAIFileName(){
+  const input=document.getElementById("aiCapture"), label=document.getElementById("aiFileName");
+  if(label)label.textContent=input&&input.files&&input.files[0]?"📎 Capture sélectionnée : "+input.files[0].name:"";
 }
 
 function updateAIAccess(user){
@@ -752,9 +778,24 @@ function showDashboard(user){
 
   const userBox=document.getElementById("userBox");
   if(userBox){
-    userBox.innerHTML="👤 Compte connecté"+
-      (username?"<br><strong>"+escapeHtml(username)+"</strong>":"")+
-      (user.phone?"<br><span class=\"muted\">"+escapeHtml(user.phone)+"</span>":"");
+    const premiumActive=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+    const aiActive=Boolean(user.ai_active);
+    userBox.className="profile-card";
+    userBox.innerHTML=`
+      <div class="profile-card-head">
+        <div class="profile-card-title">👤 Mon profil</div>
+        <span class="badge badge-soft">✨ Membre S-Drive</span>
+      </div>
+      <div><strong>${escapeHtml(username||"Utilisateur")}</strong></div>
+      ${user.phone?`<div class="muted" style="margin-top:4px">${escapeHtml(user.phone)}</div>`:""}
+      <div class="profile-badges" style="justify-content:flex-start">
+        <span class="badge ${premiumActive?'badge-blue':''}">${premiumActive?'🔵 Premium actif':'🏅 Compte standard'}</span>
+        <span class="badge ${aiActive?'badge-ai':''}">${aiActive?'🤖 IA activée':'🤖 IA inactive'}</span>
+      </div>
+      <div class="profile-meta">
+        <div class="profile-meta-item"><small>Statut Premium</small><strong>${premiumActive?'Actif':'Non actif'}</strong></div>
+        <div class="profile-meta-item"><small>Statut IA</small><strong>${aiActive?'Activée':'À activer'}</strong></div>
+      </div>`;
   }
 
   const profileBadge=document.getElementById("profileBadge");
@@ -765,6 +806,12 @@ function showDashboard(user){
     }else{
       profileBadge.classList.remove("badge-blue");
     }
+  }
+
+  const profileAIBadge=document.getElementById("profileAIBadge");
+  if(profileAIBadge){
+    profileAIBadge.classList.toggle("hidden",!Boolean(user.ai_active));
+    profileAIBadge.textContent="🤖 IA activée";
   }
 
   const contact=document.getElementById("whatsappContact");
