@@ -1,13 +1,8 @@
-# S-Drive IA — Version 4
+# S-Drive IA — Version 5
 
-Améliorations incluses :
-- Badge visible « 🤖 IA activée » sur le profil lorsque l'administrateur active l'accès IA.
-- Profil client plus chaleureux avec badges Premium/IA et résumé des statuts.
-- Conservation de l'accès IA existant et de la gestion administrateur.
-- L'utilisateur voit uniquement le nom « S-Drive IA », sans exposer les moteurs techniques.
+- Conservation de l'intégration Gemini et du moteur de secours Meta/Llama selon la configuration du serveur.
+- Affichage des badges Premium et IA uniquement dans la zone supérieure du profil.
+- Suppression des badges dupliqués à l'intérieur de la carte « Mon profil ».
+- Conservation des statuts détaillés Premium et IA dans la carte du profil.
 
-Configuration Render :
-- `GEMINI_API_KEY` : clé du moteur principal.
-- `LLAMA_API_KEY` : clé du moteur de secours, si configurée dans le serveur.
-
-Conserver le `package.json` et les autres fichiers déjà présents dans le dépôt GitHub. Tester d'abord sur la branche de travail avant de fusionner dans la branche principale.
+Configuration : conserver le `package.json` existant et renseigner les variables d'environnement nécessaires sur Render.
