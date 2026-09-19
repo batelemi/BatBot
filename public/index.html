@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#071A2D">
-<title>S-Drive — Analyse de matchs</title>
+<title>BatBot — Analyse intelligente de matchs</title>
 
 <style>
     .inline-logo{width:1.35em;height:1.35em;object-fit:contain;vertical-align:-0.25em;margin-right:.25em;border-radius:50%;}
@@ -74,7 +74,7 @@ button,a{-webkit-tap-highlight-color:transparent}
 
 .container{width:min(calc(100% - 24px),560px);margin:auto;padding:18px 0 35px}
 .center{text-align:center}
-h1{margin:5px 0;font-size:32px;white-space:nowrap;display:inline-block;line-height:1.2}
+h1{margin:5px 0;font-size:32px}
 h2{margin:0 0 10px;font-size:20px}
 h3{margin:0 0 8px;font-size:17px}
 .muted{color:var(--muted);line-height:1.55}
@@ -177,17 +177,6 @@ textarea{min-height:120px;resize:vertical}
   background:#123B60;border:1px solid var(--blue);font-size:12px;font-weight:800;
 }
 .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
-.badge-ai{background:linear-gradient(135deg,#176A52,#0E9F6E);border-color:#65F0B1;color:#F1FFF8;box-shadow:0 3px 12px rgba(34,197,94,.24)}
-.badge-soft{background:linear-gradient(135deg,#513A72,#7652A8);border-color:#D2B5FF;color:#FFF7FF}
-.profile-card{margin:14px 0;padding:18px;border-radius:20px;background:linear-gradient(145deg,rgba(19,61,91,.96),rgba(9,31,53,.98));border:1px solid rgba(76,211,255,.24);box-shadow:0 12px 28px rgba(0,0,0,.16)}
-.profile-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.profile-card-title{font-size:17px;font-weight:900}
-.profile-badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
-.profile-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.profile-meta-item{padding:11px;border-radius:13px;background:rgba(7,26,45,.58);border:1px solid rgba(49,93,130,.65)}
-.profile-meta-item small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
-.profile-meta-item strong{font-size:13px}
-@media(max-width:480px){.profile-meta{grid-template-columns:1fr}}
 .user-box{background:rgba(7,26,45,.65);border:1px solid var(--line);padding:14px;border-radius:14px;margin-bottom:15px;text-align:center}
 
 .match-card{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:10px 0}
@@ -203,11 +192,9 @@ textarea{min-height:120px;resize:vertical}
 .bookmaker .btn{width:auto;min-width:105px;margin:0;min-height:44px;font-size:12px}
 
 .admin-header-icon{
-  width:104px;height:104px;margin:8px auto 12px;display:flex;justify-content:center;align-items:center;
-  border-radius:24px;background:#071A2D;border:1px solid var(--blue);padding:7px;
-  box-shadow:0 8px 25px rgba(0,0,0,.2);overflow:hidden;
+  width:82px;height:82px;margin:8px auto 12px;display:flex;justify-content:center;align-items:center;
+  border-radius:50%;background:#193A5C;border:1px solid var(--blue);font-size:38px;box-shadow:0 8px 25px rgba(0,0,0,.2);
 }
-.admin-header-icon img{width:100%;height:100%;object-fit:cover;border-radius:18px;display:block;}
 .member-card{background:#0C2745;border:1px solid #315D82;border-radius:13px;padding:13px;margin:9px 0}
 .member-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .member-username{font-weight:800;word-break:break-word}
@@ -217,6 +204,17 @@ textarea{min-height:120px;resize:vertical}
 .reset-request{background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}
 .social-grid{display:grid;grid-template-columns:1fr;gap:9px}
 .social-btn{min-height:52px}
+
+.profile-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.status-card{display:flex;align-items:center;gap:10px;padding:16px;border-radius:18px;border:1px solid rgba(83,207,255,.35);box-shadow:0 8px 22px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.08);background:linear-gradient(145deg,#12395b,#081e35)}
+.status-card .status-icon{font-size:28px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}.status-card span{display:block;font-size:12px;color:#c4d8e8}.status-card strong{display:block;margin-top:5px;font-size:17px;color:#fff;text-shadow:0 2px 1px rgba(0,0,0,.35)}
+.premium-status-card{border-color:rgba(245,197,66,.5);background:linear-gradient(145deg,#29465c,#10253b)}.ai-status-card{border-color:rgba(0,213,255,.5);background:linear-gradient(145deg,#124c64,#0b263f)}
+.ai-card{border:1px solid rgba(0,213,255,.45);background:linear-gradient(145deg,#123b5b,#0a223a)}.ai-result{margin-top:14px;padding:15px;border-radius:14px;background:#071a2d;border:1px solid #315d82;white-space:pre-wrap;line-height:1.55}
+@media(max-width:380px){.profile-status-grid{gap:7px}.status-card{padding:12px}.status-card strong{font-size:14px}}
+
+
+.admin-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}.admin-tool-btn{min-height:62px;border:1px solid rgba(0,213,255,.4);border-radius:15px;background:linear-gradient(145deg,#123b5b,#0b223a);color:#fff;font-weight:800;box-shadow:0 5px 15px rgba(0,0,0,.15)}.admin-modal{position:fixed;inset:0;background:rgba(2,10,20,.88);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}.admin-modal-inner{width:min(680px,100%);margin-top:25px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.45)}.admin-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.admin-modal-close{width:auto;margin:0;padding:8px 12px}.admin-modal-body>.card{margin:0}
+
 .hidden{display:none!important}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
 footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
@@ -227,7 +225,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .container{width:calc(100% - 18px)}
   .card{padding:15px}
   .payment-number strong{font-size:17px}
-  h1{font-size:29px;white-space:nowrap}
+  h1{font-size:29px}
   .payment-price strong{font-size:34px}
   .bookmaker{align-items:flex-start;flex-direction:column}
   .bookmaker .btn{width:100%}
@@ -235,17 +233,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
-
-.ai-result-shell{display:grid;gap:14px;margin-top:14px}.ai-result-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.ai-result-title{font-size:20px;font-weight:800}.ai-pill{padding:6px 10px;border-radius:999px;background:rgba(0,200,255,.14);color:#68e3ff;font-size:12px;font-weight:800}.ai-prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ai-prob{padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(0,0,0,.14);text-align:center}.ai-prob strong{display:block;font-size:22px;color:#fff}.ai-prob span{font-size:12px;color:#b8c8d8}.ai-option{padding:13px;border-radius:14px;background:rgba(0,0,0,.15);border:1px solid rgba(255,255,255,.1)}.ai-option-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.ai-option-title{font-weight:800}.ai-option-meta{font-size:13px;color:#c6d4e4;margin-top:6px}.ai-combo{padding:14px;border:1px solid rgba(77,220,160,.35);border-radius:14px;background:rgba(30,170,120,.08)}.ai-note{font-size:13px;color:#c6d4e4;line-height:1.5}.ai-fallback{white-space:pre-wrap;line-height:1.6}
-
-/* Organisation des espaces : un seul espace visible à la fois */
-.workspace-switcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0}
-.workspace-btn{border:1px solid rgba(0,191,255,.35);border-radius:18px;padding:16px 10px;background:linear-gradient(145deg,#102f52,#0b223d);color:#fff;cursor:pointer;font-weight:800;text-align:center;box-shadow:0 5px 0 rgba(0,0,0,.18);transition:transform .18s,border-color .18s}
-.workspace-btn span{display:block;font-size:25px;margin-bottom:7px}.workspace-btn small{display:block;color:var(--muted);font-weight:500;margin-top:5px}
-.workspace-btn.active{border-color:#16c7ff;box-shadow:0 0 0 2px rgba(22,199,255,.18),0 5px 0 rgba(0,0,0,.18);transform:translateY(-2px)}
-.workspace-panel.hidden-panel{display:none!important}
-.workspace-title{margin:8px 0 4px;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#73dfff;font-weight:800}
-@media(max-width:520px){.workspace-switcher{gap:8px}.workspace-btn{padding:13px 5px;font-size:12px}.workspace-btn span{font-size:22px}}
 </style>
 </head>
 
@@ -253,11 +240,11 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
 <div id="loadingScreen">
   <div class="loading-logo">
-    <img src="logo.png" alt="S-Drive"
+    <img src="logo.png" alt="BatBot"
       onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
-    <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
+    <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
   </div>
-  <div class="loading-title">S-Drive</div>
+  <div class="loading-title">BatBot</div><div class="loading-slogan">Analysez mieux. Décidez avec maîtrise.</div>
   <div id="loadingMessage" class="loading-message">Connexion en cours…</div>
   <div class="loading-spinner"></div>
 </div>
@@ -268,17 +255,17 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div class="center">
     <div class="logo">
-      <img src="logo.png" alt="S-Drive"
+      <img src="logo.png" alt="BatBot"
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
-      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
+      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
     </div>
-    <h1>S-Drive<sup class="brand-mark">®</sup></h1>
+    <h1>BatBot<sup class="brand-mark">•</sup></h1><p class="brand-slogan">Analysez mieux. Décidez avec maîtrise.</p>
     <p class="muted">Analyse professionnelle de vos matchs</p>
   </div>
 
   <div id="registerBox" class="card">
     <h2>👤 Créer un compte</h2>
-    <p class="muted">Créez votre compte S-Drive pour accéder à l'application.</p>
+    <p class="muted">Créez votre compte BatBot pour accéder à l'application.</p>
 
     <input id="registerUsername" type="text" autocomplete="username" autocapitalize="none"
       maxlength="30" placeholder="Nom d'utilisateur">
@@ -347,28 +334,33 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div class="center">
     <div class="logo">
-      <img src="logo.png" alt="S-Drive"
+      <img src="logo.png" alt="BatBot"
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
-      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"></span>
+      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
     </div>
-    <h1>S-Drive<sup class="brand-mark">®</sup></h1>
+    <h1>BatBot<sup class="brand-mark">•</sup></h1><p class="brand-slogan">Analysez mieux. Décidez avec maîtrise.</p>
     <p id="welcomeText" class="muted">Bienvenue</p>
-    <div id="profileBadges" class="profile-badges" aria-label="Badges du profil">
-      <span id="profileBadge" class="badge">🏅 Membre S-Drive</span>
-      <span id="profileAIBadge" class="badge badge-ai hidden">🤖 IA activée</span>
-    </div>
+    <span id="profileBadge" class="badge">🏅 Membre BatBot</span>
   </div>
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
-
-  <div class="workspace-title">Accès rapide</div>
-  <div class="workspace-switcher" role="tablist" aria-label="Choisir un espace">
-    <button class="workspace-btn active" id="workspacePaymentsBtn" type="button" onclick="switchWorkspace('payments')" role="tab" aria-selected="true"><span>💳</span>Paiements<small>Dépôt & abonnement</small></button>
-    <button class="workspace-btn" id="workspaceAgentBtn" type="button" onclick="switchWorkspace('agent')" role="tab" aria-selected="false"><span>👨🏾‍💼</span>Agents<small>Analyse journalière</small></button>
-    <button class="workspace-btn" id="workspaceAIBtn" type="button" onclick="switchWorkspace('ai')" role="tab" aria-selected="false"><span>🤖</span>Analyse IA<small>Espace Premium</small></button>
+  <div class="profile-status-grid" aria-label="Statuts du compte">
+    <div class="status-card premium-status-card"><div class="status-icon">💎</div><div><span>Statut Premium</span><strong id="premiumStatusText">Non actif</strong></div></div>
+    <div class="status-card ai-status-card"><div class="status-icon">🤖</div><div><span>Statut IA</span><strong id="aiStatusText">Non active</strong></div></div>
   </div>
 
-  <section id="paymentsPanel" class="deposit-space workspace-panel" aria-label="Espace de dépôt et de paiement">
+  <section class="card ai-card" id="smartDriveAISection">
+    <div class="section-kicker">Assistant intelligent</div>
+    <h2>🤖 BatBot IA</h2>
+    <p class="muted">Analysez vos matchs avec BatBot IA. L’accès nécessite un abonnement actif.</p>
+    <div class="two-columns"><input id="aiHomeTeam" placeholder="Équipe à domicile"><input id="aiAwayTeam" placeholder="Équipe à l’extérieur"></div>
+    <textarea id="aiContext" placeholder="Contexte facultatif : compétition, date, informations disponibles..."></textarea>
+    <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitSmartDriveAI()">🤖 Lancer l’analyse</button>
+    <div id="smartDriveAIStatus" class="status"></div>
+    <div id="smartDriveAIResult" class="ai-result hidden"></div>
+  </section>
+
+  <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
     <div class="section-kicker">Espace sécurisé</div>
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
@@ -422,24 +414,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   </section>
 
-  <div class="card workspace-panel hidden-panel" id="aiAnalysisCard">
-    <h2>🤖 Analyse IA Premium</h2>
-    <p class="muted">Saisissez les deux équipes. L’IA présente les probabilités, les options de marché et des combinaisons lisibles. L’accès nécessite un abonnement IA actif.</p>
-    <div id="aiAccessNotice" class="notice">Vérification de votre accès IA…</div>
-    <div class="grid-2">
-      <label><span class="muted">Équipe 1</span><input id="aiTeam1" type="text" placeholder="Ex. Real Madrid"></label>
-      <label><span class="muted">Équipe 2</span><input id="aiTeam2" type="text" placeholder="Ex. FC Barcelone"></label>
-    </div>
-    <label><span class="muted">Contexte facultatif</span><textarea id="aiContext" placeholder="Compétition, date, informations utiles…"></textarea></label>
-    <label class="upload" for="aiCapture"><strong>📷 Ajouter une capture (facultatif)</strong><small>Joignez une image du match ou des cotes.</small><input id="aiCapture" type="file" accept="image/*" onchange="showAIFileName()"><div id="aiFileName" class="file-name"></div></label>
-    <button class="btn primary" type="button" onclick="submitAIRequest()">🔎 Préparer mon analyse IA</button>
-    <div id="aiStatus" class="status"></div><div id="aiResult" class="notice"></div>
-  </div>
-
-  <div id="agentPanel" class="card workspace-panel hidden-panel">
-    <h2>👨🏾‍💼 Analyse avec un agent</h2>
+  <div class="card">
+    <h2><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
     <p class="muted">
-      Après votre paiement de <strong>500 F</strong>, envoyez votre demande à un agent. Choisissez WhatsApp ou Telegram pour transmettre les matchs.
+      Après votre paiement de <strong>500 F</strong>, envoyez les différents noms des matchs que vous souhaitez faire analyser.
     </p>
 
     <div class="range">
@@ -450,7 +428,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
 
     <label>
-      <span class="muted">Décrire les matchs à analyser</span>
+      <span class="muted">Écrire les matchs à analyser</span>
       <textarea id="matches" placeholder="Exemple :
 Real Madrid vs FC Barcelone
 PSG vs Marseille"></textarea>
@@ -463,8 +441,8 @@ PSG vs Marseille"></textarea>
       <div id="fileName" class="file-name"></div>
     </label>
 
-    <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer à un agent</button>
-    <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer à un agent</button>
+    <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
+    <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
     <div id="analysisStatus" class="status"></div>
   </div>
 
@@ -477,7 +455,7 @@ PSG vs Marseille"></textarea>
   <section class="partners-space" aria-label="Espace partenaires et bookmakers">
     <div class="section-kicker">Espace partenaires</div>
     <h2>🛡️ Partenaires authentifiés</h2>
-    <div class="professional-note">✓ Liens partenaires présentés par S-Drive®. Avant toute inscription ou utilisation, consultez les conditions de chaque plateforme et vérifiez qu'elle est autorisée dans votre pays.</div>
+    <div class="professional-note">✓ Liens partenaires présentés par BatBot. Avant toute inscription ou utilisation, consultez les conditions de chaque plateforme et vérifiez qu'elle est autorisée dans votre pays.</div>
   <div class="card">
     <h2>🏆 Bookmakers disponibles</h2>
     <p class="muted">Découvrez les plateformes proposées. Vérifiez toujours les conditions et bonus avant utilisation.</p>
@@ -493,14 +471,14 @@ PSG vs Marseille"></textarea>
   </section>
 
   <div id="sdriveReferralCard" class="card hidden">
-    <h2>🚀 Rejoindre S-Drive</h2>
+    <h2>🚀 Rejoindre BatBot</h2>
     <p id="sdriveInviteMessage" class="muted"></p>
     <div id="sdriveReferralActions"></div>
   </div>
 
   <div class="card">
     <h2>📱 Nos réseaux sociaux</h2>
-    <p class="muted">Suivez S-Drive sur nos réseaux sociaux.</p>
+    <p class="muted">Suivez BatBot sur nos réseaux sociaux.</p>
     <div class="social-grid">
       <a class="btn social-btn" style="background:#000;color:white;box-shadow:0 6px 0 #333;"
         href="https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99ezQTy3tTh" target="_blank" rel="noopener noreferrer">🎵 TikTok</a>
@@ -513,7 +491,7 @@ PSG vs Marseille"></textarea>
 
   <div class="card">
     <h2>👥 Nos groupes</h2>
-    <p class="muted">Rejoignez nos communautés S-Drive.</p>
+    <p class="muted">Rejoignez nos communautés BatBot.</p>
     <div class="two-columns">
       <a class="btn contact-button whatsapp"
         href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
@@ -559,9 +537,9 @@ PSG vs Marseille"></textarea>
 <section id="admin" class="hidden">
 
   <div class="center">
-    <div class="admin-header-icon"><img src="admin-logo.png" alt="Logo S-Drive Administration"></div>
-    <h1>Administration<sup class="brand-mark">®</sup></h1>
-    <p class="muted">Gestion des membres S-Drive</p>
+    <div class="admin-header-icon">🛠️</div>
+    <h1>Administration<sup class="brand-mark">•</sup></h1>
+    <p class="muted">Gestion des membres BatBot</p>
   </div>
 
   <div id="adminLoginBox" class="card">
@@ -642,9 +620,9 @@ PSG vs Marseille"></textarea>
 </section>
 
 <footer>
-  S-Drive — Analyse de matchs
+  BatBot — Analyse intelligente de matchs
   <br>
-  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="openAdmin()">®</button>
+  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="adminSecretTap()">•</button>
 </footer>
 
 </main>
@@ -745,116 +723,24 @@ function showAuth(){
   document.getElementById("admin").classList.add("hidden");
 }
 
-
-function renderAIResult(raw){
-  const result=document.getElementById("aiResult");
-  if(!result)return;
-  let data=null;
-  try{
-    const cleaned=String(raw||"").replace(/^```json\s*/i,"").replace(/^```\s*/i,"").replace(/\s*```$/i,"").trim();
-    data=JSON.parse(cleaned);
-  }catch(_){
-    result.innerHTML='<div class="ai-fallback">'+escapeHtml(String(raw||"Aucun résultat."))+'</div>';
-    return;
-  }
-  const pct=(v)=>Number.isFinite(Number(v))?Math.max(0,Math.min(100,Number(v)))+"%":"—";
-  const esc=(v)=>escapeHtml(v==null?"—":String(v));
-  const options=Array.isArray(data.options)?data.options:[];
-  const combo=data.combo&&typeof data.combo==='object'?data.combo:null;
-  const probs=data.probabilities||{};
-  result.innerHTML=`<div class="ai-result-shell">
-    <div class="ai-result-head"><div class="ai-result-title">${esc(data.match||"Analyse du match")}</div><span class="ai-pill">Analyse IA</span></div>
-    <div class="notice"><strong>Équipe favorite :</strong> ${esc(data.favorite||"Non déterminée")}</div>
-    <div class="ai-prob-grid">
-      <div class="ai-prob"><strong>${pct(probs.home)}</strong><span>Domicile</span></div>
-      <div class="ai-prob"><strong>${pct(probs.draw)}</strong><span>Match nul</span></div>
-      <div class="ai-prob"><strong>${pct(probs.away)}</strong><span>Extérieur</span></div>
-    </div>
-    <div><h3 style="margin:4px 0 10px">Options à considérer</h3>${options.map((o,i)=>`<div class="ai-option"><div class="ai-option-top"><span class="ai-option-title">${i+1}. ${esc(o.market||"Marché")}</span><span class="ai-pill">Cote ${esc(o.odds||"—")}</span></div><div style="margin-top:6px">${esc(o.selection||"Sélection non précisée")}</div><div class="ai-option-meta">Niveau de risque : <strong>${esc(o.risk||"Non précisé")}</strong></div></div>`).join("")||'<div class="ai-option">Aucune option structurée disponible.</div>'}</div>
-    ${combo?`<div class="ai-combo"><h3 style="margin:0 0 8px">🎯 Combinaison proposée</h3><strong>${esc(combo.name||"Combiné")}</strong><div class="ai-option-meta">${Array.isArray(combo.selections)?combo.selections.map(esc).join(" • "):"Sélections non précisées"}</div><div style="margin-top:8px"><strong>Cote totale indicative : ${esc(combo.total_odds||"—")}</strong> · Risque : ${esc(combo.risk||"Non précisé")}</div></div>`:""}
-    ${data.note?`<div class="ai-note">ℹ️ ${esc(data.note)}</div>`:""}
-  </div>`;
-}
-
-function switchWorkspace(name){
-  const panels={payments:document.getElementById('paymentsPanel'),agent:document.getElementById('agentPanel'),ai:document.getElementById('aiAnalysisCard')};
-  const buttons={payments:document.getElementById('workspacePaymentsBtn'),agent:document.getElementById('workspaceAgentBtn'),ai:document.getElementById('workspaceAIBtn')};
-  Object.keys(panels).forEach(key=>{
-    if(panels[key])panels[key].classList.toggle('hidden-panel',key!==name);
-    if(buttons[key]){
-      buttons[key].classList.toggle('active',key===name);
-      buttons[key].setAttribute('aria-selected',key===name?'true':'false');
-    }
-  });
-  const target=panels[name];
-  if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-async function submitAIRequest(){
-  const team1=document.getElementById("aiTeam1").value.trim();
-  const team2=document.getElementById("aiTeam2").value.trim();
-  const context=document.getElementById("aiContext").value.trim();
-  const capture=document.getElementById("aiCapture");
-  if(!team1||!team2)return showStatus("aiStatus","Veuillez renseigner les deux équipes.","error");
-  showStatus("aiStatus","S-Drive IA est en cours d’analyse. Veuillez patienter quelques secondes.","");
-  const result=document.getElementById("aiResult"); if(result)result.textContent="";
-  try{
-    let image_data="", image_mime="image/jpeg";
-    if(capture&&capture.files&&capture.files[0]){
-      const file=capture.files[0];
-      if(file.size>5*1024*1024)throw new Error("La capture ne doit pas dépasser 5 Mo.");
-      image_mime=file.type||"image/jpeg";
-      image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
-    }
-    const response=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:team1,away_team:team2,context,image_data,image_mime})});
-    const data=await readApiResponse(response);
-    if(!response.ok)throw new Error(data.error||"Analyse indisponible.");
-    showStatus("aiStatus","Analyse terminée.","success"); if(result)renderAIResult(data.analysis||"Aucun résultat.");
-  }catch(error){showStatus("aiStatus",error.message||"S-Drive IA est momentanément très sollicitée. Veuillez réessayer dans quelques secondes.","error");}
-}
-
-function showAIFileName(){
-  const input=document.getElementById("aiCapture"), label=document.getElementById("aiFileName");
-  if(label)label.textContent=input&&input.files&&input.files[0]?"📎 Capture sélectionnée : "+input.files[0].name:"";
-}
-
-function updateAIAccess(user){
-  const notice=document.getElementById("aiAccessNotice");
-  const button=document.querySelector('#aiAnalysisCard button');
-  const active=Boolean(user&&user.ai_active);
-  if(notice){notice.textContent=active?"✅ Votre accès IA est actif jusqu’au "+formatDateTime(user.ai_until)+".":"🔒 IA inactive. Contactez le service client pour payer et demander l’activation.";}
-  if(button)button.disabled=!active;
-  ["aiTeam1","aiTeam2","aiContext"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!active;});
-}
-
 function showDashboard(user){
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.remove("hidden");
   document.getElementById("admin").classList.add("hidden");
 
   user=user||{};
-  updateAIAccess(user);
+  updateProfileStatuses(user);
   const username=user.username||user.name||"";
-  const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre S-Drive");
+  const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre BatBot");
 
   const welcome=document.getElementById("welcomeText");
   if(welcome)welcome.textContent=username?"Bienvenue, "+username:"Bienvenue";
 
   const userBox=document.getElementById("userBox");
   if(userBox){
-    const premiumActive=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
-    const aiActive=Boolean(user.ai_active);
-    userBox.className="profile-card";
-    userBox.innerHTML=`
-      <div class="profile-card-head">
-        <div class="profile-card-title">👤 Mon profil</div>
-      </div>
-      <div><strong>${escapeHtml(username||"Utilisateur")}</strong></div>
-      ${user.phone?`<div class="muted" style="margin-top:4px">${escapeHtml(user.phone)}</div>`:""}
-      <div class="profile-meta">
-        <div class="profile-meta-item"><small>Statut Premium</small><strong>${premiumActive?'Actif':'Non actif'}</strong></div>
-        <div class="profile-meta-item"><small>Statut IA</small><strong>${aiActive?'Actif':'Non actif'}</strong></div>
-      </div>`;
+    userBox.innerHTML="👤 Compte connecté"+
+      (username?"<br><strong>"+escapeHtml(username)+"</strong>":"")+
+      (user.phone?"<br><span class=\"muted\">"+escapeHtml(user.phone)+"</span>":"");
   }
 
   const profileBadge=document.getElementById("profileBadge");
@@ -867,17 +753,12 @@ function showDashboard(user){
     }
   }
 
-  const profileAIBadge=document.getElementById("profileAIBadge");
-  if(profileAIBadge){
-    profileAIBadge.classList.toggle("hidden",!Boolean(user.ai_active));
-    profileAIBadge.textContent="🤖 IA activée";
-  }
-
   const contact=document.getElementById("whatsappContact");
   if(contact){
-    contact.href=createWhatsAppUrl("Bonjour S-Drive 👋\n\nJe souhaite contacter un agent.");
+    contact.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
   }
 
+  loadConfig();
   loadDailyMatches();
   window.scrollTo(0,0);
 }
@@ -998,7 +879,7 @@ async function submitForgotPassword(){
     const whatsappButton=document.getElementById("forgotWhatsApp");
     if(whatsappButton){
       whatsappButton.href=data.whatsapp_url||createWhatsAppUrl(
-        "Bonjour S-Drive 👋\n\nJe souhaite réinitialiser mon mot de passe.\n\nNom d'utilisateur : "+username
+        "Bonjour BatBot 👋\n\nJe souhaite réinitialiser mon mot de passe.\n\nNom d'utilisateur : "+username
       );
       whatsappButton.classList.remove("hidden");
     }
@@ -1023,7 +904,7 @@ function sendAnalysisWhatsApp(){
     return showStatus("analysisStatus","Écrivez au moins un match ou sélectionnez une capture.","error");
   }
 
-  let message="Bonjour S-Drive 👋\n\nJe souhaite faire analyser mes matchs.\n\nPaiement effectué pour l'analyse.\n\n";
+  let message="Bonjour BatBot 👋\n\nJe souhaite faire analyser mes matchs.\n\nPaiement effectué pour l'analyse.\n\n";
 
   if(matches)message+="Match(s) à analyser :\n"+matches+"\n\n";
   if(capture&&capture.files.length>0){
@@ -1043,7 +924,7 @@ function sendAnalysisTelegram(){
     return;
   }
 
-  const message="Bonjour S-Drive 👋\n\nJe souhaite faire analyser ce(s) match(s) :\n\n"+matches+"\n\nPaiement effectué.";
+  const message="Bonjour BatBot 👋\n\nJe souhaite faire analyser ce(s) match(s) :\n\n"+matches+"\n\nPaiement effectué.";
   window.open(TELEGRAM_CONTACT+"?text="+encodeURIComponent(message),"_blank");
   showStatus("analysisStatus","Telegram a été ouvert.","success");
 }
@@ -1060,7 +941,7 @@ function showFileName(){
 }
 
 function requestPaymentNumber(){
-  const message="Bonjour S-Drive 👋\n\nJe souhaite recevoir le numéro de dépôt pour effectuer mon paiement par Orange Money, Moov Money ou MTN Money.";
+  const message="Bonjour BatBot 👋\n\nJe souhaite recevoir le numéro de dépôt pour effectuer mon paiement par Orange Money, Moov Money ou MTN Money.";
   window.location.href=createWhatsAppUrl(message);
   showStatus("paymentNumberStatus","WhatsApp a été ouvert pour recevoir le numéro de dépôt.","success");
 }
@@ -1084,13 +965,13 @@ async function loadCoupons(){
   }catch(e){box.innerHTML='<div class="notice">Aucun coupon disponible pour le moment.</div>';}
 }
 async function copyText(value){try{await navigator.clipboard.writeText(value);alert("Copié avec succès.");}catch(e){prompt("Copiez ce texte :",value);}}
-function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon S-Drive",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
-function renderSdriveReferral(data){
+function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon BatBot",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
+function renderBatBotReferral(data){
   const card=document.getElementById("sdriveReferralCard"); if(!card)return;
   if(!data.sdriveLink){card.classList.add("hidden");return;}
   card.classList.remove("hidden");
-  document.getElementById("sdriveInviteMessage").textContent=data.sdriveInviteMessage||"Rejoins S-Drive.";
-  document.getElementById("sdriveReferralActions").innerHTML=`<button class="btn primary" onclick="copyText('${String(data.sdriveLink).replace(/'/g,"\\'")}')">📋 Copier le lien</button><button class="btn green" onclick="window.open('${String(data.sdriveLink).replace(/'/g,"\\'")}','_blank')">🚀 Ouvrir S-Drive</button><button class="btn telegram" onclick="shareCoupon('S-Drive','','${String(data.sdriveLink).replace(/'/g,"\\'")}')">📤 Partager</button>`;
+  document.getElementById("sdriveInviteMessage").textContent=data.sdriveInviteMessage||"Rejoins BatBot.";
+  document.getElementById("sdriveReferralActions").innerHTML=`<button class="btn primary" onclick="copyText('${String(data.sdriveLink).replace(/'/g,"\\'")}')">📋 Copier le lien</button><button class="btn green" onclick="window.open('${String(data.sdriveLink).replace(/'/g,"\\'")}','_blank')">🚀 Ouvrir BatBot</button><button class="btn telegram" onclick="shareCoupon('BatBot','','${String(data.sdriveLink).replace(/'/g,"\\'")}')">📤 Partager</button>`;
 }
 async function toggleUserDisabled(id,disabled){
   try{const r=await fetch("/api/admin/users/"+id+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({disabled})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible");await loadAdmin();}catch(e){alert(e.message);}
@@ -1124,17 +1005,13 @@ function renderAdminUsers(users){
     return `<div class="member-card">
       <div class="member-card-top">
         <div class="member-username">👤 ${escapeHtml(user.username||user.name||"Utilisateur")}</div>
-        <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre S-Drive'}</span>
+        <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre BatBot'}</span>
       </div>
       <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
-      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
-      <div class="admin-small">🤖 IA : ${user.ai_active?'✅ Active':'❌ Inactive'}${user.ai_until?' — jusqu\'au : '+escapeHtml(formatDateTime(user.ai_until)):''}</div>
-      ${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
+      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
       <div class="admin-actions">
         <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium</button>
         <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
-        <button class="btn green" type="button" onclick="setAISubscription(${Number(user.id)},true)">🤖 Activer IA</button>
-        <button class="btn gold" type="button" onclick="setAISubscription(${Number(user.id)},false)">🚫 Désactiver IA</button>
         <button class="btn secondary" type="button" onclick="toggleUserDisabled(${Number(user.id)},${user.disabled?false:true})">${user.disabled?"▶️ Réactiver":"⛔ Désactiver"}</button><button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
       </div>
     </div>`;
@@ -1143,26 +1020,10 @@ function renderAdminUsers(users){
 
 async function setPremium(id,enabled){
   try{
-    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,activate_ai:enabled,duration_days:enabled?(Number(prompt("Durée Premium + IA en jours :", "7"))||7):7})});
+    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:enabled?(Number(prompt("Durée Premium en jours :", "7"))||7):7})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
     alert(data.message||"Statut Premium mis à jour.");
-    await loadAdmin();
-  }catch(e){alert(e.message);}
-}
-
-async function setAISubscription(id,enabled){
-  try{
-    const duration=enabled?(Number(prompt("Durée de l'accès IA en jours :","7"))||7):7;
-    const response=await fetch("/api/admin/ai-subscription",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Accept":"application/json"},
-      credentials:"same-origin",
-      body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})
-    });
-    const data=await readApiResponse(response);
-    if(!response.ok)throw new Error(data.error||"Action IA impossible.");
-    alert(data.message||"Accès IA mis à jour.");
     await loadAdmin();
   }catch(e){alert(e.message);}
 }
@@ -1181,9 +1042,21 @@ function renderSettingsForm(settings){
   const fields=[
     ["whatsapp","Numéro WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Lien groupe WhatsApp"],["telegramGroup","Lien groupe Telegram"],
     ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
-    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien S-Drive"],["sdriveInviteMessage","Message S-Drive"],["adminPhone","Numéro administrateur"]
+    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien BatBot"],["sdriveInviteMessage","Message BatBot"],["adminPhone","Numéro administrateur"]
   ];
   return '<div class="settings-grid">'+fields.map(([k,label])=>`<label>${label}<input data-setting="${k}" value="${escapeHtml(settings[k]||'')}"></label>`).join('')+'</div>';
+}
+
+async function loadConfig(){
+  try{
+    const response=await fetch("/api/config",{cache:"no-store"});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Configuration indisponible");
+    if(data.whatsapp)WHATSAPP_NUMBER=data.whatsapp;
+    if(data.telegram)TELEGRAM_CONTACT=data.telegram;
+    const day=document.getElementById("waveDayButton");if(day&&data.wave500)day.href=data.wave500;
+    const premium=document.getElementById("wavePremiumButton");if(premium&&data.wave1000)premium.href=data.wave1000;
+  }catch(error){console.warn("CONFIG:",error.message);}
 }
 
 async function saveAdminSettings(){
@@ -1204,6 +1077,32 @@ async function logout(){
   }catch(_){}
   showLoading("Déconnexion en cours…");
   setTimeout(function(){location.reload();},300);
+}
+
+let adminTapCount=0;let adminTapTimer=null;
+function adminSecretTap(){
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer=setTimeout(()=>{adminTapCount=0;},2500);
+  if(adminTapCount>=10){adminTapCount=0;openAdmin();}
+}
+function updateProfileStatuses(user){
+  const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
+  const p=document.getElementById("premiumStatusText"); const a=document.getElementById("aiStatusText");
+  if(p)p.textContent=premium?"Actif":"Non actif";
+  if(a)a.textContent=premium?"Active":"Non active";
+}
+async function submitSmartDriveAI(){
+  const home=document.getElementById("aiHomeTeam").value.trim();const away=document.getElementById("aiAwayTeam").value.trim();const context=document.getElementById("aiContext").value.trim();
+  if(!home||!away)return showStatus("smartDriveAIStatus","Saisissez les deux équipes.","error");
+  setLoading("smartDriveAIButton",true,"🤖 Analyse en cours…");
+  showStatus("smartDriveAIStatus","BatBot IA est en cours d’analyse. Veuillez patienter quelques secondes.","success");
+  try{
+    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,context})});
+    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Analyse indisponible.");
+    const box=document.getElementById("smartDriveAIResult");box.classList.remove("hidden");box.textContent=d.analysis||"Aucun résultat disponible.";
+  }catch(e){showStatus("smartDriveAIStatus","Plusieurs demandes sont peut-être en cours de traitement. Veuillez réessayer dans quelques secondes.","error");}
+  finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
 function openAdmin(){
@@ -1253,12 +1152,31 @@ async function adminLogin(){
   }
 }
 
+
+let adminOrganizerReady=false;
+function organizeAdminPanel(){
+  if(adminOrganizerReady)return;
+  const panel=document.getElementById("adminPanel");
+  if(!panel)return;
+  const cards=Array.from(panel.children).filter(el=>el.classList.contains("card") && el.querySelector("h2"));
+  if(!cards.length)return;
+  const tools=document.createElement("div");tools.className="admin-tools";tools.setAttribute("aria-label","Options administrateur");
+  const modal=document.createElement("div");modal.className="admin-modal hidden";modal.innerHTML='<div class="admin-modal-inner"><div class="admin-modal-head"><strong id="adminModalTitle">Option administrateur</strong><button class="btn secondary admin-modal-close" type="button">✕ Fermer</button></div><div class="admin-modal-body"></div></div>';
+  document.body.appendChild(modal);
+  const body=modal.querySelector(".admin-modal-body");const title=modal.querySelector("#adminModalTitle");const close=()=>{const card=modal._activeCard;if(card&&card._adminPlaceholder)card._adminPlaceholder.parentNode.insertBefore(card,card._adminPlaceholder.nextSibling);modal.classList.add("hidden");modal._activeCard=null;};
+  modal.querySelector(".admin-modal-close").addEventListener("click",close);modal.addEventListener("click",e=>{if(e.target===modal)close();});
+  cards.forEach((card,index)=>{const heading=card.querySelector("h2");const label=(heading?.textContent||"Option").trim();const placeholder=document.createComment("admin-card-placeholder");card.parentNode.insertBefore(placeholder,card);card._adminPlaceholder=placeholder;card.classList.add("hidden");const button=document.createElement("button");button.type="button";button.className="admin-tool-btn";button.textContent=label;button.addEventListener("click",()=>{if(modal._activeCard)close();title.textContent=label;card.classList.remove("hidden");body.appendChild(card);modal._activeCard=card;modal.classList.remove("hidden");});tools.appendChild(button);});
+  const stats=panel.querySelector(":scope > .card");if(stats)stats.insertAdjacentElement("afterend",tools);else panel.prepend(tools);
+  adminOrganizerReady=true;
+}
+
 async function loadAdmin(){
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.add("hidden");
   document.getElementById("admin").classList.remove("hidden");
   document.getElementById("adminLoginBox").classList.add("hidden");
   document.getElementById("adminPanel").classList.remove("hidden");
+  organizeAdminPanel();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -1348,7 +1266,7 @@ async function loadDailyMatches(){
 
       return `
         <div class="match-card">
-          <div class="match-title"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
+          <div class="match-title"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
           <div class="probability">
             <div class="prob"><strong>${escapeHtml(home)}%</strong><span>Équipe 1</span></div>
             <div class="prob"><strong>${escapeHtml(draw)}%</strong><span>Match nul</span></div>
@@ -1471,7 +1389,7 @@ async function loadAdminDailyMatches(){
 
       return `
         <div class="match-card">
-          <div class="match-title"><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
+          <div class="match-title"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
           <div class="probability">
             <div class="prob"><strong>${escapeHtml(home)}%</strong><span>Équipe 1</span></div>
             <div class="prob"><strong>${escapeHtml(draw)}%</strong><span>Match nul</span></div>
@@ -1613,11 +1531,11 @@ async function loadPublicConfig(){
     if(data.telegram)TELEGRAM_CONTACT="https://t.me/"+String(data.telegram).replace(/^@/,"");
     if(data.wave500){WAVE_PAYMENT_DAY_URL=data.wave500;const el=document.getElementById("waveDayButton");if(el)el.href=data.wave500;}
     if(data.wave1000){WAVE_PAYMENT_7_DAYS_URL=data.wave1000;const el=document.getElementById("wavePremiumButton");if(el)el.href=data.wave1000;}
-    const wa=document.getElementById("whatsappContact");if(wa)wa.href=createWhatsAppUrl("Bonjour S-Drive 👋\n\nJe souhaite contacter un agent.");
+    const wa=document.getElementById("whatsappContact");if(wa)wa.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
     const tg=document.getElementById("telegramContact");if(tg)tg.href=TELEGRAM_CONTACT;
     const groupWa=document.querySelector('a[href*="chat.whatsapp.com"]');if(groupWa&&data.whatsappGroup)groupWa.href=data.whatsappGroup;
     const groupTg=document.querySelector('a[href="https://t.me/sdrive123"]');if(groupTg&&data.telegramGroup)groupTg.href=data.telegramGroup;
-    renderSdriveReferral(data);
+    renderBatBotReferral(data);
     loadBookmakers();
     loadCoupons();
     const socialMap={"TikTok":data.tiktok,"Facebook":data.facebook,"Instagram":data.instagram};
@@ -1631,7 +1549,7 @@ document.addEventListener("DOMContentLoaded",function(){
 
   const whatsappContact=document.getElementById("whatsappContact");
   if(whatsappContact){
-    whatsappContact.href=createWhatsAppUrl("Bonjour S-Drive 👋\n\nJe souhaite contacter un agent.");
+    whatsappContact.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
   }
 
   setTimeout(function(){
