@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS users(
   password_hash TEXT NOT NULL,
   premium_until TEXT,
   premium_started_at TEXT,
+  ai_started_at TEXT,
+  ai_until TEXT,
+  ai_revoked_at TEXT,
   disabled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -80,10 +83,13 @@ CREATE TABLE IF NOT EXISTS coupons(
 // Migrations pour les bases déjà existantes
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_started_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_revoked_at TEXT").run(); } catch (_) {}
 
 const defaults = {
   whatsapp: "2250152171974",
-  telegram: "@BatBot12",
+  telegram: "@Sdrive12",
   whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
   telegramGroup: "https://t.me/sdrive123",
   tiktok: "https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99cD47Jhd00",
@@ -97,7 +103,7 @@ const defaults = {
   moovMoney: "0152171974",
   mtnMoney: "0554740711",
   sdriveLink: "",
-  sdriveInviteMessage: "Invite tes amis à rejoindre BatBot et profite de tes avantages.",
+  sdriveInviteMessage: "Invite tes amis à rejoindre S-Drive et profite de tes avantages.",
   adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
@@ -148,6 +154,7 @@ function cleanPhone(value) {
 function userView(user) {
   if (!user) return null;
   const active = !!(user.premium_until && new Date(user.premium_until) > new Date());
+  const aiActive = !!(user.ai_until && new Date(user.ai_until) > new Date()) && !user.ai_revoked_at;
   return {
     id: user.id,
     username: user.username,
@@ -155,6 +162,9 @@ function userView(user) {
     phone: user.phone,
     premium_until: user.premium_until,
     premium_started_at: user.premium_started_at || null,
+    ai_started_at: user.ai_started_at || null,
+    ai_until: user.ai_until || null,
+    ai_active: aiActive,
     disabled: Boolean(user.disabled),
     is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
@@ -196,7 +206,7 @@ app.use(session({
 }));
 
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, service: "BatBot", time: new Date().toISOString() });
+  res.json({ ok: true, service: "S-Drive", time: new Date().toISOString() });
 });
 
 app.post("/api/register", (req, res) => {
@@ -242,6 +252,13 @@ app.post("/api/logout", (req, res) => {
 app.get("/api/me", requireUser, (req, res) => {
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
   if (!user) return res.status(401).json({ error: "Session invalide." });
+  res.json({ user: userView(user) });
+});
+
+app.get("/api/session", (req, res) => {
+  if (!req.session.userId) return res.json({ user: null });
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  if (!user || user.disabled) return res.json({ user: null });
   res.json({ user: userView(user) });
 });
 
@@ -317,10 +334,10 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
   const phone = cleanPhone(settings.whatsapp);
   const label = type === "loto" ? "Loto" : "Football";
   const text =
-    `Bonjour BatBot 👋\n\n` +
+    `Bonjour S-Drive 👋\n\n` +
     `Je souhaite demander une analyse ${label}.\n\n` +
     `${content}\n\n` +
-    `Référence de ma demande : BatBot #${id}`;
+    `Référence de ma demande : S-Drive #${id}`;
 
   res.status(201).json({
     message: "Demande enregistrée.",
@@ -332,6 +349,88 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
       ? `https://t.me/${String(settings.telegram).replace(/^@/, "")}`
       : ""
   });
+});
+
+function isAiActive(user) {
+  return Boolean(user && user.ai_until && new Date(user.ai_until) > new Date() && !user.ai_revoked_at && !user.disabled);
+}
+
+async function callGemini(prompt, apiKey) {
+  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(apiKey);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      signal: controller.signal
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Gemini HTTP ${response.status}: ${JSON.stringify(data).slice(0,500)}`);
+    return data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("\n").trim() || "";
+  } finally { clearTimeout(timer); }
+}
+
+async function callMetaFallback(prompt) {
+  const apiKey = process.env.META_API_KEY;
+  const url = process.env.META_API_URL;
+  const model = process.env.META_MODEL || "llama-3.1-8b-instant";
+  if (!apiKey || !url) throw new Error("Meta fallback non configuré");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
+      signal: controller.signal
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Meta HTTP ${response.status}: ${JSON.stringify(data).slice(0,500)}`);
+    return data?.choices?.[0]?.message?.content?.trim() || "";
+  } finally { clearTimeout(timer); }
+}
+
+app.post("/api/ai/analyze", requireUser, async (req, res) => {
+  const homeTeam = String(req.body.home_team || req.body.team1 || "").trim();
+  const awayTeam = String(req.body.away_team || req.body.team2 || "").trim();
+  const context = String(req.body.context || "").trim().slice(0, 4000);
+  if (!homeTeam || !awayTeam || homeTeam.length > 100 || awayTeam.length > 100) {
+    return res.status(400).json({ error: "Indiquez deux équipes valides." });
+  }
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  if (!isAiActive(user)) return res.status(403).json({ error: "Votre accès IA est inactif ou expiré." });
+  const prompt = [
+    "Tu es BatBot IA, assistant d'analyse football prudent.",
+    `Match: ${homeTeam} contre ${awayTeam}.`,
+    `Contexte fourni: ${context || "Aucun"}.`,
+    "N'invente aucune statistique et ne prétends pas disposer de données en direct.",
+    "Distingue faits, hypothèses et informations manquantes.",
+    "Ne garantis jamais un résultat et rappelle que les paris comportent un risque.",
+    "Réponds en français clair avec résumé, facteurs à vérifier, scénarios possibles, limites et conclusion prudente."
+  ].join("\n");
+  const failures = [];
+  try {
+    let text = "";
+    if (process.env.GEMINI_API_KEY) {
+      try { text = await callGemini(prompt, process.env.GEMINI_API_KEY); }
+      catch (error) { failures.push(error.message); console.error("GEMINI_ERROR", error.message); }
+    } else failures.push("GEMINI_API_KEY absente");
+    if (!text && process.env.META_API_KEY && process.env.META_API_URL) {
+      try { text = await callMetaFallback(prompt); }
+      catch (error) { failures.push(error.message); console.error("META_FALLBACK_ERROR", error.message); }
+    }
+    if (!text) return res.status(502).json({ error: "BatBot IA est momentanément indisponible. Vérifiez les clés et le modèle configurés, puis réessayez." });
+    const content = `Analyse IA : ${homeTeam} vs ${awayTeam}\n\n${text}`;
+    const requestId = DB.prepare("INSERT INTO analysis_requests(user_id,type,content,status) VALUES(?,?,?,?)")
+      .run(req.session.userId, "football_ai", content, "completed").lastInsertRowid;
+    res.json({ request_id: Number(requestId), analysis: text });
+  } catch (error) {
+    console.error("AI_REQUEST_ERROR", error, failures);
+    res.status(502).json({ error: "BatBot IA est momentanément indisponible. Réessayez dans quelques secondes." });
+  }
 });
 
 app.post("/api/admin/login", (req, res) => {
@@ -394,12 +493,27 @@ app.post("/api/admin/subscription", requireAdmin, (req, res) => {
     ? new Date(startedAt.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
     : null;
 
-  const result = DB.prepare(
-    "UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?"
-  ).run(startedAt ? startedAt.toISOString() : null, until, id);
+  const activateAi = Boolean(req.body.activate_ai);
+  const result = activateAi
+    ? DB.prepare("UPDATE users SET premium_started_at=?, premium_until=?, ai_started_at=?, ai_until=?, ai_revoked_at=NULL WHERE id=?")
+      .run(startedAt ? startedAt.toISOString() : null, until, startedAt ? startedAt.toISOString() : null, until, id)
+    : DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?")
+      .run(startedAt ? startedAt.toISOString() : null, until, id);
 
   if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
   res.json({ message: active ? `Premium activé pour ${durationDays} jour(s).` : "Premium désactivé." });
+});
+
+app.post("/api/admin/ai-subscription", requireAdmin, (req, res) => {
+  const id = Number(req.body.user_id);
+  const active = Boolean(req.body.active);
+  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
+  const startedAt = active ? new Date() : null;
+  const until = active ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : null;
+  const result = DB.prepare("UPDATE users SET ai_started_at=?, ai_until=?, ai_revoked_at=? WHERE id=?")
+    .run(startedAt ? startedAt.toISOString() : null, until, active ? null : new Date().toISOString(), id);
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: active ? `IA activée pour ${durationDays} jour(s).` : "IA désactivée.", ai_until: until });
 });
 
 app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
@@ -720,93 +834,6 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   res.json({ message: "Configuration enregistrée.", settings });
 });
 
-
-app.post("/api/ai/analyze", requireUser, async (req, res) => {
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  const active = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
-  if (!active) return res.status(403).json({ error: "L’accès à BatBot IA nécessite un abonnement actif." });
-
-  const home = String(req.body.home_team || "").trim();
-  const away = String(req.body.away_team || "").trim();
-  const context = String(req.body.context || "").trim();
-  if (!home || !away) return res.status(400).json({ error: "Les deux équipes sont requises." });
-
-  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, de manière claire et structurée, sans garantie de résultat.\nMatch : ${home} vs ${away}\nContexte : ${context || "Non fourni"}\nPrésente : facteurs à vérifier si disponibles, probabilités estimées avec prudence, options de marché possibles (1X2, double chance, buts, BTTS, handicap), cotes indicatives explicitement présentées comme estimations, niveau de risque et une conclusion courte. N’invente pas de données en temps réel et signale les informations manquantes. Termine uniquement par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
-
-  const system = "Tu fournis une analyse informative et prudente. Ne présente jamais une sélection comme certaine.";
-  const timeoutMs = 18000;
-
-  async function withTimeout(url, options) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      return await fetch(url, { ...options, signal: controller.signal });
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async function askGemini() {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("GEMINI_API_KEY missing");
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-    const response = await withTimeout(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2 }
-        })
-      }
-    );
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Gemini ${response.status}: ${data?.error?.message || "unknown error"}`);
-    const analysis = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("\n").trim();
-    if (!analysis) throw new Error("Gemini returned no content");
-    return analysis;
-  }
-
-  async function askMetaFallback() {
-    // Secours Llama hébergé via Groq. L’interface client affiche toujours BatBot IA.
-    const key = process.env.GROQ_API_KEY || process.env.META_API_KEY;
-    if (!key) throw new Error("GROQ_API_KEY/META_API_KEY missing");
-    const model = process.env.META_MODEL || "llama-3.3-70b-versatile";
-    const response = await withTimeout("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        messages: [{ role: "system", content: system }, { role: "user", content: prompt }]
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Llama fallback ${response.status}: ${data?.error?.message || "unknown error"}`);
-    const analysis = data?.choices?.[0]?.message?.content?.trim();
-    if (!analysis) throw new Error("Llama fallback returned no content");
-    return analysis;
-  }
-
-  try {
-    let analysis;
-    try {
-      analysis = await askGemini();
-      console.log("BatBot IA provider: Gemini");
-    } catch (geminiError) {
-      console.error("Gemini error:", geminiError.message);
-      analysis = await askMetaFallback();
-      console.log("BatBot IA provider: Llama fallback");
-    }
-    return res.json({ analysis });
-  } catch (error) {
-    console.error("BatBot IA fallback error:", error.message);
-    return res.status(502).json({ error: "BatBot IA est temporairement indisponible. Vérifiez les clés Gemini et du service de secours." });
-  }
-});
-
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("*", (req, res) => {
@@ -814,5 +841,5 @@ app.get("*", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`BatBot démarré sur le port ${PORT}`);
+  console.log(`S-Drive démarré sur le port ${PORT}`);
 });
