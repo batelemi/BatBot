@@ -12,8 +12,8 @@ const PORT = process.env.PORT || 3000;
 const DB = new Database(path.join(__dirname, "sdrive.db"));
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "8mb" }));
-app.use(express.urlencoded({ extended: true, limit: "8mb" }));
+app.use(express.json({ limit: "12mb" }));
+app.use(express.urlencoded({ extended: true, limit: "12mb" }));
 
 DB.pragma("journal_mode = WAL");
 DB.pragma("foreign_keys = ON");
@@ -164,7 +164,7 @@ function userView(user) {
     premium_started_at: user.premium_started_at || null,
     ai_started_at: user.ai_started_at || null,
     ai_until: user.ai_until || null,
-    ai_active: aiActive,
+    ai_active: aiActive && !Boolean(user.disabled),
     disabled: Boolean(user.disabled),
     is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
@@ -221,8 +221,8 @@ app.post("/api/register", (req, res) => {
 
   try {
     const result = DB.prepare(
-      "INSERT INTO users(username,phone,password_hash) VALUES(?,?,?)"
-    ).run(username, "", bcrypt.hashSync(password, 12));
+      "INSERT INTO users(username,phone,password_hash,premium_until,premium_started_at,ai_started_at,ai_until,ai_revoked_at) VALUES(?,?,?,?,?,?,?,?)"
+    ).run(username, "", bcrypt.hashSync(password, 12), null, null, null, null, null);
 
     req.session.userId = Number(result.lastInsertRowid);
     const user = DB.prepare("SELECT * FROM users WHERE id=?").get(result.lastInsertRowid);
@@ -359,6 +359,8 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const homeTeam = String(req.body.home_team || req.body.team1 || "").trim();
   const awayTeam = String(req.body.away_team || req.body.team2 || "").trim();
   const context = String(req.body.context || "").trim().slice(0, 4000);
+  const imageData = typeof req.body.image_data === "string" ? req.body.image_data : "";
+  const imageMime = typeof req.body.image_mime === "string" && /^image\//.test(req.body.image_mime) ? req.body.image_mime : "image/jpeg";
 
   if (!homeTeam || !awayTeam || homeTeam.length > 100 || awayTeam.length > 100) {
     return res.status(400).json({
@@ -386,14 +388,14 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
     "Tu es S-Drive IA, un assistant d'analyse football.",
     `Match : ${homeTeam} contre ${awayTeam}.`,
     `Informations fournies : ${context || "Aucune"}.`,
-    "Réponds en français, de manière courte et claire.",
+    "Réponds en français, de manière très courte, professionnelle et directement exploitable.",
     "Donne uniquement :",
     "1. Équipe favorite",
     "2. Probabilités estimées : victoire domicile, nul, victoire extérieur",
     "3. Deux ou trois options de pari à considérer",
     "4. Une cote indicative pour chaque option",
     "5. Niveau de risque : faible, moyen ou élevé",
-    "Ne donne pas de longues explications.",
+    "Respecte exactement ce format, sans introduction ni conclusion :\nFAVORI : ...\nPROBABILITÉS : Domicile ...% | Nul ...% | Extérieur ...%\nOPTIONS : 1) ... — cote indicative ... — risque ... ; 2) ... — cote indicative ... — risque ...\nCHOIX PRUDENT : ...\nSi les données sont insuffisantes, indique-le clairement en une phrase.",
     "N'invente aucune statistique et ne présente pas les estimations comme des certitudes."
   ].join("\n");
 
@@ -403,7 +405,7 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-3.6-flash")}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-3.8-flash")}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {
           method: "POST",
           headers: {
@@ -413,9 +415,8 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
             contents: [
               {
                 parts: [
-                  {
-                    text: prompt
-                  }
+                  { text: prompt },
+                  ...(imageData ? [{ inline_data: { mime_type: imageMime, data: imageData.replace(/^data:[^;]+;base64,/, "") } }] : [])
                 ]
               }
             ],
@@ -539,8 +540,11 @@ app.post("/api/admin/subscription", requireAdmin, (req, res) => {
 
   const activateAi = Boolean(req.body.activate_ai);
   const result = activateAi
-    ? DB.prepare("UPDATE users SET premium_started_at=?, premium_until=?, ai_started_at=?, ai_until=?, ai_revoked_at=NULL WHERE id=?")
-      .run(startedAt ? startedAt.toISOString() : null, until, startedAt ? startedAt.toISOString() : null, until, id)
+    ? (active
+      ? DB.prepare("UPDATE users SET premium_started_at=?, premium_until=?, ai_started_at=?, ai_until=?, ai_revoked_at=NULL WHERE id=?")
+        .run(startedAt ? startedAt.toISOString() : null, until, startedAt ? startedAt.toISOString() : null, until, id)
+      : DB.prepare("UPDATE users SET premium_started_at=NULL, premium_until=NULL, ai_started_at=NULL, ai_until=NULL, ai_revoked_at=? WHERE id=?")
+        .run(new Date().toISOString(), id))
     : DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?")
       .run(startedAt ? startedAt.toISOString() : null, until, id);
 
