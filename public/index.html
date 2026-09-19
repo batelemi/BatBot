@@ -177,17 +177,6 @@ textarea{min-height:120px;resize:vertical}
   background:#123B60;border:1px solid var(--blue);font-size:12px;font-weight:800;
 }
 .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
-.badge-ai{background:linear-gradient(135deg,#176A52,#0E9F6E);border-color:#65F0B1;color:#F1FFF8;box-shadow:0 3px 12px rgba(34,197,94,.24)}
-.badge-soft{background:linear-gradient(135deg,#513A72,#7652A8);border-color:#D2B5FF;color:#FFF7FF}
-.profile-card{margin:14px 0;padding:18px;border-radius:20px;background:linear-gradient(145deg,rgba(19,61,91,.96),rgba(9,31,53,.98));border:1px solid rgba(76,211,255,.24);box-shadow:0 12px 28px rgba(0,0,0,.16)}
-.profile-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.profile-card-title{font-size:17px;font-weight:900}
-.profile-badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
-.profile-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.profile-meta-item{padding:11px;border-radius:13px;background:rgba(7,26,45,.58);border:1px solid rgba(49,93,130,.65)}
-.profile-meta-item small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
-.profile-meta-item strong{font-size:13px}
-@media(max-width:480px){.profile-meta{grid-template-columns:1fr}}
 .user-box{background:rgba(7,26,45,.65);border:1px solid var(--line);padding:14px;border-radius:14px;margin-bottom:15px;text-align:center}
 
 .match-card{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:10px 0}
@@ -233,6 +222,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
+.status-badges{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 18px}.status-badges .badge{min-width:145px;text-align:center}.status-badges .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
 </style>
 </head>
 
@@ -340,10 +330,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <h1>S-Drive<sup class="brand-mark">®</sup></h1>
     <p id="welcomeText" class="muted">Bienvenue</p>
-    <div id="profileBadges" class="profile-badges" aria-label="Badges du profil">
-      <span id="profileBadge" class="badge">🏅 Membre S-Drive</span>
-      <span id="profileAIBadge" class="badge badge-ai hidden">🤖 IA activée</span>
-    </div>
+    <div class="status-badges" role="status" aria-label="Statut du compte"><span id="premiumBadge" class="badge">🏅 Premium inactif</span><span id="aiBadge" class="badge">🤖 IA inactive</span></div>
   </div>
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
@@ -404,7 +391,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div class="card" id="aiAnalysisCard">
     <h2>🤖 Analyse IA personnalisée</h2>
-    <p class="muted">Entrez deux équipes pour préparer une demande d’analyse. L’accès nécessite un abonnement IA actif.</p>
+    <p class="muted">Renseignez les deux équipes et, si nécessaire, joignez une capture des cotes. L’IA fournit une synthèse courte : probabilités estimées, options et niveau de risque.</p>
     <div id="aiAccessNotice" class="notice">Vérification de votre accès IA…</div>
     <div class="grid-2">
       <label><span class="muted">Équipe 1</span><input id="aiTeam1" type="text" placeholder="Ex. Real Madrid"></label>
@@ -778,36 +765,16 @@ function showDashboard(user){
 
   const userBox=document.getElementById("userBox");
   if(userBox){
-    const premiumActive=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
-    const aiActive=Boolean(user.ai_active);
-    userBox.className="profile-card";
-    userBox.innerHTML=`
-      <div class="profile-card-head">
-        <div class="profile-card-title">👤 Mon profil</div>
-      </div>
-      <div><strong>${escapeHtml(username||"Utilisateur")}</strong></div>
-      ${user.phone?`<div class="muted" style="margin-top:4px">${escapeHtml(user.phone)}</div>`:""}
-      <div class="profile-meta">
-        <div class="profile-meta-item"><small>Statut Premium</small><strong>${premiumActive?'Actif':'Non actif'}</strong></div>
-        <div class="profile-meta-item"><small>Statut IA</small><strong>${aiActive?'Activée':'À activer'}</strong></div>
-      </div>`;
+    userBox.innerHTML="👤 Compte connecté"+
+      (username?"<br><strong>"+escapeHtml(username)+"</strong>":"")+
+      (user.phone?"<br><span class=\"muted\">"+escapeHtml(user.phone)+"</span>":"");
   }
 
-  const profileBadge=document.getElementById("profileBadge");
-  if(profileBadge){
-    profileBadge.textContent="🏅 "+badge;
-    if(user.is_subscribed||user.subscribed||user.subscription_active){
-      profileBadge.classList.add("badge-blue");
-    }else{
-      profileBadge.classList.remove("badge-blue");
-    }
-  }
-
-  const profileAIBadge=document.getElementById("profileAIBadge");
-  if(profileAIBadge){
-    profileAIBadge.classList.toggle("hidden",!Boolean(user.ai_active));
-    profileAIBadge.textContent="🤖 IA activée";
-  }
+  const premiumActive=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+  const premiumBadge=document.getElementById("premiumBadge");
+  const aiBadge=document.getElementById("aiBadge");
+  if(premiumBadge){premiumBadge.textContent=premiumActive?"🏅 Premium actif":"🏅 Premium inactif";premiumBadge.classList.toggle("badge-blue",premiumActive);}
+  if(aiBadge){const activeAI=Boolean(user.ai_active);aiBadge.textContent=activeAI?"🤖 IA active":"🤖 IA inactive";aiBadge.classList.toggle("badge-blue",activeAI);}
 
   const contact=document.getElementById("whatsappContact");
   if(contact){
@@ -1079,7 +1046,7 @@ function renderAdminUsers(users){
 
 async function setPremium(id,enabled){
   try{
-    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:enabled?(Number(prompt("Durée Premium en jours :", "7"))||7):7})});
+    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,activate_ai:true,duration_days:enabled?(Number(prompt("Durée du pack Premium + IA en jours :", "7"))||7):7})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
     alert(data.message||"Statut Premium mis à jour.");
