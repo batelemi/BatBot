@@ -1,29 +1,31 @@
-# S-Drive — correction IA et abonnements
+# S-Drive — Correction IA v6
 
-## Fichiers
-- `server.js` : serveur à placer à la racine du projet, au même niveau que `package.json`.
-- `public/index.html` : interface à placer dans le dossier `public`.
+## Fichiers à remplacer dans GitHub
+- `server.js` à la racine
+- `public/index.html` dans le dossier `public`
 
 ## Corrections incluses
-- Un nouvel utilisateur est créé avec Premium et IA désactivés.
-- Le pack administrateur Premium + IA active les deux accès pour la même durée.
-- Le retrait du pack Premium + IA désactive les deux accès.
-- Les badges Premium et IA sont affichés ensemble, de manière alignée.
-- Le prompt IA demande une réponse courte et structurée : favori, probabilités, options, cotes indicatives et niveau de risque.
-- Modèle Gemini par défaut : `gemini-3.8-flash`.
-- Le modèle peut être changé avec la variable `GEMINI_MODEL`.
+- À l'inscription, Premium et IA sont explicitement inactifs.
+- L'activation Premium par l'administrateur active ensemble Premium + IA.
+- La désactivation Premium désactive également le pack Premium + IA.
+- L'IA demande une réponse structurée et l'interface transforme le JSON en cartes professionnelles : probabilités, options, cotes et combiné.
+- Limite JSON augmentée pour les captures d'écran.
 
 ## Variables Render
-- `GEMINI_API_KEY` : clé Google Gemini.
-- `GEMINI_MODEL` : facultatif, par exemple `gemini-3.8-flash`.
-- Conserver les autres variables déjà présentes dans Render.
+- `GEMINI_API_KEY` : clé Gemini valide.
+- `LLAMA_API_KEY` : facultatif, utilisé en secours.
+- `SESSION_SECRET` : valeur longue et privée.
 
-Ne partagez jamais une clé API dans GitHub ou dans une conversation publique.
+## Validation
+1. Déployer les deux fichiers.
+2. Créer un nouveau compte de test : Premium = Non actif et IA = Non actif.
+3. Depuis l'administration, activer Premium + IA pour 7 jours.
+4. Tester une analyse IA et vérifier l'affichage en cartes, pas en JSON brut.
+5. Désactiver Premium et vérifier que les deux accès deviennent inactifs.
 
-
-## Cette version
-- Analyse structurée en JSON : probabilités, options, cotes indicatives et combinés.
-- Ajout facultatif d’un deuxième match dans l’interface.
-- Affichage professionnel des résultats IA.
-- Un modèle Gemini 2.5 configuré par erreur est automatiquement remplacé par `gemini-3.8-flash`.
-- Les nouveaux comptes sont créés avec Premium et IA désactivés.
+## Organisation de l'interface
+- Un espace unique « Accès rapide » regroupe les boutons Paiements, Agents et Analyse IA.
+- Un seul espace d'analyse est affiché à la fois afin d'éviter les répétitions.
+- Le bouton Paiements ouvre les dépôts et abonnements.
+- Le bouton Agents ouvre la demande d'analyse journalière.
+- Le bouton Analyse IA ouvre l'analyse IA Premium.
