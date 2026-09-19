@@ -784,14 +784,9 @@ function showDashboard(user){
     userBox.innerHTML=`
       <div class="profile-card-head">
         <div class="profile-card-title">👤 Mon profil</div>
-        <span class="badge badge-soft">✨ Membre S-Drive</span>
       </div>
       <div><strong>${escapeHtml(username||"Utilisateur")}</strong></div>
       ${user.phone?`<div class="muted" style="margin-top:4px">${escapeHtml(user.phone)}</div>`:""}
-      <div class="profile-badges" style="justify-content:flex-start">
-        <span class="badge ${premiumActive?'badge-blue':''}">${premiumActive?'🔵 Premium actif':'🏅 Compte standard'}</span>
-        <span class="badge ${aiActive?'badge-ai':''}">${aiActive?'🤖 IA activée':'🤖 IA inactive'}</span>
-      </div>
       <div class="profile-meta">
         <div class="profile-meta-item"><small>Statut Premium</small><strong>${premiumActive?'Actif':'Non actif'}</strong></div>
         <div class="profile-meta-item"><small>Statut IA</small><strong>${aiActive?'Activée':'À activer'}</strong></div>
