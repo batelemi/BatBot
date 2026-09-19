@@ -19,3 +19,11 @@
 - Conserver les autres variables déjà présentes dans Render.
 
 Ne partagez jamais une clé API dans GitHub ou dans une conversation publique.
+
+
+## Cette version
+- Analyse structurée en JSON : probabilités, options, cotes indicatives et combinés.
+- Ajout facultatif d’un deuxième match dans l’interface.
+- Affichage professionnel des résultats IA.
+- Un modèle Gemini 2.5 configuré par erreur est automatiquement remplacé par `gemini-3.8-flash`.
+- Les nouveaux comptes sont créés avec Premium et IA désactivés.
