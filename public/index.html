@@ -177,6 +177,17 @@ textarea{min-height:120px;resize:vertical}
   background:#123B60;border:1px solid var(--blue);font-size:12px;font-weight:800;
 }
 .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
+.badge-ai{background:linear-gradient(135deg,#176A52,#0E9F6E);border-color:#65F0B1;color:#F1FFF8;box-shadow:0 3px 12px rgba(34,197,94,.24)}
+.badge-soft{background:linear-gradient(135deg,#513A72,#7652A8);border-color:#D2B5FF;color:#FFF7FF}
+.profile-card{margin:14px 0;padding:18px;border-radius:20px;background:linear-gradient(145deg,rgba(19,61,91,.96),rgba(9,31,53,.98));border:1px solid rgba(76,211,255,.24);box-shadow:0 12px 28px rgba(0,0,0,.16)}
+.profile-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.profile-card-title{font-size:17px;font-weight:900}
+.profile-badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+.profile-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.profile-meta-item{padding:11px;border-radius:13px;background:rgba(7,26,45,.58);border:1px solid rgba(49,93,130,.65)}
+.profile-meta-item small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
+.profile-meta-item strong{font-size:13px}
+@media(max-width:480px){.profile-meta{grid-template-columns:1fr}}
 .user-box{background:rgba(7,26,45,.65);border:1px solid var(--line);padding:14px;border-radius:14px;margin-bottom:15px;text-align:center}
 
 .match-card{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:10px 0}
@@ -208,7 +219,6 @@ textarea{min-height:120px;resize:vertical}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
 footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
 
-#aiResult{font-family:inherit;font-size:14px;line-height:1.65;overflow-wrap:anywhere}.ai-result-grid{display:grid;gap:12px}.ai-result-card{background:#0b2947;border:1px solid #315d82;border-radius:14px;padding:14px}.ai-result-card h3{margin:0 0 8px;color:#6ee7a0;font-size:16px}.ai-result-card ul{margin:8px 0 0;padding-left:20px}.ai-result-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.ai-pill{display:inline-flex;padding:5px 9px;border-radius:999px;background:#123b60;border:1px solid #315d82;font-size:12px}.ai-combo{border-left:4px solid #6ee7a0}.ai-warning{color:#ffd58a;font-size:12px;margin-top:10px}
 @media(max-width:380px){
   .two-columns{gap:6px}
   .contact-button{font-size:12px}
@@ -223,7 +233,17 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
-.status-badges{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 18px}.status-badges .badge{min-width:145px;text-align:center}.status-badges .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
+
+.ai-result-shell{display:grid;gap:14px;margin-top:14px}.ai-result-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.ai-result-title{font-size:20px;font-weight:800}.ai-pill{padding:6px 10px;border-radius:999px;background:rgba(0,200,255,.14);color:#68e3ff;font-size:12px;font-weight:800}.ai-prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ai-prob{padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(0,0,0,.14);text-align:center}.ai-prob strong{display:block;font-size:22px;color:#fff}.ai-prob span{font-size:12px;color:#b8c8d8}.ai-option{padding:13px;border-radius:14px;background:rgba(0,0,0,.15);border:1px solid rgba(255,255,255,.1)}.ai-option-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.ai-option-title{font-weight:800}.ai-option-meta{font-size:13px;color:#c6d4e4;margin-top:6px}.ai-combo{padding:14px;border:1px solid rgba(77,220,160,.35);border-radius:14px;background:rgba(30,170,120,.08)}.ai-note{font-size:13px;color:#c6d4e4;line-height:1.5}.ai-fallback{white-space:pre-wrap;line-height:1.6}
+
+/* Organisation des espaces : un seul espace visible à la fois */
+.workspace-switcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0}
+.workspace-btn{border:1px solid rgba(0,191,255,.35);border-radius:18px;padding:16px 10px;background:linear-gradient(145deg,#102f52,#0b223d);color:#fff;cursor:pointer;font-weight:800;text-align:center;box-shadow:0 5px 0 rgba(0,0,0,.18);transition:transform .18s,border-color .18s}
+.workspace-btn span{display:block;font-size:25px;margin-bottom:7px}.workspace-btn small{display:block;color:var(--muted);font-weight:500;margin-top:5px}
+.workspace-btn.active{border-color:#16c7ff;box-shadow:0 0 0 2px rgba(22,199,255,.18),0 5px 0 rgba(0,0,0,.18);transform:translateY(-2px)}
+.workspace-panel.hidden-panel{display:none!important}
+.workspace-title{margin:8px 0 4px;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#73dfff;font-weight:800}
+@media(max-width:520px){.workspace-switcher{gap:8px}.workspace-btn{padding:13px 5px;font-size:12px}.workspace-btn span{font-size:22px}}
 </style>
 </head>
 
@@ -331,12 +351,22 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <h1>S-Drive<sup class="brand-mark">®</sup></h1>
     <p id="welcomeText" class="muted">Bienvenue</p>
-    <div class="status-badges" role="status" aria-label="Statut du compte"><span id="premiumBadge" class="badge">🏅 Premium inactif</span><span id="aiBadge" class="badge">🤖 IA inactive</span></div>
+    <div id="profileBadges" class="profile-badges" aria-label="Badges du profil">
+      <span id="profileBadge" class="badge">🏅 Membre S-Drive</span>
+      <span id="profileAIBadge" class="badge badge-ai hidden">🤖 IA activée</span>
+    </div>
   </div>
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
 
-  <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
+  <div class="workspace-title">Accès rapide</div>
+  <div class="workspace-switcher" role="tablist" aria-label="Choisir un espace">
+    <button class="workspace-btn active" id="workspacePaymentsBtn" type="button" onclick="switchWorkspace('payments')" role="tab" aria-selected="true"><span>💳</span>Paiements<small>Dépôt & abonnement</small></button>
+    <button class="workspace-btn" id="workspaceAgentBtn" type="button" onclick="switchWorkspace('agent')" role="tab" aria-selected="false"><span>👨🏾‍💼</span>Agents<small>Analyse journalière</small></button>
+    <button class="workspace-btn" id="workspaceAIBtn" type="button" onclick="switchWorkspace('ai')" role="tab" aria-selected="false"><span>🤖</span>Analyse IA<small>Espace Premium</small></button>
+  </div>
+
+  <section id="paymentsPanel" class="deposit-space workspace-panel" aria-label="Espace de dépôt et de paiement">
     <div class="section-kicker">Espace sécurisé</div>
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
@@ -390,30 +420,24 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   </section>
 
-  <div class="card" id="aiAnalysisCard">
-    <h2>🤖 Analyse IA personnalisée</h2>
-    <p class="muted">Renseignez les deux équipes et, si nécessaire, joignez une capture des cotes. L’IA fournit une synthèse courte : probabilités estimées, options et niveau de risque.</p>
+  <div class="card workspace-panel hidden-panel" id="aiAnalysisCard">
+    <h2>🤖 Analyse IA Premium</h2>
+    <p class="muted">Saisissez les deux équipes. L’IA présente les probabilités, les options de marché et des combinaisons lisibles. L’accès nécessite un abonnement IA actif.</p>
     <div id="aiAccessNotice" class="notice">Vérification de votre accès IA…</div>
     <div class="grid-2">
-      <label><span class="muted">Match 1 — Équipe 1</span><input id="aiTeam1" type="text" placeholder="Ex. Real Madrid"></label>
-      <label><span class="muted">Match 1 — Équipe 2</span><input id="aiTeam2" type="text" placeholder="Ex. FC Barcelone"></label>
+      <label><span class="muted">Équipe 1</span><input id="aiTeam1" type="text" placeholder="Ex. Real Madrid"></label>
+      <label><span class="muted">Équipe 2</span><input id="aiTeam2" type="text" placeholder="Ex. FC Barcelone"></label>
     </div>
-    <details class="compact-conditions"><summary>➕ Ajouter un deuxième match (facultatif)</summary>
-      <div class="grid-2">
-        <label><span class="muted">Match 2 — Équipe 1</span><input id="aiTeam3" type="text" placeholder="Ex. Arsenal"></label>
-        <label><span class="muted">Match 2 — Équipe 2</span><input id="aiTeam4" type="text" placeholder="Ex. Chelsea"></label>
-      </div>
-    </details>
     <label><span class="muted">Contexte facultatif</span><textarea id="aiContext" placeholder="Compétition, date, informations utiles…"></textarea></label>
     <label class="upload" for="aiCapture"><strong>📷 Ajouter une capture (facultatif)</strong><small>Joignez une image du match ou des cotes.</small><input id="aiCapture" type="file" accept="image/*" onchange="showAIFileName()"><div id="aiFileName" class="file-name"></div></label>
     <button class="btn primary" type="button" onclick="submitAIRequest()">🔎 Préparer mon analyse IA</button>
-    <div id="aiStatus" class="status"></div><pre id="aiResult" class="notice" style="white-space:pre-wrap"></pre>
+    <div id="aiStatus" class="status"></div><div id="aiResult" class="notice"></div>
   </div>
 
-  <div class="card">
-    <h2><img src="logo.png" alt="S-Drive" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
+  <div id="agentPanel" class="card workspace-panel hidden-panel">
+    <h2>👨🏾‍💼 Analyse avec un agent</h2>
     <p class="muted">
-      Après votre paiement de <strong>500 F</strong>, envoyez les différents noms des matchs que vous souhaitez faire analyser.
+      Après votre paiement de <strong>500 F</strong>, envoyez votre demande à un agent. Choisissez WhatsApp ou Telegram pour transmettre les matchs.
     </p>
 
     <div class="range">
@@ -424,7 +448,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
 
     <label>
-      <span class="muted">Écrire les matchs à analyser</span>
+      <span class="muted">Décrire les matchs à analyser</span>
       <textarea id="matches" placeholder="Exemple :
 Real Madrid vs FC Barcelone
 PSG vs Marseille"></textarea>
@@ -437,8 +461,8 @@ PSG vs Marseille"></textarea>
       <div id="fileName" class="file-name"></div>
     </label>
 
-    <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
-    <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
+    <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer à un agent</button>
+    <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer à un agent</button>
     <div id="analysisStatus" class="status"></div>
   </div>
 
@@ -720,49 +744,71 @@ function showAuth(){
 }
 
 
+function renderAIResult(raw){
+  const result=document.getElementById("aiResult");
+  if(!result)return;
+  let data=null;
+  try{
+    const cleaned=String(raw||"").replace(/^```json\s*/i,"").replace(/^```\s*/i,"").replace(/\s*```$/i,"").trim();
+    data=JSON.parse(cleaned);
+  }catch(_){
+    result.innerHTML='<div class="ai-fallback">'+escapeHtml(String(raw||"Aucun résultat."))+'</div>';
+    return;
+  }
+  const pct=(v)=>Number.isFinite(Number(v))?Math.max(0,Math.min(100,Number(v)))+"%":"—";
+  const esc=(v)=>escapeHtml(v==null?"—":String(v));
+  const options=Array.isArray(data.options)?data.options:[];
+  const combo=data.combo&&typeof data.combo==='object'?data.combo:null;
+  const probs=data.probabilities||{};
+  result.innerHTML=`<div class="ai-result-shell">
+    <div class="ai-result-head"><div class="ai-result-title">${esc(data.match||"Analyse du match")}</div><span class="ai-pill">Analyse IA</span></div>
+    <div class="notice"><strong>Équipe favorite :</strong> ${esc(data.favorite||"Non déterminée")}</div>
+    <div class="ai-prob-grid">
+      <div class="ai-prob"><strong>${pct(probs.home)}</strong><span>Domicile</span></div>
+      <div class="ai-prob"><strong>${pct(probs.draw)}</strong><span>Match nul</span></div>
+      <div class="ai-prob"><strong>${pct(probs.away)}</strong><span>Extérieur</span></div>
+    </div>
+    <div><h3 style="margin:4px 0 10px">Options à considérer</h3>${options.map((o,i)=>`<div class="ai-option"><div class="ai-option-top"><span class="ai-option-title">${i+1}. ${esc(o.market||"Marché")}</span><span class="ai-pill">Cote ${esc(o.odds||"—")}</span></div><div style="margin-top:6px">${esc(o.selection||"Sélection non précisée")}</div><div class="ai-option-meta">Niveau de risque : <strong>${esc(o.risk||"Non précisé")}</strong></div></div>`).join("")||'<div class="ai-option">Aucune option structurée disponible.</div>'}</div>
+    ${combo?`<div class="ai-combo"><h3 style="margin:0 0 8px">🎯 Combinaison proposée</h3><strong>${esc(combo.name||"Combiné")}</strong><div class="ai-option-meta">${Array.isArray(combo.selections)?combo.selections.map(esc).join(" • "):"Sélections non précisées"}</div><div style="margin-top:8px"><strong>Cote totale indicative : ${esc(combo.total_odds||"—")}</strong> · Risque : ${esc(combo.risk||"Non précisé")}</div></div>`:""}
+    ${data.note?`<div class="ai-note">ℹ️ ${esc(data.note)}</div>`:""}
+  </div>`;
+}
+
+function switchWorkspace(name){
+  const panels={payments:document.getElementById('paymentsPanel'),agent:document.getElementById('agentPanel'),ai:document.getElementById('aiAnalysisCard')};
+  const buttons={payments:document.getElementById('workspacePaymentsBtn'),agent:document.getElementById('workspaceAgentBtn'),ai:document.getElementById('workspaceAIBtn')};
+  Object.keys(panels).forEach(key=>{
+    if(panels[key])panels[key].classList.toggle('hidden-panel',key!==name);
+    if(buttons[key]){
+      buttons[key].classList.toggle('active',key===name);
+      buttons[key].setAttribute('aria-selected',key===name?'true':'false');
+    }
+  });
+  const target=panels[name];
+  if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 async function submitAIRequest(){
   const team1=document.getElementById("aiTeam1").value.trim();
   const team2=document.getElementById("aiTeam2").value.trim();
-  const team3=(document.getElementById("aiTeam3")?.value||"").trim();
-  const team4=(document.getElementById("aiTeam4")?.value||"").trim();
   const context=document.getElementById("aiContext").value.trim();
   const capture=document.getElementById("aiCapture");
-  if(!team1||!team2)return showStatus("aiStatus","Veuillez renseigner les deux équipes du premier match.","error");
-  if((team3&&!team4)||(!team3&&team4))return showStatus("aiStatus","Renseignez les deux équipes du deuxième match ou laissez les deux cases vides.","error");
-  showStatus("aiStatus","S-Drive IA analyse les matchs et prépare les options. Veuillez patienter…","");
-  const result=document.getElementById("aiResult"); if(result)result.innerHTML="";
+  if(!team1||!team2)return showStatus("aiStatus","Veuillez renseigner les deux équipes.","error");
+  showStatus("aiStatus","S-Drive IA est en cours d’analyse. Veuillez patienter quelques secondes.","");
+  const result=document.getElementById("aiResult"); if(result)result.textContent="";
   try{
     let image_data="", image_mime="image/jpeg";
     if(capture&&capture.files&&capture.files[0]){
       const file=capture.files[0];
-      if(file.size>4*1024*1024)throw new Error("La capture ne doit pas dépasser 4 Mo.");
+      if(file.size>5*1024*1024)throw new Error("La capture ne doit pas dépasser 5 Mo.");
       image_mime=file.type||"image/jpeg";
       image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
     }
-    const extraMatch=team3&&team4?`Deuxième match : ${team3} contre ${team4}.\n`:"";
-    const fullContext=extraMatch+context;
-    const response=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:team1,away_team:team2,context:fullContext,image_data,image_mime})});
+    const response=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:team1,away_team:team2,context,image_data,image_mime})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Analyse indisponible.");
-    showStatus("aiStatus","Analyse terminée.","success");
-    if(result){ if(data.structured)renderStructuredAI(data.structured,result); else result.textContent=data.analysis||"Aucun résultat exploitable."; }
-  }catch(error){showStatus("aiStatus",error.message||"S-Drive IA est momentanément indisponible. Veuillez réessayer.","error");}
-}
-
-function safeText(value){return escapeHtml(String(value??""));}
-function renderStructuredAI(data,target){
-  const matches=Array.isArray(data.matches)?data.matches:[];
-  const combos=Array.isArray(data.combos)?data.combos:[];
-  let html='<div class="ai-result-grid">';
-  matches.forEach((m,i)=>{
-    const p=m.probabilities||{}; const opts=Array.isArray(m.options)?m.options:[];
-    html+=`<div class="ai-result-card"><h3>⚽ Match ${i+1} — ${safeText(m.match||"Match")}</h3><div><strong>Favori :</strong> ${safeText(m.favorite||"Non déterminé")}</div><div class="ai-result-meta"><span class="ai-pill">🏠 ${safeText(p.home??"—")}%</span><span class="ai-pill">🤝 ${safeText(p.draw??"—")}%</span><span class="ai-pill">✈️ ${safeText(p.away??"—")}%</span></div><ul>`;
-    opts.forEach(o=>{html+=`<li><strong>${safeText(o.market||"Option")} :</strong> ${safeText(o.selection||"—")} — cote ${safeText(o.odds||"—")} — risque ${safeText(o.risk||"—")}</li>`;});
-    html+='</ul></div>';
-  });
-  combos.forEach(c=>{html+=`<div class="ai-result-card ai-combo"><h3>🎯 ${safeText(c.name||"Combiné")}</h3><div>${(Array.isArray(c.selections)?c.selections:[]).map(x=>`<div>• ${safeText(x)}</div>`).join("")||"Aucune sélection proposée."}</div><div class="ai-result-meta"><span class="ai-pill">Cote totale indicative : ${safeText(c.total_odds||"—")}</span><span class="ai-pill">Risque : ${safeText(c.risk||"—")}</span></div></div>`;});
-  if(data.note)html+=`<div class="ai-warning">ℹ️ ${safeText(data.note)}</div>`;
-  html+='</div>'; target.innerHTML=html;
+    showStatus("aiStatus","Analyse terminée.","success"); if(result)renderAIResult(data.analysis||"Aucun résultat.");
+  }catch(error){showStatus("aiStatus",error.message||"S-Drive IA est momentanément très sollicitée. Veuillez réessayer dans quelques secondes.","error");}
 }
 
 function showAIFileName(){
@@ -794,16 +840,36 @@ function showDashboard(user){
 
   const userBox=document.getElementById("userBox");
   if(userBox){
-    userBox.innerHTML="👤 Compte connecté"+
-      (username?"<br><strong>"+escapeHtml(username)+"</strong>":"")+
-      (user.phone?"<br><span class=\"muted\">"+escapeHtml(user.phone)+"</span>":"");
+    const premiumActive=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+    const aiActive=Boolean(user.ai_active);
+    userBox.className="profile-card";
+    userBox.innerHTML=`
+      <div class="profile-card-head">
+        <div class="profile-card-title">👤 Mon profil</div>
+      </div>
+      <div><strong>${escapeHtml(username||"Utilisateur")}</strong></div>
+      ${user.phone?`<div class="muted" style="margin-top:4px">${escapeHtml(user.phone)}</div>`:""}
+      <div class="profile-meta">
+        <div class="profile-meta-item"><small>Statut Premium</small><strong>${premiumActive?'Actif':'Non actif'}</strong></div>
+        <div class="profile-meta-item"><small>Statut IA</small><strong>${aiActive?'Actif':'Non actif'}</strong></div>
+      </div>`;
   }
 
-  const premiumActive=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
-  const premiumBadge=document.getElementById("premiumBadge");
-  const aiBadge=document.getElementById("aiBadge");
-  if(premiumBadge){premiumBadge.textContent=premiumActive?"🏅 Premium actif":"🏅 Premium inactif";premiumBadge.classList.toggle("badge-blue",premiumActive);}
-  if(aiBadge){const activeAI=Boolean(user.ai_active);aiBadge.textContent=activeAI?"🤖 IA active":"🤖 IA inactive";aiBadge.classList.toggle("badge-blue",activeAI);}
+  const profileBadge=document.getElementById("profileBadge");
+  if(profileBadge){
+    profileBadge.textContent="🏅 "+badge;
+    if(user.is_subscribed||user.subscribed||user.subscription_active){
+      profileBadge.classList.add("badge-blue");
+    }else{
+      profileBadge.classList.remove("badge-blue");
+    }
+  }
+
+  const profileAIBadge=document.getElementById("profileAIBadge");
+  if(profileAIBadge){
+    profileAIBadge.classList.toggle("hidden",!Boolean(user.ai_active));
+    profileAIBadge.textContent="🤖 IA activée";
+  }
 
   const contact=document.getElementById("whatsappContact");
   if(contact){
@@ -1075,7 +1141,7 @@ function renderAdminUsers(users){
 
 async function setPremium(id,enabled){
   try{
-    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,activate_ai:true,duration_days:enabled?(Number(prompt("Durée du pack Premium + IA en jours :", "7"))||7):7})});
+    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,activate_ai:enabled,duration_days:enabled?(Number(prompt("Durée Premium + IA en jours :", "7"))||7):7})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
     alert(data.message||"Statut Premium mis à jour.");
