@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS users(
   premium_until TEXT,
   premium_started_at TEXT,
   disabled INTEGER NOT NULL DEFAULT 0,
+  ai_started_at TEXT,
+  ai_until TEXT,
+  ai_revoked_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS daily_matches(
@@ -80,6 +83,9 @@ CREATE TABLE IF NOT EXISTS coupons(
 // Migrations pour les bases déjà existantes
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_started_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_revoked_at TEXT").run(); } catch (_) {}
 
 const defaults = {
   whatsapp: "2250152171974",
@@ -159,6 +165,10 @@ function userView(user) {
     is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
     subscription_active: active,
+    ai_started_at: user.ai_started_at || null,
+    ai_until: user.ai_until || null,
+    ai_revoked_at: user.ai_revoked_at || null,
+    ai_active: !!(user.ai_until && new Date(user.ai_until) > new Date() && !user.ai_revoked_at && !Boolean(user.disabled)),
     created_at: user.created_at
   };
 }
@@ -395,11 +405,30 @@ app.post("/api/admin/subscription", requireAdmin, (req, res) => {
     : null;
 
   const result = DB.prepare(
-    "UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?"
-  ).run(startedAt ? startedAt.toISOString() : null, until, id);
+    "UPDATE users SET premium_started_at=?, premium_until=?, ai_started_at=?, ai_until=?, ai_revoked_at=? WHERE id=?"
+  ).run(
+    startedAt ? startedAt.toISOString() : null,
+    until,
+    startedAt ? startedAt.toISOString() : null,
+    until,
+    active ? null : new Date().toISOString(),
+    id
+  );
 
   if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
   res.json({ message: active ? `Premium activé pour ${durationDays} jour(s).` : "Premium désactivé." });
+});
+
+app.post("/api/admin/ai-subscription", requireAdmin, (req, res) => {
+  const id = Number(req.body.user_id);
+  const active = Boolean(req.body.active);
+  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
+  const startedAt = active ? new Date() : null;
+  const until = active ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : null;
+  const result = DB.prepare("UPDATE users SET ai_started_at=?, ai_until=?, ai_revoked_at=? WHERE id=?")
+    .run(startedAt ? startedAt.toISOString() : null, until, active ? null : new Date().toISOString(), id);
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: active ? `IA activée pour ${durationDays} jour(s).` : "IA désactivée.", ai_until: until });
 });
 
 app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
@@ -723,8 +752,8 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
 
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  const active = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
-  if (!active) return res.status(403).json({ error: "L’accès à BatBot IA nécessite un abonnement actif." });
+  const active = !!(user && user.ai_until && new Date(user.ai_until) > new Date() && !user.ai_revoked_at && !user.disabled);
+  if (!active) return res.status(403).json({ error: "L’accès à BatBot IA nécessite une activation IA valide." });
 
   const home = String(req.body.home_team || "").trim();
   const away = String(req.body.away_team || "").trim();
