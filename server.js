@@ -355,128 +355,126 @@ function isAiActive(user) {
   return Boolean(user && user.ai_until && new Date(user.ai_until) > new Date() && !user.ai_revoked_at && !user.disabled);
 }
 
-async function callGeminiAI({ apiKey, prompt, imageData, imageMime }) {
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(apiKey), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [
-      { text: prompt },
-      ...(imageData ? [{ inline_data: { mime_type: imageMime, data: imageData.replace(/^data:[^;]+;base64,/, "") } }] : [])
-    ] }] })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error("Primary AI provider rejected the request");
-    error.provider = "primary";
-    error.status = response.status;
-    error.details = data;
-    throw error;
-  }
-  const text = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("\\n").trim();
-  if (!text) throw Object.assign(new Error("Primary AI returned no usable result"), { provider: "primary" });
-  return text;
-}
-
-async function callMetaAI({ apiKey, model, prompt, imageData, imageMime }) {
-  const userContent = imageData
-    ? [
-        { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: imageData } }
-      ]
-    : prompt;
-  const response = await fetch(process.env.LLAMA_API_URL || "https://api.llama.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + apiKey
-    },
-    body: JSON.stringify({
-      model: model || "Llama-4-Maverick-17B-128E-Instruct-FP8",
-      messages: [
-        { role: "system", content: "Tu es un assistant d'analyse football prudent et professionnel." },
-        { role: "user", content: userContent }
-      ],
-      max_completion_tokens: 900,
-      temperature: 0.2,
-      top_p: 0.9
-    })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error("Secondary AI provider rejected the request");
-    error.provider = "secondary";
-    error.status = response.status;
-    error.details = data;
-    throw error;
-  }
-  const text = data?.completion_message?.content?.text
-    || data?.choices?.[0]?.message?.content
-    || data?.choices?.[0]?.text;
-  if (!String(text || "").trim()) throw Object.assign(new Error("Secondary AI returned no usable result"), { provider: "secondary" });
-  return String(text).trim();
-}
-
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const homeTeam = String(req.body.home_team || req.body.team1 || "").trim();
   const awayTeam = String(req.body.away_team || req.body.team2 || "").trim();
   const context = String(req.body.context || "").trim().slice(0, 4000);
-  const imageData = typeof req.body.image_data === "string" ? req.body.image_data : "";
-  const imageMime = typeof req.body.image_mime === "string" ? req.body.image_mime : "image/jpeg";
+
   if (!homeTeam || !awayTeam || homeTeam.length > 100 || awayTeam.length > 100) {
-    return res.status(400).json({ error: "Indiquez deux équipes valides." });
-  }
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  if (!isAiActive(user)) return res.status(403).json({ error: "Votre accès IA est inactif ou expiré." });
-
-  const prompt = [
-    "Tu es un assistant d'analyse football prudent.",
-    `Match: ${homeTeam} contre ${awayTeam}.`,
-    `Contexte fourni: ${context || "Aucun"}.`,
-    "N'invente aucune statistique et ne prétends pas disposer de données en direct.",
-    "Distingue faits, hypothèses et informations manquantes.",
-    "Ne garantis jamais un résultat et rappelle que les paris comportent un risque.",
-    "Réponds en français de façon professionnelle et très concise.",
-    "Présente uniquement : équipe favorite, probabilités estimées, 2 ou 3 options à considérer, cote indicative et niveau de risque.",
-    "N’invente aucune donnée et ne présente pas une estimation comme une certitude."
-  ].join("\\n");
-
-  let text = "";
-  let primaryError = null;
-  try {
-    if (process.env.GEMINI_API_KEY) {
-      text = await callGeminiAI({ apiKey: process.env.GEMINI_API_KEY, prompt, imageData, imageMime });
-    } else {
-      primaryError = new Error("Primary AI key is not configured");
-    }
-  } catch (error) {
-    primaryError = error;
-    console.error("AI_PRIMARY_ERROR", error.status || "", error.details || error.message);
-  }
-
-  if (!text && process.env.LLAMA_API_KEY) {
-    try {
-      text = await callMetaAI({
-        apiKey: process.env.LLAMA_API_KEY,
-        model: process.env.LLAMA_MODEL,
-        prompt,
-        imageData,
-        imageMime
-      });
-    } catch (error) {
-      console.error("AI_SECONDARY_ERROR", error.status || "", error.details || error.message);
-    }
-  }
-
-  if (!text) {
-    return res.status(502).json({
-      error: "S-Drive IA est momentanément très sollicitée. Veuillez réessayer dans quelques secondes."
+    return res.status(400).json({
+      error: "Indiquez deux équipes valides."
     });
   }
 
-  const content = `Analyse IA : ${homeTeam} vs ${awayTeam}\n\n${text}`;
-  const requestId = DB.prepare("INSERT INTO analysis_requests(user_id,type,content,status) VALUES(?,?,?,?)")
-    .run(req.session.userId, "football_ai", content, "completed").lastInsertRowid;
-  res.json({ request_id: Number(requestId), analysis: text });
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+
+  if (!isAiActive(user)) {
+    return res.status(403).json({
+      error: "Votre accès IA est inactif ou expiré."
+    });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return res.status(503).json({
+      error: "Le moteur IA n'est pas configuré par l'administrateur."
+    });
+  }
+
+  const prompt = [
+    "Tu es S-Drive IA, un assistant d'analyse football.",
+    `Match : ${homeTeam} contre ${awayTeam}.`,
+    `Informations fournies : ${context || "Aucune"}.`,
+    "Réponds en français, de manière courte et claire.",
+    "Donne uniquement :",
+    "1. Équipe favorite",
+    "2. Probabilités estimées : victoire domicile, nul, victoire extérieur",
+    "3. Deux ou trois options de pari à considérer",
+    "4. Une cote indicative pour chaque option",
+    "5. Niveau de risque : faible, moyen ou élevé",
+    "Ne donne pas de longues explications.",
+    "N'invente aucune statistique et ne présente pas les estimations comme des certitudes."
+  ].join("\n");
+
+  try {
+    let response;
+    let data;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-3.6-flash")}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              maxOutputTokens: 500,
+              temperature: 0.4
+            }
+          })
+        }
+      );
+
+      data = await response.json();
+
+      if (response.ok || response.status !== 503 || attempt === 3) {
+        break;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+    }
+
+    if (!response.ok) {
+      console.error("GEMINI_ERROR", response.status, data);
+      return res.status(502).json({
+        error: "S-Drive IA est temporairement indisponible. Réessayez dans quelques secondes."
+      });
+    }
+
+    const text = data?.candidates?.[0]?.content?.parts
+      ?.map(part => part.text || "")
+      .join("\n")
+      .trim();
+
+    if (!text) {
+      return res.status(502).json({
+        error: "L'IA n'a pas retourné de résultat exploitable."
+      });
+    }
+
+    const content = `Analyse IA : ${homeTeam} vs ${awayTeam}\n\n${text}`;
+
+    const requestId = DB.prepare(
+      "INSERT INTO analysis_requests(user_id,type,content,status) VALUES(?,?,?,?)"
+    ).run(
+      req.session.userId,
+      "football_ai",
+      content,
+      "completed"
+    ).lastInsertRowid;
+
+    res.json({
+      request_id: Number(requestId),
+      analysis: text
+    });
+  } catch (error) {
+    console.error("GEMINI_REQUEST_ERROR", error);
+    res.status(502).json({
+      error: "Impossible de joindre le service IA pour le moment."
+    });
+  }
 });
 
 app.post("/api/admin/login", (req, res) => {
