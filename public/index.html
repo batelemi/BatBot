@@ -233,6 +233,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
+
+.client-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}.client-tool-btn{min-height:78px;border:1px solid rgba(0,213,255,.4);border-radius:17px;background:linear-gradient(145deg,#123b5b,#0b223a);color:#fff;font-weight:900;font-size:14px;padding:14px;box-shadow:0 6px 16px rgba(0,0,0,.18)}.client-modal{position:fixed;inset:0;background:rgba(2,10,20,.9);z-index:120;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto}.client-modal-inner{width:min(720px,100%);margin-top:18px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.5)}.client-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.client-modal-body>.card,.client-modal-body>.deposit-space,.client-modal-body>.partners-space{margin:0 0 10px}.client-modal-close{width:auto;margin:0;padding:9px 13px}@media(max-width:380px){.client-tools{gap:8px}.client-tool-btn{font-size:12px;padding:10px}}
 </style>
 </head>
 
@@ -723,6 +725,35 @@ function showAuth(){
   document.getElementById("admin").classList.add("hidden");
 }
 
+function organizeClientDashboard(){
+  const dashboard=document.getElementById("dashboard");
+  if(!dashboard || dashboard.dataset.organized==="1") return;
+  dashboard.dataset.organized="1";
+  const keep=new Set(["userBox","profileBadge"]);
+  const tools=document.createElement("div");
+  tools.className="client-tools";
+  tools.setAttribute("aria-label","Menu client BatBot");
+  const candidates=Array.from(dashboard.children).filter(el=>{
+    if(el.classList.contains("center")||el.id==="userBox"||el.classList.contains("profile-status-grid")) return false;
+    return el.classList.contains("card")||el.classList.contains("deposit-space")||el.classList.contains("partners-space");
+  });
+  candidates.forEach((content,index)=>{
+    const title=content.querySelector("h2")?.textContent?.trim() ||
+      (content.classList.contains("deposit-space")?"💳 Dépôts et paiements":"🧩 Options BatBot");
+    const btn=document.createElement("button");
+    btn.type="button"; btn.className="client-tool-btn"; btn.textContent=title.replace(/\s+/g," ");
+    const modal=document.createElement("div"); modal.className="client-modal hidden";
+    modal.innerHTML=`<div class="client-modal-inner"><div class="client-modal-head"><h2>${escapeHtml(title)}</h2><button type="button" class="btn secondary client-modal-close">✕ Fermer</button></div><div class="client-modal-body"></div></div>`;
+    modal.querySelector(".client-modal-body").appendChild(content);
+    modal.querySelector(".client-modal-close").addEventListener("click",()=>modal.classList.add("hidden"));
+    modal.addEventListener("click",e=>{if(e.target===modal)modal.classList.add("hidden")});
+    btn.addEventListener("click",()=>modal.classList.remove("hidden"));
+    tools.appendChild(btn); document.body.appendChild(modal);
+  });
+  const statusGrid=dashboard.querySelector(".profile-status-grid");
+  if(statusGrid)statusGrid.insertAdjacentElement("afterend",tools);
+}
+
 function showDashboard(user){
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.remove("hidden");
@@ -730,6 +761,7 @@ function showDashboard(user){
 
   user=user||{};
   updateProfileStatuses(user);
+  organizeClientDashboard();
   const username=user.username||user.name||"";
   const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre BatBot");
 
@@ -1008,10 +1040,14 @@ function renderAdminUsers(users){
         <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre BatBot'}</span>
       </div>
       <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
-      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
+      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
+      <div class="admin-small">🤖 IA : ${user.ai_active?'✅ Active':'❌ Inactive'}${user.ai_until?' — jusqu'au : '+escapeHtml(formatDateTime(user.ai_until)):''}</div>
+      ${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
       <div class="admin-actions">
-        <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium</button>
+        <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium + IA</button>
         <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
+        <button class="btn green" type="button" onclick="setAISubscription(${Number(user.id)},true)">🤖 Activer IA</button>
+        <button class="btn gold" type="button" onclick="setAISubscription(${Number(user.id)},false)">🚫 Désactiver IA</button>
         <button class="btn secondary" type="button" onclick="toggleUserDisabled(${Number(user.id)},${user.disabled?false:true})">${user.disabled?"▶️ Réactiver":"⛔ Désactiver"}</button><button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
       </div>
     </div>`;
@@ -1024,6 +1060,17 @@ async function setPremium(id,enabled){
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
     alert(data.message||"Statut Premium mis à jour.");
+    await loadAdmin();
+  }catch(e){alert(e.message);}
+}
+
+async function setAISubscription(id,enabled){
+  try{
+    const duration=enabled?(Number(prompt("Durée de l’accès IA en jours :","7"))||7):7;
+    const response=await fetch("/api/admin/ai-subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Action IA impossible.");
+    alert(data.message||"Accès IA mis à jour.");
     await loadAdmin();
   }catch(e){alert(e.message);}
 }
@@ -1090,7 +1137,7 @@ function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
   const p=document.getElementById("premiumStatusText"); const a=document.getElementById("aiStatusText");
   if(p)p.textContent=premium?"Actif":"Non actif";
-  if(a)a.textContent=premium?"Active":"Non active";
+  if(a)a.textContent=(user&&user.ai_active)?"Active":"Non active";
 }
 async function submitBatBotAI(){
   const home=document.getElementById("aiHomeTeam").value.trim();const away=document.getElementById("aiAwayTeam").value.trim();const context=document.getElementById("aiContext").value.trim();
@@ -1101,7 +1148,7 @@ async function submitBatBotAI(){
     const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,context})});
     const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Analyse indisponible.");
     const box=document.getElementById("smartDriveAIResult");box.classList.remove("hidden");box.textContent=d.analysis||"Aucun résultat disponible.";
-  }catch(e){showStatus("smartDriveAIStatus","Plusieurs demandes sont peut-être en cours de traitement. Veuillez réessayer dans quelques secondes.","error");}
+  }catch(e){showStatus("smartDriveAIStatus",e.message||"Analyse indisponible. Veuillez réessayer.","error");}
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
