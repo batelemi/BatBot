@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS users(
   password_hash TEXT NOT NULL,
   premium_until TEXT,
   premium_started_at TEXT,
-  ai_enabled INTEGER NOT NULL DEFAULT 0,
   disabled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -81,7 +80,6 @@ CREATE TABLE IF NOT EXISTS coupons(
 // Migrations pour les bases déjà existantes
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN ai_enabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
 
 const defaults = {
   whatsapp: "2250152171974",
@@ -158,7 +156,6 @@ function userView(user) {
     premium_until: user.premium_until,
     premium_started_at: user.premium_started_at || null,
     disabled: Boolean(user.disabled),
-    ai_enabled: Boolean(user.ai_enabled),
     is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
     subscription_active: active,
@@ -726,49 +723,61 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
 
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  const premiumActive = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
-  const aiActive = Boolean(user && user.ai_enabled) && premiumActive && !Boolean(user.disabled);
-  if (!aiActive) return res.status(403).json({ error: "L’accès à BatBot IA n’est pas activé sur votre compte. Contactez l’administrateur." });
+  const active = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
+  if (!active) return res.status(403).json({ error: "L’accès à BatBot IA nécessite un abonnement actif." });
+
   const home = String(req.body.home_team || "").trim();
   const away = String(req.body.away_team || "").trim();
   const context = String(req.body.context || "").trim();
   if (!home || !away) return res.status(400).json({ error: "Les deux équipes sont requises." });
-  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, clairement et prudemment, sans garantie de résultat. Match : ${home} vs ${away}. Contexte : ${context || "Non fourni"}. Présente les informations manquantes, probabilités prudentes, double chance, buts/BTTS, handicap si pertinent, cotes indicatives comme estimations, risque et conclusion courte. N’invente pas de données en temps réel. Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
-  async function gemini() {
-    if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
+
+  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, clairement et prudemment, sans garantie de résultat.\nMatch : ${home} vs ${away}\nContexte : ${context || "Non fourni"}\nPrésente les informations disponibles, les limites des données, des probabilités estimées avec prudence, 1X2, double chance, buts, BTTS, handicap, cotes indicatives présentées comme estimations, niveau de risque et une conclusion courte. N’invente jamais de données en temps réel. Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
+
+  async function askGemini() {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("GEMINI_API_KEY manquante");
     const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}]}) });
-    const d = await r.json().catch(()=>({}));
-    if (!r.ok) throw new Error(`Gemini ${r.status}: ${d?.error?.message || "unknown"}`);
-    const text = d?.candidates?.[0]?.content?.parts?.map(x=>x.text||"").join("").trim();
-    if (!text) throw new Error("Gemini empty response");
-    return text;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Gemini ${response.status}: ${data?.error?.message || "erreur"}`);
+    return data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("\n").trim();
   }
-  async function metaLlama() {
-    if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY missing");
-    const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.GROQ_API_KEY}`}, body:JSON.stringify({model,temperature:0.2,messages:[{role:"system",content:"Tu es BatBot IA. Réponds en français avec prudence et sans garantie."},{role:"user",content:prompt}]}) });
-    const d = await r.json().catch(()=>({}));
-    if (!r.ok) throw new Error(`Meta/Llama ${r.status}: ${d?.error?.message || "unknown"}`);
-    const text = d?.choices?.[0]?.message?.content?.trim();
-    if (!text) throw new Error("Meta/Llama empty response");
-    return text;
+
+  async function askMetaFallback() {
+    const key = process.env.META_API_KEY;
+    const url = process.env.META_API_URL;
+    if (!key || !url) throw new Error("META_API_KEY ou META_API_URL manquante");
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: process.env.META_MODEL || "meta-llama/llama-3.1-8b-instruct", temperature: 0.2, messages: [{ role: "user", content: prompt }] })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Secours ${response.status}: ${data?.error?.message || "erreur"}`);
+    return data?.choices?.[0]?.message?.content?.trim() || data?.output?.trim();
   }
+
   try {
     let analysis;
-    try { analysis = await gemini(); console.log("BatBot IA provider: Gemini"); }
-    catch (e) { console.error("Gemini failed; fallback:", e.message); analysis = await metaLlama(); console.log("BatBot IA provider: Meta/Llama"); }
-    res.json({ analysis });
-  } catch (e) {
-    console.error("BatBot IA providers failed:", e.message);
-    res.status(502).json({ error: "BatBot IA est temporairement indisponible. Réessayez plus tard." });
+    let provider = "Gemini";
+    try {
+      analysis = await askGemini();
+    } catch (primaryError) {
+      console.warn("Gemini indisponible, tentative du secours:", primaryError.message);
+      provider = "secours";
+      analysis = await askMetaFallback();
+    }
+    if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
+    res.json({ analysis, provider: "BatBot IA" });
+  } catch (error) {
+    console.error("AI providers error:", error.message);
+    res.status(502).json({ error: "BatBot IA est temporairement indisponible. Vérifiez les clés et les paramètres Gemini et du secours dans Render." });
   }
-});
-app.patch("/api/admin/users/:id/ai", requireAdmin, (req, res) => {
-  const enabled = Boolean(req.body.enabled);
-  const result = DB.prepare("UPDATE users SET ai_enabled=? WHERE id=?").run(enabled ? 1 : 0, Number(req.params.id));
-  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
-  res.json({ message: enabled ? "Accès IA activé." : "Accès IA désactivé." });
 });
 
 app.use(express.static(path.join(__dirname, "public")));
