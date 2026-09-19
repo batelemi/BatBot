@@ -26,9 +26,7 @@ CREATE TABLE IF NOT EXISTS users(
   password_hash TEXT NOT NULL,
   premium_until TEXT,
   premium_started_at TEXT,
-  ai_started_at TEXT,
-  ai_until TEXT,
-  ai_revoked_at TEXT,
+  ai_enabled INTEGER NOT NULL DEFAULT 0,
   disabled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -83,13 +81,11 @@ CREATE TABLE IF NOT EXISTS coupons(
 // Migrations pour les bases déjà existantes
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN ai_started_at TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN ai_revoked_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_enabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
 
 const defaults = {
   whatsapp: "2250152171974",
-  telegram: "@Sdrive12",
+  telegram: "@BatBot12",
   whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
   telegramGroup: "https://t.me/sdrive123",
   tiktok: "https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99cD47Jhd00",
@@ -103,7 +99,7 @@ const defaults = {
   moovMoney: "0152171974",
   mtnMoney: "0554740711",
   sdriveLink: "",
-  sdriveInviteMessage: "Invite tes amis à rejoindre S-Drive et profite de tes avantages.",
+  sdriveInviteMessage: "Invite tes amis à rejoindre BatBot et profite de tes avantages.",
   adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
@@ -154,7 +150,6 @@ function cleanPhone(value) {
 function userView(user) {
   if (!user) return null;
   const active = !!(user.premium_until && new Date(user.premium_until) > new Date());
-  const aiActive = !!(user.ai_until && new Date(user.ai_until) > new Date()) && !user.ai_revoked_at;
   return {
     id: user.id,
     username: user.username,
@@ -162,10 +157,8 @@ function userView(user) {
     phone: user.phone,
     premium_until: user.premium_until,
     premium_started_at: user.premium_started_at || null,
-    ai_started_at: user.ai_started_at || null,
-    ai_until: user.ai_until || null,
-    ai_active: aiActive,
     disabled: Boolean(user.disabled),
+    ai_enabled: Boolean(user.ai_enabled),
     is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
     subscription_active: active,
@@ -206,7 +199,7 @@ app.use(session({
 }));
 
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, service: "S-Drive", time: new Date().toISOString() });
+  res.json({ ok: true, service: "BatBot", time: new Date().toISOString() });
 });
 
 app.post("/api/register", (req, res) => {
@@ -252,13 +245,6 @@ app.post("/api/logout", (req, res) => {
 app.get("/api/me", requireUser, (req, res) => {
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
   if (!user) return res.status(401).json({ error: "Session invalide." });
-  res.json({ user: userView(user) });
-});
-
-app.get("/api/session", (req, res) => {
-  if (!req.session.userId) return res.json({ user: null });
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  if (!user || user.disabled) return res.json({ user: null });
   res.json({ user: userView(user) });
 });
 
@@ -334,10 +320,10 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
   const phone = cleanPhone(settings.whatsapp);
   const label = type === "loto" ? "Loto" : "Football";
   const text =
-    `Bonjour S-Drive 👋\n\n` +
+    `Bonjour BatBot 👋\n\n` +
     `Je souhaite demander une analyse ${label}.\n\n` +
     `${content}\n\n` +
-    `Référence de ma demande : S-Drive #${id}`;
+    `Référence de ma demande : BatBot #${id}`;
 
   res.status(201).json({
     message: "Demande enregistrée.",
@@ -349,88 +335,6 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
       ? `https://t.me/${String(settings.telegram).replace(/^@/, "")}`
       : ""
   });
-});
-
-function isAiActive(user) {
-  return Boolean(user && user.ai_until && new Date(user.ai_until) > new Date() && !user.ai_revoked_at && !user.disabled);
-}
-
-async function callGemini(prompt, apiKey) {
-  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(apiKey);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      signal: controller.signal
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Gemini HTTP ${response.status}: ${JSON.stringify(data).slice(0,500)}`);
-    return data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("\n").trim() || "";
-  } finally { clearTimeout(timer); }
-}
-
-async function callMetaFallback(prompt) {
-  const apiKey = process.env.META_API_KEY;
-  const url = process.env.META_API_URL;
-  const model = process.env.META_MODEL || "llama-3.1-8b-instant";
-  if (!apiKey || !url) throw new Error("Meta fallback non configuré");
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
-      signal: controller.signal
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Meta HTTP ${response.status}: ${JSON.stringify(data).slice(0,500)}`);
-    return data?.choices?.[0]?.message?.content?.trim() || "";
-  } finally { clearTimeout(timer); }
-}
-
-app.post("/api/ai/analyze", requireUser, async (req, res) => {
-  const homeTeam = String(req.body.home_team || req.body.team1 || "").trim();
-  const awayTeam = String(req.body.away_team || req.body.team2 || "").trim();
-  const context = String(req.body.context || "").trim().slice(0, 4000);
-  if (!homeTeam || !awayTeam || homeTeam.length > 100 || awayTeam.length > 100) {
-    return res.status(400).json({ error: "Indiquez deux équipes valides." });
-  }
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  if (!isAiActive(user)) return res.status(403).json({ error: "Votre accès IA est inactif ou expiré." });
-  const prompt = [
-    "Tu es BatBot IA, assistant d'analyse football prudent.",
-    `Match: ${homeTeam} contre ${awayTeam}.`,
-    `Contexte fourni: ${context || "Aucun"}.`,
-    "N'invente aucune statistique et ne prétends pas disposer de données en direct.",
-    "Distingue faits, hypothèses et informations manquantes.",
-    "Ne garantis jamais un résultat et rappelle que les paris comportent un risque.",
-    "Réponds en français clair avec résumé, facteurs à vérifier, scénarios possibles, limites et conclusion prudente."
-  ].join("\n");
-  const failures = [];
-  try {
-    let text = "";
-    if (process.env.GEMINI_API_KEY) {
-      try { text = await callGemini(prompt, process.env.GEMINI_API_KEY); }
-      catch (error) { failures.push(error.message); console.error("GEMINI_ERROR", error.message); }
-    } else failures.push("GEMINI_API_KEY absente");
-    if (!text && process.env.META_API_KEY && process.env.META_API_URL) {
-      try { text = await callMetaFallback(prompt); }
-      catch (error) { failures.push(error.message); console.error("META_FALLBACK_ERROR", error.message); }
-    }
-    if (!text) return res.status(502).json({ error: "BatBot IA est momentanément indisponible. Vérifiez les clés et le modèle configurés, puis réessayez." });
-    const content = `Analyse IA : ${homeTeam} vs ${awayTeam}\n\n${text}`;
-    const requestId = DB.prepare("INSERT INTO analysis_requests(user_id,type,content,status) VALUES(?,?,?,?)")
-      .run(req.session.userId, "football_ai", content, "completed").lastInsertRowid;
-    res.json({ request_id: Number(requestId), analysis: text });
-  } catch (error) {
-    console.error("AI_REQUEST_ERROR", error, failures);
-    res.status(502).json({ error: "BatBot IA est momentanément indisponible. Réessayez dans quelques secondes." });
-  }
 });
 
 app.post("/api/admin/login", (req, res) => {
@@ -493,27 +397,12 @@ app.post("/api/admin/subscription", requireAdmin, (req, res) => {
     ? new Date(startedAt.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
     : null;
 
-  const activateAi = Boolean(req.body.activate_ai);
-  const result = activateAi
-    ? DB.prepare("UPDATE users SET premium_started_at=?, premium_until=?, ai_started_at=?, ai_until=?, ai_revoked_at=NULL WHERE id=?")
-      .run(startedAt ? startedAt.toISOString() : null, until, startedAt ? startedAt.toISOString() : null, until, id)
-    : DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?")
-      .run(startedAt ? startedAt.toISOString() : null, until, id);
+  const result = DB.prepare(
+    "UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?"
+  ).run(startedAt ? startedAt.toISOString() : null, until, id);
 
   if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
   res.json({ message: active ? `Premium activé pour ${durationDays} jour(s).` : "Premium désactivé." });
-});
-
-app.post("/api/admin/ai-subscription", requireAdmin, (req, res) => {
-  const id = Number(req.body.user_id);
-  const active = Boolean(req.body.active);
-  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
-  const startedAt = active ? new Date() : null;
-  const until = active ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : null;
-  const result = DB.prepare("UPDATE users SET ai_started_at=?, ai_until=?, ai_revoked_at=? WHERE id=?")
-    .run(startedAt ? startedAt.toISOString() : null, until, active ? null : new Date().toISOString(), id);
-  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
-  res.json({ message: active ? `IA activée pour ${durationDays} jour(s).` : "IA désactivée.", ai_until: until });
 });
 
 app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
@@ -834,6 +723,54 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   res.json({ message: "Configuration enregistrée.", settings });
 });
 
+
+app.post("/api/ai/analyze", requireUser, async (req, res) => {
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  const premiumActive = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
+  const aiActive = Boolean(user && user.ai_enabled) && premiumActive && !Boolean(user.disabled);
+  if (!aiActive) return res.status(403).json({ error: "L’accès à BatBot IA n’est pas activé sur votre compte. Contactez l’administrateur." });
+  const home = String(req.body.home_team || "").trim();
+  const away = String(req.body.away_team || "").trim();
+  const context = String(req.body.context || "").trim();
+  if (!home || !away) return res.status(400).json({ error: "Les deux équipes sont requises." });
+  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, clairement et prudemment, sans garantie de résultat. Match : ${home} vs ${away}. Contexte : ${context || "Non fourni"}. Présente les informations manquantes, probabilités prudentes, double chance, buts/BTTS, handicap si pertinent, cotes indicatives comme estimations, risque et conclusion courte. N’invente pas de données en temps réel. Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
+  async function gemini() {
+    if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
+    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}]}) });
+    const d = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(`Gemini ${r.status}: ${d?.error?.message || "unknown"}`);
+    const text = d?.candidates?.[0]?.content?.parts?.map(x=>x.text||"").join("").trim();
+    if (!text) throw new Error("Gemini empty response");
+    return text;
+  }
+  async function metaLlama() {
+    if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY missing");
+    const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.GROQ_API_KEY}`}, body:JSON.stringify({model,temperature:0.2,messages:[{role:"system",content:"Tu es BatBot IA. Réponds en français avec prudence et sans garantie."},{role:"user",content:prompt}]}) });
+    const d = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(`Meta/Llama ${r.status}: ${d?.error?.message || "unknown"}`);
+    const text = d?.choices?.[0]?.message?.content?.trim();
+    if (!text) throw new Error("Meta/Llama empty response");
+    return text;
+  }
+  try {
+    let analysis;
+    try { analysis = await gemini(); console.log("BatBot IA provider: Gemini"); }
+    catch (e) { console.error("Gemini failed; fallback:", e.message); analysis = await metaLlama(); console.log("BatBot IA provider: Meta/Llama"); }
+    res.json({ analysis });
+  } catch (e) {
+    console.error("BatBot IA providers failed:", e.message);
+    res.status(502).json({ error: "BatBot IA est temporairement indisponible. Réessayez plus tard." });
+  }
+});
+app.patch("/api/admin/users/:id/ai", requireAdmin, (req, res) => {
+  const enabled = Boolean(req.body.enabled);
+  const result = DB.prepare("UPDATE users SET ai_enabled=? WHERE id=?").run(enabled ? 1 : 0, Number(req.params.id));
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: enabled ? "Accès IA activé." : "Accès IA désactivé." });
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("*", (req, res) => {
@@ -841,5 +778,5 @@ app.get("*", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`S-Drive démarré sur le port ${PORT}`);
+  console.log(`BatBot démarré sur le port ${PORT}`);
 });
