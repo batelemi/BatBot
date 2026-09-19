@@ -1,8 +1,6 @@
-# S-Drive IA — Version 5
+# Correction S-Drive IA
 
-- Conservation de l'intégration Gemini et du moteur de secours Meta/Llama selon la configuration du serveur.
-- Affichage des badges Premium et IA uniquement dans la zone supérieure du profil.
-- Suppression des badges dupliqués à l'intérieur de la carte « Mon profil ».
-- Conservation des statuts détaillés Premium et IA dans la carte du profil.
-
-Configuration : conserver le `package.json` existant et renseigner les variables d'environnement nécessaires sur Render.
+- Modèle Gemini par défaut : `gemini-3.6-flash`.
+- Le modèle peut être changé avec la variable Render `GEMINI_MODEL`.
+- Conserver `GEMINI_API_KEY` dans les variables d’environnement Render.
+- Remplacer le `server.js` existant par celui-ci, puis redéployer.
