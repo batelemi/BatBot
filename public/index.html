@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#071A2D">
-<title>BatBot — Analyse intelligente de matchs</title>
+<title>BatBot — Analyse de matchs</title>
 
 <style>
     .inline-logo{width:1.35em;height:1.35em;object-fit:contain;vertical-align:-0.25em;margin-right:.25em;border-radius:50%;}
@@ -244,7 +244,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
     <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
   </div>
-  <div class="loading-title">BatBot</div><div class="loading-slogan">Analysez mieux. Décidez avec maîtrise.</div>
+  <div class="loading-title">BatBot</div>
   <div id="loadingMessage" class="loading-message">Connexion en cours…</div>
   <div class="loading-spinner"></div>
 </div>
@@ -259,7 +259,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
     </div>
-    <h1>BatBot<sup class="brand-mark">•</sup></h1><p class="brand-slogan">Analysez mieux. Décidez avec maîtrise.</p>
+    <h1>BatBot<sup class="brand-mark">•</sup></h1>
     <p class="muted">Analyse professionnelle de vos matchs</p>
   </div>
 
@@ -338,7 +338,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
     </div>
-    <h1>BatBot<sup class="brand-mark">•</sup></h1><p class="brand-slogan">Analysez mieux. Décidez avec maîtrise.</p>
+    <h1>BatBot<sup class="brand-mark">•</sup></h1>
     <p id="welcomeText" class="muted">Bienvenue</p>
     <span id="profileBadge" class="badge">🏅 Membre BatBot</span>
   </div>
@@ -355,7 +355,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <p class="muted">Analysez vos matchs avec BatBot IA. L’accès nécessite un abonnement actif.</p>
     <div class="two-columns"><input id="aiHomeTeam" placeholder="Équipe à domicile"><input id="aiAwayTeam" placeholder="Équipe à l’extérieur"></div>
     <textarea id="aiContext" placeholder="Contexte facultatif : compétition, date, informations disponibles..."></textarea>
-    <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitSmartDriveAI()">🤖 Lancer l’analyse</button>
+    <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
     <div id="smartDriveAIStatus" class="status"></div>
     <div id="smartDriveAIResult" class="ai-result hidden"></div>
   </section>
@@ -538,7 +538,7 @@ PSG vs Marseille"></textarea>
 
   <div class="center">
     <div class="admin-header-icon">🛠️</div>
-    <h1>Administration<sup class="brand-mark">•</sup></h1>
+    <h1>Administration<sup class="brand-mark">®</sup></h1>
     <p class="muted">Gestion des membres BatBot</p>
   </div>
 
@@ -620,7 +620,7 @@ PSG vs Marseille"></textarea>
 </section>
 
 <footer>
-  BatBot — Analyse intelligente de matchs
+  BatBot — Analyse de matchs
   <br>
   <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="adminSecretTap()">•</button>
 </footer>
@@ -1092,7 +1092,7 @@ function updateProfileStatuses(user){
   if(p)p.textContent=premium?"Actif":"Non actif";
   if(a)a.textContent=premium?"Active":"Non active";
 }
-async function submitSmartDriveAI(){
+async function submitBatBotAI(){
   const home=document.getElementById("aiHomeTeam").value.trim();const away=document.getElementById("aiAwayTeam").value.trim();const context=document.getElementById("aiContext").value.trim();
   if(!home||!away)return showStatus("smartDriveAIStatus","Saisissez les deux équipes.","error");
   setLoading("smartDriveAIButton",true,"🤖 Analyse en cours…");
