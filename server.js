@@ -59,10 +59,7 @@ CREATE TABLE IF NOT EXISTS analysis_requests(
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
 );
-CREATE TABLE IF NOT EXISTS settings(
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
+CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS bookmakers(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -84,35 +81,11 @@ CREATE TABLE IF NOT EXISTS coupons(
 `);
 
 // Migrations pour les bases déjà existantes
-try {
-  DB.prepare(
-    "ALTER TABLE users ADD COLUMN premium_started_at TEXT"
-  ).run();
-} catch (_) {}
-
-try {
-  DB.prepare(
-    "ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0"
-  ).run();
-} catch (_) {}
-
-try {
-  DB.prepare(
-    "ALTER TABLE users ADD COLUMN ai_started_at TEXT"
-  ).run();
-} catch (_) {}
-
-try {
-  DB.prepare(
-    "ALTER TABLE users ADD COLUMN ai_until TEXT"
-  ).run();
-} catch (_) {}
-
-try {
-  DB.prepare(
-    "ALTER TABLE users ADD COLUMN ai_revoked_at TEXT"
-  ).run();
-} catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_started_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_revoked_at TEXT").run(); } catch (_) {}
 
 const defaults = {
   whatsapp: "2250152171974",
@@ -134,39 +107,25 @@ const defaults = {
   adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
-const getSetting = DB.prepare(
-  "SELECT value FROM settings WHERE key=?"
-);
-
+const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
 const setSetting = DB.prepare(
   "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
 );
-
 for (const [key, value] of Object.entries(defaults)) {
-  if (!getSetting.get(key)) {
-    setSetting.run(key, String(value));
-  }
+  if (!getSetting.get(key)) setSetting.run(key, String(value));
 }
 
-// Correction automatique des anciennes coordonnées
+// Correction automatique des anciennes coordonnées WhatsApp/admin enregistrées
+// dans la base de données lors d'une précédente version.
 try {
   const oldNumber = "2250152171774";
   const newNumber = "2250152171974";
-
   const currentWhatsapp = getSetting.get("whatsapp");
   const currentAdminPhone = getSetting.get("adminPhone");
-
-  if (
-    currentWhatsapp &&
-    String(currentWhatsapp.value) === oldNumber
-  ) {
+  if (currentWhatsapp && String(currentWhatsapp.value) === oldNumber) {
     setSetting.run("whatsapp", newNumber);
   }
-
-  if (
-    currentAdminPhone &&
-    String(currentAdminPhone.value) === oldNumber
-  ) {
+  if (currentAdminPhone && String(currentAdminPhone.value) === oldNumber) {
     setSetting.run("adminPhone", newNumber);
   }
 } catch (_) {}
@@ -174,18 +133,13 @@ try {
 if (!getSetting.get("adminPasswordHash")) {
   setSetting.run(
     "adminPasswordHash",
-    bcrypt.hashSync(
-      process.env.ADMIN_PASSWORD || "ChangeMe123!",
-      12
-    )
+    bcrypt.hashSync(process.env.ADMIN_PASSWORD || "ChangeMe123!", 12)
   );
 }
 
 function getSettings() {
   return Object.fromEntries(
-    DB.prepare("SELECT key,value FROM settings")
-      .all()
-      .map(x => [x.key, x.value])
+    DB.prepare("SELECT key,value FROM settings").all().map(x => [x.key, x.value])
   );
 }
 
@@ -196,19 +150,11 @@ function today() {
 function cleanPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
+
 function userView(user) {
   if (!user) return null;
-
-  const active = !!(
-    user.premium_until &&
-    new Date(user.premium_until) > new Date()
-  );
-
-  const aiActive = !!(
-    user.ai_until &&
-    new Date(user.ai_until) > new Date()
-  ) && !user.ai_revoked_at;
-
+  const active = !!(user.premium_until && new Date(user.premium_until) > new Date());
+  const aiActive = !!(user.ai_until && new Date(user.ai_until) > new Date()) && !user.ai_revoked_at;
   return {
     id: user.id,
     username: user.username,
@@ -229,43 +175,26 @@ function userView(user) {
 
 function requireUser(req, res, next) {
   if (!req.session.userId) {
-    return res.status(401).json({
-      error: "Connexion requise."
-    });
+    return res.status(401).json({ error: "Connexion requise." });
   }
-
-  const user = DB.prepare(
-    "SELECT id, disabled FROM users WHERE id=?"
-  ).get(req.session.userId);
-
+  const user = DB.prepare("SELECT id, disabled FROM users WHERE id=?").get(req.session.userId);
   if (!user || user.disabled) {
     req.session.destroy(() => {});
-
-    return res.status(403).json({
-      error: "Ce compte est désactivé ou introuvable."
-    });
+    return res.status(403).json({ error: "Ce compte est désactivé ou introuvable." });
   }
-
   next();
 }
 
 function requireAdmin(req, res, next) {
   if (!req.session.admin) {
-    return res.status(401).json({
-      error: "Accès administrateur refusé."
-    });
+    return res.status(401).json({ error: "Accès administrateur refusé." });
   }
-
   next();
 }
 
 app.use(session({
-  store: new SQLiteStore({
-    db: "sessions.sqlite",
-    dir: __dirname
-  }),
-  secret: process.env.SESSION_SECRET ||
-    "CHANGE_THIS_SECRET_IN_PRODUCTION",
+  store: new SQLiteStore({ db: "sessions.sqlite", dir: __dirname }),
+  secret: process.env.SESSION_SECRET || "CHANGE_THIS_SECRET_IN_PRODUCTION",
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -277,11 +206,7 @@ app.use(session({
 }));
 
 app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true,
-    service: "S-Drive",
-    time: new Date().toISOString()
-  });
+  res.json({ ok: true, service: "S-Drive", time: new Date().toISOString() });
 });
 
 app.post("/api/register", (req, res) => {
@@ -297,104 +222,48 @@ app.post("/api/register", (req, res) => {
   try {
     const result = DB.prepare(
       "INSERT INTO users(username,phone,password_hash) VALUES(?,?,?)"
-    ).run(
-      username,
-      "",
-      bcrypt.hashSync(password, 12)
-    );
+    ).run(username, "", bcrypt.hashSync(password, 12));
 
     req.session.userId = Number(result.lastInsertRowid);
-
-    const user = DB.prepare(
-      "SELECT * FROM users WHERE id=?"
-    ).get(result.lastInsertRowid);
-
-    res.status(201).json({
-      message: "Compte créé avec succès.",
-      user: userView(user)
-    });
+    const user = DB.prepare("SELECT * FROM users WHERE id=?").get(result.lastInsertRowid);
+    res.status(201).json({ message: "Compte créé avec succès.", user: userView(user) });
   } catch (error) {
-    res.status(409).json({
-      error: "Ce nom d'utilisateur existe déjà."
-    });
+    res.status(409).json({ error: "Ce nom d'utilisateur existe déjà." });
   }
 });
 
 app.post("/api/login", (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
+  const user = DB.prepare("SELECT * FROM users WHERE username=?").get(username);
 
-  const user = DB.prepare(
-    "SELECT * FROM users WHERE username=?"
-  ).get(username);
-
-  if (
-    !user ||
-    user.disabled ||
-    !bcrypt.compareSync(password, user.password_hash)
-  ) {
-    return res.status(401).json({
-      error: "Identifiants incorrects ou compte désactivé."
-    });
+  if (!user || user.disabled || !bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
   }
 
   req.session.userId = user.id;
-
-  res.json({
-    message: "Connexion réussie.",
-    user: userView(user)
-  });
+  res.json({ message: "Connexion réussie.", user: userView(user) });
 });
 
 app.post("/api/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.json({
-      message: "Déconnexion réussie."
-    });
-  });
+  req.session.destroy(() => res.json({ message: "Déconnexion réussie." }));
 });
 
 app.get("/api/me", requireUser, (req, res) => {
-  const user = DB.prepare(
-    "SELECT * FROM users WHERE id=?"
-  ).get(req.session.userId);
-
-  if (!user) {
-    return res.status(401).json({
-      error: "Session invalide."
-    });
-  }
-
-  res.json({
-    user: userView(user)
-  });
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  if (!user) return res.status(401).json({ error: "Session invalide." });
+  res.json({ user: userView(user) });
 });
 
 app.get("/api/session", (req, res) => {
-  if (!req.session.userId) {
-    return res.json({
-      user: null
-    });
-  }
-
-  const user = DB.prepare(
-    "SELECT * FROM users WHERE id=?"
-  ).get(req.session.userId);
-
-  if (!user || user.disabled) {
-    return res.json({
-      user: null
-    });
-  }
-
-  res.json({
-    user: userView(user)
-  });
+  if (!req.session.userId) return res.json({ user: null });
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  if (!user || user.disabled) return res.json({ user: null });
+  res.json({ user: userView(user) });
 });
 
 app.post("/api/password-reset", (req, res) => {
   const username = String(req.body.username || "").trim();
-
   const user = DB.prepare(
     "SELECT id FROM users WHERE username=?"
   ).get(username);
@@ -405,21 +274,14 @@ app.post("/api/password-reset", (req, res) => {
     });
   }
 
-  DB.prepare(
-    "INSERT INTO password_resets(user_id) VALUES(?)"
-  ).run(user.id);
-
-  res.json({
-    message: "Demande envoyée à l'administration."
-  });
+  DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
+  res.json({ message: "Demande envoyée à l'administration." });
 });
 
+// Compatibilité avec les anciennes versions de l'interface.
 app.post("/api/forgot-password", (req, res) => {
   const username = String(req.body.username || "").trim();
-
-  const user = DB.prepare(
-    "SELECT id FROM users WHERE username=?"
-  ).get(username);
+  const user = DB.prepare("SELECT id FROM users WHERE username=?").get(username);
 
   if (!user) {
     return res.status(404).json({
@@ -432,15 +294,12 @@ app.post("/api/forgot-password", (req, res) => {
   ).get(user.id);
 
   if (!existing) {
-    DB.prepare(
-      "INSERT INTO password_resets(user_id) VALUES(?)"
-    ).run(user.id);
+    DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
   }
 
-  res.json({
-    message: "Demande envoyée à l'administration."
-  });
+  res.json({ message: "Demande envoyée à l'administration." });
 });
+
 app.get("/api/daily-matches", requireUser, (req, res) => {
   res.json({
     matches: DB.prepare(
@@ -469,16 +328,11 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
 
   const id = DB.prepare(
     "INSERT INTO analysis_requests(user_id,type,content) VALUES(?,?,?)"
-  ).run(
-    req.session.userId,
-    type,
-    content
-  ).lastInsertRowid;
+  ).run(req.session.userId, type, content).lastInsertRowid;
 
   const settings = getSettings();
   const phone = cleanPhone(settings.whatsapp);
   const label = type === "loto" ? "Loto" : "Football";
-
   const text =
     `Bonjour S-Drive 👋\n\n` +
     `Je souhaite demander une analyse ${label}.\n\n` +
@@ -498,390 +352,466 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
 });
 
 function isAiActive(user) {
-  return Boolean(
-    user &&
-    user.ai_until &&
-    new Date(user.ai_until) > new Date() &&
-    !user.ai_revoked_at &&
-    !user.disabled
-  );
-});
+  return Boolean(user && user.ai_until && new Date(user.ai_until) > new Date() && !user.ai_revoked_at && !user.disabled);
+}
 
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
-  const homeTeam = String(
-    req.body.home_team || req.body.team1 || ""
-  ).trim();
-
-  const awayTeam = String(
-    req.body.away_team || req.body.team2 || ""
-  ).trim();
-
-  const context = String(
-    req.body.context || ""
-  ).trim().slice(0, 4000);
-
-  if (
-    !homeTeam ||
-    !awayTeam ||
-    homeTeam.length > 100 ||
-    awayTeam.length > 100
-  ) {
-    return res.status(400).json({
-      error: "Indiquez deux équipes valides."
-    });
+  const homeTeam = String(req.body.home_team || req.body.team1 || "").trim();
+  const awayTeam = String(req.body.away_team || req.body.team2 || "").trim();
+  const context = String(req.body.context || "").trim().slice(0, 4000);
+  const imageData = typeof req.body.image_data === "string" ? req.body.image_data : "";
+  const imageMime = typeof req.body.image_mime === "string" ? req.body.image_mime : "image/jpeg";
+  if (!homeTeam || !awayTeam || homeTeam.length > 100 || awayTeam.length > 100) {
+    return res.status(400).json({ error: "Indiquez deux équipes valides." });
   }
-
-  const user = DB.prepare(
-    "SELECT * FROM users WHERE id=?"
-  ).get(req.session.userId);
-
-  if (!isAiActive(user)) {
-    return res.status(403).json({
-      error: "Votre accès IA est inactif ou expiré."
-    });
-  }
-
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  if (!isAiActive(user)) return res.status(403).json({ error: "Votre accès IA est inactif ou expiré." });
   const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return res.status(503).json({
-      error: "Le moteur IA n'est pas configuré par l'administrateur."
-    });
-  }
-
+  if (!apiKey) return res.status(503).json({ error: "Le moteur IA n'est pas configuré par l'administrateur." });
   const prompt = [
-    "Tu es S-Drive IA, un assistant d'analyse football.",
-    `Match : ${homeTeam} contre ${awayTeam}.`,
-    `Informations fournies : ${context || "Aucune"}.`,
-    "Réponds en français, de manière courte et claire.",
-    "Donne uniquement :",
-    "1. Équipe favorite",
-    "2. Probabilités estimées : domicile, nul, extérieur",
-    "3. Deux ou trois options de pari à considérer",
-    "4. Une cote indicative pour chaque option",
-    "5. Niveau de risque : faible, moyen ou élevé",
-    "Ne donne pas de longues explications.",
-    "N'invente aucune statistique."
+    "Tu es un assistant d'analyse football prudent.",
+    `Match: ${homeTeam} contre ${awayTeam}.`,
+    `Contexte fourni: ${context || "Aucun"}.`,
+    "N'invente aucune statistique et ne prétends pas disposer de données en direct.",
+    "Distingue faits, hypothèses et informations manquantes.",
+    "Ne garantis jamais un résultat et rappelle que les paris comportent un risque.",
+    "Réponds en français de façon professionnelle et très concise.",
+    "Présente uniquement : équipe favorite, probabilités estimées, 2 ou 3 options à considérer, cote indicative et niveau de risque.",
+    "N’invente aucune donnée et ne présente pas une estimation comme une certitude."
   ].join("\n");
-
   try {
-    let response;
-    let data;
-
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              maxOutputTokens: 500,
-              temperature: 0.4
-            }
-          })
-        }
-      );
-
-      data = await response.json();
-
-      if (
-        response.ok ||
-        response.status !== 503 ||
-        attempt === 3
-      ) {
-        break;
-      }
-
-      await new Promise(resolve =>
-        setTimeout(resolve, attempt * 3000)
-      );
-    }
-
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(apiKey), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [
+        { text: prompt },
+        ...(imageData ? [{ inline_data: { mime_type: imageMime, data: imageData.replace(/^data:[^;]+;base64,/, "") } }] : [])
+      ] }] })
+    });
+    const data = await response.json();
     if (!response.ok) {
       console.error("GEMINI_ERROR", response.status, data);
-
-      return res.status(502).json({
-        error: "S-Drive IA est temporairement indisponible. Réessayez dans quelques secondes."
-      });
+      return res.status(502).json({ error: "Le service Gemini a refusé la demande." });
     }
-
-    const text = data?.candidates?.[0]?.content?.parts
-      ?.map(part => part.text || "")
-      .join("\n")
-      .trim();
-
-    if (!text) {
-      return res.status(502).json({
-        error: "L'IA n'a pas retourné de résultat exploitable."
-      });
-    }
-
-    const content =
-      `Analyse IA : ${homeTeam} vs ${awayTeam}\n\n${text}`;
-
-    const requestId = DB.prepare(
-      `INSERT INTO analysis_requests
-      (user_id, type, content, status)
-      VALUES (?, ?, ?, ?)`
-    ).run(
-      req.session.userId,
-      "football_ai",
-      content,
-      "completed"
-    ).lastInsertRowid;
-
-    res.json({
-      request_id: Number(requestId),
-      analysis: text
-    });
-
+    const text = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("\n").trim();
+    if (!text) return res.status(502).json({ error: "Gemini n'a pas retourné de résultat exploitable." });
+    const content = `Analyse IA : ${homeTeam} vs ${awayTeam}\n\n${text}`;
+    const requestId = DB.prepare("INSERT INTO analysis_requests(user_id,type,content,status) VALUES(?,?,?,?)")
+      .run(req.session.userId, "football_ai", content, "completed").lastInsertRowid;
+    res.json({ request_id: Number(requestId), analysis: text });
   } catch (error) {
     console.error("GEMINI_REQUEST_ERROR", error);
-
-    res.status(502).json({
-      error: "Impossible de joindre le service IA pour le moment."
-    });
+    res.status(502).json({ error: "Impossible de joindre Gemini pour le moment." });
   }
 });
-function isAiActive(user) {
-  return Boolean(
-    user &&
-    user.ai_until &&
-    new Date(user.ai_until).getTime() > Date.now() &&
-    !user.ai_revoked_at
-  );
-}
 
-app.post("/api/ai/analyze", requireAuth, async (req, res) => {
-  try {
-    const user = getUserById(req.session.userId);
+app.post("/api/admin/login", (req, res) => {
+  const settings = getSettings();
+  const phone = cleanPhone(req.body.phone);
+  const password = String(req.body.password || "");
 
-    if (!isAiActive(user)) {
-      return res.status(403).json({
-        error: "Votre accès à S-Drive IA est expiré ou désactivé."
-      });
-    }
-
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({
-        error: "Service IA temporairement indisponible."
-      });
-    }
-
-    const { homeTeam, awayTeam, context } = req.body;
-
-    const prompt = [
-      "Tu es S-Drive IA, un assistant d'analyse football.",
-      `Match : ${homeTeam} contre ${awayTeam}.`,
-      `Informations fournies : ${context || "Aucune"}.`,
-      "Réponds en français, de manière courte et claire.",
-      "Donne uniquement :",
-      "1. Équipe favorite",
-      "2. Probabilités estimées : domicile, nul, extérieur",
-      "3. Deux ou trois options à considérer",
-      "4. Une cote indicative pour chaque option",
-      "5. Niveau de risque : faible, moyen ou élevé",
-      "Ne donne pas de longues explications.",
-      "N'invente aucune statistique."
-    ].join("\n");
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("GEMINI_ERROR", response.status, data);
-
-      return res.status(503).json({
-        error: "S-Drive IA reçoit trop de demandes. Réessayez dans quelques secondes."
-      });
-    }
-
-    const result =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Aucune analyse disponible.";
-
-    res.json({
-      success: true,
-      analysis: result
-    });
-
-  } catch (error) {
-    console.error("AI_ANALYSIS_ERROR", error);
-
-    res.status(500).json({
-      error: "Une erreur est survenue pendant l'analyse."
-    });
+  if (
+    phone !== cleanPhone(settings.adminPhone) ||
+    !bcrypt.compareSync(password, settings.adminPasswordHash)
+  ) {
+    return res.status(401).json({ error: "Accès administrateur refusé." });
   }
+
+  req.session.admin = true;
+  req.session.save((saveError) => {
+    if (saveError) {
+      console.error("ADMIN SESSION SAVE:", saveError);
+      return res.status(500).json({ error: "Session administrateur impossible à enregistrer." });
+    }
+    res.json({ message: "Administration ouverte." });
+  });
 });
+
+app.get("/api/admin/me", (req, res) => {
+  if (!req.session.admin) return res.status(401).json({ error: "Non connecté." });
+  res.json({ admin: true });
+});
+
+app.post("/api/admin/logout", (req, res) => {
+  req.session.admin = false;
+  res.json({ message: "Administration déconnectée." });
+});
+
+app.get("/api/admin/stats", requireAdmin, (req, res) => {
+  res.json({
+    users: DB.prepare("SELECT COUNT(*) AS n FROM users").get().n,
+    analyses: DB.prepare("SELECT COUNT(*) AS n FROM analysis_requests").get().n,
+    pending: DB.prepare(
+      "SELECT COUNT(*) AS n FROM analysis_requests WHERE status='pending'"
+    ).get().n,
+    password_resets: DB.prepare(
+      "SELECT COUNT(*) AS n FROM password_resets WHERE status='pending'"
+    ).get().n
+  });
+});
+
+app.get("/api/admin/users", requireAdmin, (req, res) => {
+  res.json({
+    users: DB.prepare("SELECT * FROM users ORDER BY id DESC").all().map(userView)
+  });
+});
+
+app.post("/api/admin/subscription", requireAdmin, (req, res) => {
+  const id = Number(req.body.user_id);
+  const active = Boolean(req.body.active);
+  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
+  const startedAt = active ? new Date() : null;
+  const until = active
+    ? new Date(startedAt.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
+  const activateAi = Boolean(req.body.activate_ai);
+  const result = activateAi
+    ? DB.prepare("UPDATE users SET premium_started_at=?, premium_until=?, ai_started_at=?, ai_until=?, ai_revoked_at=NULL WHERE id=?")
+      .run(startedAt ? startedAt.toISOString() : null, until, startedAt ? startedAt.toISOString() : null, until, id)
+    : DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?")
+      .run(startedAt ? startedAt.toISOString() : null, until, id);
+
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: active ? `Premium activé pour ${durationDays} jour(s).` : "Premium désactivé." });
+});
+
 app.post("/api/admin/ai-subscription", requireAdmin, (req, res) => {
-  try {
-    const { userId, action, days } = req.body;
-
-    const user = getUserById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        error: "Utilisateur introuvable."
-      });
-    }
-
-    if (action === "activate") {
-      const duration = Number(days) || 7;
-
-      const aiUntil = new Date(
-        Date.now() + duration * 24 * 60 * 60 * 1000
-      ).toISOString();
-
-      db.prepare(`
-        UPDATE users
-        SET ai_started_at = ?,
-            ai_until = ?,
-            ai_revoked_at = NULL
-        WHERE id = ?
-      `).run(
-        new Date().toISOString(),
-        aiUntil,
-        userId
-      );
-
-      return res.json({
-        success: true,
-        message: `Accès IA activé pour ${duration} jours.`
-      });
-    }
-
-    if (action === "deactivate") {
-      db.prepare(`
-        UPDATE users
-        SET ai_revoked_at = ?
-        WHERE id = ?
-      `).run(
-        new Date().toISOString(),
-        userId
-      );
-
-      return res.json({
-        success: true,
-        message: "Accès IA désactivé."
-      });
-    }
-
-    return res.status(400).json({
-      error: "Action invalide."
-    });
-
-  } catch (error) {
-    console.error("ADMIN_AI_ERROR", error);
-
-    res.status(500).json({
-      error: "Erreur lors de la gestion de l'accès IA."
-    });
-  }
+  const id = Number(req.body.user_id);
+  const active = Boolean(req.body.active);
+  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
+  const startedAt = active ? new Date() : null;
+  const until = active ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : null;
+  const result = DB.prepare("UPDATE users SET ai_started_at=?, ai_until=?, ai_revoked_at=? WHERE id=?")
+    .run(startedAt ? startedAt.toISOString() : null, until, active ? null : new Date().toISOString(), id);
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: active ? `IA activée pour ${durationDays} jour(s).` : "IA désactivée.", ai_until: until });
 });
-<section id="ai-section" class="card">
-  <h2>🤖 S-Drive IA</h2>
 
-  <input
-    id="homeTeam"
-    type="text"
-    placeholder="Équipe à domicile"
-  />
+app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
+  const disabled = Boolean(req.body.disabled);
+  const result = DB.prepare("UPDATE users SET disabled=? WHERE id=?")
+    .run(disabled ? 1 : 0, Number(req.params.id));
+  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
+  res.json({ message: disabled ? "Compte désactivé." : "Compte réactivé." });
+});
 
-  <input
-    id="awayTeam"
-    type="text"
-    placeholder="Équipe extérieure"
-  />
-
-  <textarea
-    id="matchContext"
-    placeholder="Informations du match (facultatif)"
-  ></textarea>
-
-  <button onclick="analyzeMatch()">
-    Analyser le match
-  </button>
-
-  <p id="aiStatus"></p>
-
-  <pre id="aiResult"></pre>
-</section>
-
-<script>
-async function analyzeMatch() {
-  const homeTeam = document.getElementById("homeTeam").value.trim();
-  const awayTeam = document.getElementById("awayTeam").value.trim();
-  const context = document.getElementById("matchContext").value.trim();
-
-  const status = document.getElementById("aiStatus");
-  const result = document.getElementById("aiResult");
-
-  if (!homeTeam || !awayTeam) {
-    status.textContent = "Veuillez saisir les deux équipes.";
-    return;
+app.post("/api/admin/reset-password", requireAdmin, (req, res) => {
+  const password = String(req.body.password || "");
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Minimum 6 caractères." });
   }
 
-  status.textContent =
-    "🤖 S-Drive IA : analyse en cours... Patientez quelques secondes.";
+  const result = DB.prepare(
+    "UPDATE users SET password_hash=? WHERE id=?"
+  ).run(bcrypt.hashSync(password, 12), Number(req.body.user_id));
 
-  result.textContent = "";
+  if (!result.changes) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
 
-  try {
-    const response = await fetch("/api/ai/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        homeTeam,
-        awayTeam,
-        context
-      })
+  res.json({ message: "Mot de passe modifié avec succès." });
+});
+
+app.delete("/api/admin/users/:id", requireAdmin, (req, res) => {
+  const result = DB.prepare(
+    "DELETE FROM users WHERE id=?"
+  ).run(Number(req.params.id));
+
+  if (!result.changes) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
+
+  res.json({ message: "Membre supprimé." });
+});
+
+app.get("/api/admin/password-resets", requireAdmin, (req, res) => {
+  res.json({
+    requests: DB.prepare(`
+      SELECT pr.*, u.username, u.phone
+      FROM password_resets pr
+      JOIN users u ON u.id=pr.user_id
+      WHERE pr.status='pending'
+      ORDER BY pr.id DESC
+    `).all()
+  });
+});
+
+// Alias utilisé par l'interface actuelle.
+app.get("/api/admin/reset-requests", requireAdmin, (req, res) => {
+  res.json({
+    requests: DB.prepare(`
+      SELECT pr.*, u.username, u.phone
+      FROM password_resets pr
+      JOIN users u ON u.id=pr.user_id
+      WHERE pr.status='pending'
+      ORDER BY pr.id DESC
+    `).all()
+  });
+});
+
+app.post("/api/admin/reset-requests/:id/resolve", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const request = DB.prepare(`
+    SELECT pr.id, pr.user_id, pr.status, u.username
+    FROM password_resets pr
+    JOIN users u ON u.id=pr.user_id
+    WHERE pr.id=?
+  `).get(id);
+
+  if (!request) {
+    return res.status(404).json({ error: "Demande introuvable." });
+  }
+
+  if (request.status !== "pending") {
+    return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+  }
+
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let temporaryPassword = "SD-";
+  const bytes = crypto.randomBytes(8);
+  for (const byte of bytes) {
+    temporaryPassword += alphabet[byte % alphabet.length];
+  }
+
+  const transaction = DB.transaction(() => {
+    DB.prepare("UPDATE users SET password_hash=? WHERE id=?")
+      .run(bcrypt.hashSync(temporaryPassword, 12), request.user_id);
+    DB.prepare("UPDATE password_resets SET status='resolved' WHERE id=?")
+      .run(id);
+  });
+
+  transaction();
+
+  res.json({
+    message: `Nouveau mot de passe généré pour ${request.username}.`,
+    username: request.username,
+    new_password: temporaryPassword
+  });
+});
+
+app.patch("/api/admin/password-resets/:id", requireAdmin, (req, res) => {
+  const status = req.body.status === "resolved" ? "resolved" : "pending";
+  DB.prepare(
+    "UPDATE password_resets SET status=? WHERE id=?"
+  ).run(status, Number(req.params.id));
+  res.json({ message: "Demande traitée." });
+});
+
+app.get("/api/admin/requests", requireAdmin, (req, res) => {
+  res.json({
+    requests: DB.prepare(`
+      SELECT ar.*, u.username, u.phone
+      FROM analysis_requests ar
+      LEFT JOIN users u ON u.id=ar.user_id
+      ORDER BY ar.id DESC
+    `).all()
+  });
+});
+
+app.patch("/api/admin/requests/:id", requireAdmin, (req, res) => {
+  const allowed = ["pending", "processing", "completed", "cancelled"];
+  const status = allowed.includes(req.body.status)
+    ? req.body.status
+    : "pending";
+
+  DB.prepare(
+    "UPDATE analysis_requests SET status=? WHERE id=?"
+  ).run(status, Number(req.params.id));
+
+  res.json({ message: "Demande mise à jour." });
+});
+
+app.post("/api/admin/daily-matches", requireAdmin, (req, res) => {
+  const name = String(req.body.match_name || "").trim();
+  const pick = String(req.body.recommended_pick || "").trim();
+  const h = Number(req.body.home_probability);
+  const d = Number(req.body.draw_probability);
+  const a = Number(req.body.away_probability);
+  const odds = req.body.odds === "" || req.body.odds === undefined
+    ? null
+    : Number(req.body.odds);
+
+  if (
+    !name || !pick ||
+    ![h, d, a].every(Number.isFinite) ||
+    h < 0 || h > 100 ||
+    d < 0 || d > 100 ||
+    a < 0 || a > 100 ||
+    Math.abs(h + d + a - 100) > 0.01
+  ) {
+    return res.status(400).json({
+      error: "Probabilités invalides : elles doivent totaliser 100%."
     });
+  }
 
-    const data = await response.json();
+  if (odds !== null && (!Number.isFinite(odds) || odds < 1)) {
+    return res.status(400).json({ error: "Cote invalide." });
+  }
 
-    if (!response.ok) {
-      throw new Error(data.error || "Analyse indisponible.");
-    }
+  DB.prepare(`
+    INSERT INTO daily_matches(
+      match_name, home_probability, draw_probability,
+      away_probability, recommended_pick, odds, match_date
+    ) VALUES(?,?,?,?,?,?,?)
+  `).run(name, h, d, a, pick, odds, today());
 
-    result.textContent = data.analysis;
-    status.textContent = "Analyse terminée.";
+  res.status(201).json({ message: "Match ajouté avec succès." });
+});
 
-  } catch (error) {
-    status.textContent = error.message;
+app.get("/api/admin/daily-matches", requireAdmin, (req, res) => {
+  res.json({
+    matches: DB.prepare(
+      "SELECT * FROM daily_matches WHERE match_date=? ORDER BY id DESC"
+    ).all(today())
+  });
+});
+
+app.delete("/api/admin/daily-matches/:id", requireAdmin, (req, res) => {
+  DB.prepare(
+    "DELETE FROM daily_matches WHERE id=?"
+  ).run(Number(req.params.id));
+  res.json({ message: "Match supprimé." });
+});
+
+function validHttpUrl(value) {
+  try {
+    const u = new URL(String(value));
+    return ["http:", "https:"].includes(u.protocol);
+  } catch (_) {
+    return false;
   }
 }
-</script>
+
+// Initialisation des bookmakers existants, une seule fois.
+if (DB.prepare("SELECT COUNT(*) AS n FROM bookmakers").get().n === 0) {
+  const seed = [
+    ["1WIN", "500%", "https://1wyvrz.life/?p=gc9k"],
+    ["PARIPESA", "500%", "https://combodef.com/L?tag=d_4081071m_60651c_&site=4081071&ad=60651"],
+    ["AFROPARI", "300%", "https://apaff.top/L?tag=d_3763651m_70055c_&site=3763651&ad=70055"],
+    ["MELBET", "200%", "https://refpa3665.com/L?tag=d_4685320m_66335c_&site=4685320&ad=663"],
+    ["LOTO", "", "https://jdnlotto.com/register?promo=123"]
+  ];
+  const insert = DB.prepare("INSERT INTO bookmakers(name,bonus,url) VALUES(?,?,?)");
+  const seedMany = DB.transaction(rows => rows.forEach(row => insert.run(...row)));
+  seedMany(seed);
+}
+
+app.get("/api/config", (req, res) => {
+  const s = getSettings();
+  res.json({
+    whatsapp: s.whatsapp, telegram: s.telegram,
+    whatsappGroup: s.whatsappGroup, telegramGroup: s.telegramGroup,
+    tiktok: s.tiktok, facebook: s.facebook, instagram: s.instagram,
+    wave500: s.wave500, wave1000: s.wave1000, wavePromo: s.wavePromo,
+    promoFee: s.promoFee, orangeMoney: s.orangeMoney,
+    moovMoney: s.moovMoney, mtnMoney: s.mtnMoney,
+    sdriveLink: s.sdriveLink || "", sdriveInviteMessage: s.sdriveInviteMessage || "",
+    bookmakers: DB.prepare("SELECT id,name,bonus,url FROM bookmakers WHERE active=1 ORDER BY id DESC").all()
+  });
+});
+
+app.get("/api/coupons", requireUser, (req, res) => {
+  res.json({ coupons: DB.prepare(
+    "SELECT id,platform_name,code,platform_url,description FROM coupons WHERE active=1 ORDER BY id DESC"
+  ).all() });
+});
+
+app.get("/api/admin/bookmakers", requireAdmin, (req, res) => {
+  res.json({ bookmakers: DB.prepare("SELECT * FROM bookmakers ORDER BY id DESC").all() });
+});
+
+app.post("/api/admin/bookmakers", requireAdmin, (req, res) => {
+  const name = String(req.body.name || "").trim();
+  const bonus = String(req.body.bonus || "").trim();
+  const url = String(req.body.url || "").trim();
+  if (!name || !validHttpUrl(url)) return res.status(400).json({ error: "Nom et lien HTTP/HTTPS valides requis." });
+  const result = DB.prepare("INSERT INTO bookmakers(name,bonus,url,active) VALUES(?,?,?,?)")
+    .run(name, bonus, url, req.body.active === false ? 0 : 1);
+  res.status(201).json({ id: result.lastInsertRowid, message: "Bookmaker ajouté." });
+});
+
+app.patch("/api/admin/bookmakers/:id", requireAdmin, (req, res) => {
+  const current = DB.prepare("SELECT * FROM bookmakers WHERE id=?").get(Number(req.params.id));
+  if (!current) return res.status(404).json({ error: "Bookmaker introuvable." });
+  const name = String(req.body.name ?? current.name).trim();
+  const bonus = String(req.body.bonus ?? current.bonus).trim();
+  const url = String(req.body.url ?? current.url).trim();
+  if (!name || !validHttpUrl(url)) return res.status(400).json({ error: "Nom et lien valides requis." });
+  DB.prepare("UPDATE bookmakers SET name=?,bonus=?,url=?,active=? WHERE id=?")
+    .run(name, bonus, url, req.body.active === undefined ? current.active : (req.body.active ? 1 : 0), current.id);
+  res.json({ message: "Bookmaker modifié." });
+});
+
+app.delete("/api/admin/bookmakers/:id", requireAdmin, (req, res) => {
+  DB.prepare("DELETE FROM bookmakers WHERE id=?").run(Number(req.params.id));
+  res.json({ message: "Bookmaker supprimé." });
+});
+
+app.get("/api/admin/coupons", requireAdmin, (req, res) => {
+  res.json({ coupons: DB.prepare("SELECT * FROM coupons ORDER BY id DESC").all() });
+});
+
+app.post("/api/admin/coupons", requireAdmin, (req, res) => {
+  const platformName = String(req.body.platform_name || "").trim();
+  const code = String(req.body.code || "").trim();
+  const platformUrl = String(req.body.platform_url || "").trim();
+  const description = String(req.body.description || "").trim();
+  if (!platformName || !code || !validHttpUrl(platformUrl)) {
+    return res.status(400).json({ error: "Plateforme, code et lien valides requis." });
+  }
+  const result = DB.prepare(
+    "INSERT INTO coupons(platform_name,code,platform_url,description,active) VALUES(?,?,?,?,?)"
+  ).run(platformName, code, platformUrl, description, req.body.active === false ? 0 : 1);
+  res.status(201).json({ id: result.lastInsertRowid, message: "Coupon ajouté." });
+});
+
+app.patch("/api/admin/coupons/:id", requireAdmin, (req, res) => {
+  const c = DB.prepare("SELECT * FROM coupons WHERE id=?").get(Number(req.params.id));
+  if (!c) return res.status(404).json({ error: "Coupon introuvable." });
+  const data = {
+    platform_name: String(req.body.platform_name ?? c.platform_name).trim(),
+    code: String(req.body.code ?? c.code).trim(),
+    platform_url: String(req.body.platform_url ?? c.platform_url).trim(),
+    description: String(req.body.description ?? c.description).trim(),
+    active: req.body.active === undefined ? c.active : (req.body.active ? 1 : 0)
+  };
+  if (!data.platform_name || !data.code || !validHttpUrl(data.platform_url)) {
+    return res.status(400).json({ error: "Données de coupon invalides." });
+  }
+  DB.prepare("UPDATE coupons SET platform_name=?,code=?,platform_url=?,description=?,active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    .run(data.platform_name, data.code, data.platform_url, data.description, data.active, c.id);
+  res.json({ message: "Coupon modifié." });
+});
+
+app.delete("/api/admin/coupons/:id", requireAdmin, (req, res) => {
+  DB.prepare("DELETE FROM coupons WHERE id=?").run(Number(req.params.id));
+  res.json({ message: "Coupon supprimé." });
+});
+
+app.get("/api/admin/settings", requireAdmin, (req, res) => {
+  const s = getSettings(); delete s.adminPasswordHash;
+  res.json({ settings: s });
+});
+
+app.patch("/api/admin/settings", requireAdmin, (req, res) => {
+  const allowed = [
+    "whatsapp", "telegram", "whatsappGroup", "telegramGroup",
+    "tiktok", "facebook", "instagram", "wave500", "wave1000",
+    "wavePromo", "promoFee", "orangeMoney", "moovMoney", "mtnMoney",
+    "adminPhone", "sdriveLink", "sdriveInviteMessage"
+  ];
+  for (const key of allowed) if (req.body[key] !== undefined) setSetting.run(key, String(req.body[key]));
+  const settings = getSettings(); delete settings.adminPasswordHash;
+  res.json({ message: "Configuration enregistrée.", settings });
+});
+
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.listen(PORT, () => {
+  console.log(`S-Drive démarré sur le port ${PORT}`);
+});
