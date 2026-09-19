@@ -358,7 +358,7 @@ function isAiActive(user) {
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const homeTeam = String(req.body.home_team || req.body.team1 || "").trim();
   const awayTeam = String(req.body.away_team || req.body.team2 || "").trim();
-  const context = String(req.body.context || "").trim().slice(0, 4000);
+  const context = String(req.body.context || "").trim().slice(0, 6000);
   const imageData = typeof req.body.image_data === "string" ? req.body.image_data : "";
   const imageMime = typeof req.body.image_mime === "string" && /^image\//.test(req.body.image_mime) ? req.body.image_mime : "image/jpeg";
 
@@ -385,27 +385,28 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   }
 
   const prompt = [
-    "Tu es S-Drive IA, un assistant d'analyse football.",
-    `Match : ${homeTeam} contre ${awayTeam}.`,
-    `Informations fournies : ${context || "Aucune"}.`,
-    "Réponds en français, de manière très courte, professionnelle et directement exploitable.",
-    "Donne uniquement :",
-    "1. Équipe favorite",
-    "2. Probabilités estimées : victoire domicile, nul, victoire extérieur",
-    "3. Deux ou trois options de pari à considérer",
-    "4. Une cote indicative pour chaque option",
-    "5. Niveau de risque : faible, moyen ou élevé",
-    "Respecte exactement ce format, sans introduction ni conclusion :\nFAVORI : ...\nPROBABILITÉS : Domicile ...% | Nul ...% | Extérieur ...%\nOPTIONS : 1) ... — cote indicative ... — risque ... ; 2) ... — cote indicative ... — risque ...\nCHOIX PRUDENT : ...\nSi les données sont insuffisantes, indique-le clairement en une phrase.",
-    "N'invente aucune statistique et ne présente pas les estimations comme des certitudes."
+    "Tu es S-Drive IA, un assistant professionnel d'analyse de football.",
+    `Match principal : ${homeTeam} contre ${awayTeam}.`,
+    `Autres matchs ou informations fournis par l'utilisateur : ${context || "Aucune"}.`,
+    "Analyse uniquement les matchs réellement indiqués. Si un deuxième match est fourni, traite les deux séparément puis propose un combiné prudent.",
+    "Pour chaque match, donne : favori, probabilités 1/N/2 en pourcentage, 2 ou 3 options de marché (double chance, les deux équipes marquent, plus/moins de buts, handicap si pertinent), cote indicative et niveau de risque.",
+    "Ensuite, propose au maximum 2 combinés : un combiné prudent et un combiné alternatif. Calcule la cote totale indicative en multipliant les cotes indiquées, sans présenter le résultat comme garanti.",
+    "Ne fabrique pas de statistiques, de blessures, de forme récente ou de cotes réelles. Si les données manquent, précise que les probabilités sont des estimations générales.",
+    "Réponds UNIQUEMENT avec un JSON valide, sans markdown ni texte avant ou après, selon cette structure :",
+    '{"matches":[{"match":"Équipe A vs Équipe B","favorite":"...","probabilities":{"home":0,"draw":0,"away":0},"options":[{"market":"...","selection":"...","odds":0,"risk":"faible|moyen|élevé"}]}],"combos":[{"name":"Combiné prudent","selections":["..."],"total_odds":0,"risk":"..."},{"name":"Combiné alternatif","selections":["..."],"total_odds":0,"risk":"..."}],"note":"..."}',
+    "Les pourcentages doivent être numériques et totaliser environ 100 pour chaque match. Les cotes doivent être numériques. Si un combiné n'est pas pertinent, retourne une liste vide.",
+    "N'invente aucune certitude et reste direct, lisible et professionnel."
   ].join("\n");
 
   try {
     let response;
     let data;
+    const configuredModel = String(process.env.GEMINI_MODEL || "gemini-3.8-flash").trim();
+    const model = /^gemini-2\.5/i.test(configuredModel) ? "gemini-3.8-flash" : configuredModel;
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-3.8-flash")}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {
           method: "POST",
           headers: {
@@ -455,6 +456,14 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
       });
     }
 
+    let structured = null;
+    try {
+      const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      structured = JSON.parse(cleaned);
+    } catch (_) {
+      structured = null;
+    }
+
     const content = `Analyse IA : ${homeTeam} vs ${awayTeam}\n\n${text}`;
 
     const requestId = DB.prepare(
@@ -468,7 +477,8 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
 
     res.json({
       request_id: Number(requestId),
-      analysis: text
+      analysis: text,
+      structured
     });
   } catch (error) {
     console.error("GEMINI_REQUEST_ERROR", error);
