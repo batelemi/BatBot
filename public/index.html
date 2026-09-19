@@ -208,6 +208,7 @@ textarea{min-height:120px;resize:vertical}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
 footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
 
+#aiResult{font-family:inherit;font-size:14px;line-height:1.65;overflow-wrap:anywhere}.ai-result-grid{display:grid;gap:12px}.ai-result-card{background:#0b2947;border:1px solid #315d82;border-radius:14px;padding:14px}.ai-result-card h3{margin:0 0 8px;color:#6ee7a0;font-size:16px}.ai-result-card ul{margin:8px 0 0;padding-left:20px}.ai-result-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.ai-pill{display:inline-flex;padding:5px 9px;border-radius:999px;background:#123b60;border:1px solid #315d82;font-size:12px}.ai-combo{border-left:4px solid #6ee7a0}.ai-warning{color:#ffd58a;font-size:12px;margin-top:10px}
 @media(max-width:380px){
   .two-columns{gap:6px}
   .contact-button{font-size:12px}
@@ -394,9 +395,15 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <p class="muted">Renseignez les deux équipes et, si nécessaire, joignez une capture des cotes. L’IA fournit une synthèse courte : probabilités estimées, options et niveau de risque.</p>
     <div id="aiAccessNotice" class="notice">Vérification de votre accès IA…</div>
     <div class="grid-2">
-      <label><span class="muted">Équipe 1</span><input id="aiTeam1" type="text" placeholder="Ex. Real Madrid"></label>
-      <label><span class="muted">Équipe 2</span><input id="aiTeam2" type="text" placeholder="Ex. FC Barcelone"></label>
+      <label><span class="muted">Match 1 — Équipe 1</span><input id="aiTeam1" type="text" placeholder="Ex. Real Madrid"></label>
+      <label><span class="muted">Match 1 — Équipe 2</span><input id="aiTeam2" type="text" placeholder="Ex. FC Barcelone"></label>
     </div>
+    <details class="compact-conditions"><summary>➕ Ajouter un deuxième match (facultatif)</summary>
+      <div class="grid-2">
+        <label><span class="muted">Match 2 — Équipe 1</span><input id="aiTeam3" type="text" placeholder="Ex. Arsenal"></label>
+        <label><span class="muted">Match 2 — Équipe 2</span><input id="aiTeam4" type="text" placeholder="Ex. Chelsea"></label>
+      </div>
+    </details>
     <label><span class="muted">Contexte facultatif</span><textarea id="aiContext" placeholder="Compétition, date, informations utiles…"></textarea></label>
     <label class="upload" for="aiCapture"><strong>📷 Ajouter une capture (facultatif)</strong><small>Joignez une image du match ou des cotes.</small><input id="aiCapture" type="file" accept="image/*" onchange="showAIFileName()"><div id="aiFileName" class="file-name"></div></label>
     <button class="btn primary" type="button" onclick="submitAIRequest()">🔎 Préparer mon analyse IA</button>
@@ -716,24 +723,46 @@ function showAuth(){
 async function submitAIRequest(){
   const team1=document.getElementById("aiTeam1").value.trim();
   const team2=document.getElementById("aiTeam2").value.trim();
+  const team3=(document.getElementById("aiTeam3")?.value||"").trim();
+  const team4=(document.getElementById("aiTeam4")?.value||"").trim();
   const context=document.getElementById("aiContext").value.trim();
   const capture=document.getElementById("aiCapture");
-  if(!team1||!team2)return showStatus("aiStatus","Veuillez renseigner les deux équipes.","error");
-  showStatus("aiStatus","S-Drive IA est en cours d’analyse. Veuillez patienter quelques secondes.","");
-  const result=document.getElementById("aiResult"); if(result)result.textContent="";
+  if(!team1||!team2)return showStatus("aiStatus","Veuillez renseigner les deux équipes du premier match.","error");
+  if((team3&&!team4)||(!team3&&team4))return showStatus("aiStatus","Renseignez les deux équipes du deuxième match ou laissez les deux cases vides.","error");
+  showStatus("aiStatus","S-Drive IA analyse les matchs et prépare les options. Veuillez patienter…","");
+  const result=document.getElementById("aiResult"); if(result)result.innerHTML="";
   try{
     let image_data="", image_mime="image/jpeg";
     if(capture&&capture.files&&capture.files[0]){
       const file=capture.files[0];
-      if(file.size>5*1024*1024)throw new Error("La capture ne doit pas dépasser 5 Mo.");
+      if(file.size>4*1024*1024)throw new Error("La capture ne doit pas dépasser 4 Mo.");
       image_mime=file.type||"image/jpeg";
       image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
     }
-    const response=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:team1,away_team:team2,context,image_data,image_mime})});
+    const extraMatch=team3&&team4?`Deuxième match : ${team3} contre ${team4}.\n`:"";
+    const fullContext=extraMatch+context;
+    const response=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:team1,away_team:team2,context:fullContext,image_data,image_mime})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Analyse indisponible.");
-    showStatus("aiStatus","Analyse terminée.","success"); if(result)result.textContent=data.analysis||"Aucun résultat.";
-  }catch(error){showStatus("aiStatus",error.message||"S-Drive IA est momentanément très sollicitée. Veuillez réessayer dans quelques secondes.","error");}
+    showStatus("aiStatus","Analyse terminée.","success");
+    if(result){ if(data.structured)renderStructuredAI(data.structured,result); else result.textContent=data.analysis||"Aucun résultat exploitable."; }
+  }catch(error){showStatus("aiStatus",error.message||"S-Drive IA est momentanément indisponible. Veuillez réessayer.","error");}
+}
+
+function safeText(value){return escapeHtml(String(value??""));}
+function renderStructuredAI(data,target){
+  const matches=Array.isArray(data.matches)?data.matches:[];
+  const combos=Array.isArray(data.combos)?data.combos:[];
+  let html='<div class="ai-result-grid">';
+  matches.forEach((m,i)=>{
+    const p=m.probabilities||{}; const opts=Array.isArray(m.options)?m.options:[];
+    html+=`<div class="ai-result-card"><h3>⚽ Match ${i+1} — ${safeText(m.match||"Match")}</h3><div><strong>Favori :</strong> ${safeText(m.favorite||"Non déterminé")}</div><div class="ai-result-meta"><span class="ai-pill">🏠 ${safeText(p.home??"—")}%</span><span class="ai-pill">🤝 ${safeText(p.draw??"—")}%</span><span class="ai-pill">✈️ ${safeText(p.away??"—")}%</span></div><ul>`;
+    opts.forEach(o=>{html+=`<li><strong>${safeText(o.market||"Option")} :</strong> ${safeText(o.selection||"—")} — cote ${safeText(o.odds||"—")} — risque ${safeText(o.risk||"—")}</li>`;});
+    html+='</ul></div>';
+  });
+  combos.forEach(c=>{html+=`<div class="ai-result-card ai-combo"><h3>🎯 ${safeText(c.name||"Combiné")}</h3><div>${(Array.isArray(c.selections)?c.selections:[]).map(x=>`<div>• ${safeText(x)}</div>`).join("")||"Aucune sélection proposée."}</div><div class="ai-result-meta"><span class="ai-pill">Cote totale indicative : ${safeText(c.total_odds||"—")}</span><span class="ai-pill">Risque : ${safeText(c.risk||"—")}</span></div></div>`;});
+  if(data.note)html+=`<div class="ai-warning">ℹ️ ${safeText(data.note)}</div>`;
+  html+='</div>'; target.innerHTML=html;
 }
 
 function showAIFileName(){
