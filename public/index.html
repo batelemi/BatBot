@@ -1179,8 +1179,49 @@ function organizeAdminPanel(){
   const modal=document.createElement("div");modal.className="admin-modal hidden";modal.innerHTML='<div class="admin-modal-inner"><div class="admin-modal-head"><strong id="adminModalTitle">Option administrateur</strong><button class="btn secondary admin-modal-close" type="button">✕ Fermer</button></div><div class="admin-modal-body"></div></div>';
   document.body.appendChild(modal);
   const body=modal.querySelector(".admin-modal-body");const title=modal.querySelector("#adminModalTitle");const close=()=>{const card=modal._activeCard;if(card&&card._adminPlaceholder)card._adminPlaceholder.parentNode.insertBefore(card,card._adminPlaceholder.nextSibling);modal.classList.add("hidden");modal._activeCard=null;};
-  modal.querySelector(".admin-modal-close").addEventListener("click",close);modal.addEventListener("click",e=>{if(e.target===modal)close();});
-  cards.forEach((card,index)=>{const heading=card.querySelector("h2");const label=(heading?.textContent||"Option").trim();const placeholder=document.createComment("admin-card-placeholder");card.parentNode.insertBefore(placeholder,card);card._adminPlaceholder=placeholder;card.classList.add("hidden");const button=document.createElement("button");button.type="button";button.className="admin-tool-btn";button.textContent=label;button.addEventListener("click",()=>{if(modal._activeCard)close();title.textContent=label;card.classList.remove("hidden");body.appendChild(card);modal._activeCard=card;modal.classList.remove("hidden");});tools.appendChild(button);});
+  const closeButton=modal.querySelector(".admin-modal-close");
+  const openModal=(card,label,button)=>{
+    if(modal._activeCard)close();
+    title.textContent=label;
+    card.classList.remove("hidden");
+    body.appendChild(card);
+    modal._activeCard=card;
+    modal.classList.remove("hidden");
+    document.body.style.overflow="hidden";
+    button?.setAttribute("aria-expanded","true");
+    closeButton.focus();
+  };
+  const closeModal=()=>{
+    const active=modal._activeCard;
+    if(active&&active._adminPlaceholder&&active._adminPlaceholder.parentNode){
+      active._adminPlaceholder.parentNode.insertBefore(active,active._adminPlaceholder.nextSibling);
+    }
+    modal.classList.add("hidden");
+    modal._activeCard=null;
+    document.body.style.overflow="";
+    tools.querySelectorAll(".admin-tool-btn").forEach(btn=>btn.setAttribute("aria-expanded","false"));
+  };
+  close=closeModal;
+  closeButton.addEventListener("click",closeModal);
+  modal.addEventListener("click",e=>{if(e.target===modal)closeModal();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!modal.classList.contains("hidden"))closeModal();});
+  cards.forEach((card,index)=>{
+    const heading=card.querySelector("h2");
+    const label=(heading?.textContent||"Option").trim();
+    const placeholder=document.createComment("admin-card-placeholder");
+    card.parentNode.insertBefore(placeholder,card);
+    card._adminPlaceholder=placeholder;
+    card.classList.add("hidden");
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="admin-tool-btn";
+    button.textContent=label;
+    button.setAttribute("aria-expanded","false");
+    button.setAttribute("aria-controls","adminModalBody");
+    button.addEventListener("click",()=>openModal(card,label,button));
+    tools.appendChild(button);
+  });
+  body.id="adminModalBody";
   const stats=panel.querySelector(":scope > .card");if(stats)stats.insertAdjacentElement("afterend",tools);else panel.prepend(tools);
   adminOrganizerReady=true;
 }
