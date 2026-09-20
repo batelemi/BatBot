@@ -1154,13 +1154,9 @@ async function adminLogin(){
     }
 
     showLoading("Connexion réussie…");
-    setTimeout(function(){
-      Promise.resolve().then(function(){ return loadAdmin(); })
-        .catch(function(error){
-          console.error("ADMIN LOAD:",error);
-          showStatus("adminLoginStatus","Impossible de charger l’administration. Réessayez.","error");
-        })
-        .finally(function(){ hideLoading(); });
+    setTimeout(async function(){
+      await loadAdmin();
+      hideLoading();
     },300);
 
   }catch(error){
@@ -1177,59 +1173,15 @@ function organizeAdminPanel(){
   if(adminOrganizerReady)return;
   const panel=document.getElementById("adminPanel");
   if(!panel)return;
-  const cards=Array.from(panel.children).filter(function(el){
-    return el.classList.contains("card") && el.querySelector("h2");
-  });
+  const cards=Array.from(panel.children).filter(el=>el.classList.contains("card") && el.querySelector("h2"));
   if(!cards.length)return;
-  const dashboardCard=cards[0], optionCards=cards.slice(1);
-  const tools=document.createElement("div");
-  tools.className="admin-tools";
-  tools.setAttribute("aria-label","Menu d’administration");
-  const modal=document.createElement("div");
-  modal.className="admin-modal hidden";
-  modal.setAttribute("role","dialog");
-  modal.setAttribute("aria-modal","true");
-  modal.innerHTML='<div class="admin-modal-inner"><div class="admin-modal-head"><div><span class="admin-modal-kicker">ESPACE ADMIN</span><strong id="adminModalTitle">Option administrateur</strong></div><button class="btn secondary admin-modal-close" type="button">✕ Fermer</button></div><div class="admin-modal-body"></div></div>';
+  const tools=document.createElement("div");tools.className="admin-tools";tools.setAttribute("aria-label","Options administrateur");
+  const modal=document.createElement("div");modal.className="admin-modal hidden";modal.innerHTML='<div class="admin-modal-inner"><div class="admin-modal-head"><strong id="adminModalTitle">Option administrateur</strong><button class="btn secondary admin-modal-close" type="button">✕ Fermer</button></div><div class="admin-modal-body"></div></div>';
   document.body.appendChild(modal);
-  const body=modal.querySelector(".admin-modal-body");
-  const title=modal.querySelector("#adminModalTitle");
-  const closeButton=modal.querySelector(".admin-modal-close");
-  function close(){
-    const card=modal._activeCard;
-    if(card && card._adminPlaceholder){
-      card.classList.add("hidden");
-      card._adminPlaceholder.parentNode.insertBefore(card,card._adminPlaceholder.nextSibling);
-    }
-    modal.classList.add("hidden");
-    modal._activeCard=null;
-  }
-  closeButton.addEventListener("click",close);
-  modal.addEventListener("click",function(e){if(e.target===modal)close();});
-  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!modal.classList.contains("hidden"))close();});
-  optionCards.forEach(function(card,index){
-    const heading=card.querySelector("h2");
-    const label=(heading&&heading.textContent||"Option").trim();
-    const placeholder=document.createComment("admin-card-placeholder");
-    card.parentNode.insertBefore(placeholder,card);
-    card._adminPlaceholder=placeholder;
-    card.classList.add("hidden");
-    const button=document.createElement("button");
-    button.type="button";
-    button.className="admin-tool-btn";
-    button.innerHTML='<span class="admin-tool-icon">'+(["👥","⚙️","🏆","🎁","🔑","📊"][index]||"🛠️")+'</span><span class="admin-tool-label">'+label.replace(/^[^\wÀ-ÿ]+/,"")+'</span><span class="admin-tool-arrow">›</span>';
-    button.addEventListener("click",function(){
-      if(modal._activeCard)close();
-      title.textContent=label;
-      card.classList.remove("hidden");
-      body.appendChild(card);
-      modal._activeCard=card;
-      modal.classList.remove("hidden");
-      closeButton.focus();
-    });
-    tools.appendChild(button);
-  });
-  dashboardCard.classList.add("admin-dashboard-card");
-  dashboardCard.insertAdjacentElement("afterend",tools);
+  const body=modal.querySelector(".admin-modal-body");const title=modal.querySelector("#adminModalTitle");const close=()=>{const card=modal._activeCard;if(card&&card._adminPlaceholder)card._adminPlaceholder.parentNode.insertBefore(card,card._adminPlaceholder.nextSibling);modal.classList.add("hidden");modal._activeCard=null;};
+  modal.querySelector(".admin-modal-close").addEventListener("click",close);modal.addEventListener("click",e=>{if(e.target===modal)close();});
+  cards.forEach((card,index)=>{const heading=card.querySelector("h2");const label=(heading?.textContent||"Option").trim();const placeholder=document.createComment("admin-card-placeholder");card.parentNode.insertBefore(placeholder,card);card._adminPlaceholder=placeholder;card.classList.add("hidden");const button=document.createElement("button");button.type="button";button.className="admin-tool-btn";button.textContent=label;button.addEventListener("click",()=>{if(modal._activeCard)close();title.textContent=label;card.classList.remove("hidden");body.appendChild(card);modal._activeCard=card;modal.classList.remove("hidden");});tools.appendChild(button);});
+  const stats=panel.querySelector(":scope > .card");if(stats)stats.insertAdjacentElement("afterend",tools);else panel.prepend(tools);
   adminOrganizerReady=true;
 }
 
