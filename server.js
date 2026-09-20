@@ -6,6 +6,8 @@ const Database = require("better-sqlite3");
 const path = require("path");
 const crypto = require("crypto");
 
+const AI_TIMEOUT_MS = 25000;
+
 const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
@@ -739,6 +741,7 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
     const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } })
@@ -753,6 +756,7 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
     const url = process.env.META_API_URL;
     if (!key || !url) throw new Error("META_API_KEY ou META_API_URL manquante");
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: process.env.META_MODEL || "meta-llama/llama-3.1-8b-instruct", temperature: 0.2, messages: [{ role: "user", content: prompt }] })
