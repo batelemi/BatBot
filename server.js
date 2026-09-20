@@ -9,7 +9,7 @@ const crypto = require("crypto");
 const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
-const DB = new Database(path.join(__dirname, "sdrive.db"));
+const DB = new Database(path.join(__dirname, "BatBot.db"));
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "8mb" }));
@@ -96,8 +96,8 @@ const defaults = {
   orangeMoney: "0759060289",
   moovMoney: "0152171974",
   mtnMoney: "0554740711",
-  sdriveLink: "",
-  sdriveInviteMessage: "Invite tes amis à rejoindre BatBot et profite de tes avantages.",
+  BatBotLink: "",
+  BatBotInviteMessage: "Invite tes amis à rejoindre BatBot et profite de tes avantages.",
   adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
@@ -112,7 +112,7 @@ for (const [key, value] of Object.entries(defaults)) {
 // Correction automatique des anciennes coordonnées WhatsApp/admin enregistrées
 // dans la base de données lors d'une précédente version.
 try {
-  const oldNumber = "2250152171774";
+  const oldNumber = "2250152171974";
   const newNumber = "2250152171974";
   const currentWhatsapp = getSetting.get("whatsapp");
   const currentAdminPhone = getSetting.get("adminPhone");
@@ -728,29 +728,93 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
 
   const home = String(req.body.home_team || "").trim();
   const away = String(req.body.away_team || "").trim();
+  const secondHome = String(req.body.second_home_team || "").trim();
+  const secondAway = String(req.body.second_away_team || "").trim();
   const context = String(req.body.context || "").trim();
-  if (!home || !away) return res.status(400).json({ error: "Les deux équipes sont requises." });
-  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: "BatBot IA est temporairement indisponible." });
 
-  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, de manière claire et structurée, sans garantie de résultat.\nMatch : ${home} vs ${away}\nContexte : ${context || "Non fourni"}\nPrésente : forme et facteurs à vérifier si disponibles, probabilités estimées avec prudence, options de marché possibles (1X2, double chance, buts, BTTS, handicap), cotes indicatives explicitement présentées comme estimations, niveau de risque et une conclusion courte. N’invente pas de données en temps réel et signale les informations manquantes. Termine uniquement par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
+  if (!home || !away) return res.status(400).json({ error: "Les deux équipes du premier match sont requises." });
+  if ((secondHome && !secondAway) || (!secondHome && secondAway)) {
+    return res.status(400).json({ error: "Complétez les deux équipes du deuxième match ou laissez-les vides." });
+  }
+
+  const matches = [`1) ${home} vs ${away}`];
+  if (secondHome && secondAway) matches.push(`2) ${secondHome} vs ${secondAway}`);
+
+  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, de manière claire,
+structurée et prudente, sans garantie de résultat.
+
+Matchs à analyser :
+${matches.join("\n")}
+
+Contexte fourni : ${context || "Non fourni"}
+
+Pour chaque match, présente :
+- les informations manquantes et les facteurs à vérifier ;
+- des probabilités prudentes 1X2, clairement présentées comme des estimations ;
+- des marchés possibles : 1X2, double chance, buts, BTTS et handicap ;
+- le niveau de risque et les raisons ;
+- aucune sélection certaine et aucune donnée en temps réel inventée.
+
+À la fin, propose uniquement, si les informations disponibles le permettent, une combinaison
+indicative pour les deux matchs, avec une cote totale explicitement estimée et non garantie.
+Précise que les cotes réelles doivent être vérifiées chez un opérateur.
+Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
+
+  const systemInstruction = "Tu fournis une analyse informative et prudente. Ne présente jamais une sélection comme certaine. N’invente pas de statistiques, de blessures, de cotes en direct ou de résultats.";
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.2, messages: [
-        { role: "system", content: "Tu fournis une analyse informative et prudente. Ne présente jamais une sélection comme certaine." },
-        { role: "user", content: prompt }
-      ] })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      console.error("AI provider error:", response.status, data?.error?.message || "unknown");
-      return res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
+    let analysis = "";
+
+    if (process.env.GEMINI_API_KEY) {
+      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2 }
+          })
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error("Gemini provider error:", response.status, data?.error?.message || "unknown");
+        return res.status(502).json({ error: "Le service Gemini est temporairement indisponible." });
+      }
+      analysis = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
+    } else if (process.env.OPENAI_API_KEY) {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error("OpenAI provider error:", response.status, data?.error?.message || "unknown");
+        return res.status(502).json({ error: "Le service IA est temporairement indisponible." });
+      }
+      analysis = data?.choices?.[0]?.message?.content?.trim() || "";
+    } else {
+      return res.status(503).json({
+        error: "BatBot IA est temporairement indisponible. Configurez GEMINI_API_KEY ou OPENAI_API_KEY."
+      });
     }
-    const analysis = data?.choices?.[0]?.message?.content;
+
     if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
-    res.json({ analysis });
+    res.json({ analysis, provider: process.env.GEMINI_API_KEY ? "gemini" : "openai" });
   } catch (error) {
     console.error("AI request error:", error.message);
     res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
