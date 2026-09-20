@@ -1009,10 +1009,14 @@ function renderAdminUsers(users){
         <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre BatBot'}</span>
       </div>
       <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
-      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
+      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
+      <div class="admin-small">🤖 IA : ${user.ai_active?'Active':'Non active'}</div>
+      ${user.ai_active && user.ai_until?`<div class="admin-small">⏳ IA jusqu'au : ${escapeHtml(formatDateTime(user.ai_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
       <div class="admin-actions">
         <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium</button>
         <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
+        <button class="btn primary" type="button" onclick="setAISubscription(${Number(user.id)},true)">🤖 Activer IA</button>
+        <button class="btn gold" type="button" onclick="setAISubscription(${Number(user.id)},false)">🚫 Désactiver IA</button>
         <button class="btn secondary" type="button" onclick="toggleUserDisabled(${Number(user.id)},${user.disabled?false:true})">${user.disabled?"▶️ Réactiver":"⛔ Désactiver"}</button><button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
       </div>
     </div>`;
@@ -1025,6 +1029,16 @@ async function setPremium(id,enabled){
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
     alert(data.message||"Statut Premium mis à jour.");
+    await loadAdmin();
+  }catch(e){alert(e.message);}
+}
+
+async function setAISubscription(id,enabled){
+  try{
+    const response=await fetch("/api/admin/ai-subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:enabled?(Number(prompt("Durée IA en jours :","7"))||7):7})});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Action IA impossible.");
+    alert(data.message||"Accès IA mis à jour.");
     await loadAdmin();
   }catch(e){alert(e.message);}
 }
@@ -1091,7 +1105,7 @@ function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
   const p=document.getElementById("premiumStatusText"); const a=document.getElementById("aiStatusText");
   if(p)p.textContent=premium?"Actif":"Non actif";
-  if(a)a.textContent=premium?"Active":"Non active";
+  if(a)a.textContent=(premium && Boolean(user&&user.ai_active))?"Active":"Non active";
 }
 async function submitBatBotAI(){
   const home=document.getElementById("aiHomeTeam").value.trim();const away=document.getElementById("aiAwayTeam").value.trim();const secondHome=document.getElementById("aiSecondHomeTeam").value.trim();const secondAway=document.getElementById("aiSecondAwayTeam").value.trim();const context=document.getElementById("aiContext").value.trim();
