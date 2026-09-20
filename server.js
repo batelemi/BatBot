@@ -6,8 +6,6 @@ const Database = require("better-sqlite3");
 const path = require("path");
 const crypto = require("crypto");
 
-const AI_TIMEOUT_MS = 25000;
-
 const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
@@ -732,55 +730,30 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const away = String(req.body.away_team || "").trim();
   const context = String(req.body.context || "").trim();
   if (!home || !away) return res.status(400).json({ error: "Les deux équipes sont requises." });
+  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: "BatBot IA est temporairement indisponible." });
 
-  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, clairement et prudemment, sans garantie de résultat.\nMatch : ${home} vs ${away}\nContexte : ${context || "Non fourni"}\nPrésente les informations disponibles, les limites des données, des probabilités estimées avec prudence, 1X2, double chance, buts, BTTS, handicap, cotes indicatives présentées comme estimations, niveau de risque et une conclusion courte. N’invente jamais de données en temps réel. Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
-
-  async function askGemini() {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("GEMINI_API_KEY manquante");
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Gemini ${response.status}: ${data?.error?.message || "erreur"}`);
-    return data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("\n").trim();
-  }
-
-  async function askMetaFallback() {
-    const key = process.env.META_API_KEY;
-    const url = process.env.META_API_URL;
-    if (!key || !url) throw new Error("META_API_KEY ou META_API_URL manquante");
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: process.env.META_MODEL || "meta-llama/llama-3.1-8b-instruct", temperature: 0.2, messages: [{ role: "user", content: prompt }] })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Secours ${response.status}: ${data?.error?.message || "erreur"}`);
-    return data?.choices?.[0]?.message?.content?.trim() || data?.output?.trim();
-  }
+  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, de manière claire et structurée, sans garantie de résultat.\nMatch : ${home} vs ${away}\nContexte : ${context || "Non fourni"}\nPrésente : forme et facteurs à vérifier si disponibles, probabilités estimées avec prudence, options de marché possibles (1X2, double chance, buts, BTTS, handicap), cotes indicatives explicitement présentées comme estimations, niveau de risque et une conclusion courte. N’invente pas de données en temps réel et signale les informations manquantes. Termine uniquement par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
 
   try {
-    let analysis;
-    let provider = "Gemini";
-    try {
-      analysis = await askGemini();
-    } catch (primaryError) {
-      console.warn("Gemini indisponible, tentative du secours:", primaryError.message);
-      provider = "secours";
-      analysis = await askMetaFallback();
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.2, messages: [
+        { role: "system", content: "Tu fournis une analyse informative et prudente. Ne présente jamais une sélection comme certaine." },
+        { role: "user", content: prompt }
+      ] })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("AI provider error:", response.status, data?.error?.message || "unknown");
+      return res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
     }
+    const analysis = data?.choices?.[0]?.message?.content;
     if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
-    res.json({ analysis, provider: "BatBot IA" });
+    res.json({ analysis });
   } catch (error) {
-    console.error("AI providers error:", error.message);
-    res.status(502).json({ error: "BatBot IA est temporairement indisponible. Vérifiez les clés et les paramètres Gemini et du secours dans Render." });
+    console.error("AI request error:", error.message);
+    res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
   }
 });
 
