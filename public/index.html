@@ -353,7 +353,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="section-kicker">Assistant intelligent</div>
     <h2>🤖 BatBot IA</h2>
     <p class="muted">Analysez vos matchs avec BatBot IA. L’accès nécessite un abonnement actif.</p>
-    <div class="two-columns"><input id="aiHomeTeam" placeholder="Équipe à domicile"><input id="aiAwayTeam" placeholder="Équipe à l’extérieur"></div>
+    <div class="two-columns"><input id="aiHomeTeam" placeholder="Match 1 — équipe à domicile"><input id="aiAwayTeam" placeholder="Match 1 — équipe à l’extérieur"></div>
+    <div class="two-columns"><input id="aiSecondHomeTeam" placeholder="Match 2 — équipe à domicile (facultatif)"><input id="aiSecondAwayTeam" placeholder="Match 2 — équipe à l’extérieur (facultatif)"></div>
     <textarea id="aiContext" placeholder="Contexte facultatif : compétition, date, informations disponibles..."></textarea>
     <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
     <div id="smartDriveAIStatus" class="status"></div>
@@ -1093,12 +1094,12 @@ function updateProfileStatuses(user){
   if(a)a.textContent=premium?"Active":"Non active";
 }
 async function submitBatBotAI(){
-  const home=document.getElementById("aiHomeTeam").value.trim();const away=document.getElementById("aiAwayTeam").value.trim();const context=document.getElementById("aiContext").value.trim();
+  const home=document.getElementById("aiHomeTeam").value.trim();const away=document.getElementById("aiAwayTeam").value.trim();const secondHome=document.getElementById("aiSecondHomeTeam").value.trim();const secondAway=document.getElementById("aiSecondAwayTeam").value.trim();const context=document.getElementById("aiContext").value.trim();
   if(!home||!away)return showStatus("smartDriveAIStatus","Saisissez les deux équipes.","error");
   setLoading("smartDriveAIButton",true,"🤖 Analyse en cours…");
   showStatus("smartDriveAIStatus","BatBot IA est en cours d’analyse. Veuillez patienter quelques secondes.","success");
   try{
-    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,context})});
+    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,second_home_team:secondHome,second_away_team:secondAway,context})});
     const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Analyse indisponible.");
     const box=document.getElementById("smartDriveAIResult");box.classList.remove("hidden");box.textContent=d.analysis||"Aucun résultat disponible.";
   }catch(e){showStatus("smartDriveAIStatus","Plusieurs demandes sont peut-être en cours de traitement. Veuillez réessayer dans quelques secondes.","error");}
