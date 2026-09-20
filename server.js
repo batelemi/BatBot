@@ -114,7 +114,7 @@ for (const [key, value] of Object.entries(defaults)) {
 // Correction automatique des anciennes coordonnées WhatsApp/admin enregistrées
 // dans la base de données lors d'une précédente version.
 try {
-  const oldNumber = "2250152171774";
+  const oldNumber = "2250152171974";
   const newNumber = "2250152171974";
   const currentWhatsapp = getSetting.get("whatsapp");
   const currentAdminPhone = getSetting.get("adminPhone");
@@ -862,6 +862,6 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`BatBot démarré sur le port ${PORT}`);
 });
