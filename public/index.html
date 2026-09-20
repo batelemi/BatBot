@@ -1155,8 +1155,17 @@ async function adminLogin(){
 
     showLoading("Connexion réussie…");
     setTimeout(async function(){
-      await loadAdmin();
-      hideLoading();
+      try{
+        await Promise.race([
+          loadAdmin(),
+          new Promise(function(_,reject){setTimeout(function(){reject(new Error("ADMIN_LOAD_TIMEOUT"));},15000);})
+        ]);
+      }catch(loadError){
+        console.error("ADMIN LOAD:",loadError);
+        showStatus("adminLoginStatus","Connexion réussie, mais le chargement de l’administration prend trop de temps. Actualisez la page.","error");
+      }finally{
+        hideLoading();
+      }
     },300);
 
   }catch(error){
