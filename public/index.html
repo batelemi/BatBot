@@ -1596,5 +1596,105 @@ document.addEventListener("keydown",function(event){
 });
 </script>
 
+
+<style id="batbot-public-options-style">
+  .public-options-launcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+  .public-option-btn{min-height:66px;border:1px solid rgba(0,213,255,.38);border-radius:16px;background:linear-gradient(145deg,#123b5b,#0b223a);color:#fff;font-weight:800;font-size:14px;padding:10px;box-shadow:0 5px 14px rgba(0,0,0,.16);cursor:pointer}
+  .public-option-btn:active{transform:scale(.98)}
+  .public-options-label{margin:18px 0 8px;color:#6EE7A0;font-weight:900;letter-spacing:1px;text-transform:uppercase;font-size:12px}
+  .public-option-modal{position:fixed;inset:0;background:rgba(2,10,20,.9);z-index:150;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}
+  .public-option-modal.hidden{display:none}
+  .public-option-modal-inner{width:min(720px,100%);margin-top:18px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.5)}
+  .public-option-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;position:sticky;top:0;background:#0b223a;z-index:2;padding-bottom:8px}
+  .public-option-modal-head strong{font-size:17px}
+  .public-option-modal-close{width:auto;margin:0;padding:9px 12px;white-space:nowrap}
+  .public-option-modal-body>.card,.public-option-modal-body>section{margin-top:0}
+  @media(min-width:640px){.public-options-launcher{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+<script id="batbot-public-options-script">
+(function(){
+  function setupPublicOptionWindows(){
+    const dashboard=document.getElementById('dashboard');
+    const statusGrid=dashboard&&dashboard.querySelector('.profile-status-grid');
+    if(!dashboard||!statusGrid||dashboard.dataset.publicWindowsReady==='1')return;
+    dashboard.dataset.publicWindowsReady='1';
+
+    const launcher=document.createElement('div');
+    launcher.className='public-options-launcher-wrap';
+    launcher.innerHTML='<div class="public-options-label">Menu principal</div><div class="public-options-launcher"></div>';
+    statusGrid.insertAdjacentElement('afterend',launcher);
+    const grid=launcher.querySelector('.public-options-launcher');
+
+    const modal=document.createElement('div');
+    modal.className='public-option-modal hidden';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    modal.innerHTML='<div class="public-option-modal-inner"><div class="public-option-modal-head"><strong id="publicOptionModalTitle">Option</strong><button type="button" class="btn secondary public-option-modal-close">← Retour</button></div><div class="public-option-modal-body"></div></div>';
+    document.body.appendChild(modal);
+    const title=modal.querySelector('#publicOptionModalTitle');
+    const body=modal.querySelector('.public-option-modal-body');
+    const closeButton=modal.querySelector('.public-option-modal-close');
+    let active=null;
+
+    function closeModal(){
+      if(!active)return;
+      active.classList.add('hidden');
+      if(active._publicPlaceholder&&active._publicPlaceholder.parentNode){
+        active._publicPlaceholder.parentNode.insertBefore(active,active._publicPlaceholder.nextSibling);
+      }
+      active=null;
+      modal.classList.add('hidden');
+      document.body.style.overflow='';
+    }
+    function openModal(card,label){
+      if(active)closeModal();
+      title.textContent=label;
+      const placeholder=document.createComment('batbot-public-option-placeholder');
+      card.parentNode.insertBefore(placeholder,card);
+      card._publicPlaceholder=placeholder;
+      card.classList.remove('hidden');
+      body.appendChild(card);
+      active=card;
+      modal.classList.remove('hidden');
+      document.body.style.overflow='hidden';
+    }
+    closeButton.addEventListener('click',closeModal);
+    modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.classList.contains('hidden'))closeModal();});
+
+    const children=Array.from(dashboard.children);
+    const start=children.indexOf(statusGrid)+1;
+    const contentItems=children.slice(start).filter(function(el){
+      return !(el.matches('button[onclick="logout()"]'));
+    });
+
+    contentItems.forEach(function(card){
+      if(card===launcher||card.classList.contains('public-options-launcher-wrap'))return;
+      const heading=card.querySelector('h2');
+      let label=(heading&&heading.textContent||card.getAttribute('aria-label')||'Option').replace(/\s+/g,' ').trim();
+      if(!label)label='Option';
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='public-option-btn';
+      button.textContent=label;
+      button.addEventListener('click',function(){openModal(card,label);});
+      grid.appendChild(button);
+      card.classList.add('hidden');
+    });
+
+    const logout=document.createElement('button');
+    logout.type='button';
+    logout.className='public-option-btn';
+    logout.textContent='🚪 Se déconnecter';
+    logout.addEventListener('click',function(){if(typeof window.logout==='function')window.logout();});
+    grid.appendChild(logout);
+
+    const oldLogout=dashboard.querySelector('button[onclick="logout()"]');
+    if(oldLogout)oldLogout.classList.add('hidden');
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPublicOptionWindows);else setupPublicOptionWindows();
+})();
+</script>
+
 </body>
 </html>
