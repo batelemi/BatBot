@@ -9,7 +9,7 @@ const crypto = require("crypto");
 const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
-const DB = new Database(path.join(__dirname, "BatBot.db"));
+const DB = new Database(path.join(__dirname, "sdrive.db"));
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "8mb" }));
@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users(
   password_hash TEXT NOT NULL,
   premium_until TEXT,
   premium_started_at TEXT,
+  ai_until TEXT,
   disabled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS coupons(
 
 // Migrations pour les bases déjà existantes
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
 
 const defaults = {
@@ -96,8 +98,8 @@ const defaults = {
   orangeMoney: "0759060289",
   moovMoney: "0152171974",
   mtnMoney: "0554740711",
-  BatBotLink: "",
-  BatBotInviteMessage: "Invite tes amis à rejoindre BatBot et profite de tes avantages.",
+  sdriveLink: "",
+  sdriveInviteMessage: "Invite tes amis à rejoindre BatBot et profite de tes avantages.",
   adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
@@ -112,7 +114,7 @@ for (const [key, value] of Object.entries(defaults)) {
 // Correction automatique des anciennes coordonnées WhatsApp/admin enregistrées
 // dans la base de données lors d'une précédente version.
 try {
-  const oldNumber = "2250152171974";
+  const oldNumber = "2250152171774";
   const newNumber = "2250152171974";
   const currentWhatsapp = getSetting.get("whatsapp");
   const currentAdminPhone = getSetting.get("adminPhone");
@@ -148,6 +150,7 @@ function cleanPhone(value) {
 function userView(user) {
   if (!user) return null;
   const active = !!(user.premium_until && new Date(user.premium_until) > new Date());
+  const aiActive = !!(user.ai_until && new Date(user.ai_until) > new Date());
   return {
     id: user.id,
     username: user.username,
@@ -155,6 +158,8 @@ function userView(user) {
     phone: user.phone,
     premium_until: user.premium_until,
     premium_started_at: user.premium_started_at || null,
+    ai_until: user.ai_until || null,
+    ai_active: aiActive && active && !Boolean(user.disabled),
     disabled: Boolean(user.disabled),
     is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
@@ -400,6 +405,31 @@ app.post("/api/admin/subscription", requireAdmin, (req, res) => {
 
   if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
   res.json({ message: active ? `Premium activé pour ${durationDays} jour(s).` : "Premium désactivé." });
+});
+
+// Activation de l'accès IA : l'utilisateur doit aussi avoir Premium actif.
+app.post("/api/admin/ai-subscription", requireAdmin, (req, res) => {
+  const id = Number(req.body.user_id);
+  const active = Boolean(req.body.active);
+  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(id);
+
+  if (!user) return res.status(404).json({ error: "Utilisateur introuvable." });
+
+  if (active) {
+    const premiumActive = !!(user.premium_until && new Date(user.premium_until) > new Date());
+    if (!premiumActive) {
+      return res.status(400).json({
+        error: "Activez d’abord Premium pour autoriser l’accès à l’IA."
+      });
+    }
+    const until = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+    DB.prepare("UPDATE users SET ai_until=? WHERE id=?").run(until, id);
+    return res.json({ message: `IA activée pour ${durationDays} jour(s).`, ai_until: until });
+  }
+
+  DB.prepare("UPDATE users SET ai_until=NULL WHERE id=?").run(id);
+  res.json({ message: "Accès IA désactivé." });
 });
 
 app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
@@ -723,8 +753,13 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
 
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  const active = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
-  if (!active) return res.status(403).json({ error: "L’accès à BatBot IA nécessite un abonnement actif." });
+  const premiumActive = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
+  const aiActive = !!(user && user.ai_until && new Date(user.ai_until) > new Date());
+  if (!premiumActive || !aiActive) {
+    return res.status(403).json({
+      error: "L’accès à BatBot IA nécessite un abonnement Premium et une autorisation IA active."
+    });
+  }
 
   const home = String(req.body.home_team || "").trim();
   const away = String(req.body.away_team || "").trim();
