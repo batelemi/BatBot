@@ -87,7 +87,7 @@ const defaults = {
   whatsapp: "2250152171974",
   telegram: "@BatBot12",
   whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
-  telegramGroup: "https://t.me/BatBot10",
+  telegramGroup: "https://t.me/sdrive123",
   tiktok: "https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99cD47Jhd00",
   facebook: "https://www.facebook.com/share/1L96SqLnZT/",
   instagram: "https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==",
@@ -765,37 +765,54 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const away = String(req.body.away_team || "").trim();
   const secondHome = String(req.body.second_home_team || "").trim();
   const secondAway = String(req.body.second_away_team || "").trim();
-  const context = String(req.body.context || "").trim();
 
-  if (!home || !away) return res.status(400).json({ error: "Les deux équipes du premier match sont requises." });
-  if ((secondHome && !secondAway) || (!secondHome && secondAway)) {
-    return res.status(400).json({ error: "Complétez les deux équipes du deuxième match ou laissez-les vides." });
+  if (!home || !away || !secondHome || !secondAway) {
+    return res.status(400).json({
+      error: "Les deux matchs sont obligatoires. Saisissez Match 1 et Match 2."
+    });
   }
 
-  const matches = [`1) ${home} vs ${away}`];
-  if (secondHome && secondAway) matches.push(`2) ${secondHome} vs ${secondAway}`);
+  const matches = [`1) ${home} vs ${away}`, `2) ${secondHome} vs ${secondAway}`];
 
-  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, de manière claire,
-structurée et prudente, sans garantie de résultat.
+  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds uniquement avec un JSON valide, sans introduction, sans Markdown et sans texte supplémentaire.
 
 Matchs à analyser :
 ${matches.join("\n")}
 
-Contexte fourni : ${context || "Non fourni"}
+Objectif : fournir une fiche courte, claire et directement lisible sur téléphone.
+Pour chacun des 2 matchs, retourne :
+- name : nom du match ;
+- probabilities : 3 à 5 probabilités courtes parmi 1, X, 2, double chance, buts ;
+- options : 4 à 6 options pertinentes parmi 1X, X2, 12, victoire, plus/moins de buts, BTTS, handicap et score exact. Pour chaque option, indique name, probability et risk en quelques mots ;
+- recommendation : une seule option principale.
 
-Pour chaque match, présente :
-- les informations manquantes et les facteurs à vérifier ;
-- des probabilités prudentes 1X2, clairement présentées comme des estimations ;
-- des marchés possibles : 1X2, double chance, buts, BTTS et handicap ;
-- le niveau de risque et les raisons ;
-- aucune sélection certaine et aucune donnée en temps réel inventée.
+À la fin, retourne combined avec :
+- selections : les deux choix retenus, très courts ;
+- estimated_odds : une cote combinée estimée, par exemple "2.00 à 3.00".
 
-À la fin, propose uniquement, si les informations disponibles le permettent, une combinaison
-indicative pour les deux matchs, avec une cote totale explicitement estimée et non garantie.
-Précise que les cotes réelles doivent être vérifiées chez un opérateur.
-Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
+N’invente pas de statistiques, de blessures, de résultats ou de cotes en direct. Ne donne aucune longue explication. Utilise exactement cette structure :
+{
+  "matches": [
+    {
+      "name": "...",
+      "probabilities": [{"label":"1","value":"..."},{"label":"X","value":"..."},{"label":"2","value":"..."}],
+      "options": [{"name":"...","probability":"...","risk":"..."}],
+      "recommendation":"..."
+    },
+    {
+      "name": "...",
+      "probabilities": [],
+      "options": [],
+      "recommendation":"..."
+    }
+  ],
+  "combined": {
+    "selections":"...",
+    "estimated_odds":"..."
+  }
+}`;
 
-  const systemInstruction = "Tu fournis une analyse informative et prudente. Ne présente jamais une sélection comme certaine. N’invente pas de statistiques, de blessures, de cotes en direct ou de résultats.";
+  const systemInstruction = "Retourne uniquement le JSON demandé en français. Sois bref, organisé et ne fabrique aucune donnée précise non fournie.";
 
   try {
     let analysis = "";
