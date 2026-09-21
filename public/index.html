@@ -43,15 +43,15 @@ button,a{-webkit-tap-highlight-color:transparent}
 .loading-logo,.logo{
   display:flex;align-items:center;justify-content:center;
   border-radius:50%;overflow:hidden;
-  background:rgba(255,255,255,.96);
-  border:1px solid rgba(33,197,93,.35);
+  background:rgba(255,255,255,.98);
+  border:2px solid #21C55D;
 }
 .loading-logo{
   width:125px;height:125px;
-  box-shadow:0 0 0 5px rgba(33,197,93,.10),0 15px 45px rgba(0,0,0,.35);
+  box-shadow:0 0 0 5px rgba(33,197,93,.10),0 15px 45px rgba(0,0,0,.35),inset 0 2px 5px rgba(255,255,255,.8);
   animation:logoPulse 1.5s infinite ease-in-out;
 }
-.loading-logo img{width:108px;height:108px;object-fit:contain}
+.loading-logo img{width:108px;height:108px;object-fit:contain;border-radius:50%;display:block}
 .loading-logo .logo-fallback{font-size:60px}
 .logo{
   width:92px;height:92px;margin:8px auto 12px;display:flex;align-items:center;justify-content:center;
