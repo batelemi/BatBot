@@ -801,15 +801,15 @@ Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération.
     let analysis = "";
 
     // Fournisseur principal : Meta Llama API (aucun appel Gemini/OpenAI ici).
-    const llamaKey = process.env.LLAMA_API_KEY || process.env.META_LLAMA_API_KEY;
+    const llamaKey = process.env.LLAMA_API_KEY || process.env.META_LLAMA_API_KEY || process.env.MODEL_API_KEY;
     if (!llamaKey) {
       return res.status(503).json({
         error: "BatBot IA est temporairement indisponible. Configurez LLAMA_API_KEY dans Render."
       });
     }
 
-    const llamaUrl = process.env.LLAMA_API_URL || "https://api.llama.com/v1/chat/completions";
-    const llamaModel = process.env.LLAMA_MODEL || "Llama-4-Maverick-17B-128E-Instruct-FP8";
+    const llamaUrl = process.env.LLAMA_API_URL || "https://api.meta.ai/v1/chat/completions";
+    const llamaModel = process.env.LLAMA_MODEL || "muse-spark-1.3";
     const response = await fetch(llamaUrl, {
       method: "POST",
       headers: {
