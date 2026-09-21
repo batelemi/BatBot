@@ -1,26 +1,17 @@
-SMARTDRIVE / BATBOT — CORRECTION FINALE
+CORRECTION CIBLEE BATBOT IA
 
 Fichiers inclus :
-- server.js
-- public/index.html
+- server.js : Gemini uniquement pour /api/ai/analyze, modèle par défaut gemini-3.6-flash, journaux de diagnostic.
+- index.html : affichage de l’erreur réelle au lieu du message générique.
+- package.json : conservé.
+- README-CORRECTION-FINALE.txt : instructions.
 
-Nouveautés intégrées :
-- Ajout de BatBot IA côté client.
-- Utilisation de l'API OpenAI en arrière-plan via OPENAI_API_KEY.
-- Nom du fournisseur IA non affiché dans l'interface client.
-- Statuts Premium et IA sous forme de cartes visuelles.
-- Accès administrateur discret avec 10 appuis sur le symbole •.
-- Organisation des options administrateur en boutons ouvrant des fenêtres.
-- Correction de la fonction loadConfig manquante.
-- Message de modération à la fin de la réponse IA.
-- Conservation des routes et fonctions existantes présentes dans cette base.
-
-Variables Render à prévoir :
-- OPENAI_API_KEY : clé secrète OpenAI, à ne jamais placer dans index.html.
-- OPENAI_MODEL : facultatif ; valeur par défaut utilisée par le serveur : gpt-4o-mini.
+Variables Render à vérifier :
+GEMINI_API_KEY = votre clé Gemini
+GEMINI_MODEL = gemini-3.6-flash
 
 Important :
-- Remplacer server.js à la racine du dépôt.
-- Remplacer public/index.html dans le dossier public.
-- Conserver le package.json déjà présent dans le dépôt.
-- Vérifier les logs Render après déploiement.
+- Ne pas ajouter LLAMA_API_KEY pour cette version.
+- Ne pas publier une clé API dans GitHub.
+- Ne pas supprimer la base de données ni les utilisateurs.
+- Remplacer uniquement les fichiers correspondants après avoir sauvegardé les anciens.
