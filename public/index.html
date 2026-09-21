@@ -7,7 +7,7 @@
 <title>BatBot — Analyse de matchs</title>
 
 <style>
-    .inline-logo{width:1.65em;height:1.65em;object-fit:contain;display:inline-block;vertical-align:-0.42em;margin-right:.35em;padding:2px;border-radius:50%;background:rgba(255,255,255,.98);border:2px solid #21C55D;box-shadow:0 2px 7px rgba(0,0,0,.28),inset 0 1px 2px rgba(255,255,255,.85);}
+    .inline-logo{width:1.35em;height:1.35em;object-fit:contain;vertical-align:-0.25em;margin-right:.25em;border-radius:50%;}
 
 :root{
   --navy:#071A2D;
@@ -43,24 +43,21 @@ button,a{-webkit-tap-highlight-color:transparent}
 .loading-logo,.logo{
   display:flex;align-items:center;justify-content:center;
   border-radius:50%;overflow:hidden;
-  background:rgba(255,255,255,.98);
-  border:2px solid #21C55D;
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(33,197,93,.35);
 }
 .loading-logo{
   width:125px;height:125px;
-  box-shadow:0 0 0 5px rgba(33,197,93,.10),0 15px 45px rgba(0,0,0,.35),inset 0 2px 5px rgba(255,255,255,.8);
+  box-shadow:0 0 0 5px rgba(33,197,93,.10),0 15px 45px rgba(0,0,0,.35);
   animation:logoPulse 1.5s infinite ease-in-out;
 }
-.loading-logo img{width:108px;height:108px;object-fit:contain;border-radius:50%;display:block}
+.loading-logo img{width:108px;height:108px;object-fit:contain}
 .loading-logo .logo-fallback{font-size:60px}
 .logo{
-  width:92px;height:92px;margin:8px auto 12px;display:flex;align-items:center;justify-content:center;
-  border-radius:50%;background:rgba(255,255,255,.98);
-  border:2px solid #21C55D;
+  width:82px;height:82px;margin:8px auto 12px;
   box-shadow:0 8px 25px rgba(0,0,0,.20),inset 0 2px 5px rgba(255,255,255,.8);
-  overflow:hidden;
 }
-.logo img{width:82px;height:82px;object-fit:contain;border-radius:50%}
+.logo img{width:74px;height:74px;object-fit:contain}
 .logo-fallback{font-size:40px;line-height:1}
 .logo-fallback.hidden-fallback{display:none!important}
 @keyframes logoPulse{
@@ -107,16 +104,9 @@ textarea{min-height:120px;resize:vertical}
   width:100%;min-height:52px;padding:13px;border-radius:14px;border:0;margin:7px 0;
   font-weight:900;font-size:15px;cursor:pointer;text-decoration:none;
   display:flex;justify-content:center;align-items:center;text-align:center;position:relative;
-  letter-spacing:.15px;text-shadow:0 2px 0 rgba(0,0,0,.28),0 3px 8px rgba(0,0,0,.22);
   transition:transform .12s ease,filter .12s ease,box-shadow .12s ease;
-  overflow:hidden;isolation:isolate;
 }
-.btn::before{
-  content:"";position:absolute;inset:1px 1px 52% 1px;border-radius:inherit;
-  background:linear-gradient(to bottom,rgba(255,255,255,.24),rgba(255,255,255,0));
-  pointer-events:none;z-index:-1;
-}
-.btn:hover{filter:brightness(1.08);text-shadow:0 2px 0 rgba(0,0,0,.32),0 0 10px rgba(255,255,255,.12)}
+.btn:hover{filter:brightness(1.06)}
 .btn:active{transform:translateY(3px) scale(.98);box-shadow:0 2px 0 rgba(0,0,0,.25)!important}
 .btn:disabled{opacity:.6;cursor:wait}
 .primary{background:linear-gradient(145deg,#27D1FF,#0099D8);color:#001B2D;box-shadow:0 6px 0 #006B96,0 10px 20px rgba(0,191,255,.20)}
@@ -187,14 +177,7 @@ textarea{min-height:120px;resize:vertical}
   background:#123B60;border:1px solid var(--blue);font-size:12px;font-weight:800;
 }
 .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
-.user-box{
-  background:linear-gradient(135deg,rgba(20,65,96,.96),rgba(8,38,63,.98));
-  border:1px solid rgba(83,207,255,.42);
-  padding:15px;border-radius:16px;margin-bottom:15px;text-align:center;
-  box-shadow:0 8px 24px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.10);
-  text-shadow:0 2px 0 rgba(0,0,0,.25);
-}
-.user-box strong{display:inline-block;margin-top:4px;color:#FFFFFF;font-size:18px;letter-spacing:.2px;text-shadow:0 2px 0 rgba(0,0,0,.3),0 0 10px rgba(83,207,255,.16)}
+.user-box{background:rgba(7,26,45,.65);border:1px solid var(--line);padding:14px;border-radius:14px;margin-bottom:15px;text-align:center}
 
 .match-card{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:10px 0}
 .match-title{font-weight:900;margin-bottom:8px}
@@ -230,7 +213,7 @@ textarea{min-height:120px;resize:vertical}
 .ai-result{overflow:hidden}.ai-match-result{padding:12px 0;border-bottom:1px solid #315D82}.ai-match-result:last-child{border-bottom:0}
 .ai-result-title{font-size:16px;font-weight:900;margin-bottom:10px}.ai-section-label{color:#6EE7A0;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;margin:12px 0 7px}
 .ai-prob-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.ai-prob-card{padding:9px 5px;text-align:center;border:1px solid #315D82;border-radius:10px;background:#0C2745}.ai-prob-card strong{display:block;font-size:12px}.ai-prob-card span{display:block;color:#6EE7A0;font-weight:900;margin-top:4px}
-.ai-options{display:grid;grid-template-columns:1fr;gap:7px}.ai-option-card{border:1px solid #315D82;border-radius:11px;background:#0C2745;padding:10px}.ai-option-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-close{border:0;background:#193A5C;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer}.ai-option-meta{color:#AFC1D4;font-size:12px;margin-top:5px}.ai-recommendation,.ai-combined{margin-top:10px;padding:11px;border:1px solid rgba(33,197,93,.4);border-radius:11px;background:rgba(33,197,93,.07);line-height:1.45}
+.ai-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ai-option-button{min-height:48px;padding:10px 8px;border:1px solid #315D82;border-radius:12px;background:linear-gradient(145deg,#173B5F,#0C2745);color:#fff;font-weight:900;font-size:13px;line-height:1.25;cursor:pointer;box-shadow:0 3px 0 #071A2D,0 5px 12px rgba(0,0,0,.15)}.ai-option-button:active{transform:translateY(2px)}.ai-option-button small{display:block;margin-top:4px;color:#6EE7A0;font-size:11px;font-weight:700}.ai-option-card{border:1px solid #315D82;border-radius:11px;background:#0C2745;padding:10px}.ai-option-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-close{border:0;background:#193A5C;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer}.ai-option-meta{color:#AFC1D4;font-size:12px;margin-top:5px}.ai-recommendation,.ai-combined{margin-top:10px;padding:11px;border:1px solid rgba(33,197,93,.4);border-radius:11px;background:rgba(33,197,93,.07);line-height:1.45}.ai-combined-top{margin:0 0 14px;padding:13px;border:1px solid rgba(33,197,93,.5);border-radius:14px;background:linear-gradient(145deg,rgba(20,83,63,.5),rgba(7,26,45,.9));font-size:14px;line-height:1.5}.ai-combined-top strong{color:#6EE7A0}.ai-match-result{padding:13px;margin:10px 0;border:1px solid #23486B;border-radius:14px;background:linear-gradient(145deg,#0B223D,#071A2D)}.ai-match-result .ai-result-title{font-size:17px}.ai-modal{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,10,20,.86)}.ai-modal-inner{width:min(430px,100%);max-height:85vh;overflow:auto;padding:18px;border:1px solid #3C6F95;border-radius:18px;background:linear-gradient(145deg,#123B5B,#071A2D);box-shadow:0 20px 55px rgba(0,0,0,.55)}.ai-modal-title{font-size:19px;font-weight:900;line-height:1.35;margin-bottom:14px}.ai-modal-meta{color:#AFC1D4;line-height:1.7;margin-bottom:14px}.ai-modal-actions{display:flex;gap:8px}.ai-modal-actions button{flex:1}.ai-modal-hidden{display:none!important}
 .ai-card{border:1px solid rgba(0,213,255,.45);background:linear-gradient(145deg,#123b5b,#0a223a)}.ai-result{margin-top:14px;padding:15px;border-radius:14px;background:#071a2d;border:1px solid #315d82;white-space:pre-wrap;line-height:1.55}
 @media(max-width:380px){.profile-status-grid{gap:7px}.status-card{padding:12px}.status-card strong{font-size:14px}}
 
@@ -566,7 +549,7 @@ PSG vs Marseille"></textarea>
 <section id="admin" class="hidden">
 
   <div class="center">
-    <div class="admin-header-icon"><img src="admin-logo.png" alt="Logo administration" style="width:74px;height:74px;object-fit:contain;border-radius:50%;padding:2px;background:rgba(255,255,255,.98);border:2px solid #21C55D;box-shadow:0 2px 7px rgba(0,0,0,.28);"></div>
+    <div class="admin-header-icon">🛠️</div>
     <h1>Administration<sup class="brand-mark">®</sup></h1>
     <p class="muted">Gestion des membres BatBot</p>
   </div>
@@ -674,12 +657,10 @@ function readApiResponse(response){
   });
 }
 
-function showLoading(message,logoPath){
+function showLoading(message){
   const screen=document.getElementById("loadingScreen");
   const messageElement=document.getElementById("loadingMessage");
-  const logoImage=screen?screen.querySelector(".loading-logo img"):null;
   if(messageElement)messageElement.textContent=message||"Chargement…";
-  if(logoImage)logoImage.src=logoPath||"logo.png";
   if(screen)screen.classList.remove("hide");
 }
 
@@ -829,14 +810,12 @@ async function register(){
     }
 
     showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
-    showLoading("Compte créé. Préparation de la connexion…","logo.png");
 
     setTimeout(function(){
       showLogin();
       document.getElementById("loginUsername").value=username;
       document.getElementById("loginPassword").value="";
-      hideLoading();
-    },1400);
+    },700);
 
   }catch(error){
     console.error("REGISTER:",error);
@@ -871,11 +850,10 @@ async function login(){
     }
 
     showStatus("loginStatus","Connexion réussie.","success");
-    showLoading("Connexion réussie. Chargement de votre espace…","logo.png");
     setTimeout(function(){
       showDashboard(data.user||data);
       hideLoading();
-    },1400);
+    },300);
 
   }catch(error){
     console.error("LOGIN:",error);
@@ -1145,12 +1123,24 @@ function splitMatch(value){
   return {home:parts[0]||"",away:parts.slice(1).join(" vs ")||""};
 }
 
+function closeAIOption(){
+  const modal=document.getElementById("aiOptionModal");
+  if(modal)modal.classList.add("ai-modal-hidden");
+}
+function openAIOption(button){
+  const modal=document.getElementById("aiOptionModal");
+  if(!modal)return;
+  document.getElementById("aiOptionModalTitle").textContent=button.dataset.name||"Option";
+  document.getElementById("aiOptionModalMeta").textContent=(button.dataset.probability||"")+(button.dataset.risk?" • "+button.dataset.risk:"");
+  document.getElementById("aiOptionModalNote").textContent=button.dataset.note||"Option à examiner selon les informations disponibles.";
+  modal.classList.remove("ai-modal-hidden");
+}
 function renderBatBotAIResult(raw){
   const box=document.getElementById("smartDriveAIResult");
   box.classList.remove("hidden");
   let data=null;
   try{
-    const cleaned=String(raw||"").replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"").trim();
+    const cleaned=String(raw||"").replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"").trim();
     data=JSON.parse(cleaned);
   }catch(_){}
 
@@ -1159,20 +1149,33 @@ function renderBatBotAIResult(raw){
     return;
   }
 
-  const optionCard=(option)=>`<div class="ai-option-card">
-    <div class="ai-option-head"><strong>${escapeHtml(option.name||"Option")}</strong><button type="button" class="ai-close" aria-label="Fermer" onclick="this.closest('.ai-option-card').remove()">✕</button></div>
-    <div class="ai-option-meta">${escapeHtml(option.probability||"")} ${option.risk?`• ${escapeHtml(option.risk)}`:""}</div>
-  </div>`;
+  const esc=(value)=>escapeHtml(String(value||""));
+  const optionButton=(option)=>{
+    const name=esc(option.name||"Option");
+    const probability=esc(option.probability||"");
+    const risk=esc(option.risk||"");
+    const note=esc(option.explanation||option.note||"");
+    return `<button type="button" class="ai-option-button" data-name="${name}" data-probability="${probability}" data-risk="${risk}" data-note="${note}" onclick="openAIOption(this)">${name}<small>${probability}${risk?` • ${risk}`:""}</small></button>`;
+  };
 
-  box.innerHTML=data.matches.map((match,index)=>`<div class="ai-match-result">
-    <div class="ai-result-title">⚽ Match ${index+1} — ${escapeHtml(match.name||"")}</div>
+  const combined=data.combined?`<div class="ai-combined-top"><div class="ai-result-title">🎯 Combinaison proposée</div><div>${esc(data.combined.selections||"")}</div><strong>Cote estimée : ${esc(data.combined.estimated_odds||"Non précisée")}</strong></div>`:"";
+  const matches=data.matches.map((match,index)=>`<div class="ai-match-result">
+    <div class="ai-result-title">⚽ Match ${index+1} — ${esc(match.name||"")}</div>
     <div class="ai-section-label">Probabilités</div>
-    <div class="ai-prob-grid">${(match.probabilities||[]).map(p=>`<div class="ai-prob-card"><strong>${escapeHtml(p.label||"")}</strong><span>${escapeHtml(p.value||"")}</span></div>`).join("")}</div>
-    <div class="ai-section-label">Options</div>
-    <div class="ai-options">${(match.options||[]).map(optionCard).join("")}</div>
-    ${match.recommendation?`<div class="ai-recommendation"><strong>Choix proposé :</strong> ${escapeHtml(match.recommendation)}</div>`:""}
-  </div>`).join("")+
-  (data.combined?`<div class="ai-combined"><div class="ai-result-title">🎯 Combinaison finale</div><div>${escapeHtml(data.combined.selections||"")}</div><strong>Cote estimée : ${escapeHtml(data.combined.estimated_odds||"")}</strong></div>`:"");
+    <div class="ai-prob-grid">${(match.probabilities||[]).map(p=>`<div class="ai-prob-card"><strong>${esc(p.label||"")}</strong><span>${esc(p.value||"")}</span></div>`).join("")}</div>
+    <div class="ai-section-label">Options à consulter</div>
+    <div class="ai-options">${(match.options||[]).map(optionButton).join("")}</div>
+    ${match.recommendation?`<div class="ai-recommendation"><strong>Choix proposé :</strong> ${esc(match.recommendation)}</div>`:""}
+  </div>`).join("");
+
+  box.innerHTML=combined+matches+`<div id="aiOptionModal" class="ai-modal ai-modal-hidden" role="dialog" aria-modal="true" aria-label="Détails de l'option" onclick="if(event.target===this)closeAIOption()">
+    <div class="ai-modal-inner">
+      <div id="aiOptionModalTitle" class="ai-modal-title">Option</div>
+      <div id="aiOptionModalMeta" class="ai-modal-meta"></div>
+      <div id="aiOptionModalNote" class="ai-modal-meta">Option à examiner selon les informations disponibles.</div>
+      <div class="ai-modal-actions"><button type="button" class="btn secondary" onclick="closeAIOption()">Fermer</button></div>
+    </div>
+  </div>`;
 }
 
 async function submitBatBotAI(){
@@ -1249,7 +1252,7 @@ async function adminLogin(){
       return;
     }
 
-    showLoading("Connexion réussie. Chargement de l’administration…","admin-logo.png");
+    showLoading("Connexion réussie…");
     setTimeout(function(){
       Promise.resolve().then(function(){ return loadAdmin(); })
         .catch(function(error){
@@ -1257,7 +1260,7 @@ async function adminLogin(){
           showStatus("adminLoginStatus","Impossible de charger l’administration. Réessayez.","error");
         })
         .finally(function(){ hideLoading(); });
-    },1400);
+    },300);
 
   }catch(error){
     console.error("ADMIN LOGIN:",error);
