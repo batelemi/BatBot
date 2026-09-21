@@ -359,6 +359,11 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
     <div id="smartDriveAIStatus" class="status"></div>
     <div id="smartDriveAIResult" class="ai-result hidden"></div>
+    <div class="two-columns" style="margin-top:12px">
+      <button class="btn secondary" type="button" onclick="loadApiFootballFixtures()">⚽ Charger les matchs du jour</button>
+    </div>
+    <div id="apiFootballStatus" class="status"></div>
+    <div id="apiFootballResults" class="ai-result hidden"></div>
   </section>
 
   <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
@@ -1118,6 +1123,30 @@ async function submitBatBotAI(){
     const box=document.getElementById("smartDriveAIResult");box.classList.remove("hidden");box.textContent=d.analysis||"Aucun résultat disponible.";
   }catch(e){showStatus("smartDriveAIStatus","Plusieurs demandes sont peut-être en cours de traitement. Veuillez réessayer dans quelques secondes.","error");}
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
+}
+
+async function loadApiFootballFixtures(){
+  const status=document.getElementById("apiFootballStatus");
+  const box=document.getElementById("apiFootballResults");
+  if(!status||!box)return;
+  showStatus("apiFootballStatus","Chargement des matchs API-Football…","success");
+  box.classList.remove("hidden"); box.textContent="Chargement…";
+  try{
+    const r=await fetch("/api/football/fixtures?timezone=Africa%2FAbidjan",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.details||d.error||"API-Football indisponible.");
+    const fixtures=Array.isArray(d.response)?d.response:[];
+    if(!fixtures.length){box.textContent="Aucun match trouvé pour aujourd’hui.";return;}
+    box.textContent=fixtures.slice(0,30).map(function(item){
+      const f=item.fixture||{}, teams=item.teams||{}, league=item.league||{};
+      const date=f.date?new Date(f.date).toLocaleString("fr-FR"):"Date inconnue";
+      return (teams.home?.name||"Équipe 1")+" — "+(teams.away?.name||"Équipe 2")+"\n"+(league.name||"Compétition")+" • "+date;
+    }).join("\n\n");
+    showStatus("apiFootballStatus",fixtures.length+" match(s) chargé(s) depuis API-Football.","success");
+  }catch(e){
+    box.textContent="";
+    showStatus("apiFootballStatus",e.message||"Impossible de charger les matchs.","error");
+  }
 }
 
 function openAdmin(){
