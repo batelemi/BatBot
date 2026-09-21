@@ -856,6 +856,87 @@ Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération.
   }
 });
 
+
+// ===== API-FOOTBALL (lecture seule, sans modifier les fonctionnalités existantes) =====
+const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY || process.env.APIFOOTBALL_KEY;
+const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
+
+async function callApiFootball(endpoint, params = {}) {
+  if (!API_FOOTBALL_KEY) {
+    const error = new Error("Variable API_FOOTBALL_KEY absente");
+    error.status = 503;
+    throw error;
+  }
+
+  const url = new URL(`${API_FOOTBALL_BASE}/${endpoint}`);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  }
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { "x-apisports-key": API_FOOTBALL_KEY }
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || (Array.isArray(data.errors) && data.errors.length > 0)) {
+    const message = Array.isArray(data.errors)
+      ? data.errors.join(", ")
+      : `API-Football HTTP ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status || 502;
+    throw error;
+  }
+
+  return data;
+}
+
+// Liste des matchs : endpoint indépendant, sans toucher à /api/ai/analyze.
+app.get("/api/football/fixtures", async (req, res) => {
+  try {
+    const allowed = ["date", "from", "to", "league", "season", "team", "next", "last", "live", "timezone"];
+    const params = {};
+    for (const key of allowed) {
+      if (req.query[key] !== undefined) params[key] = req.query[key];
+    }
+
+    if (Object.keys(params).length === 0) {
+      params.date = new Date().toISOString().slice(0, 10);
+      params.timezone = "Africa/Abidjan";
+    }
+
+    const data = await callApiFootball("fixtures", params);
+    res.json({ ok: true, source: "api-football", ...data });
+  } catch (error) {
+    console.error("API-Football fixtures:", error.message);
+    res.status(error.status || 502).json({
+      ok: false,
+      error: "Impossible de récupérer les matchs API-Football.",
+      details: error.message
+    });
+  }
+});
+
+// Matchs en direct : endpoint indépendant.
+app.get("/api/football/live", async (req, res) => {
+  try {
+    const data = await callApiFootball("fixtures", {
+      live: req.query.league || "all",
+      timezone: "Africa/Abidjan"
+    });
+    res.json({ ok: true, source: "api-football", ...data });
+  } catch (error) {
+    console.error("API-Football live:", error.message);
+    res.status(error.status || 502).json({
+      ok: false,
+      error: "Impossible de récupérer les matchs en direct API-Football.",
+      details: error.message
+    });
+  }
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("*", (req, res) => {
