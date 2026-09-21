@@ -107,9 +107,16 @@ textarea{min-height:120px;resize:vertical}
   width:100%;min-height:52px;padding:13px;border-radius:14px;border:0;margin:7px 0;
   font-weight:900;font-size:15px;cursor:pointer;text-decoration:none;
   display:flex;justify-content:center;align-items:center;text-align:center;position:relative;
+  letter-spacing:.15px;text-shadow:0 2px 0 rgba(0,0,0,.28),0 3px 8px rgba(0,0,0,.22);
   transition:transform .12s ease,filter .12s ease,box-shadow .12s ease;
+  overflow:hidden;isolation:isolate;
 }
-.btn:hover{filter:brightness(1.06)}
+.btn::before{
+  content:"";position:absolute;inset:1px 1px 52% 1px;border-radius:inherit;
+  background:linear-gradient(to bottom,rgba(255,255,255,.24),rgba(255,255,255,0));
+  pointer-events:none;z-index:-1;
+}
+.btn:hover{filter:brightness(1.08);text-shadow:0 2px 0 rgba(0,0,0,.32),0 0 10px rgba(255,255,255,.12)}
 .btn:active{transform:translateY(3px) scale(.98);box-shadow:0 2px 0 rgba(0,0,0,.25)!important}
 .btn:disabled{opacity:.6;cursor:wait}
 .primary{background:linear-gradient(145deg,#27D1FF,#0099D8);color:#001B2D;box-shadow:0 6px 0 #006B96,0 10px 20px rgba(0,191,255,.20)}
@@ -180,7 +187,14 @@ textarea{min-height:120px;resize:vertical}
   background:#123B60;border:1px solid var(--blue);font-size:12px;font-weight:800;
 }
 .badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
-.user-box{background:rgba(7,26,45,.65);border:1px solid var(--line);padding:14px;border-radius:14px;margin-bottom:15px;text-align:center}
+.user-box{
+  background:linear-gradient(135deg,rgba(20,65,96,.96),rgba(8,38,63,.98));
+  border:1px solid rgba(83,207,255,.42);
+  padding:15px;border-radius:16px;margin-bottom:15px;text-align:center;
+  box-shadow:0 8px 24px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.10);
+  text-shadow:0 2px 0 rgba(0,0,0,.25);
+}
+.user-box strong{display:inline-block;margin-top:4px;color:#FFFFFF;font-size:18px;letter-spacing:.2px;text-shadow:0 2px 0 rgba(0,0,0,.3),0 0 10px rgba(83,207,255,.16)}
 
 .match-card{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:10px 0}
 .match-title{font-weight:900;margin-bottom:8px}
@@ -281,13 +295,13 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="password-wrap">
       <input id="registerPassword" type="password" autocomplete="new-password"
         placeholder="Mot de passe — 6 caractères minimum">
-      <button class="eye" type="button" onclick="togglePassword('registerPassword',this)">👀</button>
+      <button class="eye" type="button" onclick="togglePassword('registerPassword',this)">👁</button>
     </div>
 
     <div class="password-wrap">
       <input id="registerPassword2" type="password" autocomplete="new-password"
         placeholder="Confirmer le mot de passe">
-      <button class="eye" type="button" onclick="togglePassword('registerPassword2',this)">👀</button>
+      <button class="eye" type="button" onclick="togglePassword('registerPassword2',this)">👁</button>
     </div>
 
     <button id="registerButton" class="btn primary" type="button" onclick="register()">✨ Créer mon compte</button>
@@ -305,7 +319,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
     <div class="password-wrap">
       <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Mot de passe">
-      <button class="eye" type="button" onclick="togglePassword('loginPassword',this)">👀</button>
+      <button class="eye" type="button" onclick="togglePassword('loginPassword',this)">👁</button>
     </div>
 
     <button id="loginButton" class="btn primary" type="button" onclick="login()">🚀 Se connecter</button>
@@ -390,7 +404,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <a id="waveDayButton" class="btn wave"
       href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500"
-      target="_blank" rel="noopener noreferrer">🌊 Payer 500 F avec Wave</a>
+      target="_blank" rel="noopener noreferrer">💙 Payer 500 F avec Wave</a>
     <div class="payment-confirm">
       ✅ Paiement manuel. Après le paiement, revenez dans l'application et envoyez vos matchs à analyser.
     </div>
@@ -410,7 +424,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <a id="wavePremiumButton" class="btn wave"
       href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
-      target="_blank" rel="noopener noreferrer">🌊 Souscrire 7 jours — 1 000 F</a>
+      target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
     <div class="payment-confirm">
       📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
     </div>
@@ -562,7 +576,7 @@ PSG vs Marseille"></textarea>
     <input id="adminPhone" type="text" autocomplete="username" placeholder="Identifiant administrateur">
     <div class="password-wrap">
       <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur">
-      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👀</button>
+      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button>
     </div>
     <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Accéder à l'administration</button>
     <div id="adminLoginStatus" class="status"></div>
@@ -660,10 +674,12 @@ function readApiResponse(response){
   });
 }
 
-function showLoading(message){
+function showLoading(message,logoPath){
   const screen=document.getElementById("loadingScreen");
   const messageElement=document.getElementById("loadingMessage");
+  const logoImage=screen?screen.querySelector(".loading-logo img"):null;
   if(messageElement)messageElement.textContent=message||"Chargement…";
+  if(logoImage)logoImage.src=logoPath||"logo.png";
   if(screen)screen.classList.remove("hide");
 }
 
@@ -692,10 +708,10 @@ function togglePassword(id,button){
   if(!input)return;
   if(input.type==="password"){
     input.type="text";
-    button.textContent="👀";
+    button.textContent="🙈";
   }else{
     input.type="password";
-    button.textContent="🙈";
+    button.textContent="👁";
   }
 }
 
@@ -813,12 +829,14 @@ async function register(){
     }
 
     showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
+    showLoading("Compte créé. Préparation de la connexion…","logo.png");
 
     setTimeout(function(){
       showLogin();
       document.getElementById("loginUsername").value=username;
       document.getElementById("loginPassword").value="";
-    },700);
+      hideLoading();
+    },1400);
 
   }catch(error){
     console.error("REGISTER:",error);
@@ -853,10 +871,11 @@ async function login(){
     }
 
     showStatus("loginStatus","Connexion réussie.","success");
+    showLoading("Connexion réussie. Chargement de votre espace…","logo.png");
     setTimeout(function(){
       showDashboard(data.user||data);
       hideLoading();
-    },300);
+    },1400);
 
   }catch(error){
     console.error("LOGIN:",error);
@@ -1230,7 +1249,7 @@ async function adminLogin(){
       return;
     }
 
-    showLoading("Connexion réussie…");
+    showLoading("Connexion réussie. Chargement de l’administration…","admin-logo.png");
     setTimeout(function(){
       Promise.resolve().then(function(){ return loadAdmin(); })
         .catch(function(error){
@@ -1238,7 +1257,7 @@ async function adminLogin(){
           showStatus("adminLoginStatus","Impossible de charger l’administration. Réessayez.","error");
         })
         .finally(function(){ hideLoading(); });
-    },300);
+    },1400);
 
   }catch(error){
     console.error("ADMIN LOGIN:",error);
