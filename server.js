@@ -800,48 +800,40 @@ Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération.
   try {
     let analysis = "";
 
-    // Fournisseur principal : Meta Llama API (aucun appel Gemini/OpenAI ici).
-    const llamaKey = process.env.LLAMA_API_KEY || process.env.META_LLAMA_API_KEY || process.env.MODEL_API_KEY;
-    if (!llamaKey) {
+    // Fournisseur : Google Gemini API (compatible avec le niveau gratuit selon les quotas du compte).
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
       return res.status(503).json({
-        error: "BatBot IA est temporairement indisponible. Configurez LLAMA_API_KEY dans Render."
+        error: "BatBot IA est temporairement indisponible. Configurez GEMINI_API_KEY dans Render."
       });
     }
 
-    const llamaUrl = process.env.LLAMA_API_URL || "https://api.meta.ai/v1/chat/completions";
-    const llamaModel = process.env.LLAMA_MODEL || "muse-spark-1.3";
-    const response = await fetch(llamaUrl, {
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(geminiKey)}`;
+    const response = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${llamaKey}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: llamaModel,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemInstruction },
-          { role: "user", content: prompt }
-        ]
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2 }
       })
     });
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error("Llama provider error:", response.status, data?.error?.message || data?.error || "unknown");
-      return res.status(502).json({ error: "Le service Meta Llama est temporairement indisponible." });
+      console.error("Gemini provider error:", response.status, data?.error?.message || data?.error || "unknown");
+      return res.status(502).json({ error: "Le service Gemini est temporairement indisponible." });
     }
 
-    analysis = (
-      data?.choices?.[0]?.message?.content ||
-      data?.completion_message?.content ||
-      data?.completion_message?.text ||
-      data?.output_text ||
-      ""
-    ).trim();
+    analysis = (data?.candidates || [])
+      .flatMap(candidate => candidate?.content?.parts || [])
+      .map(part => part?.text || "")
+      .join("\n")
+      .trim();
 
-    if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
-    res.json({ analysis, provider: "meta-llama", model: llamaModel });
+    if (!analysis) return res.status(502).json({ error: "Gemini n’a pas retourné de résultat." });
+    res.json({ analysis, provider: "gemini", model: geminiModel });
   } catch (error) {
     console.error("AI request error:", error.message);
     res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
