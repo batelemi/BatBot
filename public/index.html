@@ -7,7 +7,13 @@
 <title>BatBot — Analyse de matchs</title>
 
 <style>
-    .inline-logo{width:1.35em;height:1.35em;object-fit:contain;vertical-align:-0.25em;margin-right:.25em;border-radius:50%;}
+    .inline-logo{
+  width:1.55em;height:1.55em;object-fit:contain;display:inline-block;
+  vertical-align:middle;margin-right:.3em;padding:2px;
+  border-radius:50%;background:rgba(255,255,255,.98);
+  border:1.5px solid var(--blue);
+  box-shadow:0 2px 7px rgba(0,0,0,.28),inset 0 1px 2px rgba(255,255,255,.8);
+}
 
 :root{
   --navy:#071A2D;
@@ -209,8 +215,18 @@ textarea{min-height:120px;resize:vertical}
 .bookmaker .btn{width:auto;min-width:105px;margin:0;min-height:44px;font-size:12px}
 
 .admin-header-icon{
-  width:82px;height:82px;margin:8px auto 12px;display:flex;justify-content:center;align-items:center;
-  border-radius:50%;background:#193A5C;border:1px solid var(--blue);font-size:38px;box-shadow:0 8px 25px rgba(0,0,0,.2);
+  width:96px;height:96px;margin:8px auto 12px;padding:7px;
+  display:flex;justify-content:center;align-items:center;
+  border-radius:50%;background:linear-gradient(145deg,#29465c,#0b223a);
+  border:2px solid var(--gold);
+  box-shadow:0 0 0 4px rgba(245,197,66,.10),0 8px 25px rgba(0,0,0,.28),inset 0 1px 3px rgba(255,255,255,.18);
+  overflow:hidden;
+}
+.admin-header-icon img{
+  width:100%!important;height:100%!important;object-fit:contain;
+  display:block;border-radius:50%;padding:2px;
+  background:rgba(255,255,255,.98);
+  border:1.5px solid var(--gold);
 }
 .member-card{background:#0C2745;border:1px solid #315D82;border-radius:13px;padding:13px;margin:9px 0}
 .member-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
