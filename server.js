@@ -765,67 +765,51 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const away = String(req.body.away_team || "").trim();
   const secondHome = String(req.body.second_home_team || "").trim();
   const secondAway = String(req.body.second_away_team || "").trim();
+  const context = String(req.body.context || "").trim();
 
-  if (!home || !away || !secondHome || !secondAway) {
-    return res.status(400).json({
-      error: "Les deux matchs sont obligatoires. Saisissez Match 1 et Match 2."
-    });
+  if (!home || !away) return res.status(400).json({ error: "Les deux équipes du premier match sont requises." });
+  if ((secondHome && !secondAway) || (!secondHome && secondAway)) {
+    return res.status(400).json({ error: "Complétez les deux équipes du deuxième match ou laissez-les vides." });
   }
 
-  const matches = [`1) ${home} vs ${away}`, `2) ${secondHome} vs ${secondAway}`];
+  const matches = [`1) ${home} vs ${away}`];
+  if (secondHome && secondAway) matches.push(`2) ${secondHome} vs ${secondAway}`);
 
-  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds uniquement avec un JSON valide, sans introduction, sans Markdown et sans texte supplémentaire.
+  const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds en français, de manière claire,
+structurée et prudente, sans garantie de résultat.
 
 Matchs à analyser :
 ${matches.join("\n")}
 
-Objectif : fournir une fiche courte, claire et directement lisible sur téléphone.
-Pour chacun des 2 matchs, retourne :
-- name : nom du match ;
-- probabilities : 3 à 5 probabilités courtes parmi 1, X, 2, double chance, buts ;
-- options : 4 à 6 options pertinentes parmi 1X, X2, 12, victoire, plus/moins de buts, BTTS, handicap et score exact. Pour chaque option, indique name, probability et risk en quelques mots ;
-- recommendation : une seule option principale.
+Contexte fourni : ${context || "Non fourni"}
 
-À la fin, retourne combined avec :
-- selections : les deux choix retenus, très courts ;
-- estimated_odds : une cote combinée estimée, par exemple "2.00 à 3.00".
+Pour chaque match, présente :
+- les informations manquantes et les facteurs à vérifier ;
+- des probabilités prudentes 1X2, clairement présentées comme des estimations ;
+- des marchés possibles : 1X2, double chance, buts, BTTS et handicap ;
+- le niveau de risque et les raisons ;
+- aucune sélection certaine et aucune donnée en temps réel inventée.
 
-N’invente pas de statistiques, de blessures, de résultats ou de cotes en direct. Ne donne aucune longue explication. Utilise exactement cette structure :
-{
-  "matches": [
-    {
-      "name": "...",
-      "probabilities": [{"label":"1","value":"..."},{"label":"X","value":"..."},{"label":"2","value":"..."}],
-      "options": [{"name":"...","probability":"...","risk":"..."}],
-      "recommendation":"..."
-    },
-    {
-      "name": "...",
-      "probabilities": [],
-      "options": [],
-      "recommendation":"..."
-    }
-  ],
-  "combined": {
-    "selections":"...",
-    "estimated_odds":"..."
-  }
-}`;
+À la fin, propose uniquement, si les informations disponibles le permettent, une combinaison
+indicative pour les deux matchs, avec une cote totale explicitement estimée et non garantie.
+Précise que les cotes réelles doivent être vérifiées chez un opérateur.
+Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération. »`;
 
-  const systemInstruction = "Retourne uniquement le JSON demandé en français. Sois bref, organisé et ne fabrique aucune donnée précise non fournie.";
+  const systemInstruction = "Tu fournis une analyse informative et prudente. Ne présente jamais une sélection comme certaine. N’invente pas de statistiques, de blessures, de cotes en direct ou de résultats.";
 
   try {
     let analysis = "";
 
-    if (process.env.GROQ_API_KEY) {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    if (process.env.MINDSHUB_API_KEY) {
+      const model = process.env.MINDSHUB_MODEL || "mindshub_air";
+      const response = await fetch("https://api.mindshub.ai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+          Authorization: `Bearer ${process.env.MINDSHUB_API_KEY}`
         },
         body: JSON.stringify({
-          model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+          model,
           temperature: 0.2,
           messages: [
             { role: "system", content: systemInstruction },
@@ -835,10 +819,30 @@ N’invente pas de statistiques, de blessures, de résultats ou de cotes en dire
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error("Groq provider error:", response.status, data?.error?.message || "unknown");
-        return res.status(502).json({ error: "Le service Groq est temporairement indisponible." });
+        console.error("MindsHub provider error:", response.status, data?.error?.message || "unknown");
+        return res.status(502).json({ error: "Le service MindsHub est temporairement indisponible." });
       }
       analysis = data?.choices?.[0]?.message?.content?.trim() || "";
+    } else if (process.env.GEMINI_API_KEY) {
+      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2 }
+          })
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error("Gemini provider error:", response.status, data?.error?.message || "unknown");
+        return res.status(502).json({ error: "Le service Gemini est temporairement indisponible." });
+      }
+      analysis = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
     } else if (process.env.OPENAI_API_KEY) {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -863,12 +867,17 @@ N’invente pas de statistiques, de blessures, de résultats ou de cotes en dire
       analysis = data?.choices?.[0]?.message?.content?.trim() || "";
     } else {
       return res.status(503).json({
-        error: "BatBot IA est temporairement indisponible. Configurez GROQ_API_KEY ou OPENAI_API_KEY."
+        error: "BatBot IA est temporairement indisponible. Configurez MINDSHUB_API_KEY, GEMINI_API_KEY ou OPENAI_API_KEY."
       });
     }
 
     if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
-    res.json({ analysis, provider: process.env.GROQ_API_KEY ? "groq" : "openai" });
+    const provider = process.env.MINDSHUB_API_KEY
+      ? "mindshub"
+      : process.env.GEMINI_API_KEY
+        ? "gemini"
+        : "openai";
+    res.json({ analysis, provider });
   } catch (error) {
     console.error("AI request error:", error.message);
     res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
