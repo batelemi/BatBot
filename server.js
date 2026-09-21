@@ -87,7 +87,7 @@ const defaults = {
   whatsapp: "2250152171974",
   telegram: "@BatBot12",
   whatsappGroup: "https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4",
-  telegramGroup: "https://t.me/sdrive123",
+  telegramGroup: "https://t.me/BatBot10",
   tiktok: "https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99cD47Jhd00",
   facebook: "https://www.facebook.com/share/1L96SqLnZT/",
   instagram: "https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==",
@@ -800,26 +800,28 @@ Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération.
   try {
     let analysis = "";
 
-    if (process.env.GEMINI_API_KEY) {
-      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemInstruction }] },
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.2 }
-          })
-        }
-      );
+    if (process.env.GROQ_API_KEY) {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error("Gemini provider error:", response.status, data?.error?.message || "unknown");
-        return res.status(502).json({ error: "Le service Gemini est temporairement indisponible." });
+        console.error("Groq provider error:", response.status, data?.error?.message || "unknown");
+        return res.status(502).json({ error: "Le service Groq est temporairement indisponible." });
       }
-      analysis = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
+      analysis = data?.choices?.[0]?.message?.content?.trim() || "";
     } else if (process.env.OPENAI_API_KEY) {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -844,12 +846,12 @@ Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération.
       analysis = data?.choices?.[0]?.message?.content?.trim() || "";
     } else {
       return res.status(503).json({
-        error: "BatBot IA est temporairement indisponible. Configurez GEMINI_API_KEY ou OPENAI_API_KEY."
+        error: "BatBot IA est temporairement indisponible. Configurez GROQ_API_KEY ou OPENAI_API_KEY."
       });
     }
 
     if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
-    res.json({ analysis, provider: process.env.GEMINI_API_KEY ? "gemini" : "openai" });
+    res.json({ analysis, provider: process.env.GROQ_API_KEY ? "groq" : "openai" });
   } catch (error) {
     console.error("AI request error:", error.message);
     res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
