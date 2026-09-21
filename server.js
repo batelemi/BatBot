@@ -800,56 +800,48 @@ Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération.
   try {
     let analysis = "";
 
-    if (process.env.GEMINI_API_KEY) {
-      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemInstruction }] },
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.2 }
-          })
-        }
-      );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        console.error("Gemini provider error:", response.status, data?.error?.message || "unknown");
-        return res.status(502).json({ error: "Le service Gemini est temporairement indisponible." });
-      }
-      analysis = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
-    } else if (process.env.OPENAI_API_KEY) {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-          temperature: 0.2,
-          messages: [
-            { role: "system", content: systemInstruction },
-            { role: "user", content: prompt }
-          ]
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        console.error("OpenAI provider error:", response.status, data?.error?.message || "unknown");
-        return res.status(502).json({ error: "Le service IA est temporairement indisponible." });
-      }
-      analysis = data?.choices?.[0]?.message?.content?.trim() || "";
-    } else {
+    // Fournisseur principal : Meta Llama API (aucun appel Gemini/OpenAI ici).
+    const llamaKey = process.env.LLAMA_API_KEY || process.env.META_LLAMA_API_KEY;
+    if (!llamaKey) {
       return res.status(503).json({
-        error: "BatBot IA est temporairement indisponible. Configurez GEMINI_API_KEY ou OPENAI_API_KEY."
+        error: "BatBot IA est temporairement indisponible. Configurez LLAMA_API_KEY dans Render."
       });
     }
 
+    const llamaUrl = process.env.LLAMA_API_URL || "https://api.llama.com/v1/chat/completions";
+    const llamaModel = process.env.LLAMA_MODEL || "Llama-4-Maverick-17B-128E-Instruct-FP8";
+    const response = await fetch(llamaUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${llamaKey}`
+      },
+      body: JSON.stringify({
+        model: llamaModel,
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("Llama provider error:", response.status, data?.error?.message || data?.error || "unknown");
+      return res.status(502).json({ error: "Le service Meta Llama est temporairement indisponible." });
+    }
+
+    analysis = (
+      data?.choices?.[0]?.message?.content ||
+      data?.completion_message?.content ||
+      data?.completion_message?.text ||
+      data?.output_text ||
+      ""
+    ).trim();
+
     if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
-    res.json({ analysis, provider: process.env.GEMINI_API_KEY ? "gemini" : "openai" });
+    res.json({ analysis, provider: "meta-llama", model: llamaModel });
   } catch (error) {
     console.error("AI request error:", error.message);
     res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
