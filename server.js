@@ -752,6 +752,7 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
 
 
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
+  console.log("[AI] Demande reçue sur /api/ai/analyze");
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
   const premiumActive = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
   const aiActive = !!(user && user.ai_until && new Date(user.ai_until) > new Date());
@@ -762,6 +763,7 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   }
 
   const home = String(req.body.home_team || "").trim();
+  console.log("[AI] Équipes reçues:", home, "vs", String(req.body.away_team || "").trim());
   const away = String(req.body.away_team || "").trim();
   const secondHome = String(req.body.second_home_team || "").trim();
   const secondAway = String(req.body.second_away_team || "").trim();
@@ -800,124 +802,60 @@ Termine par : « BatBot IA vous conseille de jouer avec beaucoup de modération.
   try {
     let analysis = "";
 
-    // Fournisseur : Google Gemini API (compatible avec le niveau gratuit selon les quotas du compte).
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) {
+    if (process.env.GEMINI_API_KEY) {
+      const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2 }
+          })
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error("[AI] Gemini provider error:", response.status, data?.error?.message || "unknown");
+        return res.status(502).json({ error: `Gemini a refusé la demande (${response.status}). Vérifiez GEMINI_API_KEY et GEMINI_MODEL.` });
+      }
+      analysis = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
+    } else if (process.env.OPENAI_API_KEY) {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error("OpenAI provider error:", response.status, data?.error?.message || "unknown");
+        return res.status(502).json({ error: "Le service IA est temporairement indisponible." });
+      }
+      analysis = data?.choices?.[0]?.message?.content?.trim() || "";
+    } else {
       return res.status(503).json({
-        error: "BatBot IA est temporairement indisponible. Configurez GEMINI_API_KEY dans Render."
+        error: "BatBot IA est temporairement indisponible. Configurez GEMINI_API_KEY ou OPENAI_API_KEY."
       });
     }
 
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(geminiKey)}`;
-    const response = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2 }
-      })
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      console.error("Gemini provider error:", response.status, data?.error?.message || data?.error || "unknown");
-      return res.status(502).json({ error: "Le service Gemini est temporairement indisponible." });
-    }
-
-    analysis = (data?.candidates || [])
-      .flatMap(candidate => candidate?.content?.parts || [])
-      .map(part => part?.text || "")
-      .join("\n")
-      .trim();
-
-    if (!analysis) return res.status(502).json({ error: "Gemini n’a pas retourné de résultat." });
-    res.json({ analysis, provider: "gemini", model: geminiModel });
+    if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
+    console.log("[AI] Analyse Gemini terminée avec succès.");
+    res.json({ analysis, provider: process.env.GEMINI_API_KEY ? "gemini" : "openai" });
   } catch (error) {
-    console.error("AI request error:", error.message);
+    console.error("[AI] Erreur serveur:", error.stack || error.message);
     res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
-  }
-});
-
-
-// ===== API-FOOTBALL (lecture seule, sans modifier les fonctionnalités existantes) =====
-const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY || process.env.APIFOOTBALL_KEY;
-const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
-
-async function callApiFootball(endpoint, params = {}) {
-  if (!API_FOOTBALL_KEY) {
-    const error = new Error("Variable API_FOOTBALL_KEY absente");
-    error.status = 503;
-    throw error;
-  }
-
-  const url = new URL(`${API_FOOTBALL_BASE}/${endpoint}`);
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  }
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: { "x-apisports-key": API_FOOTBALL_KEY }
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || (Array.isArray(data.errors) && data.errors.length > 0)) {
-    const message = Array.isArray(data.errors)
-      ? data.errors.join(", ")
-      : `API-Football HTTP ${response.status}`;
-    const error = new Error(message);
-    error.status = response.status || 502;
-    throw error;
-  }
-
-  return data;
-}
-
-// Liste des matchs : endpoint indépendant, sans toucher à /api/ai/analyze.
-app.get("/api/football/fixtures", async (req, res) => {
-  try {
-    const allowed = ["date", "from", "to", "league", "season", "team", "next", "last", "live", "timezone"];
-    const params = {};
-    for (const key of allowed) {
-      if (req.query[key] !== undefined) params[key] = req.query[key];
-    }
-
-    if (Object.keys(params).length === 0) {
-      params.date = new Date().toISOString().slice(0, 10);
-      params.timezone = "Africa/Abidjan";
-    }
-
-    const data = await callApiFootball("fixtures", params);
-    res.json({ ok: true, source: "api-football", ...data });
-  } catch (error) {
-    console.error("API-Football fixtures:", error.message);
-    res.status(error.status || 502).json({
-      ok: false,
-      error: "Impossible de récupérer les matchs API-Football.",
-      details: error.message
-    });
-  }
-});
-
-// Matchs en direct : endpoint indépendant.
-app.get("/api/football/live", async (req, res) => {
-  try {
-    const data = await callApiFootball("fixtures", {
-      live: req.query.league || "all",
-      timezone: "Africa/Abidjan"
-    });
-    res.json({ ok: true, source: "api-football", ...data });
-  } catch (error) {
-    console.error("API-Football live:", error.message);
-    res.status(error.status || 502).json({
-      ok: false,
-      error: "Impossible de récupérer les matchs en direct API-Football.",
-      details: error.message
-    });
   }
 });
 
