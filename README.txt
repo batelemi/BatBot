@@ -1,12 +1,8 @@
-BATBOT — ajout du logo officiel uniquement
+CORRECTION BATBOT - API-FOOTBALL
 
-À placer dans le dépôt GitHub :
-public/logo.png
+Fichier inclus : server.js
 
-Ce fichier est volontairement séparé :
-- il ne remplace pas index.html ;
-- il ne modifie pas server.js ;
-- il ne modifie pas package.json ;
-- il permet au fichier index.html actuel, qui appelle « logo.png », d’afficher le logo officiel BATBOT.
-
-Le logo fourni est le logo officiel de l’application BATBOT.
+Instructions :
+1. Remplacer uniquement server.js dans le dépôt GitHub.
+2. Conserver la base de données et les autres fichiers.
+3. Vérifier les variables Render nécessaires avant le déploiement.
