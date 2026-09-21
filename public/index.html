@@ -209,6 +209,11 @@ textarea{min-height:120px;resize:vertical}
 .status-card{display:flex;align-items:center;gap:10px;padding:16px;border-radius:18px;border:1px solid rgba(83,207,255,.35);box-shadow:0 8px 22px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.08);background:linear-gradient(145deg,#12395b,#081e35)}
 .status-card .status-icon{font-size:28px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}.status-card span{display:block;font-size:12px;color:#c4d8e8}.status-card strong{display:block;margin-top:5px;font-size:17px;color:#fff;text-shadow:0 2px 1px rgba(0,0,0,.35)}
 .premium-status-card{border-color:rgba(245,197,66,.5);background:linear-gradient(145deg,#29465c,#10253b)}.ai-status-card{border-color:rgba(0,213,255,.5);background:linear-gradient(145deg,#124c64,#0b263f)}
+.ai-match-fields{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}.ai-match-fields input{margin:0}
+.ai-result{overflow:hidden}.ai-match-result{padding:12px 0;border-bottom:1px solid #315D82}.ai-match-result:last-child{border-bottom:0}
+.ai-result-title{font-size:16px;font-weight:900;margin-bottom:10px}.ai-section-label{color:#6EE7A0;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;margin:12px 0 7px}
+.ai-prob-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.ai-prob-card{padding:9px 5px;text-align:center;border:1px solid #315D82;border-radius:10px;background:#0C2745}.ai-prob-card strong{display:block;font-size:12px}.ai-prob-card span{display:block;color:#6EE7A0;font-weight:900;margin-top:4px}
+.ai-options{display:grid;grid-template-columns:1fr;gap:7px}.ai-option-card{border:1px solid #315D82;border-radius:11px;background:#0C2745;padding:10px}.ai-option-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-close{border:0;background:#193A5C;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer}.ai-option-meta{color:#AFC1D4;font-size:12px;margin-top:5px}.ai-recommendation,.ai-combined{margin-top:10px;padding:11px;border:1px solid rgba(33,197,93,.4);border-radius:11px;background:rgba(33,197,93,.07);line-height:1.45}
 .ai-card{border:1px solid rgba(0,213,255,.45);background:linear-gradient(145deg,#123b5b,#0a223a)}.ai-result{margin-top:14px;padding:15px;border-radius:14px;background:#071a2d;border:1px solid #315d82;white-space:pre-wrap;line-height:1.55}
 @media(max-width:380px){.profile-status-grid{gap:7px}.status-card{padding:12px}.status-card strong{font-size:14px}}
 
@@ -353,9 +358,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="section-kicker">Assistant intelligent</div>
     <h2>🤖 BatBot IA</h2>
     <p class="muted">Analysez vos matchs avec BatBot IA. L’accès nécessite un abonnement actif.</p>
-    <div class="two-columns"><input id="aiHomeTeam" placeholder="Match 1 — équipe à domicile"><input id="aiAwayTeam" placeholder="Match 1 — équipe à l’extérieur"></div>
-    <div class="two-columns"><input id="aiSecondHomeTeam" placeholder="Match 2 — équipe à domicile (facultatif)"><input id="aiSecondAwayTeam" placeholder="Match 2 — équipe à l’extérieur (facultatif)"></div>
-    <textarea id="aiContext" placeholder="Contexte facultatif : compétition, date, informations disponibles..."></textarea>
+    <div class="ai-match-fields">
+      <input id="aiMatch1" placeholder="Match 1 — équipe 1 vs équipe 2">
+      <input id="aiMatch2" placeholder="Match 2 — équipe 1 vs équipe 2">
+    </div>
     <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
     <div id="smartDriveAIStatus" class="status"></div>
     <div id="smartDriveAIResult" class="ai-result hidden"></div>
@@ -1112,19 +1118,55 @@ function updateProfileStatuses(user){
   if(p)p.textContent=premium?"Actif":"Non actif";
   if(a)a.textContent=(premium && Boolean(user&&user.ai_active))?"Active":"Non active";
 }
-async function submitBatBotAI(){
-  const home=document.getElementById("aiHomeTeam").value.trim();const away=document.getElementById("aiAwayTeam").value.trim();const secondHome=document.getElementById("aiSecondHomeTeam").value.trim();const secondAway=document.getElementById("aiSecondAwayTeam").value.trim();const context=document.getElementById("aiContext").value.trim();
-  if(!home||!away)return showStatus("smartDriveAIStatus","Saisissez les deux équipes.","error");
-  setLoading("smartDriveAIButton",true,"🤖 Analyse en cours…");
-  showStatus("smartDriveAIStatus","BatBot IA est en cours d’analyse. Veuillez patienter quelques secondes.","success");
+function splitMatch(value){
+  const parts=String(value||"").split(/\s+(?:vs|v|contre)\s+/i).map(x=>x.trim()).filter(Boolean);
+  return {home:parts[0]||"",away:parts.slice(1).join(" vs ")||""};
+}
+
+function renderBatBotAIResult(raw){
+  const box=document.getElementById("smartDriveAIResult");
+  box.classList.remove("hidden");
+  let data=null;
   try{
-    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,second_home_team:secondHome,second_away_team:secondAway,context})});
-    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Analyse indisponible.");
-    const box=document.getElementById("smartDriveAIResult");box.classList.remove("hidden");box.textContent=d.analysis||"Aucun résultat disponible.";
-  }catch(e){
-    console.error("[BatBot IA] Erreur d’analyse:",e);
-    showStatus("smartDriveAIStatus",e&&e.message?e.message:"Erreur inconnue pendant l’analyse.","error");
+    const cleaned=String(raw||"").replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"").trim();
+    data=JSON.parse(cleaned);
+  }catch(_){}
+
+  if(!data||!Array.isArray(data.matches)){
+    box.textContent=raw||"Aucun résultat disponible.";
+    return;
   }
+
+  const optionCard=(option)=>`<div class="ai-option-card">
+    <div class="ai-option-head"><strong>${escapeHtml(option.name||"Option")}</strong><button type="button" class="ai-close" aria-label="Fermer" onclick="this.closest('.ai-option-card').remove()">✕</button></div>
+    <div class="ai-option-meta">${escapeHtml(option.probability||"")} ${option.risk?`• ${escapeHtml(option.risk)}`:""}</div>
+  </div>`;
+
+  box.innerHTML=data.matches.map((match,index)=>`<div class="ai-match-result">
+    <div class="ai-result-title">⚽ Match ${index+1} — ${escapeHtml(match.name||"")}</div>
+    <div class="ai-section-label">Probabilités</div>
+    <div class="ai-prob-grid">${(match.probabilities||[]).map(p=>`<div class="ai-prob-card"><strong>${escapeHtml(p.label||"")}</strong><span>${escapeHtml(p.value||"")}</span></div>`).join("")}</div>
+    <div class="ai-section-label">Options</div>
+    <div class="ai-options">${(match.options||[]).map(optionCard).join("")}</div>
+    ${match.recommendation?`<div class="ai-recommendation"><strong>Choix proposé :</strong> ${escapeHtml(match.recommendation)}</div>`:""}
+  </div>`).join("")+
+  (data.combined?`<div class="ai-combined"><div class="ai-result-title">🎯 Combinaison finale</div><div>${escapeHtml(data.combined.selections||"")}</div><strong>Cote estimée : ${escapeHtml(data.combined.estimated_odds||"")}</strong></div>`:"");
+}
+
+async function submitBatBotAI(){
+  const match1=document.getElementById("aiMatch1").value.trim();
+  const match2=document.getElementById("aiMatch2").value.trim();
+  const first=splitMatch(match1),second=splitMatch(match2);
+  if(!first.home||!first.away||!second.home||!second.away){
+    return showStatus("smartDriveAIStatus","Saisissez les 2 matchs au format : Équipe 1 vs Équipe 2.","error");
+  }
+  setLoading("smartDriveAIButton",true,"🤖 Analyse en cours…");
+  showStatus("smartDriveAIStatus","Analyse en cours…","success");
+  try{
+    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:first.home,away_team:first.away,second_home_team:second.home,second_away_team:second.away})});
+    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Analyse indisponible.");
+    renderBatBotAIResult(d.analysis);
+  }catch(e){showStatus("smartDriveAIStatus",e&&e.message?e.message:"Erreur pendant l’analyse.","error");}
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
