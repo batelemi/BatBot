@@ -1121,7 +1121,10 @@ async function submitBatBotAI(){
     const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,second_home_team:secondHome,second_away_team:secondAway,context})});
     const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Analyse indisponible.");
     const box=document.getElementById("smartDriveAIResult");box.classList.remove("hidden");box.textContent=d.analysis||"Aucun résultat disponible.";
-  }catch(e){showStatus("smartDriveAIStatus","Plusieurs demandes sont peut-être en cours de traitement. Veuillez réessayer dans quelques secondes.","error");}
+  }catch(e){
+    console.error("[BatBot IA] Erreur d’analyse:",e);
+    showStatus("smartDriveAIStatus",e&&e.message?e.message:"Erreur inconnue pendant l’analyse.","error");
+  }
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
