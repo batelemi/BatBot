@@ -281,13 +281,13 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="password-wrap">
       <input id="registerPassword" type="password" autocomplete="new-password"
         placeholder="Mot de passe — 6 caractères minimum">
-      <button class="eye" type="button" onclick="togglePassword('registerPassword',this)">👁</button>
+      <button class="eye" type="button" onclick="togglePassword('registerPassword',this)">👀</button>
     </div>
 
     <div class="password-wrap">
       <input id="registerPassword2" type="password" autocomplete="new-password"
         placeholder="Confirmer le mot de passe">
-      <button class="eye" type="button" onclick="togglePassword('registerPassword2',this)">👁</button>
+      <button class="eye" type="button" onclick="togglePassword('registerPassword2',this)">👀</button>
     </div>
 
     <button id="registerButton" class="btn primary" type="button" onclick="register()">✨ Créer mon compte</button>
@@ -305,7 +305,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
     <div class="password-wrap">
       <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Mot de passe">
-      <button class="eye" type="button" onclick="togglePassword('loginPassword',this)">👁</button>
+      <button class="eye" type="button" onclick="togglePassword('loginPassword',this)">👀</button>
     </div>
 
     <button id="loginButton" class="btn primary" type="button" onclick="login()">🚀 Se connecter</button>
@@ -390,7 +390,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <a id="waveDayButton" class="btn wave"
       href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500"
-      target="_blank" rel="noopener noreferrer">💙 Payer 500 F avec Wave</a>
+      target="_blank" rel="noopener noreferrer">🌊 Payer 500 F avec Wave</a>
     <div class="payment-confirm">
       ✅ Paiement manuel. Après le paiement, revenez dans l'application et envoyez vos matchs à analyser.
     </div>
@@ -410,7 +410,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <a id="wavePremiumButton" class="btn wave"
       href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
-      target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
+      target="_blank" rel="noopener noreferrer">🌊 Souscrire 7 jours — 1 000 F</a>
     <div class="payment-confirm">
       📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
     </div>
@@ -562,7 +562,7 @@ PSG vs Marseille"></textarea>
     <input id="adminPhone" type="text" autocomplete="username" placeholder="Identifiant administrateur">
     <div class="password-wrap">
       <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur">
-      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button>
+      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👀</button>
     </div>
     <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Accéder à l'administration</button>
     <div id="adminLoginStatus" class="status"></div>
@@ -692,10 +692,10 @@ function togglePassword(id,button){
   if(!input)return;
   if(input.type==="password"){
     input.type="text";
-    button.textContent="🙈";
+    button.textContent="👀";
   }else{
     input.type="password";
-    button.textContent="👁";
+    button.textContent="🙈";
   }
 }
 
