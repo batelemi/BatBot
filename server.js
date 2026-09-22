@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS analysis_requests(
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS payment_requests(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  offer TEXT NOT NULL,
+  operator TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  reference TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  admin_note TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TEXT,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS bookmakers(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -382,6 +395,48 @@ app.get("/api/admin/stats", requireAdmin, (req, res) => {
       "SELECT COUNT(*) AS n FROM password_resets WHERE status='pending'"
     ).get().n
   });
+});
+
+app.post("/api/payment-requests", requireUser, (req, res) => {
+  const offer = String(req.body.offer || "").trim();
+  const operator = String(req.body.operator || "").trim();
+  const amount = Number(req.body.amount);
+  const reference = String(req.body.reference || "").trim();
+  const allowedOperators = ["Orange Money", "MTN Money", "Moov Money"];
+
+  if (!offer || !allowedOperators.includes(operator) || !Number.isFinite(amount) || amount <= 0 || !reference) {
+    return res.status(400).json({ error: "Veuillez remplir correctement tous les champs du paiement." });
+  }
+  const result = DB.prepare(
+    "INSERT INTO payment_requests(user_id,offer,operator,amount,reference) VALUES(?,?,?,?,?)"
+  ).run(req.session.userId, offer, operator, Math.round(amount), reference);
+  res.json({ message: "Référence enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.lastInsertRowid });
+});
+
+app.get("/api/admin/payment-requests", requireAdmin, (req, res) => {
+  const requests = DB.prepare(`
+    SELECT p.*, u.username, u.phone
+    FROM payment_requests p LEFT JOIN users u ON u.id=p.user_id
+    ORDER BY CASE WHEN p.status='pending' THEN 0 ELSE 1 END, p.id DESC
+  `).all();
+  res.json({ requests });
+});
+
+app.patch("/api/admin/payment-requests/:id", requireAdmin, (req, res) => {
+  const status = String(req.body.status || "").toLowerCase();
+  if (!["accepted", "rejected"].includes(status)) return res.status(400).json({ error: "Statut invalide." });
+  const request = DB.prepare("SELECT * FROM payment_requests WHERE id=?").get(Number(req.params.id));
+  if (!request) return res.status(404).json({ error: "Demande introuvable." });
+  const resolve = DB.transaction(() => {
+    if (status === "accepted" && /premium/i.test(request.offer)) {
+      const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?").run(new Date().toISOString(), until, request.user_id);
+      if (/ia/i.test(request.offer)) DB.prepare("UPDATE users SET ai_until=? WHERE id=?").run(until, request.user_id);
+    }
+    DB.prepare("UPDATE payment_requests SET status=?, resolved_at=CURRENT_TIMESTAMP WHERE id=?").run(status, request.id);
+  });
+  resolve();
+  res.json({ message: status === "accepted" ? "Paiement accepté." : "Paiement refusé." });
 });
 
 app.get("/api/admin/users", requireAdmin, (req, res) => {
