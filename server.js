@@ -91,6 +91,14 @@ CREATE TABLE IF NOT EXISTS coupons(
 );
 `);
 
+// Nettoyage automatique des demandes déjà traitées après 2 jours.
+// Les demandes en attente sont conservées.
+function purgeOldPaymentRequests() {
+  DB.prepare("DELETE FROM payment_requests WHERE status <> 'pending' AND resolved_at IS NOT NULL AND datetime(resolved_at) <= datetime('now','-2 days')").run();
+}
+purgeOldPaymentRequests();
+setInterval(purgeOldPaymentRequests, 60 * 60 * 1000);
+
 // Migrations pour les bases déjà existantes
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
@@ -413,6 +421,18 @@ app.post("/api/payment-requests", requireUser, (req, res) => {
   res.json({ message: "Référence enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.lastInsertRowid });
 });
 
+app.get("/api/payment-requests/mine", requireUser, (req, res) => {
+  const requests = DB.prepare(`
+    SELECT id, offer, operator, amount, reference, status, created_at, resolved_at
+    FROM payment_requests
+    WHERE user_id=?
+      AND (status='pending' OR resolved_at IS NULL OR datetime(resolved_at) > datetime('now','-2 days'))
+      AND (status='pending' OR datetime(resolved_at) <= datetime('now','-5 minutes'))
+    ORDER BY id DESC
+  `).all(req.session.userId);
+  res.json({ requests });
+});
+
 app.get("/api/admin/payment-requests", requireAdmin, (req, res) => {
   const requests = DB.prepare(`
     SELECT p.*, u.username, u.phone
@@ -437,7 +457,10 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, (req, res) => {
       const currentUntil = user?.premium_until && new Date(user.premium_until) > now ? new Date(user.premium_until) : now;
       const until = new Date(currentUntil.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
       DB.prepare("UPDATE users SET premium_started_at=COALESCE(premium_started_at,?), premium_until=? WHERE id=?").run(now.toISOString(), until, request.user_id);
-      if (/ia/i.test(request.offer)) DB.prepare("UPDATE users SET ai_until=? WHERE id=?").run(until, request.user_id);
+      // L'offre Premium à 1 000 F active aussi l'accès IA et les services Premium.
+      if (/ia/i.test(request.offer) || Number(request.amount) >= 1000 || /premium/i.test(request.offer)) {
+        DB.prepare("UPDATE users SET ai_until=? WHERE id=?").run(until, request.user_id);
+      }
     }
     const result = DB.prepare("UPDATE payment_requests SET status=?, resolved_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").run(status, request.id);
     if (result.changes !== 1) throw new Error("Cette demande a déjà été traitée.");
