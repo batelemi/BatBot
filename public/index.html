@@ -271,6 +271,20 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
+.payment-window-launcher{display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0 14px}
+.payment-window-trigger{width:100%;min-height:48px;border:0;border-radius:13px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+.payment-window-source.hidden{display:none!important}
+.payment-window-modal{position:fixed;inset:0;z-index:420;display:flex;align-items:flex-start;justify-content:center;padding:14px;background:rgba(2,10,20,.92);overflow:auto}
+.payment-window-modal.hidden{display:none}
+.payment-window-inner{width:min(620px,100%);margin-top:14px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.55)}
+.payment-window-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;margin-bottom:10px;background:#0b223a}
+.payment-window-head strong{font-size:17px}
+.payment-window-close{width:auto;min-height:42px;margin:0;padding:8px 12px;white-space:nowrap}
+.payment-window-body>.card{margin:10px 0}
+.payment-window-body>.payment-window-source{display:block!important}
+.payment-window-conditions{font-size:14px;line-height:1.55;color:#D9E7F3}
+.payment-window-conditions .notice{margin:9px 0}
+@media(min-width:480px){.payment-window-launcher{grid-template-columns:repeat(3,minmax(0,1fr))}.payment-window-trigger{font-size:12px;min-height:58px}}
 </style>
 </head>
 
@@ -409,7 +423,12 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="section-kicker">Espace sécurisé</div>
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
-  <div class="card payment-card">
+    <div class="payment-window-launcher" aria-label="Choisir un moyen de paiement">
+      <button class="payment-window-trigger wave" type="button" data-payment-window="wave">💙 Paiement avec Wave</button>
+      <button class="payment-window-trigger secondary" type="button" data-payment-window="mobile">📱 Orange • MTN • Moov</button>
+      <button class="payment-window-trigger secondary" type="button" data-payment-window="conditions">📋 Conditions de dépôt</button>
+    </div>
+  <div id="waveDayCard" class="card payment-card payment-window-source">
     <h2>💳 Analyse du jour</h2>
     <div class="payment-price">
       <strong>500 F</strong>
@@ -427,7 +446,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div id="paymentStatus" class="status"></div>
   </div>
 
-  <div class="card subscription-card">
+  <div id="wavePremiumCard" class="card subscription-card payment-window-source">
     <h2>⭐ Abonnement 7 jours</h2>
     <div class="subscription-price">
       <strong>1 000 F</strong>
@@ -446,7 +465,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
   </div>
 
-  <div class="card">
+  <div id="mobileMoneyCard" class="card payment-window-source">
     <h2>💰 Autres moyens de paiement</h2>
     <div class="notice">
       📱 Vous pouvez également payer par <strong>Orange Money, Moov Money ou MTN Money</strong>.
@@ -466,6 +485,16 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <button class="btn whatsapp" type="button" onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
     <div id="paymentNumberStatus" class="status"></div>
   </div>
+
+    <div id="paymentWindowModal" class="payment-window-modal hidden" role="dialog" aria-modal="true" aria-labelledby="paymentWindowTitle">
+      <div class="payment-window-inner">
+        <div class="payment-window-head">
+          <strong id="paymentWindowTitle">Paiement</strong>
+          <button id="paymentWindowClose" class="btn secondary payment-window-close" type="button">← Retour</button>
+        </div>
+        <div id="paymentWindowBody" class="payment-window-body"></div>
+      </div>
+    </div>
 
   </section>
 
@@ -1012,6 +1041,70 @@ async function submitPaymentReference(){
 }
 function copyPaymentNumber(id){const value=document.getElementById(id)?.textContent?.trim();if(!value||value==="Chargement...")return; navigator.clipboard?.writeText(value).then(()=>showStatus("paymentNumberStatus","Numéro copié.","success"));}
 function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BatBot 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
+
+(function(){
+  function setupPaymentWindows(){
+    const launcher=document.querySelector('.payment-window-launcher');
+    const modal=document.getElementById('paymentWindowModal');
+    const body=document.getElementById('paymentWindowBody');
+    const title=document.getElementById('paymentWindowTitle');
+    const closeButton=document.getElementById('paymentWindowClose');
+    const waveDay=document.getElementById('waveDayCard');
+    const wavePremium=document.getElementById('wavePremiumCard');
+    const mobile=document.getElementById('mobileMoneyCard');
+    if(!launcher||!modal||!body||!title||!closeButton||!waveDay||!wavePremium||!mobile||modal.dataset.ready==='1')return;
+    modal.dataset.ready='1';
+    [waveDay,wavePremium,mobile].forEach(card=>card.classList.add('hidden'));
+    let activeNodes=[];
+
+    function restoreNodes(){
+      activeNodes.forEach(node=>{
+        if(node._paymentPlaceholder&&node._paymentPlaceholder.parentNode){
+          node._paymentPlaceholder.parentNode.insertBefore(node,node._paymentPlaceholder.nextSibling);
+        }
+        node.classList.add('hidden');
+        node.classList.remove('in-window');
+      });
+      activeNodes=[];
+    }
+    function closePaymentWindow(){
+      restoreNodes();
+      body.innerHTML='';
+      modal.classList.add('hidden');
+      document.body.style.overflow='';
+    }
+    function addNode(node){
+      const placeholder=document.createComment('batbot-payment-window-placeholder');
+      node.parentNode.insertBefore(placeholder,node);
+      node._paymentPlaceholder=placeholder;
+      node.classList.remove('hidden');
+      node.classList.add('in-window');
+      body.appendChild(node);
+      activeNodes.push(node);
+    }
+    function openPaymentWindow(type){
+      closePaymentWindow();
+      if(type==='wave'){
+        title.textContent='💙 Paiement avec Wave';
+        addNode(waveDay);
+        addNode(wavePremium);
+      }else if(type==='mobile'){
+        title.textContent='📱 Paiement Mobile Money';
+        addNode(mobile);
+      }else{
+        title.textContent='📋 Conditions de dépôt';
+        body.innerHTML='<div class="payment-window-conditions"><div class="notice"><strong>1. Choisissez votre offre</strong><br>Analyse du jour : 500 F. Abonnement Premium : 1 000 F pour 7 jours.</div><div class="notice"><strong>2. Effectuez le paiement</strong><br>Utilisez Wave ou le numéro Orange Money, MTN Money ou Moov Money affiché dans la fenêtre correspondante.</div><div class="notice"><strong>3. Conservez votre preuve</strong><br>Gardez la capture et la référence de transaction jusqu’à la confirmation du service.</div><div class="notice"><strong>4. Envoyez les informations</strong><br>Enregistrez le montant et la référence dans le formulaire, puis envoyez la preuve sur WhatsApp au service client.</div><div class="notice"><strong>5. Validation</strong><br>L’activation de Premium ou des services associés se fait après vérification du paiement par l’administrateur.</div></div>';
+      }
+      modal.classList.remove('hidden');
+      document.body.style.overflow='hidden';
+    }
+    launcher.querySelectorAll('[data-payment-window]').forEach(button=>button.addEventListener('click',()=>openPaymentWindow(button.dataset.paymentWindow)));
+    closeButton.addEventListener('click',closePaymentWindow);
+    modal.addEventListener('click',event=>{if(event.target===modal)closePaymentWindow();});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.classList.contains('hidden'))closePaymentWindow();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPaymentWindows);else setupPaymentWindows();
+})();
 
 function requestPaymentNumber(){
   const message="Bonjour BatBot 👋\n\nJe souhaite recevoir le numéro de dépôt pour effectuer mon paiement par Orange Money, Moov Money ou MTN Money.";
