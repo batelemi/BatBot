@@ -427,16 +427,27 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, (req, res) => {
   if (!["accepted", "rejected"].includes(status)) return res.status(400).json({ error: "Statut invalide." });
   const request = DB.prepare("SELECT * FROM payment_requests WHERE id=?").get(Number(req.params.id));
   if (!request) return res.status(404).json({ error: "Demande introuvable." });
+  if (request.status !== "pending") return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+
   const resolve = DB.transaction(() => {
     if (status === "accepted" && /premium/i.test(request.offer)) {
-      const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?").run(new Date().toISOString(), until, request.user_id);
+      const durationDays = /30\s*j|30\s*jours/i.test(request.offer) ? 30 : 7;
+      const now = new Date();
+      const user = DB.prepare("SELECT premium_until, ai_until FROM users WHERE id=?").get(request.user_id);
+      const currentUntil = user?.premium_until && new Date(user.premium_until) > now ? new Date(user.premium_until) : now;
+      const until = new Date(currentUntil.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+      DB.prepare("UPDATE users SET premium_started_at=COALESCE(premium_started_at,?), premium_until=? WHERE id=?").run(now.toISOString(), until, request.user_id);
       if (/ia/i.test(request.offer)) DB.prepare("UPDATE users SET ai_until=? WHERE id=?").run(until, request.user_id);
     }
-    DB.prepare("UPDATE payment_requests SET status=?, resolved_at=CURRENT_TIMESTAMP WHERE id=?").run(status, request.id);
+    const result = DB.prepare("UPDATE payment_requests SET status=?, resolved_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").run(status, request.id);
+    if (result.changes !== 1) throw new Error("Cette demande a déjà été traitée.");
   });
-  resolve();
-  res.json({ message: status === "accepted" ? "Paiement accepté." : "Paiement refusé." });
+  try {
+    resolve();
+    res.json({ message: status === "accepted" ? "Paiement accepté." : "Paiement refusé." });
+  } catch (error) {
+    res.status(409).json({ error: error.message || "Demande déjà traitée." });
+  }
 });
 
 app.get("/api/admin/users", requireAdmin, (req, res) => {
