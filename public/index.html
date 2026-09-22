@@ -453,7 +453,17 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <br><br>
       Appuyez sur le bouton ci-dessous pour recevoir le numéro de dépôt avec un message prédéfini.
     </div>
-    <button class="btn orange" type="button" onclick="requestPaymentNumber()">📲 Recevoir le numéro de dépôt</button>
+    <div class="payment-grid">
+      <div class="payment-card"><strong>🟠 Orange Money</strong><span id="orangeMoneyNumber">Chargement...</span><button class="btn secondary" type="button" onclick="copyPaymentNumber('orangeMoneyNumber')">📋 Copier le numéro</button></div>
+      <div class="payment-card"><strong>🟡 MTN Money</strong><span id="mtnMoneyNumber">Chargement...</span><button class="btn secondary" type="button" onclick="copyPaymentNumber('mtnMoneyNumber')">📋 Copier le numéro</button></div>
+      <div class="payment-card"><strong>🔵 Moov Money</strong><span id="moovMoneyNumber">Chargement...</span><button class="btn secondary" type="button" onclick="copyPaymentNumber('moovMoneyNumber')">📋 Copier le numéro</button></div>
+    </div>
+    <label><span class="muted">Offre payée</span><select id="paymentOffer"><option value="Analyse du jour">Analyse du jour — 500 F</option><option value="Premium 7 jours">Premium — 1 000 F / 7 jours</option><option value="Premium + IA 7 jours">Premium + IA — 1 000 F / 7 jours</option></select></label>
+    <label><span class="muted">Opérateur utilisé</span><select id="paymentOperator"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option></select></label>
+    <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
+    <label><span class="muted">Référence de transaction</span><input id="paymentReference" maxlength="120" placeholder="Référence du paiement"></label>
+    <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ Enregistrer la référence</button>
+    <button class="btn whatsapp" type="button" onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
     <div id="paymentNumberStatus" class="status"></div>
   </div>
 
@@ -617,6 +627,12 @@ PSG vs Marseille"></textarea>
       <div id="settingsList">Chargement...</div>
       <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
       <div id="settingsStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>💳 Demandes de paiement manuel</h2>
+      <p class="muted">Vérifiez la preuve reçue sur WhatsApp avant d’accepter une demande.</p>
+      <div id="paymentRequestsAdminList">Chargement...</div>
     </div>
 
     <div class="card">
@@ -989,6 +1005,13 @@ function showFileName(){
     fileName.textContent="";
   }
 }
+
+async function submitPaymentReference(){
+  const body={offer:document.getElementById("paymentOffer").value,operator:document.getElementById("paymentOperator").value,amount:document.getElementById("paymentAmount").value,reference:document.getElementById("paymentReference").value.trim()};
+  try{const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Enregistrement impossible.");showStatus("paymentNumberStatus",d.message,"success");}catch(e){showStatus("paymentNumberStatus",e.message,"error");}
+}
+function copyPaymentNumber(id){const value=document.getElementById(id)?.textContent?.trim();if(!value||value==="Chargement...")return; navigator.clipboard?.writeText(value).then(()=>showStatus("paymentNumberStatus","Numéro copié.","success"));}
+function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BatBot 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
 
 function requestPaymentNumber(){
   const message="Bonjour BatBot 👋\n\nJe souhaite recevoir le numéro de dépôt pour effectuer mon paiement par Orange Money, Moov Money ou MTN Money.";
@@ -1369,6 +1392,9 @@ function organizeAdminPanel(){
   adminOrganizerReady=true;
 }
 
+async function loadAdminPaymentRequests(){const box=document.getElementById("paymentRequestsAdminList");if(!box)return;try{const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");box.innerHTML=(d.requests||[]).map(x=>`<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.username||"Utilisateur")}</strong><br>💳 ${escapeHtml(x.offer)} — ${x.amount} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)}<br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${escapeHtml(x.status)}</strong>${x.status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Accepter</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser</button></div>`:""}</div>`).join("")||'<p class="muted">Aucune demande.</p>';}catch(e){box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';}}
+async function resolvePaymentRequest(id,status){try{const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible.");await loadAdminPaymentRequests();alert(d.message);}catch(e){alert(e.message);}}
+
 async function loadAdmin(){
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.add("hidden");
@@ -1376,6 +1402,7 @@ async function loadAdmin(){
   document.getElementById("adminLoginBox").classList.add("hidden");
   document.getElementById("adminPanel").classList.remove("hidden");
   organizeAdminPanel();
+  loadAdminPaymentRequests();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -1726,6 +1753,7 @@ async function loadPublicConfig(){
     if(data.telegram)TELEGRAM_CONTACT="https://t.me/"+String(data.telegram).replace(/^@/,"");
     if(data.wave500){WAVE_PAYMENT_DAY_URL=data.wave500;const el=document.getElementById("waveDayButton");if(el)el.href=data.wave500;}
     if(data.wave1000){WAVE_PAYMENT_7_DAYS_URL=data.wave1000;const el=document.getElementById("wavePremiumButton");if(el)el.href=data.wave1000;}
+    ["orangeMoney","mtnMoney","moovMoney"].forEach(k=>{const el=document.getElementById(k+"Number");if(el&&data[k])el.textContent=data[k];});
     const wa=document.getElementById("whatsappContact");if(wa)wa.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
     const tg=document.getElementById("telegramContact");if(tg)tg.href=TELEGRAM_CONTACT;
     const groupWa=document.querySelector('a[href*="chat.whatsapp.com"]');if(groupWa&&data.whatsappGroup)groupWa.href=data.whatsappGroup;
