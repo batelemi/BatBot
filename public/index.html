@@ -412,11 +412,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
     <div id="smartDriveAIStatus" class="status"></div>
     <div id="smartDriveAIResult" class="ai-result hidden"></div>
-    <div class="two-columns" style="margin-top:12px">
-      <button class="btn secondary" type="button" onclick="loadApiFootballFixtures()">⚽ Charger les matchs du jour</button>
-    </div>
-    <div id="apiFootballStatus" class="status"></div>
-    <div id="apiFootballResults" class="ai-result hidden"></div>
   </section>
 
   <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
@@ -498,6 +493,14 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   </section>
 
+  <div id="myTransactionsCard" class="card">
+    <h2>📊 Mes transactions</h2>
+    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont supprimées après 2 jours.</p>
+    <div id="myTransactionsList"><div class="notice">Chargement des transactions...</div></div>
+  </div>
+
+
+
   <div class="card">
     <h2><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
     <p class="muted">
@@ -530,12 +533,13 @@ PSG vs Marseille"></textarea>
     <div id="analysisStatus" class="status"></div>
   </div>
 
-  <div class="card">
-    <h2>📊 Probabilités des matchs du jour</h2>
-    <p class="muted">Retrouvez ici les probabilités ajoutées par l'administrateur.</p>
-    <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
-  </div>
-
+  <section class="card" id="dailyFixturesSection" aria-label="Matchs du jour">
+    <h2>⚽ Matchs du jour</h2>
+    <p class="muted">Chargez les matchs disponibles pour préparer vos demandes d’analyse.</p>
+    <button class="btn secondary" type="button" onclick="loadApiFootballFixtures()">⚽ Charger les matchs du jour</button>
+    <div id="apiFootballStatus" class="status"></div>
+    <div id="apiFootballResults" class="ai-result hidden"></div>
+  </section>
   <section class="partners-space" aria-label="Espace partenaires et bookmakers">
     <div class="section-kicker">Espace partenaires</div>
     <h2>🛡️ Partenaires authentifiés</h2>
@@ -554,17 +558,47 @@ PSG vs Marseille"></textarea>
 
   </section>
 
-  <div id="myTransactionsCard" class="card">
-    <h2>📊 Mes transactions</h2>
-    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont supprimées après 2 jours.</p>
-    <div id="myTransactionsList"><div class="notice">Chargement des transactions...</div></div>
+  <div class="card">
+    <h2>📊 Probabilités des matchs du jour</h2>
+    <p class="muted">Retrouvez ici les probabilités ajoutées par l'administrateur.</p>
+    <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
   </div>
+
+
+
+  <div class="card">
+    <h2>👥 Nos groupes</h2>
+    <p class="muted">Rejoignez nos communautés BatBot.</p>
+    <div class="two-columns">
+      <a class="btn contact-button whatsapp"
+        href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
+        target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+      <a class="btn contact-button telegram"
+        href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+    </div>
+  </div>
+
+
 
   <div id="sdriveReferralCard" class="card hidden">
     <h2>🚀 Rejoindre BatBot</h2>
     <p id="sdriveInviteMessage" class="muted"></p>
     <div id="sdriveReferralActions"></div>
   </div>
+
+
+
+  <div class="card">
+    <h2>📞 Contacter un agent</h2>
+    <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
+    <div class="two-columns">
+      <a id="whatsappContact" class="btn contact-button whatsapp" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+      <a id="telegramContact" class="btn contact-button telegram"
+        href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+    </div>
+  </div>
+
+
 
   <div class="card">
     <h2>📱 Nos réseaux sociaux</h2>
@@ -579,27 +613,7 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div class="card">
-    <h2>👥 Nos groupes</h2>
-    <p class="muted">Rejoignez nos communautés BatBot.</p>
-    <div class="two-columns">
-      <a class="btn contact-button whatsapp"
-        href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
-        target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a class="btn contact-button telegram"
-        href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
-    </div>
-  </div>
 
-  <div class="card">
-    <h2>📞 Contacter un agent</h2>
-    <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
-    <div class="two-columns">
-      <a id="whatsappContact" class="btn contact-button whatsapp" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a id="telegramContact" class="btn contact-button telegram"
-        href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
-    </div>
-  </div>
 
   <div class="card compact-conditions">
     <h2>📋 Conditions d'utilisation</h2>
