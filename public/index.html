@@ -143,6 +143,29 @@ textarea{min-height:120px;resize:vertical}
 .status{min-height:24px;margin-top:9px;text-align:center;line-height:1.45;color:var(--muted)}
 .status.success{color:#6EE7A0}
 .status.error{color:#FF8A8A}
+/* BatBot professional UI helpers */
+.payment-request-card{background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);border-left:3px solid var(--gold);border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 10px 28px rgba(0,0,0,.18)}
+.payment-request-title{font-size:16px;font-weight:900;color:#fff;margin-bottom:10px}
+.payment-request-details{display:grid;gap:7px;color:#D9E7F3;line-height:1.45}
+.payment-request-reference{margin-top:10px;padding:11px 12px;border-radius:12px;background:#071A2D;border:1px solid rgba(83,207,255,.22);word-break:break-word}
+.payment-request-reference-label{display:block;color:#6EE7A0;font-size:11px;text-transform:uppercase;letter-spacing:.55px;font-weight:900;margin-bottom:5px}
+.payment-request-reference code{font-size:14px;color:#fff;letter-spacing:.35px}
+.payment-request-date{margin-top:9px;color:#AFC1D4;font-size:13px}
+.payment-request-status{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin-top:10px;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:900;background:#12395B;border:1px solid #315D82;color:#D9E7F3}
+.payment-request-status.accepted{background:rgba(33,197,93,.12);border-color:rgba(33,197,93,.42);color:#6EE7A0}
+.payment-request-status.rejected{background:rgba(255,75,75,.10);border-color:rgba(255,75,75,.42);color:#FFB0B0}
+.payment-request-status.pending{background:rgba(245,197,66,.09);border-color:rgba(245,197,66,.35);color:#FFE59A}
+.payment-request-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+.payment-request-actions .btn{margin:0;min-height:44px}
+.payment-processing-note{margin-top:12px;padding:12px 13px;border-radius:13px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.24);color:#D9E7F3;font-size:13px;line-height:1.5}
+.professional-status{padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);color:#D9E7F3;line-height:1.45;text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.14)}
+.professional-status.success{border-color:rgba(110,231,160,.35)}
+.professional-status.error{border-color:rgba(255,138,138,.4)}
+.ai-progress-status{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(0,213,255,.35);color:#D9E7F3;line-height:1.4;text-align:left}
+.ai-progress-status strong{display:block;color:#fff}.ai-progress-status small{display:block;color:#AFC1D4;margin-top:2px}
+.batbot-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.28);border-top-color:#39CFFF;border-radius:50%;animation:batbotSpin .8s linear infinite;vertical-align:-3px;flex:0 0 auto}
+.batbot-btn-spinner{width:16px;height:16px;margin-right:8px}
+@keyframes batbotSpin{to{transform:rotate(360deg)}}
 .notice{padding:13px;border-left:3px solid var(--blue);background:#0C2745;border-radius:8px;line-height:1.5;margin:10px 0;color:#D9E7F3}
 
 .payment-card{border:1px solid rgba(0,191,255,.45);background:linear-gradient(145deg,#102F52,#0B223D)}
@@ -406,7 +429,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   <div id="forgotBox" class="card hidden">
     <h2>🔑 Mot de passe oublié</h2>
     <p class="muted">
-      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation au service BatBot.
+      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation à l'administrateur.
     </p>
 
     <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
@@ -419,7 +442,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div id="forgotStatus" class="status"></div>
 
     <a id="forgotWhatsApp" class="btn whatsapp hidden" target="_blank" rel="noopener noreferrer">
-      💬 Contacter le service BatBot sur WhatsApp
+      💬 Contacter l'administrateur sur WhatsApp
     </a>
 
     <button class="btn secondary" type="button" onclick="hideForgot()">← Retour à la connexion</button>
@@ -520,7 +543,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
       target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
     <div class="payment-confirm">
-      📌 Paiement manuel. Après paiement, envoyez votre confirmation au service BatBot si nécessaire.
+      📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
     </div>
   </div>
 
@@ -592,9 +615,10 @@ PSG vs Marseille"></textarea>
       <div id="fileName" class="file-name"></div>
     </label>
 
-    <button class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
-    <button class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
+    <button id="sendAnalysisWhatsAppButton" class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
+    <button id="sendAnalysisTelegramButton" class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
     <div id="analysisStatus" class="status"></div>
+    <div class="payment-processing-note">⏱️ <strong>Délai de traitement</strong><br>Les demandes d’analyse envoyées au service BatBot ne sont pas traitées instantanément. Le délai habituel est d’environ <strong>5 à 7 minutes</strong>, et peut exceptionnellement atteindre <strong>10 minutes ou plus</strong> selon le nombre de demandes en cours. Le résultat est transmis à l’utilisateur dès que l’analyse est terminée.</div>
   </div>
 
   <section class="card" id="dailyFixturesSection" aria-label="Matchs du jour">
@@ -857,6 +881,30 @@ function setLoading(id,loading,normalText){
   if(!button)return;
   button.disabled=loading;
   button.textContent=loading?"Patientez...":normalText;
+}
+
+function setBatBotButtonLoading(id,loading,text){
+  const button=document.getElementById(id);
+  if(!button)return;
+  button.disabled=loading;
+  if(loading)button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>'+escapeHtml(text||"Traitement en cours…");
+  else button.textContent=text||"Continuer";
+}
+
+function formatPaymentDateTime(value){
+  if(!value)return "Date non disponible";
+  const date=new Date(String(value).replace(" ","T")+"Z");
+  if(Number.isNaN(date.getTime()))return String(value);
+  return date.toLocaleString("fr-FR",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+
+async function copyPaymentDetails(value){
+  if(!value)return;
+  try{
+    if(navigator.clipboard)await navigator.clipboard.writeText(value);
+    else{const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
+    showToast("Détails de la transaction copiés avec succès.","success");
+  }catch(_){showToast("Copie impossible. Réessayez.","error");}
 }
 
 function togglePassword(id,button){
@@ -1149,7 +1197,7 @@ function renderPasswordResetDelivery(state){
   if(state.status==="pending"){
     box.classList.remove("hidden");
     box.classList.add("pending");
-    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande a bien été envoyée au service BatBot. Veuillez patienter pendant le traitement. Dès que votre mot de passe temporaire sera prêt, il apparaîtra automatiquement ici.</div>';
+    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande est bien enregistrée. Dès que l’administrateur génère votre mot de passe temporaire, il apparaîtra automatiquement ici.</div>';
     return;
   }
 
@@ -1192,7 +1240,7 @@ async function pollPasswordResetStatus(){
 function startPasswordResetPolling(){
   stopPasswordResetPolling();
   pollPasswordResetStatus();
-  passwordResetPollTimer=setInterval(pollPasswordResetStatus,1000);
+  passwordResetPollTimer=setInterval(pollPasswordResetStatus,3000);
 }
 
 function stopPasswordResetPolling(){
@@ -1226,34 +1274,27 @@ function createWhatsAppUrl(message){
 function sendAnalysisWhatsApp(){
   const matches=document.getElementById("matches").value.trim();
   const capture=document.getElementById("capture");
-
-  if(!matches&&(!capture||capture.files.length===0)){
-    return showStatus("analysisStatus","Écrivez au moins un match ou sélectionnez une capture.","error");
-  }
-
+  const button=document.getElementById("sendAnalysisWhatsAppButton");
+  if(!matches&&(!capture||capture.files.length===0))return showStatus("analysisStatus","📋 Votre demande est incomplète. Ajoutez au moins un match ou sélectionnez une capture avant de continuer.","error");
+  if(button?.disabled)return;
+  setBatBotButtonLoading("sendAnalysisWhatsAppButton",true,"Ouverture de WhatsApp…");
   let message="Bonjour BatBot 👋\n\nJe souhaite faire analyser mes matchs.\n\nPaiement effectué pour l'analyse.\n\n";
-
   if(matches)message+="Match(s) à analyser :\n"+matches+"\n\n";
-  if(capture&&capture.files.length>0){
-    message+="📷 Je vais également envoyer ma capture dans cette conversation WhatsApp.\n\n";
-  }
+  if(capture&&capture.files.length>0)message+="📷 Je vais également envoyer ma capture dans cette conversation WhatsApp.\n\n";
   message+="Merci.";
-
   window.open(createWhatsAppUrl(message),"_blank");
-  showStatus("analysisStatus","WhatsApp a été ouvert. Envoyez votre message et votre capture si nécessaire.","success");
+  setTimeout(()=>{setBatBotButtonLoading("sendAnalysisWhatsAppButton",false,"💬 WhatsApp — Envoyer ma demande");showStatus("analysisStatus","💬 WhatsApp est prêt. Vérifiez votre message puis envoyez votre demande et votre capture si nécessaire.","success");},650);
 }
 
 function sendAnalysisTelegram(){
   const matches=document.getElementById("matches").value.trim();
-
-  if(!matches){
-    window.open(TELEGRAM_CONTACT,"_blank");
-    return;
-  }
-
+  const button=document.getElementById("sendAnalysisTelegramButton");
+  if(!matches){window.open(TELEGRAM_CONTACT,"_blank");showStatus("analysisStatus","✈️ Telegram est prêt. Envoyez votre demande au service BatBot.","success");return;}
+  if(button?.disabled)return;
+  setBatBotButtonLoading("sendAnalysisTelegramButton",true,"Ouverture de Telegram…");
   const message="Bonjour BatBot 👋\n\nJe souhaite faire analyser ce(s) match(s) :\n\n"+matches+"\n\nPaiement effectué.";
   window.open(TELEGRAM_CONTACT+"?text="+encodeURIComponent(message),"_blank");
-  showStatus("analysisStatus","Telegram a été ouvert.","success");
+  setTimeout(()=>{setBatBotButtonLoading("sendAnalysisTelegramButton",false,"✈️ Telegram — Envoyer ma demande");showStatus("analysisStatus","✈️ Telegram est prêt. Vérifiez votre message puis envoyez votre demande.","success");},650);
 }
 
 function showFileName(){
@@ -1261,7 +1302,7 @@ function showFileName(){
   const fileName=document.getElementById("fileName");
 
   if(input&&input.files&&input.files.length>0){
-    fileName.textContent="📎 Capture sélectionnée : "+input.files[0].name;
+    fileName.innerHTML='<span class="batbot-spinner" aria-hidden="true"></span> Capture sélectionnée : '+escapeHtml(input.files[0].name);
   }else{
     fileName.textContent="";
   }
@@ -1325,7 +1366,7 @@ function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer
         addNode(mobile);
       }else{
         title.textContent='📋 Conditions de dépôt';
-        body.innerHTML='<div class="payment-window-conditions"><div class="notice"><strong>1. Choisissez votre offre</strong><br>Analyse du jour : 500 F. Abonnement Premium : 1 000 F pour 7 jours.</div><div class="notice"><strong>2. Effectuez le paiement</strong><br>Utilisez Wave ou le numéro Orange Money, MTN Money ou Moov Money affiché dans la fenêtre correspondante.</div><div class="notice"><strong>3. Conservez votre preuve</strong><br>Gardez la capture et la référence de transaction jusqu’à la confirmation du service.</div><div class="notice"><strong>4. Envoyez les informations</strong><br>Enregistrez le montant et la référence dans le formulaire, puis envoyez la preuve sur WhatsApp au service client.</div><div class="notice"><strong>5. Validation</strong><br>L’activation de Premium ou des services associés se fait après vérification du paiement par le service BatBot.</div></div>';
+        body.innerHTML='<div class="payment-window-conditions"><div class="notice"><strong>1. Choisissez votre offre</strong><br>Analyse du jour : 500 F. Abonnement Premium : 1 000 F pour 7 jours.</div><div class="notice"><strong>2. Effectuez le paiement</strong><br>Utilisez Wave ou le numéro Orange Money, MTN Money ou Moov Money affiché dans la fenêtre correspondante.</div><div class="notice"><strong>3. Conservez votre preuve</strong><br>Gardez la capture et la référence de transaction jusqu’à la confirmation du service.</div><div class="notice"><strong>4. Envoyez les informations</strong><br>Enregistrez le montant et la référence dans le formulaire, puis envoyez la preuve sur WhatsApp au service client.</div><div class="notice"><strong>5. Validation</strong><br>L’activation de Premium ou des services associés se fait après vérification du paiement par l’administrateur.</div></div>';
       }
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
@@ -1592,19 +1633,28 @@ function renderBatBotAIResult(raw){
 }
 
 async function submitBatBotAI(){
+  const button=document.getElementById("smartDriveAIButton");
+  const status=document.getElementById("smartDriveAIStatus");
+  const result=document.getElementById("smartDriveAIResult");
   const match1=document.getElementById("aiMatch1").value.trim();
   const match2=document.getElementById("aiMatch2").value.trim();
   const first=splitMatch(match1),second=splitMatch(match2);
-  if(!first.home||!first.away||!second.home||!second.away){
-    return showStatus("smartDriveAIStatus","Saisissez les 2 matchs au format : Équipe 1 vs Équipe 2.","error");
-  }
-  setLoading("smartDriveAIButton",true,"🤖 Analyse en cours…");
-  showStatus("smartDriveAIStatus","Analyse en cours…","success");
+  if(!first.home||!first.away||!second.home||!second.away)return showStatus("smartDriveAIStatus","⚠️ Saisissez les 2 matchs au format : Équipe 1 vs Équipe 2.","error");
+  if(button?.disabled)return;
+  setLoading("smartDriveAIButton",true,"🤖 Lancer l’analyse");
+  status.className="status";
+  status.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA analyse les matchs sélectionnés…</small></div></div>';
+  if(result)result.classList.add("hidden");
   try{
     const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:first.home,away_team:first.away,second_home_team:second.home,second_away_team:second.away})});
-    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Analyse indisponible.");
+    const d=await readApiResponse(r);
+    if(!r.ok){
+      if(r.status===401||r.status===403){status.className="status";status.innerHTML='<div class="professional-status error">🔒 <strong>Accès à BatBot IA limité</strong><br><span>⭐ Cette fonctionnalité nécessite un abonnement Premium actif et une autorisation IA activée.</span><br><small>🔐 Activez votre accès pour utiliser l’analyse intelligente des matchs.</small></div>';}else throw new Error(d.error||"Analyse indisponible.");
+      return;
+    }
     renderBatBotAIResult(d.analysis);
-  }catch(e){showStatus("smartDriveAIStatus",e&&e.message?e.message:"Erreur pendant l’analyse.","error");}
+    status.className="status";status.innerHTML='<div class="professional-status success">✅ <strong>Analyse terminée</strong><br><span>Les résultats de BatBot IA sont prêts.</span></div>';
+  }catch(e){status.className="status";status.innerHTML='<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(e&&e.message?e.message:"Une erreur est survenue pendant l’analyse.")+'</span></div>';}
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
@@ -1612,7 +1662,7 @@ async function loadApiFootballFixtures(){
   const status=document.getElementById("apiFootballStatus");
   const box=document.getElementById("apiFootballResults");
   if(!status||!box)return;
-  showStatus("apiFootballStatus","Chargement des matchs API-Football…","success");
+  status.className="status";status.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Préparation des matchs disponibles…</small></div></div>';
   box.classList.remove("hidden"); box.textContent="Chargement…";
   try{
     const r=await fetch("/api/football/fixtures?timezone=Africa%2FAbidjan",{credentials:"same-origin",cache:"no-store"});
@@ -1625,10 +1675,10 @@ async function loadApiFootballFixtures(){
       const date=f.date?new Date(f.date).toLocaleString("fr-FR"):"Date inconnue";
       return (teams.home?.name||"Équipe 1")+" — "+(teams.away?.name||"Équipe 2")+"\n"+(league.name||"Compétition")+" • "+date;
     }).join("\n\n");
-    showStatus("apiFootballStatus",fixtures.length+" match(s) chargé(s) depuis API-Football.","success");
+    status.innerHTML='<div class="professional-status success">⚽ <strong>'+fixtures.length+' match(s) disponible(s)</strong><br><span>Les rencontres du jour sont prêtes à être consultées.</span></div>';
   }catch(e){
     box.textContent="";
-    showStatus("apiFootballStatus",e.message||"Impossible de charger les matchs.","error");
+    status.innerHTML='<div class="professional-status error">⚠️ <strong>Chargement indisponible</strong><br><span>Les matchs du jour ne peuvent pas être chargés pour le moment.</span></div>';
   }
 }
 
@@ -1748,78 +1798,37 @@ function organizeAdminPanel(){
 async function loadMyTransactions(){
   const box=document.getElementById("myTransactionsList");
   if(!box)return;
+  box.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div>';
   try{
     const r=await fetch("/api/payment-requests/mine",{credentials:"same-origin",cache:"no-store"});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");
     const items=d.requests||[];
     box.innerHTML=items.map(x=>{
-      const label=x.status==="accepted"?"✅ Approuvée":x.status==="rejected"?"❌ Refusée":"⏳ En cours de vérification";
-      return `<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.offer)}</strong><br>💳 ${Number(x.amount)||0} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)}<br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${label}</strong></div>`;
+      const status=x.status==="accepted"?"accepted":x.status==="rejected"?"rejected":"pending";
+      const label=status==="accepted"?"✅ Paiement approuvé":status==="rejected"?"❌ Paiement refusé":"⏳ Vérification en cours";
+      const details=[`Transaction #${x.id}`,`Offre : ${x.offer}`,`Montant : ${Number(x.amount)||0} FCFA`,`Opérateur : ${x.operator}`,`Référence : ${x.reference}`,`Date et heure : ${formatPaymentDateTime(x.created_at)}`,`Statut : ${label}`].join("\n");
+      return `<div class="payment-request-card"><div class="payment-request-title">💳 Transaction #${x.id}</div><div class="payment-request-details"><div>🎯 <strong>${escapeHtml(x.offer)}</strong></div><div>💰 ${Number(x.amount)||0} FCFA</div><div>📱 ${escapeHtml(x.operator)}</div></div><div class="payment-request-reference"><span class="payment-request-reference-label">🔖 Référence de transaction</span><code>${escapeHtml(x.reference)}</code></div><div class="payment-request-date">📅 ${escapeHtml(formatPaymentDateTime(x.created_at))}</div><div class="payment-request-status ${status}">${label}</div><div class="payment-request-actions"><button class="btn secondary" type="button" onclick="copyPaymentDetails(${JSON.stringify(details).replace(/</g,'\u003c')})">📋 Copier tous les détails</button></div></div>`;
     }).join("")||'<p class="muted">Aucune transaction récente.</p>';
-  }catch(e){box.innerHTML='<p class="muted">Impossible de charger les transactions.</p>';}
+  }catch(e){box.innerHTML='<div class="professional-status error">⚠️ <strong>Transactions indisponibles</strong><br><span>Impossible de charger vos transactions pour le moment.</span></div>';}
 }
 
-async function loadAdminPaymentRequests(){const box=document.getElementById("paymentRequestsAdminList");if(!box)return;try{const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");box.innerHTML=(d.requests||[]).map(x=>`<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.username||"Utilisateur")}</strong><br>💳 ${escapeHtml(x.offer)} — ${x.amount} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)} <button class="btn secondary" type="button" onclick="copyText('${String(x.reference).replace(/'/g,"\\'")}')">📋 Copier</button><br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${escapeHtml(x.status)}</strong>${x.status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Accepter</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser</button></div>`:""}</div>`).join("")||'<p class="muted">Aucune demande.</p>';}catch(e){box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';}}
-async function resolvePaymentRequest(id,status){try{const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible.");await loadAdminPaymentRequests();alert(d.message);}catch(e){alert(e.message);}}
-
-let adminResetLiveTimer=null;
-let adminResetKnownIds=new Set();
-let adminResetLiveInitialized=false;
-let adminResetLiveBusy=false;
-
-async function loadAdminResetRequests(options){
-  const box=document.getElementById("resetList");
-  if(!box||document.getElementById("adminPanel")?.classList.contains("hidden"))return;
-  if(adminResetLiveBusy)return;
-  adminResetLiveBusy=true;
+async function loadAdminPaymentRequests(){
+  const box=document.getElementById("paymentRequestsAdminList");
+  if(!box)return;
+  box.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Actualisation des demandes</strong><small>Récupération des paiements en attente…</small></div></div>';
   try{
-    const resetResponse=await fetch("/api/admin/reset-requests",{credentials:"same-origin",cache:"no-store"});
-    const resetData=await readApiResponse(resetResponse);
-    if(!resetResponse.ok){
-      box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';
-      return;
-    }
-    const requests=Array.isArray(resetData.requests)?resetData.requests:[];
-    const currentIds=new Set(requests.map(request=>Number(request.id)));
-    if(adminResetLiveInitialized && requests.some(request=>!adminResetKnownIds.has(Number(request.id)))){
-      showToast("🔐 Nouvelle demande de réinitialisation reçue.","success");
-    }
-    adminResetKnownIds=currentIds;
-    adminResetLiveInitialized=true;
-    box.innerHTML=requests.map(function(request){
-      return `
-        <div class="reset-request">
-          <strong>🔐 ${escapeHtml(request.username||request.name||"Utilisateur")}</strong>
-          ${request.phone?`<br><span class="admin-small">📱 ${escapeHtml(request.phone)}</span>`:""}
-          ${request.created_at?`<br><span class="admin-small">📅 Demande : ${escapeHtml(formatDateTime(request.created_at))}</span>`:""}
-          <br>
-          <span class="admin-small">⏳ Demande de réinitialisation en attente de traitement par le service BatBot</span>
-          <button class="btn green" type="button" onclick="resolveReset(${Number(request.id)})">
-            🆕 Générer un nouveau mot de passe
-          </button>
-        </div>
-      `;
-    }).join("")||'<p class="muted">Aucune demande en attente.</p>';
-  }catch(error){
-    console.error("ADMIN RESET LIVE:",error);
-  }finally{
-    adminResetLiveBusy=false;
-  }
+    const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    box.innerHTML=(d.requests||[]).map(x=>{
+      const status=x.status==="accepted"?"accepted":x.status==="rejected"?"rejected":"pending";
+      const label=status==="accepted"?"✅ Paiement approuvé":status==="rejected"?"❌ Paiement refusé":"⏳ En attente de vérification";
+      const details=[`Transaction #${x.id}`,`Client : ${x.username||"Utilisateur"}`,`Offre : ${x.offer}`,`Montant : ${x.amount} FCFA`,`Opérateur : ${x.operator}`,`Référence : ${x.reference}`,`Date et heure : ${formatPaymentDateTime(x.created_at)}`,`Statut : ${label}`,x.admin_note?`Note : ${x.admin_note}`:""].filter(Boolean).join("\n");
+      return `<div class="payment-request-card"><div class="payment-request-title">💳 Transaction #${x.id} — ${escapeHtml(x.username||"Utilisateur")}</div><div class="payment-request-details"><div>🎯 <strong>${escapeHtml(x.offer)}</strong></div><div>💰 ${Number(x.amount)||0} FCFA</div><div>📱 ${escapeHtml(x.operator)}</div></div><div class="payment-request-reference"><span class="payment-request-reference-label">🔖 Référence de transaction</span><code>${escapeHtml(x.reference)}</code></div><div class="payment-request-date">📅 ${escapeHtml(formatPaymentDateTime(x.created_at))}</div><div class="payment-request-status ${status}">${label}</div><div class="payment-request-actions"><button class="btn secondary" type="button" onclick="copyPaymentDetails(${JSON.stringify(details).replace(/</g,'\u003c')})">📋 Copier tous les détails</button>${status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Approuver le paiement</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser le paiement</button></div>`:""}</div></div>`;
+    }).join("")||'<p class="muted">Aucune demande de paiement.</p>';
+  }catch(e){box.innerHTML='<div class="professional-status error">⚠️ <strong>Demandes indisponibles</strong><br><span>Impossible de charger les demandes de paiement pour le moment.</span></div>';}
 }
 
-function startAdminResetLiveSync(){
-  stopAdminResetLiveSync();
-  adminResetLiveInitialized=false;
-  adminResetKnownIds=new Set();
-  loadAdminResetRequests();
-  adminResetLiveTimer=setInterval(loadAdminResetRequests,1000);
-}
-
-function stopAdminResetLiveSync(){
-  if(adminResetLiveTimer){clearInterval(adminResetLiveTimer);adminResetLiveTimer=null;}
-  adminResetLiveBusy=false;
-}
+async function resolvePaymentRequest(id,status){try{const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible.");await loadAdminPaymentRequests();alert(d.message);}catch(e){alert(e.message);}}
 
 async function loadAdmin(){
   document.getElementById("auth").classList.add("hidden");
@@ -1829,7 +1838,6 @@ async function loadAdmin(){
   document.getElementById("adminPanel").classList.remove("hidden");
   organizeAdminPanel();
   loadAdminPaymentRequests();
-  startAdminResetLiveSync();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -1852,7 +1860,29 @@ async function loadAdmin(){
       document.getElementById("settingsList").innerHTML=renderSettingsForm(settingsData.settings||{});
     }
 
-    await loadAdminResetRequests();
+    const resetResponse=await fetch("/api/admin/reset-requests",{credentials:"same-origin",cache:"no-store"});
+    const resetData=await readApiResponse(resetResponse);
+
+    if(!resetResponse.ok){
+      document.getElementById("resetList").innerHTML='<p class="muted">Impossible de charger les demandes.</p>';
+    }else{
+      const requests=Array.isArray(resetData.requests)?resetData.requests:[];
+      document.getElementById("resetList").innerHTML=
+        requests.map(function(request){
+          return `
+            <div class="reset-request">
+              <strong>🔐 ${escapeHtml(request.username||request.name||"Utilisateur")}</strong>
+              ${request.phone?`<br><span class="admin-small">📱 ${escapeHtml(request.phone)}</span>`:""}
+              ${request.created_at?`<br><span class="admin-small">📅 Demande : ${escapeHtml(formatDateTime(request.created_at))}</span>`:""}
+              <br>
+              <span class="admin-small">Demande de réinitialisation en attente</span>
+              <button class="btn green" type="button" onclick="resolveReset(${Number(request.id)})">
+                🆕 Générer un nouveau mot de passe
+              </button>
+            </div>
+          `;
+        }).join("")||'<p class="muted">Aucune demande en attente.</p>';
+    }
 
     await loadAdminBookmakers();
     await loadAdminCoupons();
@@ -2177,7 +2207,6 @@ async function resolveReset(id){
 }
 
 async function adminLogout(){
-  stopAdminResetLiveSync();
   try{
     await fetch("/api/admin/logout",{
       method:"POST",credentials:"same-origin"
