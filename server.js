@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS password_resets(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
+  delivery_token TEXT,
+  temporary_password_encrypted TEXT,
+  temporary_password_expires_at TEXT,
+  resolved_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -95,6 +99,13 @@ CREATE TABLE IF NOT EXISTS coupons(
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN temporary_password_hash TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN temporary_password_expires_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE password_resets ADD COLUMN delivery_token TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE password_resets ADD COLUMN temporary_password_encrypted TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE password_resets ADD COLUMN temporary_password_expires_at TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE password_resets ADD COLUMN resolved_at TEXT").run(); } catch (_) {}
 
 const defaults = {
   whatsapp: "2250152171974",
@@ -160,6 +171,30 @@ function cleanPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
 
+const PASSWORD_RESET_SECRET = crypto.createHash("sha256")
+  .update(String(process.env.SESSION_SECRET || "CHANGE_THIS_SECRET_IN_PRODUCTION"))
+  .digest();
+
+function encryptTemporaryPassword(value) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", PASSWORD_RESET_SECRET, iv);
+  const encrypted = Buffer.concat([cipher.update(String(value), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [iv.toString("base64url"), tag.toString("base64url"), encrypted.toString("base64url")].join(".");
+}
+
+function decryptTemporaryPassword(value) {
+  const [ivText, tagText, encryptedText] = String(value || "").split(".");
+  if (!ivText || !tagText || !encryptedText) return null;
+  try {
+    const decipher = crypto.createDecipheriv("aes-256-gcm", PASSWORD_RESET_SECRET, Buffer.from(ivText, "base64url"));
+    decipher.setAuthTag(Buffer.from(tagText, "base64url"));
+    return Buffer.concat([decipher.update(Buffer.from(encryptedText, "base64url")), decipher.final()]).toString("utf8");
+  } catch (_) {
+    return null;
+  }
+}
+
 function userView(user) {
   if (!user) return null;
   const active = !!(user.premium_until && new Date(user.premium_until) > new Date());
@@ -174,6 +209,7 @@ function userView(user) {
     ai_until: user.ai_until || null,
     ai_active: aiActive && active && !Boolean(user.disabled),
     disabled: Boolean(user.disabled),
+    must_change_password: Boolean(user.must_change_password),
     is_subscribed: active && !Boolean(user.disabled),
     subscribed: active,
     subscription_active: active,
@@ -245,12 +281,35 @@ app.post("/api/login", (req, res) => {
   const password = String(req.body.password || "");
   const user = DB.prepare("SELECT * FROM users WHERE username=?").get(username);
 
-  if (!user || user.disabled || !bcrypt.compareSync(password, user.password_hash)) {
+  if (!user || user.disabled) {
+    return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
+  }
+
+  let validPassword = false;
+  let temporaryLogin = false;
+
+  if (user.must_change_password) {
+    const expiresAt = user.temporary_password_expires_at ? new Date(user.temporary_password_expires_at) : null;
+    if (!expiresAt || expiresAt <= new Date() || !user.temporary_password_hash) {
+      return res.status(401).json({ error: "Votre mot de passe temporaire a expiré. Faites une nouvelle demande." });
+    }
+    validPassword = bcrypt.compareSync(password, user.temporary_password_hash);
+    temporaryLogin = validPassword;
+  } else {
+    validPassword = bcrypt.compareSync(password, user.password_hash);
+  }
+
+  if (!validPassword) {
     return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
   }
 
   req.session.userId = user.id;
-  res.json({ message: "Connexion réussie.", user: userView(user) });
+  res.json({
+    message: temporaryLogin ? "Connexion temporaire réussie. Nouveau mot de passe requis." : "Connexion réussie.",
+    temporary_login: temporaryLogin,
+    must_change_password: Boolean(user.must_change_password),
+    user: userView(user)
+  });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -265,40 +324,115 @@ app.get("/api/me", requireUser, (req, res) => {
 
 app.post("/api/password-reset", (req, res) => {
   const username = String(req.body.username || "").trim();
-  const user = DB.prepare(
-    "SELECT id FROM users WHERE username=?"
-  ).get(username);
+  const user = DB.prepare("SELECT id, disabled FROM users WHERE username=?").get(username);
 
-  if (!user) {
-    return res.status(404).json({
-      error: "Utilisateur introuvable avec ces informations."
-    });
+  if (!user || user.disabled) {
+    return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
   }
 
-  DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
-  res.json({ message: "Demande envoyée à l'administration." });
+  let request = DB.prepare(
+    "SELECT id, delivery_token, status FROM password_resets WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1"
+  ).get(user.id);
+
+  if (!request) {
+    const deliveryToken = crypto.randomBytes(32).toString("hex");
+    const result = DB.prepare(
+      "INSERT INTO password_resets(user_id,delivery_token) VALUES(?,?)"
+    ).run(user.id, deliveryToken);
+    request = { id: Number(result.lastInsertRowid), delivery_token: deliveryToken, status: "pending" };
+  } else if (!request.delivery_token) {
+    request.delivery_token = crypto.randomBytes(32).toString("hex");
+    DB.prepare("UPDATE password_resets SET delivery_token=? WHERE id=?").run(request.delivery_token, request.id);
+  }
+
+  res.json({
+    message: "Demande envoyée à l'administration. Vous recevrez le mot de passe temporaire ici dès sa génération.",
+    request_id: request.id,
+    request_token: request.delivery_token
+  });
 });
 
 // Compatibilité avec les anciennes versions de l'interface.
 app.post("/api/forgot-password", (req, res) => {
   const username = String(req.body.username || "").trim();
-  const user = DB.prepare("SELECT id FROM users WHERE username=?").get(username);
+  const user = DB.prepare("SELECT id, disabled FROM users WHERE username=?").get(username);
 
-  if (!user) {
-    return res.status(404).json({
-      error: "Utilisateur introuvable avec ces informations."
-    });
+  if (!user || user.disabled) {
+    return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
   }
 
-  const existing = DB.prepare(
-    "SELECT id FROM password_resets WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1"
+  let existing = DB.prepare(
+    "SELECT id, delivery_token FROM password_resets WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1"
   ).get(user.id);
 
   if (!existing) {
-    DB.prepare("INSERT INTO password_resets(user_id) VALUES(?)").run(user.id);
+    const deliveryToken = crypto.randomBytes(32).toString("hex");
+    const result = DB.prepare("INSERT INTO password_resets(user_id,delivery_token) VALUES(?,?)").run(user.id, deliveryToken);
+    existing = { id: Number(result.lastInsertRowid), delivery_token: deliveryToken };
+  } else if (!existing.delivery_token) {
+    existing.delivery_token = crypto.randomBytes(32).toString("hex");
+    DB.prepare("UPDATE password_resets SET delivery_token=? WHERE id=?").run(existing.delivery_token, existing.id);
   }
 
-  res.json({ message: "Demande envoyée à l'administration." });
+  res.json({ message: "Demande envoyée à l'administration.", request_id: existing.id, request_token: existing.delivery_token });
+});
+
+// Vérification sécurisée de la demande depuis l'espace de connexion.
+// Le token est un secret temporaire conservé uniquement dans la session locale du navigateur.
+app.get("/api/password-reset/status", (req, res) => {
+  const token = String(req.query.token || "").trim();
+  if (!token || token.length < 40) return res.status(400).json({ error: "Jeton de récupération invalide." });
+
+  const request = DB.prepare(`
+    SELECT pr.id, pr.status, pr.temporary_password_encrypted, pr.temporary_password_expires_at,
+           u.username, u.disabled, u.must_change_password
+    FROM password_resets pr
+    JOIN users u ON u.id=pr.user_id
+    WHERE pr.delivery_token=?
+    ORDER BY pr.id DESC LIMIT 1
+  `).get(token);
+
+  if (!request || request.disabled) return res.status(404).json({ error: "Demande introuvable." });
+
+  if (request.status === "pending") {
+    return res.json({ status: "pending", username: request.username });
+  }
+
+  const expiresAt = request.temporary_password_expires_at ? new Date(request.temporary_password_expires_at) : null;
+  if (!expiresAt || expiresAt <= new Date()) {
+    return res.json({ status: "expired", username: request.username });
+  }
+
+  const temporaryPassword = decryptTemporaryPassword(request.temporary_password_encrypted);
+  if (!temporaryPassword) return res.status(500).json({ error: "Impossible de récupérer le mot de passe temporaire." });
+
+  res.json({
+    status: "ready",
+    username: request.username,
+    temporary_password: temporaryPassword,
+    expires_at: request.temporary_password_expires_at
+  });
+});
+
+app.post("/api/password-change", requireUser, (req, res) => {
+  const password = String(req.body.password || "");
+  const confirmation = String(req.body.confirm_password || "");
+
+  if (password.length < 6) return res.status(400).json({ error: "Le nouveau mot de passe doit contenir au moins 6 caractères." });
+  if (password !== confirmation) return res.status(400).json({ error: "Les deux mots de passe ne correspondent pas." });
+
+  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+  if (!user || user.disabled) return res.status(403).json({ error: "Compte indisponible." });
+
+  const result = DB.prepare(`
+    UPDATE users
+    SET password_hash=?, must_change_password=0, temporary_password_hash=NULL, temporary_password_expires_at=NULL
+    WHERE id=?
+  `).run(bcrypt.hashSync(password, 12), user.id);
+
+  if (!result.changes) return res.status(500).json({ error: "Impossible de modifier le mot de passe." });
+
+  res.json({ message: "Votre nouveau mot de passe a été enregistré avec succès.", user: userView(DB.prepare("SELECT * FROM users WHERE id=?").get(user.id)) });
 });
 
 app.get("/api/daily-matches", requireUser, (req, res) => {
@@ -522,9 +656,11 @@ app.post("/api/admin/reset-password", requireAdmin, (req, res) => {
     return res.status(400).json({ error: "Minimum 6 caractères." });
   }
 
-  const result = DB.prepare(
-    "UPDATE users SET password_hash=? WHERE id=?"
-  ).run(bcrypt.hashSync(password, 12), Number(req.body.user_id));
+  const result = DB.prepare(`
+    UPDATE users
+    SET password_hash=?, must_change_password=0, temporary_password_hash=NULL, temporary_password_expires_at=NULL
+    WHERE id=?
+  `).run(bcrypt.hashSync(password, 12), Number(req.body.user_id));
 
   if (!result.changes) {
     return res.status(404).json({ error: "Utilisateur introuvable." });
@@ -573,40 +709,45 @@ app.get("/api/admin/reset-requests", requireAdmin, (req, res) => {
 app.post("/api/admin/reset-requests/:id/resolve", requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const request = DB.prepare(`
-    SELECT pr.id, pr.user_id, pr.status, u.username
+    SELECT pr.id, pr.user_id, pr.status, pr.delivery_token, u.username, u.disabled
     FROM password_resets pr
     JOIN users u ON u.id=pr.user_id
     WHERE pr.id=?
   `).get(id);
 
-  if (!request) {
-    return res.status(404).json({ error: "Demande introuvable." });
-  }
-
-  if (request.status !== "pending") {
-    return res.status(409).json({ error: "Cette demande a déjà été traitée." });
-  }
+  if (!request) return res.status(404).json({ error: "Demande introuvable." });
+  if (request.status !== "pending") return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+  if (request.disabled) return res.status(409).json({ error: "Ce compte est désactivé." });
 
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let temporaryPassword = "SD-";
   const bytes = crypto.randomBytes(8);
-  for (const byte of bytes) {
-    temporaryPassword += alphabet[byte % alphabet.length];
-  }
+  for (const byte of bytes) temporaryPassword += alphabet[byte % alphabet.length];
+
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   const transaction = DB.transaction(() => {
-    DB.prepare("UPDATE users SET password_hash=? WHERE id=?")
-      .run(bcrypt.hashSync(temporaryPassword, 12), request.user_id);
-    DB.prepare("UPDATE password_resets SET status='resolved' WHERE id=?")
-      .run(id);
+    DB.prepare(`
+      UPDATE users
+      SET temporary_password_hash=?, temporary_password_expires_at=?, must_change_password=1
+      WHERE id=?
+    `).run(bcrypt.hashSync(temporaryPassword, 12), expiresAt, request.user_id);
+
+    DB.prepare(`
+      UPDATE password_resets
+      SET status='resolved', temporary_password_encrypted=?, temporary_password_expires_at=?, resolved_at=CURRENT_TIMESTAMP
+      WHERE id=? AND status='pending'
+    `).run(encryptTemporaryPassword(temporaryPassword), expiresAt, id);
   });
 
   transaction();
 
   res.json({
-    message: `Nouveau mot de passe généré pour ${request.username}.`,
+    message: `Nouveau mot de passe temporaire généré pour ${request.username}.`,
     username: request.username,
-    new_password: temporaryPassword
+    new_password: temporaryPassword,
+    expires_at: expiresAt,
+    request_token: request.delivery_token
   });
 });
 
