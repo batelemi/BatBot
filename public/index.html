@@ -1137,14 +1137,14 @@ function renderPasswordResetDelivery(state){
   if(state.status==="pending"){
     box.classList.remove("hidden");
     box.classList.add("pending");
-    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande est bien enregistrée. Dès que l'administrateur génère votre mot de passe temporaire, il apparaîtra automatiquement ici.</div>';
+    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande est bien enregistrée. Dès que l’administrateur génère votre mot de passe temporaire, il apparaîtra automatiquement ici.</div>';
     return;
   }
 
   if(state.status==="expired"){
     box.classList.remove("hidden");
     box.classList.remove("pending");
-    box.innerHTML='<div class="password-reset-delivery-title">⌛ Mot de passe temporaire expiré</div><div class="password-reset-meta">Pour votre sécurité, ce mot de passe n'est plus utilisable. Envoyez une nouvelle demande.</div>';
+    box.innerHTML='<div class="password-reset-delivery-title">⌛ Mot de passe temporaire expiré</div><div class="password-reset-meta">Pour votre sécurité, ce mot de passe n’est plus utilisable. Envoyez une nouvelle demande.</div>';
     return;
   }
 
@@ -1153,7 +1153,7 @@ function renderPasswordResetDelivery(state){
     const expires=state.expires_at?new Date(state.expires_at).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}):"";
     box.innerHTML='<div class="password-reset-delivery-title">✅ Votre mot de passe temporaire est prêt</div>'+
       '<div class="password-reset-delivery-password"><code id="temporaryPasswordValue">'+escapeHtml(state.temporary_password)+'</code><button class="btn secondary" type="button" onclick="copyTemporaryPassword()">📋 Copier</button></div>'+
-      '<div class="password-reset-meta">Valable jusqu'au '+escapeHtml(expires)+'. Utilisez-le pour vous connecter, puis créez immédiatement votre nouveau mot de passe.</div>'+
+      '<div class="password-reset-meta">Valable jusqu’au '+escapeHtml(expires)+'. Utilisez-le pour vous connecter, puis créez immédiatement votre nouveau mot de passe.</div>'+
       '<button class="btn primary" type="button" onclick="useTemporaryPassword()">🔐 Utiliser ce mot de passe pour me connecter</button>';
   }
 }
@@ -2040,10 +2040,10 @@ function showTemporaryPasswordModal(data){
   const expires=data.expires_at?new Date(data.expires_at).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}):"";
   modal.innerHTML='<div class="password-reset-modal-inner">'+
     '<div class="password-reset-modal-head"><div><h2>🔐 Mot de passe temporaire</h2><div class="password-reset-modal-user">Utilisateur : <strong>'+escapeHtml(data.username||"")+'</strong></div></div><button class="btn secondary password-reset-modal-close" type="button" onclick="closeTemporaryPasswordModal()">✕</button></div>'+
-    '<div class="notice">Le mot de passe permanent de l'utilisateur n'est pas remplacé. Ce code est temporaire et devra être changé après la première connexion.</div>'+
+    '<div class="notice">Le mot de passe permanent de l’utilisateur n’est pas remplacé. Ce code est temporaire et devra être changé après la première connexion.</div>'+
     '<div class="password-reset-modal-password"><code id="adminTemporaryPassword">'+escapeHtml(data.new_password||"")+'</code><button class="btn secondary" type="button" onclick="copyAdminTemporaryPassword()">📋 Copier</button></div>'+
     '<div class="password-reset-meta">Expiration : '+escapeHtml(expires)+'</div>'+
-    '<div class="password-reset-modal-actions"><button class="btn primary" type="button" onclick="copyAdminTemporaryPassword();showToast('Mot de passe copié. Vous pouvez maintenant l'envoyer à l'utilisateur.','success')">📋 Copier & préparer l'envoi</button><button class="btn secondary" type="button" onclick="closeTemporaryPasswordModal()">✓ Terminer</button></div>'+
+    '<div class="password-reset-modal-actions"><button class="btn primary" type="button" onclick="copyAdminTemporaryPassword();showToast(\"Mot de passe copié. Vous pouvez maintenant l’envoyer à l’utilisateur.\",\"success\")">📋 Copier & préparer l’envoi</button><button class="btn secondary" type="button" onclick="closeTemporaryPasswordModal()">✓ Terminer</button></div>'+
     '</div>';
   modal.classList.remove("hidden");
   document.body.style.overflow="hidden";
