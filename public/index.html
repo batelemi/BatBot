@@ -265,7 +265,19 @@ textarea{min-height:120px;resize:vertical}
 .password-change-card .security-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#123b60;border:1px solid #315d82;color:#d9e7f3;font-size:12px;font-weight:800;margin-bottom:10px}
 .password-reset-modal{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,10,20,.88);backdrop-filter:blur(6px)}
 .password-reset-modal.hidden{display:none}
-.password-reset-modal-inner{width:min(430px,100%);padding:21px;border-radius:22px;background:linear-gradient(145deg,#102f4d,#071a2d);border:1px solid rgba(83,207,255,.42);box-shadow:0 20px 65px rgba(0,0,0,.55)}
+.password-reset-modal-inner{width:min(360px,calc(100% - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:16px;border-radius:20px;background:linear-gradient(145deg,#102f4d,#071a2d);border:1px solid rgba(83,207,255,.42);box-shadow:0 20px 65px rgba(0,0,0,.55)}
+.password-reset-modal .notice{font-size:12px;line-height:1.45;padding:10px;margin:9px 0}
+.password-reset-modal-password{padding:10px;margin:9px 0}
+.password-reset-modal-password code{font-size:18px;letter-spacing:1px}
+.password-reset-modal-actions{grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.password-reset-modal-actions .btn{min-height:42px;font-size:12px;padding:8px 10px}
+.batbot-confirm-modal{position:fixed;inset:0;z-index:100002;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(2,10,20,.86);backdrop-filter:blur(7px)}
+.batbot-confirm-modal.hidden{display:none}
+.batbot-confirm-inner{width:min(340px,calc(100% - 24px));padding:18px;border-radius:20px;background:linear-gradient(145deg,#102f4d,#071a2d);border:1px solid rgba(83,207,255,.42);box-shadow:0 18px 55px rgba(0,0,0,.55);text-align:left}
+.batbot-confirm-inner h3{margin:0 0 7px;font-size:18px}
+.batbot-confirm-inner p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.batbot-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}
+.batbot-confirm-actions .btn{margin:0;min-height:42px}
 .password-reset-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .password-reset-modal-head h2{margin:0}
 .password-reset-modal-close{width:auto!important;min-height:42px!important;margin:0!important;padding:8px 12px!important}
@@ -1193,7 +1205,7 @@ async function copyTemporaryPassword(){
   try{
     if(navigator.clipboard)await navigator.clipboard.writeText(value);
     else{const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
-    showToast("Mot de passe temporaire copié.","success");
+    showToast("Mot de passe temporaire copié avec succès.","success");
   }catch(_){showToast("Copie impossible. Sélectionnez le mot de passe manuellement.","error");}
 }
 
@@ -2043,7 +2055,7 @@ function showTemporaryPasswordModal(data){
     '<div class="notice">Le mot de passe permanent de l’utilisateur n’est pas remplacé. Ce code est temporaire et devra être changé après la première connexion.</div>'+
     '<div class="password-reset-modal-password"><code id="adminTemporaryPassword">'+escapeHtml(data.new_password||"")+'</code><button class="btn secondary" type="button" onclick="copyAdminTemporaryPassword()">📋 Copier</button></div>'+
     '<div class="password-reset-meta">Expiration : '+escapeHtml(expires)+'</div>'+
-    '<div class="password-reset-modal-actions"><button class="btn primary" type="button" onclick="copyAdminTemporaryPassword();showToast(\"Mot de passe copié. Vous pouvez maintenant l’envoyer à l’utilisateur.\",\"success\")">📋 Copier & préparer l’envoi</button><button class="btn secondary" type="button" onclick="closeTemporaryPasswordModal()">✓ Terminer</button></div>'+
+    '<div class="password-reset-modal-actions"><button class="btn primary" type="button" onclick="copyAdminTemporaryPassword()">📋 Copier & préparer l’envoi</button><button class="btn secondary" type="button" onclick="closeTemporaryPasswordModal()">✓ Terminer</button></div>'+
     '</div>';
   modal.classList.remove("hidden");
   document.body.style.overflow="hidden";
@@ -2061,13 +2073,48 @@ async function copyAdminTemporaryPassword(){
   try{
     if(navigator.clipboard)await navigator.clipboard.writeText(value);
     else{const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
-    showToast("Mot de passe temporaire copié.","success");
+    showToast("Mot de passe temporaire copié avec succès.","success");
   }catch(_){showToast("Copie impossible.","error");}
+}
+
+function showProfessionalConfirm(options){
+  return new Promise(function(resolve){
+    let modal=document.getElementById("batbotConfirmModal");
+    if(!modal){
+      modal=document.createElement("div");
+      modal.id="batbotConfirmModal";
+      modal.className="batbot-confirm-modal hidden";
+      modal.setAttribute("role","dialog");
+      modal.setAttribute("aria-modal","true");
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML='<div class="batbot-confirm-inner">'+
+      '<h3>'+escapeHtml(options.title||"Confirmation")+'</h3>'+
+      '<p>'+escapeHtml(options.message||"Confirmez cette action.")+'</p>'+
+      '<div class="batbot-confirm-actions">'+
+      '<button class="btn secondary" type="button" id="batbotConfirmCancel">Annuler</button>'+
+      '<button class="btn primary" type="button" id="batbotConfirmOk">'+escapeHtml(options.confirmText||"Confirmer")+'</button>'+
+      '</div></div>';
+    modal.classList.remove("hidden");
+    document.body.style.overflow="hidden";
+    const close=function(value){
+      modal.classList.add("hidden");
+      document.body.style.overflow="";
+      resolve(value);
+    };
+    document.getElementById("batbotConfirmCancel").onclick=function(){close(false);};
+    document.getElementById("batbotConfirmOk").onclick=function(){close(true);};
+  });
 }
 
 async function resolveReset(id){
   if(!id)return;
-  if(!confirm("Générer un mot de passe temporaire pour cet utilisateur ?"))return;
+  const confirmed=await showProfessionalConfirm({
+    title:"🔐 Traiter la demande",
+    message:"Un mot de passe temporaire sécurisé sera généré pour cet utilisateur. Son mot de passe permanent ne sera pas remplacé.",
+    confirmText:"Générer le code"
+  });
+  if(!confirmed)return;
 
   try{
     const response=await fetch("/api/admin/reset-requests/"+encodeURIComponent(id)+"/resolve",{
@@ -2209,13 +2256,11 @@ document.addEventListener("DOMContentLoaded",function(){
     whatsappContact.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
   }
 
-  setTimeout(function(){
-    if(sessionStorage.getItem("batbot_password_reset_token")){
-      startPasswordResetPolling();
-    }
-    checkSession();
-    startBatBotLiveSync();
-  },300);
+  if(sessionStorage.getItem("batbot_password_reset_token")){
+    startPasswordResetPolling();
+  }
+  checkSession();
+  startBatBotLiveSync();
 });
 
 document.addEventListener("keydown",function(event){
