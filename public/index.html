@@ -29,7 +29,7 @@
   --orange:#F59E0B;
 }
 *{box-sizing:border-box}
-html{min-height:100%;scroll-behavior:smooth}
+html{min-height:100%;scroll-behavior:auto}
 body{
   margin:0;min-height:100vh;font-family:Arial,Helvetica,sans-serif;
   color:var(--white);
@@ -805,17 +805,13 @@ function escapeHtml(value){
     .replace(/'/g,"&#039;");
 }
 
-let authViewChosen = false;
-
 function showRegister(){
-  authViewChosen = true;
   document.getElementById("registerBox").classList.remove("hidden");
   document.getElementById("loginBox").classList.add("hidden");
   document.getElementById("forgotBox").classList.add("hidden");
 }
 
 function showLogin(){
-  authViewChosen = true;
   document.getElementById("registerBox").classList.add("hidden");
   document.getElementById("loginBox").classList.remove("hidden");
   document.getElementById("forgotBox").classList.add("hidden");
@@ -877,7 +873,6 @@ function showDashboard(user){
   loadConfig();
   loadDailyMatches();
   loadMyTransactions();
-  window.scrollTo(0,0);
 }
 
 async function register(){
@@ -915,7 +910,8 @@ async function register(){
     }
 
     showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
-    hideLoading();
+    showLoading("Compte créé. Préparation de la connexion…","logo.png");
+
     setTimeout(function(){
       showLogin();
       document.getElementById("loginUsername").value=username;
@@ -1872,7 +1868,7 @@ async function checkSession(){
   }
 
   showAuth();
-  if (!authViewChosen) showRegister();
+  showRegister();
   hideLoading();
 }
 
@@ -1905,19 +1901,15 @@ function startBatBotLiveSync(){
   setInterval(async function(){
     if(document.hidden)return;
     try{
-      const isAdminOpen = document.getElementById("admin") && !document.getElementById("admin").classList.contains("hidden");
-      const tasks = [loadPublicConfig()];
-      if (!isAdminOpen) {
-        tasks.push(loadDailyMatches(), loadMyTransactions());
-        // Ne pas relancer checkSession() pendant la navigation client :
-        // cela pourrait remplacer la page de connexion par l’inscription.
-        const dashboardVisible = document.getElementById("dashboard") && !document.getElementById("dashboard").classList.contains("hidden");
-        if (dashboardVisible) tasks.push(checkSession());
-      }
-      await Promise.allSettled(tasks);
+      await Promise.allSettled([
+        loadPublicConfig(),
+        loadDailyMatches(),
+        loadMyTransactions()
+      ]);
+      // Ne pas recharger toute l'administration automatiquement : cela
+      // recréait les champs et effaçait le numéro pendant la saisie.
       if(document.getElementById("adminPanel") && !document.getElementById("adminPanel").classList.contains("hidden")){
         await loadAdminPaymentRequests();
-        await loadAdmin();
       }
     }catch(error){console.warn("LIVE_SYNC:",error);}
   },5000);
