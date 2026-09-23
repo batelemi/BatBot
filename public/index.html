@@ -1902,12 +1902,12 @@ function startBatBotLiveSync(){
   setInterval(async function(){
     if(document.hidden)return;
     try{
-      await Promise.allSettled([
-        loadPublicConfig(),
-        loadDailyMatches(),
-        loadMyTransactions(),
-        checkSession()
-      ]);
+      const isAdminOpen = document.getElementById("admin") && !document.getElementById("admin").classList.contains("hidden");
+      const tasks = [loadPublicConfig()];
+      if (!isAdminOpen) {
+        tasks.push(loadDailyMatches(), loadMyTransactions(), checkSession());
+      }
+      await Promise.allSettled(tasks);
       if(document.getElementById("adminPanel") && !document.getElementById("adminPanel").classList.contains("hidden")){
         await loadAdminPaymentRequests();
         await loadAdmin();
