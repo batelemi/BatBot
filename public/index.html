@@ -291,6 +291,12 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .batbot-toast.show{opacity:1;transform:translateY(0)}
 .batbot-toast.error{border-color:rgba(248,113,113,.6);background:linear-gradient(135deg,#4a2027,#0b223d)}
 .batbot-toast-icon{font-size:20px;line-height:1.1}.batbot-toast-text{font-size:14px;line-height:1.4}
+
+/* Fenêtre professionnelle BatBot pour la durée des accès */
+.batbot-duration-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,8,20,.78);backdrop-filter:blur(5px)}
+.batbot-duration-modal{width:min(92vw,390px);padding:24px;border:1px solid rgba(75,190,255,.4);border-radius:22px;background:linear-gradient(145deg,#102f4d,#071a2d);box-shadow:0 18px 60px rgba(0,0,0,.5);color:#fff}
+.batbot-duration-modal h3{margin:0 0 9px;font-size:21px}.batbot-duration-modal p{margin:0 0 18px;color:#b9cce0;line-height:1.5}.batbot-duration-modal input{width:100%;box-sizing:border-box;padding:13px;border-radius:12px;border:1px solid #37617f;background:#071a2d;color:#fff;font-size:18px;outline:none}.batbot-duration-actions{display:flex;gap:10px;margin-top:18px}.batbot-duration-actions button{flex:1}
+
 </style>
 </head>
 
@@ -1233,24 +1239,44 @@ function renderAdminUsers(users){
   }).join("")||'<p class="muted">Aucun client trouvé.</p>';
 }
 
+function askBatBotDuration(feature){
+  return new Promise(resolve=>{
+    const overlay=document.createElement("div");
+    overlay.className="batbot-duration-overlay";
+    overlay.innerHTML=`<div class="batbot-duration-modal" role="dialog" aria-modal="true" aria-label="Durée de l'accès"><h3>⚙️ ${feature} BatBot</h3><p>Choisissez la durée d'activation de cette fonctionnalité.</p><input id="batbotDurationInput" type="number" min="1" max="3650" value="7" inputmode="numeric"><div class="batbot-duration-actions"><button class="btn secondary" type="button" id="batbotDurationCancel">Annuler</button><button class="btn green" type="button" id="batbotDurationConfirm">Continuer</button></div></div>`;
+    document.body.appendChild(overlay);
+    const input=overlay.querySelector("#batbotDurationInput");
+    const close=value=>{overlay.remove();resolve(value);};
+    overlay.querySelector("#batbotDurationCancel").addEventListener("click",()=>close(null));
+    overlay.querySelector("#batbotDurationConfirm").addEventListener("click",()=>{const days=Number(input.value);if(!Number.isInteger(days)||days<1||days>3650){showToast("Veuillez saisir une durée valide (1 à 3650 jours).","error");input.focus();return;}close(days);});
+    overlay.addEventListener("click",event=>{if(event.target===overlay)close(null);});
+    input.addEventListener("keydown",event=>{if(event.key==="Enter")overlay.querySelector("#batbotDurationConfirm").click();if(event.key==="Escape")close(null);});
+    setTimeout(()=>{input.focus();input.select();},0);
+  });
+}
+
 async function setPremium(id,enabled){
   try{
-    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:enabled?(Number(prompt("Durée Premium en jours :", "7"))||7):7})});
+    const duration=enabled?await askBatBotDuration("Premium"):7;
+    if(enabled&&duration===null)return;
+    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
-    alert(data.message||"Statut Premium mis à jour.");
+    showToast(data.message|| (enabled?"Premium activé avec succès.":"Premium désactivé avec succès."),"success");
     await loadAdmin();
-  }catch(e){alert(e.message);}
+  }catch(e){showToast(e.message||"Action impossible.","error");}
 }
 
 async function setAISubscription(id,enabled){
   try{
-    const response=await fetch("/api/admin/ai-subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:enabled?(Number(prompt("Durée IA en jours :","7"))||7):7})});
+    const duration=enabled?await askBatBotDuration("IA"):7;
+    if(enabled&&duration===null)return;
+    const response=await fetch("/api/admin/ai-subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action IA impossible.");
-    alert(data.message||"Accès IA mis à jour.");
+    showToast(data.message|| (enabled?"Accès IA activé avec succès.":"Accès IA désactivé avec succès."),"success");
     await loadAdmin();
-  }catch(e){alert(e.message);}
+  }catch(e){showToast(e.message||"Action IA impossible.","error");}
 }
 
 async function deleteAdminUser(id){
