@@ -235,9 +235,6 @@ textarea{min-height:120px;resize:vertical}
 .admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .admin-actions .btn{margin:0;min-height:42px;font-size:12px}
 .reset-request{background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}
-.payment-receipt{position:relative;background:linear-gradient(145deg,#102f50,#0b2038);border:1px solid rgba(245,197,66,.65);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 22px rgba(0,0,0,.22);overflow:hidden}.payment-receipt:after{content:"BATBOT";position:absolute;right:-18px;bottom:18px;font-size:30px;font-weight:900;letter-spacing:3px;color:rgba(245,197,66,.08);transform:rotate(-28deg);pointer-events:none}.receipt-head{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px dashed rgba(255,255,255,.25);padding-bottom:10px;margin-bottom:10px}.receipt-brand{font-weight:900;font-size:18px}.receipt-status{font-weight:900;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.09);font-size:12px}.receipt-row{display:flex;justify-content:space-between;gap:12px;margin:7px 0;font-size:13px}.receipt-row span:first-child{color:#aac3d8}.receipt-row span:last-child{font-weight:800;text-align:right;overflow-wrap:anywhere}.receipt-stamp{display:inline-block;margin-top:10px;border:2px solid currentColor;border-radius:8px;padding:4px 9px;font-weight:900;font-size:11px;transform:rotate(-4deg)}
-.toast-notification{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);z-index:9999;display:flex;align-items:center;gap:9px;background:#123d2a;border:1px solid #45e28b;color:#effff5;border-radius:999px;padding:11px 17px;font-size:13px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.35);opacity:0;transition:opacity .2s ease,transform .2s ease;pointer-events:none}.toast-notification.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
 .social-grid{display:grid;grid-template-columns:1fr;gap:9px}
 .social-btn{min-height:52px}
 
@@ -288,6 +285,12 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .payment-window-conditions{font-size:14px;line-height:1.55;color:#D9E7F3}
 .payment-window-conditions .notice{margin:9px 0}
 @media(min-width:480px){.payment-window-launcher{grid-template-columns:repeat(3,minmax(0,1fr))}.payment-window-trigger{font-size:12px;min-height:58px}}
+
+.batbot-toast-container{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;width:min(92vw,420px);display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.batbot-toast{display:flex;align-items:flex-start;gap:10px;padding:13px 15px;border:1px solid rgba(110,231,160,.45);border-radius:14px;background:linear-gradient(135deg,#123b32,#0b223d);box-shadow:0 10px 30px rgba(0,0,0,.35);color:#fff;font-weight:700;opacity:0;transform:translateY(-12px);transition:opacity .2s ease,transform .2s ease;pointer-events:auto}
+.batbot-toast.show{opacity:1;transform:translateY(0)}
+.batbot-toast.error{border-color:rgba(248,113,113,.6);background:linear-gradient(135deg,#4a2027,#0b223d)}
+.batbot-toast-icon{font-size:20px;line-height:1.1}.batbot-toast-text{font-size:14px;line-height:1.4}
 </style>
 </head>
 
@@ -563,7 +566,7 @@ PSG vs Marseille"></textarea>
 
   <div class="card">
     <h2>📊 Probabilités des matchs du jour</h2>
-    <p class="muted">Retrouvez ici les probabilités ajoutées par l'administrateur.</p>
+    <p class="muted">Retrouvez ici les probabilités ajoutées par le service BatBot.</p>
     <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
   </div>
 
@@ -779,6 +782,17 @@ function showStatus(id,message,type=""){
   element.textContent=message||"";
   element.className="status "+type;
 }
+
+function showToast(message,type="success"){
+  let container=document.getElementById("batbotToastContainer");
+  if(!container){container=document.createElement("div");container.id="batbotToastContainer";container.className="batbot-toast-container";document.body.appendChild(container);}
+  const toast=document.createElement("div");toast.className="batbot-toast "+(type==="error"?"error":"");
+  const icon=document.createElement("span");icon.className="batbot-toast-icon";icon.textContent=type==="error"?"⚠️":"✓";
+  const text=document.createElement("div");text.className="batbot-toast-text";text.textContent=String(message||"");
+  toast.append(icon,text);container.appendChild(toast);requestAnimationFrame(()=>toast.classList.add("show"));
+  setTimeout(()=>{toast.classList.remove("show");setTimeout(()=>toast.remove(),220);},3200);
+}
+window.alert=function(message){showToast(message,"error");};
 
 function setLoading(id,loading,normalText){
   const button=document.getElementById(id);
@@ -1153,17 +1167,22 @@ async function loadCoupons(){
     box.innerHTML=items.map(c=>`<div class="match-card"><strong>${escapeHtml(c.platform_name)}</strong><div class="notice">Code à utiliser sur ${escapeHtml(c.platform_name)} : <strong>${escapeHtml(c.code)}</strong></div>${c.description?`<p class="muted">${escapeHtml(c.description)}</p>`:""}<button class="btn primary" onclick="copyText('${String(c.code).replace(/'/g,"\\'")}')">📋 Copier le code</button><button class="btn secondary" onclick="copyText('${String(c.platform_url).replace(/'/g,"\\'")}')">🔗 Copier le lien</button><a class="btn green" href="${escapeHtml(c.platform_url)}" target="_blank" rel="noopener noreferrer">Ouvrir la plateforme</a><button class="btn telegram" onclick="shareCoupon('${String(c.platform_name).replace(/'/g,"\\'")}','${String(c.code).replace(/'/g,"\\'")}','${String(c.platform_url).replace(/'/g,"\\'")}')">📤 Partager</button></div>`).join("")||'<div class="notice">Aucun code coupon disponible.</div>';
   }catch(e){box.innerHTML='<div class="notice">Aucun coupon disponible pour le moment.</div>';}
 }
-function showCopyToast(message="Copié avec succès"){let toast=document.getElementById("batbotCopyToast");if(!toast){toast=document.createElement("div");toast.id="batbotCopyToast";toast.className="toast-notification";document.body.appendChild(toast);}toast.innerHTML="<span>✅</span><span></span>";toast.lastElementChild.textContent=message;toast.classList.add("show");clearTimeout(window.__batbotToastTimer);window.__batbotToastTimer=setTimeout(()=>toast.classList.remove("show"),1800);}
-async function copyText(value){try{await navigator.clipboard.writeText(value);showCopyToast();}catch(e){const area=document.createElement("textarea");area.value=value;area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();try{document.execCommand("copy");showCopyToast();}finally{area.remove();}}}
-function buildPaymentReceipt(x){const status=x.status==="accepted"?"✅ Approuvée":x.status==="rejected"?"❌ Refusée":"⏳ En attente";return ["BATBOT — REÇU DE PAIEMENT",`N° reçu : #${x.id}`,`Utilisateur : ${x.username||"—"}`,`Offre : ${x.offer||"—"}`,`Montant : ${x.amount||0} FCFA`,`Opérateur : ${x.operator||"—"}`,`Référence : ${x.reference||"—"}`,`Date : ${formatDateTime(x.created_at)}`,x.resolved_at?`Traitement : ${formatDateTime(x.resolved_at)}`:null,`Statut : ${status}`,"Cachet : BATBOT • SERVICE DE VÉRIFICATION"].filter(Boolean).join("\n");}
-function copyPaymentReceipt(encoded){try{copyText(decodeURIComponent(encoded));}catch(e){showCopyToast("Copie impossible");}}
+async function copyText(value){
+  try{if(!navigator.clipboard?.writeText)throw new Error("Clipboard indisponible");await navigator.clipboard.writeText(value);showToast("Copié avec succès.","success");}
+  catch(e){showToast("La copie automatique est indisponible.","error");prompt("Copiez ce texte :",value);}
+}
 function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon BatBot",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
 function renderBatBotReferral(data){
-  const card=document.getElementById("sdriveReferralCard"); if(!card)return;
-  if(!data.sdriveLink){card.classList.add("hidden");return;}
-  card.classList.add("hidden");
-  document.getElementById("sdriveInviteMessage").textContent=data.sdriveInviteMessage||"Rejoins BatBot.";
-  document.getElementById("sdriveReferralActions").innerHTML=`<button class="btn primary" onclick="copyText('${String(data.sdriveLink).replace(/'/g,"\\'")}')">📋 Copier le lien</button><button class="btn green" onclick="window.open('${String(data.sdriveLink).replace(/'/g,"\\'")}','_blank')">🚀 Ouvrir BatBot</button><button class="btn telegram" onclick="shareCoupon('BatBot','','${String(data.sdriveLink).replace(/'/g,"\\'")}')">📤 Partager</button>`;
+  const card=document.getElementById("sdriveReferralCard");if(!card||!data||!data.sdriveLink)return;
+  const link=String(data.sdriveLink),message=data.sdriveInviteMessage||"Rejoins BatBot et profite de ses avantages.";
+  const messageEl=document.getElementById("sdriveInviteMessage"),actions=document.getElementById("sdriveReferralActions");
+  card.classList.remove("hidden");
+  if(messageEl&&messageEl.textContent!==message)messageEl.textContent=message;
+  if(actions&&actions.dataset.renderedLink!==link){
+    const safe=encodeURIComponent(link);
+    actions.innerHTML=`<button class="btn primary" onclick="copyText(decodeURIComponent('${safe}'))">📋 Copier le lien</button><button class="btn green" onclick="window.open(decodeURIComponent('${safe}'),'_blank','noopener,noreferrer')">🚀 Ouvrir BatBot</button><button class="btn telegram" onclick="shareCoupon('BatBot','',decodeURIComponent('${safe}'))">📤 Partager</button>`;
+    actions.dataset.renderedLink=link;
+  }
 }
 async function toggleUserDisabled(id,disabled){
   try{const r=await fetch("/api/admin/users/"+id+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({disabled})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible");await loadAdmin();}catch(e){alert(e.message);}
@@ -1521,12 +1540,12 @@ async function loadMyTransactions(){
     const items=d.requests||[];
     box.innerHTML=items.map(x=>{
       const label=x.status==="accepted"?"✅ Approuvée":x.status==="rejected"?"❌ Refusée":"⏳ En cours de vérification";
-      return `<div class="payment-receipt"><div class="receipt-head"><div class="receipt-brand">🧾 BatBot<br><small class="muted">Reçu de paiement #${x.id}</small></div><span class="receipt-status">${label}</span></div><div class="receipt-row"><span>Offre</span><span>${escapeHtml(x.offer||"—")}</span></div><div class="receipt-row"><span>Montant</span><span>${Number(x.amount)||0} FCFA</span></div><div class="receipt-row"><span>Opérateur</span><span>${escapeHtml(x.operator||"—")}</span></div><div class="receipt-row"><span>Référence</span><span>${escapeHtml(x.reference||"—")}</span></div><div class="receipt-row"><span>Date</span><span>${escapeHtml(formatDateTime(x.created_at))}</span></div>${x.resolved_at?`<div class="receipt-row"><span>Traitement</span><span>${escapeHtml(formatDateTime(x.resolved_at))}</span></div>`:""}<div class="receipt-stamp">BATBOT • SERVICE DE VÉRIFICATION</div></div>`;
+      return `<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.offer)}</strong><br>💳 ${Number(x.amount)||0} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)}<br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${label}</strong></div>`;
     }).join("")||'<p class="muted">Aucune transaction récente.</p>';
   }catch(e){box.innerHTML='<p class="muted">Impossible de charger les transactions.</p>';}
 }
 
-async function loadAdminPaymentRequests(){const box=document.getElementById("paymentRequestsAdminList");if(!box)return;try{const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");box.innerHTML=(d.requests||[]).map(x=>{const receipt=encodeURIComponent(buildPaymentReceipt(x));const label=x.status==="accepted"?"✅ Approuvée":x.status==="rejected"?"❌ Refusée":"⏳ En attente";return `<div class="payment-receipt"><div class="receipt-head"><div class="receipt-brand">🧾 BatBot<br><small class="muted">Reçu #${x.id} — ${escapeHtml(x.username||"Utilisateur")}</small></div><span class="receipt-status">${label}</span></div><div class="receipt-row"><span>Offre</span><span>${escapeHtml(x.offer||"—")}</span></div><div class="receipt-row"><span>Montant</span><span>${x.amount||0} FCFA</span></div><div class="receipt-row"><span>Opérateur</span><span>${escapeHtml(x.operator||"—")}</span></div><div class="receipt-row"><span>Référence</span><span>${escapeHtml(x.reference||"—")}</span></div><div class="receipt-row"><span>Date</span><span>${escapeHtml(formatDateTime(x.created_at))}</span></div>${x.resolved_at?`<div class="receipt-row"><span>Traitement</span><span>${escapeHtml(formatDateTime(x.resolved_at))}</span></div>`:""}<button class="btn secondary" type="button" onclick="copyPaymentReceipt('${receipt}')">📋 Copier le reçu complet</button>${x.status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Accepter</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser</button></div>`:""}<div class="receipt-stamp">BATBOT • SERVICE DE VÉRIFICATION</div></div>`;}).join("")||'<p class="muted">Aucune demande.</p>';}catch(e){box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';}}
+async function loadAdminPaymentRequests(){const box=document.getElementById("paymentRequestsAdminList");if(!box)return;try{const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");box.innerHTML=(d.requests||[]).map(x=>`<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.username||"Utilisateur")}</strong><br>💳 ${escapeHtml(x.offer)} — ${x.amount} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)} <button class="btn secondary" type="button" onclick="copyText('${String(x.reference).replace(/'/g,"\\'")}')">📋 Copier</button><br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${escapeHtml(x.status)}</strong>${x.status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Accepter</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser</button></div>`:""}</div>`).join("")||'<p class="muted">Aucune demande.</p>';}catch(e){box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';}}
 async function resolvePaymentRequest(id,status){try{const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible.");await loadAdminPaymentRequests();alert(d.message);}catch(e){alert(e.message);}}
 
 async function loadAdmin(){
@@ -1597,7 +1616,8 @@ async function loadDailyMatches(){
   const container=document.getElementById("dailyMatches");
   if(!container)return;
 
-  container.innerHTML='<div class="notice">Chargement des probabilités...</div>';
+  const hasDisplayedResults=container.dataset.loaded==="true";
+  if(!hasDisplayedResults && !container.querySelector(".notice"))container.innerHTML='<div class="notice">Chargement des probabilités...</div>';
 
   try{
     const response=await fetch("/api/daily-matches",{
@@ -1607,14 +1627,14 @@ async function loadDailyMatches(){
     const data=await readApiResponse(response);
 
     if(!response.ok){
-      container.innerHTML='<div class="notice">'+escapeHtml(data.error||"Impossible de charger les probabilités.")+'</div>';
+      if(!hasDisplayedResults)container.innerHTML='<div class="notice">'+escapeHtml(data.error||"Impossible de charger les probabilités.")+'</div>';
       return;
     }
 
     const matches=Array.isArray(data)?data:(Array.isArray(data.matches)?data.matches:[]);
 
     if(matches.length===0){
-      container.innerHTML='<div class="notice">Aucun match ajouté pour le moment.</div>';
+      if(!hasDisplayedResults)container.innerHTML='<div class="notice">Aucun match ajouté pour le moment.</div>';
       return;
     }
 
@@ -1636,10 +1656,11 @@ async function loadDailyMatches(){
         </div>
       `;
     }).join("");
+    container.dataset.loaded="true";
 
   }catch(error){
     console.error("DAILY MATCHES:",error);
-    container.innerHTML='<div class="notice">Impossible de contacter le serveur.</div>';
+    if(!hasDisplayedResults)container.innerHTML='<div class="notice">Impossible de contacter le serveur.</div>';
   }
 }
 
