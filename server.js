@@ -413,16 +413,6 @@ app.post("/api/payment-requests", requireUser, (req, res) => {
   res.json({ message: "Référence enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.lastInsertRowid });
 });
 
-app.get("/api/payment-requests/mine", requireUser, (req, res) => {
-  const requests = DB.prepare(`
-    SELECT id, offer, operator, amount, reference, status, admin_note, created_at, resolved_at
-    FROM payment_requests
-    WHERE user_id=?
-    ORDER BY id DESC
-  `).all(req.session.userId);
-  res.json({ requests });
-});
-
 app.get("/api/admin/payment-requests", requireAdmin, (req, res) => {
   const requests = DB.prepare(`
     SELECT p.*, u.username, u.phone
