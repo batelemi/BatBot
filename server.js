@@ -346,7 +346,7 @@ app.post("/api/password-reset", (req, res) => {
   }
 
   res.json({
-    message: "Demande envoyée à l'administration. Vous recevrez le mot de passe temporaire ici dès sa génération.",
+    message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.",
     request_id: request.id,
     request_token: request.delivery_token
   });
@@ -374,7 +374,7 @@ app.post("/api/forgot-password", (req, res) => {
     DB.prepare("UPDATE password_resets SET delivery_token=? WHERE id=?").run(existing.delivery_token, existing.id);
   }
 
-  res.json({ message: "Demande envoyée à l'administration.", request_id: existing.id, request_token: existing.delivery_token });
+  res.json({ message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.", request_id: existing.id, request_token: existing.delivery_token });
 });
 
 // Vérification sécurisée de la demande depuis l'espace de connexion.
