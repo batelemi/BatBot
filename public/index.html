@@ -805,13 +805,17 @@ function escapeHtml(value){
     .replace(/'/g,"&#039;");
 }
 
+let authViewChosen = false;
+
 function showRegister(){
+  authViewChosen = true;
   document.getElementById("registerBox").classList.remove("hidden");
   document.getElementById("loginBox").classList.add("hidden");
   document.getElementById("forgotBox").classList.add("hidden");
 }
 
 function showLogin(){
+  authViewChosen = true;
   document.getElementById("registerBox").classList.add("hidden");
   document.getElementById("loginBox").classList.remove("hidden");
   document.getElementById("forgotBox").classList.add("hidden");
@@ -911,8 +915,7 @@ async function register(){
     }
 
     showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
-    showLoading("Compte créé. Préparation de la connexion…","logo.png");
-
+    hideLoading();
     setTimeout(function(){
       showLogin();
       document.getElementById("loginUsername").value=username;
@@ -1869,7 +1872,7 @@ async function checkSession(){
   }
 
   showAuth();
-  showRegister();
+  if (!authViewChosen) showRegister();
   hideLoading();
 }
 
@@ -1905,7 +1908,11 @@ function startBatBotLiveSync(){
       const isAdminOpen = document.getElementById("admin") && !document.getElementById("admin").classList.contains("hidden");
       const tasks = [loadPublicConfig()];
       if (!isAdminOpen) {
-        tasks.push(loadDailyMatches(), loadMyTransactions(), checkSession());
+        tasks.push(loadDailyMatches(), loadMyTransactions());
+        // Ne pas relancer checkSession() pendant la navigation client :
+        // cela pourrait remplacer la page de connexion par l’inscription.
+        const dashboardVisible = document.getElementById("dashboard") && !document.getElementById("dashboard").classList.contains("hidden");
+        if (dashboardVisible) tasks.push(checkSession());
       }
       await Promise.allSettled(tasks);
       if(document.getElementById("adminPanel") && !document.getElementById("adminPanel").classList.contains("hidden")){
