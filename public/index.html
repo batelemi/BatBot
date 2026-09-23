@@ -1894,6 +1894,23 @@ async function loadPublicConfig(){
   }catch(e){console.error("CONFIG:",e);}
 }
 
+
+async function refreshCurrentUserSilently(){
+  if(document.getElementById("dashboard")?.classList.contains("hidden"))return;
+  try{
+    const r=await fetch("/api/me",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok||!d.user)return;
+    updateProfileStatuses(d.user);
+    const badge=d.user.is_subscribed||d.user.subscribed||d.user.subscription_active;
+    const el=document.getElementById("profileBadge");
+    if(el){
+      el.textContent="🏅 "+(badge?"Membre premium":"Membre BatBot");
+      el.classList.toggle("badge-blue",Boolean(badge));
+    }
+  }catch(e){console.warn("USER_SYNC:",e);}
+}
+
 let batbotLiveSyncStarted=false;
 function startBatBotLiveSync(){
   if(batbotLiveSyncStarted)return;
@@ -1904,7 +1921,8 @@ function startBatBotLiveSync(){
       await Promise.allSettled([
         loadPublicConfig(),
         loadDailyMatches(),
-        loadMyTransactions()
+        loadMyTransactions(),
+        refreshCurrentUserSilently()
       ]);
       // Ne pas recharger toute l'administration automatiquement : cela
       // recréait les champs et effaçait le numéro pendant la saisie.
