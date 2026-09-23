@@ -232,9 +232,8 @@ app.post("/api/register", (req, res) => {
       "INSERT INTO users(username,phone,password_hash) VALUES(?,?,?)"
     ).run(username, "", bcrypt.hashSync(password, 12));
 
-    req.session.userId = Number(result.lastInsertRowid);
     const user = DB.prepare("SELECT * FROM users WHERE id=?").get(result.lastInsertRowid);
-    res.status(201).json({ message: "Compte créé avec succès.", user: userView(user) });
+    res.status(201).json({ message: "Compte créé avec succès. Connectez-vous pour continuer.", user: userView(user) });
   } catch (error) {
     res.status(409).json({ error: "Ce nom d'utilisateur existe déjà." });
   }
