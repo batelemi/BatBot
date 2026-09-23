@@ -406,7 +406,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   <div id="forgotBox" class="card hidden">
     <h2>🔑 Mot de passe oublié</h2>
     <p class="muted">
-      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation à l'administrateur.
+      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation au service BatBot.
     </p>
 
     <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
@@ -419,7 +419,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div id="forgotStatus" class="status"></div>
 
     <a id="forgotWhatsApp" class="btn whatsapp hidden" target="_blank" rel="noopener noreferrer">
-      💬 Contacter l'administrateur sur WhatsApp
+      💬 Contacter le service BatBot sur WhatsApp
     </a>
 
     <button class="btn secondary" type="button" onclick="hideForgot()">← Retour à la connexion</button>
@@ -520,7 +520,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
       target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
     <div class="payment-confirm">
-      📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
+      📌 Paiement manuel. Après paiement, envoyez votre confirmation au service BatBot si nécessaire.
     </div>
   </div>
 
@@ -1149,7 +1149,7 @@ function renderPasswordResetDelivery(state){
   if(state.status==="pending"){
     box.classList.remove("hidden");
     box.classList.add("pending");
-    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande est bien enregistrée. Dès que l’administrateur génère votre mot de passe temporaire, il apparaîtra automatiquement ici.</div>';
+    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande a bien été envoyée au service BatBot. Veuillez patienter pendant le traitement. Dès que votre mot de passe temporaire sera prêt, il apparaîtra automatiquement ici.</div>';
     return;
   }
 
@@ -1192,7 +1192,7 @@ async function pollPasswordResetStatus(){
 function startPasswordResetPolling(){
   stopPasswordResetPolling();
   pollPasswordResetStatus();
-  passwordResetPollTimer=setInterval(pollPasswordResetStatus,3000);
+  passwordResetPollTimer=setInterval(pollPasswordResetStatus,1000);
 }
 
 function stopPasswordResetPolling(){
@@ -1325,7 +1325,7 @@ function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer
         addNode(mobile);
       }else{
         title.textContent='📋 Conditions de dépôt';
-        body.innerHTML='<div class="payment-window-conditions"><div class="notice"><strong>1. Choisissez votre offre</strong><br>Analyse du jour : 500 F. Abonnement Premium : 1 000 F pour 7 jours.</div><div class="notice"><strong>2. Effectuez le paiement</strong><br>Utilisez Wave ou le numéro Orange Money, MTN Money ou Moov Money affiché dans la fenêtre correspondante.</div><div class="notice"><strong>3. Conservez votre preuve</strong><br>Gardez la capture et la référence de transaction jusqu’à la confirmation du service.</div><div class="notice"><strong>4. Envoyez les informations</strong><br>Enregistrez le montant et la référence dans le formulaire, puis envoyez la preuve sur WhatsApp au service client.</div><div class="notice"><strong>5. Validation</strong><br>L’activation de Premium ou des services associés se fait après vérification du paiement par l’administrateur.</div></div>';
+        body.innerHTML='<div class="payment-window-conditions"><div class="notice"><strong>1. Choisissez votre offre</strong><br>Analyse du jour : 500 F. Abonnement Premium : 1 000 F pour 7 jours.</div><div class="notice"><strong>2. Effectuez le paiement</strong><br>Utilisez Wave ou le numéro Orange Money, MTN Money ou Moov Money affiché dans la fenêtre correspondante.</div><div class="notice"><strong>3. Conservez votre preuve</strong><br>Gardez la capture et la référence de transaction jusqu’à la confirmation du service.</div><div class="notice"><strong>4. Envoyez les informations</strong><br>Enregistrez le montant et la référence dans le formulaire, puis envoyez la preuve sur WhatsApp au service client.</div><div class="notice"><strong>5. Validation</strong><br>L’activation de Premium ou des services associés se fait après vérification du paiement par le service BatBot.</div></div>';
       }
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
@@ -1763,6 +1763,64 @@ async function loadMyTransactions(){
 async function loadAdminPaymentRequests(){const box=document.getElementById("paymentRequestsAdminList");if(!box)return;try{const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");box.innerHTML=(d.requests||[]).map(x=>`<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.username||"Utilisateur")}</strong><br>💳 ${escapeHtml(x.offer)} — ${x.amount} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)} <button class="btn secondary" type="button" onclick="copyText('${String(x.reference).replace(/'/g,"\\'")}')">📋 Copier</button><br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${escapeHtml(x.status)}</strong>${x.status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Accepter</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser</button></div>`:""}</div>`).join("")||'<p class="muted">Aucune demande.</p>';}catch(e){box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';}}
 async function resolvePaymentRequest(id,status){try{const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible.");await loadAdminPaymentRequests();alert(d.message);}catch(e){alert(e.message);}}
 
+let adminResetLiveTimer=null;
+let adminResetKnownIds=new Set();
+let adminResetLiveInitialized=false;
+let adminResetLiveBusy=false;
+
+async function loadAdminResetRequests(options){
+  const box=document.getElementById("resetList");
+  if(!box||document.getElementById("adminPanel")?.classList.contains("hidden"))return;
+  if(adminResetLiveBusy)return;
+  adminResetLiveBusy=true;
+  try{
+    const resetResponse=await fetch("/api/admin/reset-requests",{credentials:"same-origin",cache:"no-store"});
+    const resetData=await readApiResponse(resetResponse);
+    if(!resetResponse.ok){
+      box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';
+      return;
+    }
+    const requests=Array.isArray(resetData.requests)?resetData.requests:[];
+    const currentIds=new Set(requests.map(request=>Number(request.id)));
+    if(adminResetLiveInitialized && requests.some(request=>!adminResetKnownIds.has(Number(request.id)))){
+      showToast("🔐 Nouvelle demande de réinitialisation reçue.","success");
+    }
+    adminResetKnownIds=currentIds;
+    adminResetLiveInitialized=true;
+    box.innerHTML=requests.map(function(request){
+      return `
+        <div class="reset-request">
+          <strong>🔐 ${escapeHtml(request.username||request.name||"Utilisateur")}</strong>
+          ${request.phone?`<br><span class="admin-small">📱 ${escapeHtml(request.phone)}</span>`:""}
+          ${request.created_at?`<br><span class="admin-small">📅 Demande : ${escapeHtml(formatDateTime(request.created_at))}</span>`:""}
+          <br>
+          <span class="admin-small">⏳ Demande de réinitialisation en attente de traitement par le service BatBot</span>
+          <button class="btn green" type="button" onclick="resolveReset(${Number(request.id)})">
+            🆕 Générer un nouveau mot de passe
+          </button>
+        </div>
+      `;
+    }).join("")||'<p class="muted">Aucune demande en attente.</p>';
+  }catch(error){
+    console.error("ADMIN RESET LIVE:",error);
+  }finally{
+    adminResetLiveBusy=false;
+  }
+}
+
+function startAdminResetLiveSync(){
+  stopAdminResetLiveSync();
+  adminResetLiveInitialized=false;
+  adminResetKnownIds=new Set();
+  loadAdminResetRequests();
+  adminResetLiveTimer=setInterval(loadAdminResetRequests,1000);
+}
+
+function stopAdminResetLiveSync(){
+  if(adminResetLiveTimer){clearInterval(adminResetLiveTimer);adminResetLiveTimer=null;}
+  adminResetLiveBusy=false;
+}
+
 async function loadAdmin(){
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.add("hidden");
@@ -1771,6 +1829,7 @@ async function loadAdmin(){
   document.getElementById("adminPanel").classList.remove("hidden");
   organizeAdminPanel();
   loadAdminPaymentRequests();
+  startAdminResetLiveSync();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -1793,29 +1852,7 @@ async function loadAdmin(){
       document.getElementById("settingsList").innerHTML=renderSettingsForm(settingsData.settings||{});
     }
 
-    const resetResponse=await fetch("/api/admin/reset-requests",{credentials:"same-origin",cache:"no-store"});
-    const resetData=await readApiResponse(resetResponse);
-
-    if(!resetResponse.ok){
-      document.getElementById("resetList").innerHTML='<p class="muted">Impossible de charger les demandes.</p>';
-    }else{
-      const requests=Array.isArray(resetData.requests)?resetData.requests:[];
-      document.getElementById("resetList").innerHTML=
-        requests.map(function(request){
-          return `
-            <div class="reset-request">
-              <strong>🔐 ${escapeHtml(request.username||request.name||"Utilisateur")}</strong>
-              ${request.phone?`<br><span class="admin-small">📱 ${escapeHtml(request.phone)}</span>`:""}
-              ${request.created_at?`<br><span class="admin-small">📅 Demande : ${escapeHtml(formatDateTime(request.created_at))}</span>`:""}
-              <br>
-              <span class="admin-small">Demande de réinitialisation en attente</span>
-              <button class="btn green" type="button" onclick="resolveReset(${Number(request.id)})">
-                🆕 Générer un nouveau mot de passe
-              </button>
-            </div>
-          `;
-        }).join("")||'<p class="muted">Aucune demande en attente.</p>';
-    }
+    await loadAdminResetRequests();
 
     await loadAdminBookmakers();
     await loadAdminCoupons();
@@ -2140,6 +2177,7 @@ async function resolveReset(id){
 }
 
 async function adminLogout(){
+  stopAdminResetLiveSync();
   try{
     await fetch("/api/admin/logout",{
       method:"POST",credentials:"same-origin"
