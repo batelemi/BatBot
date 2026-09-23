@@ -412,11 +412,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
     <div id="smartDriveAIStatus" class="status"></div>
     <div id="smartDriveAIResult" class="ai-result hidden"></div>
-    <div class="two-columns" style="margin-top:12px">
-      <button class="btn secondary" type="button" onclick="loadApiFootballFixtures()">⚽ Charger les matchs du jour</button>
-    </div>
-    <div id="apiFootballStatus" class="status"></div>
-    <div id="apiFootballResults" class="ai-result hidden"></div>
   </section>
 
   <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
@@ -498,6 +493,14 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   </section>
 
+  <div id="myTransactionsCard" class="card">
+    <h2>📊 Mes transactions</h2>
+    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont supprimées après 2 jours.</p>
+    <div id="myTransactionsList"><div class="notice">Chargement des transactions...</div></div>
+  </div>
+
+
+
   <div class="card">
     <h2><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
     <p class="muted">
@@ -530,12 +533,13 @@ PSG vs Marseille"></textarea>
     <div id="analysisStatus" class="status"></div>
   </div>
 
-  <div class="card">
-    <h2>📊 Probabilités des matchs du jour</h2>
-    <p class="muted">Retrouvez ici les probabilités ajoutées par l'administrateur.</p>
-    <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
-  </div>
-
+  <section class="card" id="dailyFixturesSection" aria-label="Matchs du jour">
+    <h2>⚽ Matchs du jour</h2>
+    <p class="muted">Chargez les matchs disponibles pour préparer vos demandes d’analyse.</p>
+    <button class="btn secondary" type="button" onclick="loadApiFootballFixtures()">⚽ Charger les matchs du jour</button>
+    <div id="apiFootballStatus" class="status"></div>
+    <div id="apiFootballResults" class="ai-result hidden"></div>
+  </section>
   <section class="partners-space" aria-label="Espace partenaires et bookmakers">
     <div class="section-kicker">Espace partenaires</div>
     <h2>🛡️ Partenaires authentifiés</h2>
@@ -554,17 +558,47 @@ PSG vs Marseille"></textarea>
 
   </section>
 
-  <div id="myTransactionsCard" class="card">
-    <h2>📊 Mes transactions</h2>
-    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont supprimées après 2 jours.</p>
-    <div id="myTransactionsList"><div class="notice">Chargement des transactions...</div></div>
+  <div class="card">
+    <h2>📊 Probabilités des matchs du jour</h2>
+    <p class="muted">Retrouvez ici les probabilités ajoutées par l'administrateur.</p>
+    <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
   </div>
+
+
+
+  <div class="card">
+    <h2>👥 Nos groupes</h2>
+    <p class="muted">Rejoignez nos communautés BatBot.</p>
+    <div class="two-columns">
+      <a class="btn contact-button whatsapp"
+        href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
+        target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+      <a class="btn contact-button telegram"
+        href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+    </div>
+  </div>
+
+
 
   <div id="sdriveReferralCard" class="card hidden">
     <h2>🚀 Rejoindre BatBot</h2>
     <p id="sdriveInviteMessage" class="muted"></p>
     <div id="sdriveReferralActions"></div>
   </div>
+
+
+
+  <div class="card">
+    <h2>📞 Contacter un agent</h2>
+    <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
+    <div class="two-columns">
+      <a id="whatsappContact" class="btn contact-button whatsapp" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+      <a id="telegramContact" class="btn contact-button telegram"
+        href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+    </div>
+  </div>
+
+
 
   <div class="card">
     <h2>📱 Nos réseaux sociaux</h2>
@@ -579,27 +613,7 @@ PSG vs Marseille"></textarea>
     </div>
   </div>
 
-  <div class="card">
-    <h2>👥 Nos groupes</h2>
-    <p class="muted">Rejoignez nos communautés BatBot.</p>
-    <div class="two-columns">
-      <a class="btn contact-button whatsapp"
-        href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
-        target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a class="btn contact-button telegram"
-        href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
-    </div>
-  </div>
 
-  <div class="card">
-    <h2>📞 Contacter un agent</h2>
-    <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
-    <div class="two-columns">
-      <a id="whatsappContact" class="btn contact-button whatsapp" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a id="telegramContact" class="btn contact-button telegram"
-        href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
-    </div>
-  </div>
 
   <div class="card compact-conditions">
     <h2>📋 Conditions d'utilisation</h2>
@@ -859,7 +873,6 @@ function showDashboard(user){
   loadConfig();
   loadDailyMatches();
   loadMyTransactions();
-  startPaymentStatusRefresh();
   window.scrollTo(0,0);
 }
 
@@ -1508,26 +1521,8 @@ async function loadMyTransactions(){
   }catch(e){box.innerHTML='<p class="muted">Impossible de charger les transactions.</p>';}
 }
 
-async function loadAdminPaymentRequests(){
-  const box=document.getElementById("paymentRequestsAdminList");
-  if(!box)return;
-  try{
-    const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
-    box.innerHTML=(d.requests||[]).map(x=>{
-      const all=[`ID: ${x.id}`,`Client: ${x.username||"Utilisateur"}`,`Téléphone: ${x.phone||"—"}`,`Offre: ${x.offer}`,`Montant: ${x.amount} FCFA`,`Opérateur: ${x.operator}`,`Référence: ${x.reference}`,`Date: ${formatDateTime(x.created_at)}`,`Statut: ${x.status}`,x.admin_note?`Note: ${x.admin_note}`:""].filter(Boolean).join("\n");
-      return `<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.username||"Utilisateur")}</strong><br>💳 ${escapeHtml(x.offer)} — ${x.amount} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)}<br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${escapeHtml(x.status)}</strong><div class="two-columns"><button class="btn secondary" type="button" onclick="copyText(${JSON.stringify(all).replace(/</g,'\u003c')})">📋 Copier tout</button>${x.status==="pending"?`<button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Accepter</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser</button>`:""}</div></div>`;
-    }).join("")||'<p class="muted">Aucune demande.</p>';
-  }catch(e){box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';}
-}
+async function loadAdminPaymentRequests(){const box=document.getElementById("paymentRequestsAdminList");if(!box)return;try{const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");box.innerHTML=(d.requests||[]).map(x=>`<div class="reset-request"><strong>#${x.id} — ${escapeHtml(x.username||"Utilisateur")}</strong><br>💳 ${escapeHtml(x.offer)} — ${x.amount} FCFA<br>📱 ${escapeHtml(x.operator)}<br>🔖 ${escapeHtml(x.reference)} <button class="btn secondary" type="button" onclick="copyText('${String(x.reference).replace(/'/g,"\\'")}')">📋 Copier</button><br>📅 ${escapeHtml(formatDateTime(x.created_at))}<br><strong>Statut : ${escapeHtml(x.status)}</strong>${x.status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Accepter</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser</button></div>`:""}</div>`).join("")||'<p class="muted">Aucune demande.</p>';}catch(e){box.innerHTML='<p class="muted">Impossible de charger les demandes.</p>';}}
 async function resolvePaymentRequest(id,status){try{const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible.");await loadAdminPaymentRequests();alert(d.message);}catch(e){alert(e.message);}}
-
-let paymentStatusTimer=null;
-function startPaymentStatusRefresh(){
-  if(paymentStatusTimer)clearInterval(paymentStatusTimer);
-  paymentStatusTimer=setInterval(()=>{loadMyTransactions();loadAdminPaymentRequests();},5000);
-}
 
 async function loadAdmin(){
   document.getElementById("auth").classList.add("hidden");
@@ -1537,7 +1532,6 @@ async function loadAdmin(){
   document.getElementById("adminPanel").classList.remove("hidden");
   organizeAdminPanel();
   loadAdminPaymentRequests();
-  startPaymentStatusRefresh();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -1901,6 +1895,27 @@ async function loadPublicConfig(){
   }catch(e){console.error("CONFIG:",e);}
 }
 
+let batbotLiveSyncStarted=false;
+function startBatBotLiveSync(){
+  if(batbotLiveSyncStarted)return;
+  batbotLiveSyncStarted=true;
+  setInterval(async function(){
+    if(document.hidden)return;
+    try{
+      await Promise.allSettled([
+        loadPublicConfig(),
+        loadDailyMatches(),
+        loadMyTransactions(),
+        checkSession()
+      ]);
+      if(document.getElementById("adminPanel") && !document.getElementById("adminPanel").classList.contains("hidden")){
+        await loadAdminPaymentRequests();
+        await loadAdmin();
+      }
+    }catch(error){console.warn("LIVE_SYNC:",error);}
+  },5000);
+}
+
 document.addEventListener("DOMContentLoaded",function(){
   loadPublicConfig();
   showLoading("Connexion en cours…");
@@ -1912,6 +1927,7 @@ document.addEventListener("DOMContentLoaded",function(){
 
   setTimeout(function(){
     checkSession();
+    startBatBotLiveSync();
   },300);
 });
 
@@ -2014,6 +2030,21 @@ document.addEventListener("keydown",function(event){
     const contentItems=children.slice(start).filter(function(el){
       return !(el.matches('button[onclick="logout()"]'));
     });
+
+    // Ordre fixe demandé pour l’interface client. Le contenu et les identifiants
+    // des cartes restent inchangés afin de préserver les fonctionnalités existantes.
+    const requestedOrder=[
+      'Dépôts & paiements','Mes transactions','BatBot IA','Demander une analyse',
+      'Matchs du jour','Probabilités des matchs du jour','Partenaires authentifiés',
+      'Nos groupes','Contacter un agent','Joindre BatBot','Nos réseaux sociaux',
+      'Comment ça fonctionne','Conditions d’utilisation'
+    ];
+    function cardOrder(card){
+      const text=(card.querySelector('h2')||card).textContent.replace(/\s+/g,' ').trim();
+      const index=requestedOrder.findIndex(function(item){return text.includes(item);});
+      return index===-1?999:index;
+    }
+    contentItems.sort(function(a,b){return cardOrder(a)-cardOrder(b);});
 
     contentItems.forEach(function(card){
       if(card===launcher||card.classList.contains('public-options-launcher-wrap'))return;
