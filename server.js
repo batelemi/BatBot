@@ -232,8 +232,9 @@ app.post("/api/register", (req, res) => {
       "INSERT INTO users(username,phone,password_hash) VALUES(?,?,?)"
     ).run(username, "", bcrypt.hashSync(password, 12));
 
+    req.session.userId = Number(result.lastInsertRowid);
     const user = DB.prepare("SELECT * FROM users WHERE id=?").get(result.lastInsertRowid);
-    res.status(201).json({ message: "Compte créé avec succès. Connectez-vous pour continuer.", user: userView(user) });
+    res.status(201).json({ message: "Compte créé avec succès.", user: userView(user) });
   } catch (error) {
     res.status(409).json({ error: "Ce nom d'utilisateur existe déjà." });
   }
@@ -410,6 +411,16 @@ app.post("/api/payment-requests", requireUser, (req, res) => {
     "INSERT INTO payment_requests(user_id,offer,operator,amount,reference) VALUES(?,?,?,?,?)"
   ).run(req.session.userId, offer, operator, Math.round(amount), reference);
   res.json({ message: "Référence enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.lastInsertRowid });
+});
+
+app.get("/api/payment-requests/mine", requireUser, (req, res) => {
+  const requests = DB.prepare(`
+    SELECT id, offer, operator, amount, reference, status, admin_note, created_at, resolved_at
+    FROM payment_requests
+    WHERE user_id=?
+    ORDER BY id DESC
+  `).all(req.session.userId);
+  res.json({ requests });
 });
 
 app.get("/api/admin/payment-requests", requireAdmin, (req, res) => {
