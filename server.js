@@ -720,7 +720,7 @@ app.post("/api/admin/reset-requests/:id/resolve", requireAdmin, (req, res) => {
   if (request.disabled) return res.status(409).json({ error: "Ce compte est désactivé." });
 
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let temporaryPassword = "SD-";
+  let temporaryPassword = "BBOT-";
   const bytes = crypto.randomBytes(8);
   for (const byte of bytes) temporaryPassword += alphabet[byte % alphabet.length];
 
