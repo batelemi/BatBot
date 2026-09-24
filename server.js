@@ -93,6 +93,21 @@ CREATE TABLE IF NOT EXISTS coupons(
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS batbot_messages(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS batbot_message_reads(
+  message_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  read_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(message_id,user_id),
+  FOREIGN KEY(message_id) REFERENCES batbot_messages(id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 `);
 
 // Migrations pour les bases déjà existantes
@@ -484,6 +499,69 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
       ? `https://t.me/${String(settings.telegram).replace(/^@/, "")}`
       : ""
   });
+});
+
+function cleanupExpiredBatBotMessages(){
+  try{
+    DB.prepare("DELETE FROM batbot_messages WHERE expires_at <= CURRENT_TIMESTAMP").run();
+  }catch(error){
+    console.error("BATBOT MESSAGE CLEANUP:",error.message);
+  }
+}
+
+cleanupExpiredBatBotMessages();
+setInterval(cleanupExpiredBatBotMessages, 5 * 60 * 1000).unref();
+
+app.get("/api/messages/mine", requireUser, (req, res) => {
+  cleanupExpiredBatBotMessages();
+  const messages=DB.prepare(`
+    SELECT m.id,m.title,m.body,m.created_at,m.expires_at,
+           CASE WHEN r.message_id IS NULL THEN 0 ELSE 1 END AS is_read
+    FROM batbot_messages m
+    LEFT JOIN batbot_message_reads r ON r.message_id=m.id AND r.user_id=?
+    WHERE m.expires_at > CURRENT_TIMESTAMP
+    ORDER BY m.id DESC
+  `).all(req.session.userId).map(x=>({...x,is_read:Boolean(x.is_read)}));
+  res.json({messages});
+});
+
+app.post("/api/messages/:id/read", requireUser, (req, res) => {
+  cleanupExpiredBatBotMessages();
+  const id=Number(req.params.id);
+  const message=DB.prepare("SELECT id FROM batbot_messages WHERE id=? AND expires_at>CURRENT_TIMESTAMP").get(id);
+  if(!message)return res.status(404).json({error:"Message introuvable ou expiré."});
+  DB.prepare("INSERT OR IGNORE INTO batbot_message_reads(message_id,user_id) VALUES(?,?)").run(id,req.session.userId);
+  res.json({message:"Message marqué comme lu."});
+});
+
+app.get("/api/admin/messages", requireAdmin, (req, res) => {
+  cleanupExpiredBatBotMessages();
+  const messages=DB.prepare(`
+    SELECT id,title,body,created_at,expires_at
+    FROM batbot_messages
+    WHERE expires_at>CURRENT_TIMESTAMP
+    ORDER BY id DESC
+  `).all();
+  res.json({messages});
+});
+
+app.post("/api/admin/messages", requireAdmin, (req, res) => {
+  const title=String(req.body.title||"").trim();
+  const body=String(req.body.body||"").trim();
+  if(!title||!body)return res.status(400).json({error:"Le titre et le contenu du message sont obligatoires."});
+  if(title.length>120)return res.status(400).json({error:"Le titre ne doit pas dépasser 120 caractères."});
+  if(body.length>2000)return res.status(400).json({error:"Le contenu ne doit pas dépasser 2000 caractères."});
+  cleanupExpiredBatBotMessages();
+  const result=DB.prepare("INSERT INTO batbot_messages(title,body,created_at,expires_at) VALUES(?,?,CURRENT_TIMESTAMP,datetime('now','+24 hours'))")
+    .run(title,body);
+  const created=DB.prepare("SELECT id,title,body,created_at,expires_at FROM batbot_messages WHERE id=?").get(Number(result.lastInsertRowid));
+  res.status(201).json({message:"Message publié avec succès. Il restera visible pendant 24 heures.",id:Number(result.lastInsertRowid),expires_at:created.expires_at});
+});
+
+app.delete("/api/admin/messages/:id", requireAdmin, (req, res) => {
+  const result=DB.prepare("DELETE FROM batbot_messages WHERE id=?").run(Number(req.params.id));
+  if(!result.changes)return res.status(404).json({error:"Message introuvable."});
+  res.json({message:"Message supprimé avec succès."});
 });
 
 app.post("/api/admin/login", (req, res) => {
