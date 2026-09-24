@@ -1,0 +1,2868 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#071A2D">
+<title>BatBot — Analyse de matchs</title>
+
+<style>
+    .inline-logo{
+  width:1.55em;height:1.55em;object-fit:contain;display:inline-block;
+  vertical-align:middle;margin-right:.3em;padding:2px;
+  border-radius:50%;background:rgba(255,255,255,.98);
+  border:1.5px solid var(--blue);
+  box-shadow:0 2px 7px rgba(0,0,0,.28),inset 0 1px 2px rgba(255,255,255,.8);
+}
+
+:root{
+  --navy:#071A2D;
+  --navy2:#0B223D;
+  --card:#102B4C;
+  --line:#23486B;
+  --blue:#00BFFF;
+  --green:#21C55D;
+  --white:#FFFFFF;
+  --muted:#AFC1D4;
+  --red:#DC2626;
+  --gold:#F5C542;
+  --orange:#F59E0B;
+}
+*{box-sizing:border-box}
+html{min-height:100%;scroll-behavior:auto}
+body{
+  margin:0;min-height:100vh;font-family:Arial,Helvetica,sans-serif;
+  color:var(--white);
+  background:radial-gradient(circle at top,#12385C 0%,var(--navy) 58%);
+}
+button,input,textarea{font-family:inherit}
+button,a{-webkit-tap-highlight-color:transparent}
+
+#loadingScreen{
+  position:fixed;inset:0;z-index:99999;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  text-align:center;padding:25px;
+  background:radial-gradient(circle at center,#12385C 0%,#071A2D 70%);
+  transition:opacity .35s ease,visibility .35s ease;
+}
+#loadingScreen.hide{opacity:0;visibility:hidden;pointer-events:none}
+.loading-logo,.logo{
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;overflow:hidden;
+  background:rgba(255,255,255,.98);
+  border:2px solid #21C55D;
+}
+.loading-logo{
+  width:125px;height:125px;
+  box-shadow:0 0 0 5px rgba(33,197,93,.10),0 15px 45px rgba(0,0,0,.35),inset 0 2px 5px rgba(255,255,255,.8);
+  animation:logoPulse 1.5s infinite ease-in-out;
+}
+.loading-logo img{width:108px;height:108px;object-fit:contain;border-radius:50%;display:block}
+.loading-logo .logo-fallback{font-size:60px}
+.logo{
+  width:92px;height:92px;margin:8px auto 12px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;background:rgba(255,255,255,.98);
+  border:2px solid #21C55D;
+  box-shadow:0 8px 25px rgba(0,0,0,.20),inset 0 2px 5px rgba(255,255,255,.8);
+  overflow:hidden;
+}
+.logo img{width:82px;height:82px;object-fit:contain;border-radius:50%}
+.logo-fallback{font-size:40px;line-height:1}
+.logo-fallback.hidden-fallback{display:none!important}
+@keyframes logoPulse{
+  0%{transform:scale(.96)}50%{transform:scale(1.03)}100%{transform:scale(.96)}
+}
+.loading-title{margin-top:20px;font-size:28px;font-weight:900}
+.loading-message{margin-top:8px;min-height:22px;color:var(--muted);font-size:15px}
+.loading-spinner{
+  width:34px;height:34px;margin-top:20px;border-radius:50%;
+  border:3px solid rgba(255,255,255,.18);
+  border-top-color:var(--green);animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.container{width:min(calc(100% - 24px),560px);margin:auto;padding:18px 0 35px}
+.center{text-align:center}
+h1{margin:5px 0;font-size:32px}
+h2{margin:0 0 10px;font-size:20px}
+h3{margin:0 0 8px;font-size:17px}
+.muted{color:var(--muted);line-height:1.55}
+
+.card{
+  background:rgba(16,43,76,.96);border:1px solid var(--line);
+  border-radius:20px;padding:19px;margin:15px 0;
+  box-shadow:0 8px 25px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.03);
+}
+input,textarea{
+  width:100%;padding:14px;margin:6px 0;border-radius:12px;
+  border:1px solid #3C5F7E;background:var(--navy2);color:var(--white);
+  font-size:16px;outline:none;
+}
+input::placeholder,textarea::placeholder{color:#7892AA}
+input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(0,191,255,.08)}
+textarea{min-height:120px;resize:vertical}
+
+.password-wrap{position:relative}
+.password-wrap input{padding-right:48px}
+.eye{
+  position:absolute;right:5px;top:6px;width:42px;height:44px;
+  border:0;background:transparent;color:white;font-size:19px;cursor:pointer;
+}
+
+.btn{
+  width:100%;min-height:52px;padding:13px;border-radius:14px;border:0;margin:7px 0;
+  font-weight:900;font-size:15px;cursor:pointer;text-decoration:none;
+  display:flex;justify-content:center;align-items:center;text-align:center;position:relative;
+  letter-spacing:.15px;text-shadow:0 2px 0 rgba(0,0,0,.28),0 3px 8px rgba(0,0,0,.22);
+  transition:transform .12s ease,filter .12s ease,box-shadow .12s ease;
+  overflow:hidden;isolation:isolate;
+}
+.btn::before{
+  content:"";position:absolute;inset:1px 1px 52% 1px;border-radius:inherit;
+  background:linear-gradient(to bottom,rgba(255,255,255,.24),rgba(255,255,255,0));
+  pointer-events:none;z-index:-1;
+}
+.btn:hover{filter:brightness(1.08);text-shadow:0 2px 0 rgba(0,0,0,.32),0 0 10px rgba(255,255,255,.12)}
+.btn:active{transform:translateY(3px) scale(.98);box-shadow:0 2px 0 rgba(0,0,0,.25)!important}
+.btn:disabled{opacity:.6;cursor:wait}
+.primary{background:linear-gradient(145deg,#27D1FF,#0099D8);color:#001B2D;box-shadow:0 6px 0 #006B96,0 10px 20px rgba(0,191,255,.20)}
+.green{background:linear-gradient(145deg,#35E36F,#18A94B);color:white;box-shadow:0 6px 0 #117737,0 10px 20px rgba(33,197,93,.18)}
+.secondary{background:linear-gradient(145deg,#285477,#142F4B);color:white;border:1px solid #315D82;box-shadow:0 5px 0 #081A2B,0 8px 15px rgba(0,0,0,.18)}
+.danger{background:linear-gradient(145deg,#B52B2B,#7F1D1D);color:white;box-shadow:0 6px 0 #541010,0 10px 18px rgba(0,0,0,.20)}
+.whatsapp{background:linear-gradient(145deg,#35E477,#18B957);color:white;box-shadow:0 6px 0 #087A38,0 10px 18px rgba(37,211,102,.20)}
+.telegram{background:linear-gradient(145deg,#35B8F2,#168BC5);color:white;box-shadow:0 6px 0 #0B5E88,0 10px 18px rgba(34,158,217,.20)}
+.wave{background:linear-gradient(145deg,#39CFFF,#079DDC);color:white;box-shadow:0 6px 0 #056B96,0 10px 18px rgba(24,185,255,.20)}
+.orange{background:linear-gradient(145deg,#FFB82E,#F07800);color:white;box-shadow:0 6px 0 #A74B00,0 10px 18px rgba(245,158,11,.20)}
+.back-button{width:auto;display:inline-flex;padding:10px 17px;margin-bottom:12px}
+
+.forgot{
+  display:block;text-align:center;color:var(--blue);text-decoration:none;
+  font-size:14px;font-weight:800;margin-top:12px;cursor:pointer;
+}
+.forgot:hover{text-decoration:underline}
+.status{min-height:24px;margin-top:9px;text-align:center;line-height:1.45;color:var(--muted)}
+.status.success{color:#6EE7A0}
+.status.error{color:#FF8A8A}
+/* BatBot professional UI helpers */
+.payment-request-card{background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);border-left:3px solid var(--gold);border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 10px 28px rgba(0,0,0,.18)}
+.payment-request-title{font-size:16px;font-weight:900;color:#fff;margin-bottom:10px}
+.payment-request-details{display:grid;gap:7px;color:#D9E7F3;line-height:1.45}
+.payment-request-reference{margin-top:10px;padding:11px 12px;border-radius:12px;background:#071A2D;border:1px solid rgba(83,207,255,.22);word-break:break-word}
+.payment-request-reference-label{display:block;color:#6EE7A0;font-size:11px;text-transform:uppercase;letter-spacing:.55px;font-weight:900;margin-bottom:5px}
+.payment-request-reference code{font-size:14px;color:#fff;letter-spacing:.35px}
+.payment-request-date{margin-top:9px;color:#AFC1D4;font-size:13px}
+.payment-request-status{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin-top:10px;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:900;background:#12395B;border:1px solid #315D82;color:#D9E7F3}
+.payment-request-status.accepted{background:rgba(33,197,93,.12);border-color:rgba(33,197,93,.42);color:#6EE7A0}
+.payment-request-status.rejected{background:rgba(255,75,75,.10);border-color:rgba(255,75,75,.42);color:#FFB0B0}
+.payment-request-status.pending{background:rgba(245,197,66,.09);border-color:rgba(245,197,66,.35);color:#FFE59A}
+.payment-request-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+.payment-request-actions .btn{margin:0;min-height:44px}
+.payment-processing-note{margin-top:12px;padding:12px 13px;border-radius:13px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.24);color:#D9E7F3;font-size:13px;line-height:1.5}
+.professional-status{padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);color:#D9E7F3;line-height:1.45;text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.14)}
+.professional-status.success{border-color:rgba(110,231,160,.35)}
+.professional-status.error{border-color:rgba(255,138,138,.4)}
+.ai-progress-status{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(0,213,255,.35);color:#D9E7F3;line-height:1.4;text-align:left}
+.ai-progress-status strong{display:block;color:#fff}.ai-progress-status small{display:block;color:#AFC1D4;margin-top:2px}
+.batbot-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.28);border-top-color:#39CFFF;border-radius:50%;animation:batbotSpin .8s linear infinite;vertical-align:-3px;flex:0 0 auto}
+.professional-status.loading{border-color:rgba(0,191,255,.34)}
+.professional-status-head{display:flex;align-items:center;gap:8px;font-weight:900;margin-bottom:4px}
+.professional-status-body{color:#D9E7F3;line-height:1.48}
+.professional-status-body small{display:block;color:#AFC1D4;margin-top:4px}
+.status:empty{display:none}
+.status{width:100%;margin-top:10px}
+.status .professional-status{width:100%}
+.batbot-receipt{position:relative;margin-top:12px;padding:16px;border-radius:18px;background:linear-gradient(145deg,#f8fbff,#dfeaf3);color:#0B223D;border:1px solid rgba(83,207,255,.55);box-shadow:0 12px 28px rgba(0,0,0,.22);overflow:hidden}
+.batbot-receipt::before{content:"";position:absolute;inset:7px;border:1px dashed rgba(11,34,61,.20);border-radius:13px;pointer-events:none}
+.batbot-receipt-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:11px;border-bottom:1px solid rgba(11,34,61,.14)}
+.batbot-receipt-brand{display:flex;align-items:center;gap:9px;font-weight:1000;letter-spacing:.6px}
+.batbot-receipt-brand img{width:36px;height:36px;object-fit:contain;border-radius:50%;background:#fff;border:2px solid #21C55D}
+.batbot-receipt-subtitle{font-size:10px;color:#52708A;margin-top:2px;text-transform:uppercase;letter-spacing:.8px}
+.batbot-receipt-id{font-size:11px;font-weight:900;color:#52708A;text-align:right}
+.batbot-receipt-body{position:relative;display:grid;gap:7px;padding:12px 0}
+.batbot-receipt-row{display:flex;justify-content:space-between;gap:12px;font-size:13px;line-height:1.4}
+.batbot-receipt-row span:first-child{color:#52708A}
+.batbot-receipt-row strong{color:#0B223D;text-align:right;word-break:break-word}
+.batbot-receipt-reference{position:relative;margin-top:3px;padding:10px;border-radius:11px;background:#071A2D;color:#fff}
+.batbot-receipt-reference-label{display:block;color:#6EE7A0;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.65px;margin-bottom:4px}
+.batbot-receipt-reference code{font-size:13px;word-break:break-all;color:#FFFFFF;font-weight:900}
+.batbot-receipt-row.client strong{color:#000000;font-weight:1000}
+.batbot-receipt-row strong{color:#000000;font-weight:900}
+.batbot-receipt-copy-reference{background:linear-gradient(145deg,#285477,#142F4B);color:#fff}
+.batbot-receipt-actions .btn{font-size:12px}
+.batbot-receipt-footer{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid rgba(11,34,61,.14)}
+.batbot-receipt-status{font-size:12px;font-weight:900}
+.batbot-receipt-status.accepted{color:#087A38}.batbot-receipt-status.rejected{color:#A51D1D}.batbot-receipt-status.pending{color:#9A6A00}
+.batbot-receipt-stamp{width:108px;min-height:68px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px double currentColor;border-radius:10px;transform:rotate(-6deg);font-weight:1000;text-align:center;line-height:1.05;text-transform:uppercase;letter-spacing:.45px;background:rgba(255,255,255,.42);opacity:.92}
+.batbot-receipt-stamp span{font-size:9px;margin-top:4px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.batbot-receipt-stamp.accepted{color:#079447}.batbot-receipt-stamp.rejected{color:#C12727}.batbot-receipt-stamp.pending{color:#B17A00}
+.batbot-receipt-actions{position:relative;margin-top:11px;display:grid;grid-template-columns:1fr;gap:7px}
+.batbot-receipt-actions .btn{margin:0;min-height:43px}
+.payment-request-card .batbot-receipt{margin-top:13px}
+.professional-loading{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);color:#D9E7F3;line-height:1.4}
+.professional-loading strong{display:block;color:#fff}.professional-loading small{display:block;color:#AFC1D4;margin-top:2px}
+@media(max-width:380px){.batbot-receipt{padding:13px}.batbot-receipt-row{font-size:12px}.batbot-receipt-stamp{width:96px;min-height:62px}}
+/* Transactions verticales et lisibilité renforcée */
+#myTransactionsList,#paymentRequestsAdminList{display:flex;flex-direction:column;width:100%;min-width:0;overflow-x:hidden}
+.payment-request-card{width:100%;min-width:0;overflow:hidden}
+.batbot-receipt{width:100%;min-width:0;overflow:hidden}
+.batbot-receipt-row{display:grid;grid-template-columns:minmax(110px,42%) minmax(0,1fr);align-items:start}
+.batbot-receipt-row span{font-weight:800;color:#35536D!important}
+.batbot-receipt-row strong{color:#000000!important;font-weight:900!important;opacity:1!important;text-align:right;text-shadow:none!important}
+.batbot-receipt-row span:first-child{color:#35536D!important;font-weight:800}
+.batbot-receipt-body{gap:9px}
+.batbot-receipt-reference{margin-top:5px}
+.batbot-receipt-actions{margin-top:14px;padding-top:12px;border-top:1px solid rgba(11,34,61,.14);gap:9px}
+.batbot-receipt-reference{width:100%;min-width:0;overflow:hidden}
+.batbot-receipt-reference code{display:block;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
+.batbot-receipt-actions{width:100%;min-width:0}
+@media(max-width:520px){
+  #usersList{display:flex;flex-direction:column;gap:12px;width:100%;min-width:0}
+  #usersList .member-card{width:100%;min-width:0;margin:0;padding:14px}
+  #usersList .member-card-top{align-items:flex-start;gap:10px}
+  #usersList .member-username{min-width:0;flex:1;line-height:1.35;overflow-wrap:anywhere}
+  #usersList .member-card-top .badge{flex:0 0 auto;max-width:46%;white-space:normal;text-align:center}
+  #usersList .admin-actions{grid-template-columns:1fr;gap:8px}
+  #usersList .admin-actions .btn{width:100%;min-height:44px;font-size:13px}
+  .batbot-receipt{width:100%;min-width:0;padding:14px}
+  .batbot-receipt-row{grid-template-columns:minmax(108px,40%) minmax(0,60%);gap:9px}
+  .batbot-receipt-row strong{font-size:13px;text-align:right}
+}
+@media(max-width:380px){
+  .batbot-receipt-row{grid-template-columns:minmax(96px,38%) minmax(0,62%);gap:8px}
+  .batbot-receipt-row strong{text-align:right;font-size:12px}
+  .batbot-receipt-row span{font-size:11px}
+}
+
+/* Centre de notifications BatBot */
+.batbot-messages-card{border:1px solid rgba(0,191,255,.35);background:linear-gradient(145deg,#102F52,#0B223D)}
+.batbot-messages-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.batbot-message-badge{display:inline-flex;align-items:center;justify-content:center;min-width:27px;height:27px;padding:0 8px;border-radius:999px;background:#DC2626;color:#fff;font-size:12px;font-weight:900;box-shadow:0 4px 12px rgba(220,38,38,.25)}
+.batbot-message-badge.hidden{display:none}
+.batbot-message-list{display:grid;gap:10px;margin-top:12px}
+.batbot-message-item{padding:13px;border-radius:14px;background:#071A2D;border:1px solid rgba(83,207,255,.22)}
+.batbot-message-item.unread{border-color:rgba(33,197,93,.55);box-shadow:0 0 0 1px rgba(33,197,93,.08)}
+.batbot-message-title{font-weight:900;color:#fff;font-size:15px}.batbot-message-date{margin-top:4px;color:#7892AA;font-size:11px}.batbot-message-body{margin-top:8px;color:#D9E7F3;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.batbot-message-modal{position:fixed;inset:0;z-index:250;background:rgba(2,10,20,.88);display:flex;align-items:center;justify-content:center;padding:16px}
+.batbot-message-modal.hidden{display:none}
+.batbot-message-modal-inner{width:min(420px,100%);max-height:calc(100vh - 32px);overflow:auto;background:linear-gradient(145deg,#102F52,#071A2D);border:1px solid rgba(83,207,255,.45);border-radius:20px;padding:17px;box-shadow:0 20px 65px rgba(0,0,0,.55)}
+.batbot-message-modal-kicker{color:#6EE7A0;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.batbot-message-modal-title{margin:5px 0 0;color:#fff;font-size:21px;font-weight:900}.batbot-message-modal-body{margin-top:12px;color:#D9E7F3;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.batbot-message-modal-actions{display:grid;gap:8px;margin-top:15px}.batbot-admin-message-form{display:grid;gap:7px}.batbot-admin-message-list{display:grid;gap:9px;margin-top:12px}.batbot-admin-message-item{padding:12px;border-radius:13px;background:#071A2D;border:1px solid rgba(83,207,255,.2)}
+.batbot-admin-message-meta{font-size:11px;color:#AFC1D4;margin-top:4px}
+
+
+.batbot-btn-spinner{width:16px;height:16px;margin-right:8px}
+@keyframes batbotSpin{to{transform:rotate(360deg)}}
+.notice{padding:13px;border-left:3px solid var(--blue);background:#0C2745;border-radius:8px;line-height:1.5;margin:10px 0;color:#D9E7F3}
+
+.payment-card{border:1px solid rgba(0,191,255,.45);background:linear-gradient(145deg,#102F52,#0B223D)}
+.payment-price{text-align:center;margin:12px 0 18px}
+.payment-price strong{display:block;font-size:38px;color:var(--green)}
+.payment-price span{color:var(--muted);font-size:13px}
+.payment-number{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:14px;border-radius:12px;background:#071A2D;border:1px solid #315D82;margin:10px 0;
+}
+.payment-number strong{font-size:20px;letter-spacing:1px}
+.copy-number{width:auto;min-height:40px;padding:9px 12px;margin:0;font-size:12px}
+.payment-confirm{
+  margin-top:12px;padding:12px;border-radius:12px;background:rgba(33,197,93,.08);
+  border:1px solid rgba(33,197,93,.35);color:#D9FBE5;line-height:1.45;font-size:13px;
+}
+
+.subscription-card{border:1px solid rgba(245,197,66,.55);background:linear-gradient(145deg,#173B59,#0B223D)}
+.subscription-price{text-align:center;margin:12px 0}
+.subscription-price strong{display:block;font-size:36px;color:var(--gold)}
+.subscription-price span{color:var(--muted);font-size:13px}
+.subscription-badge{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;
+  background:#075B93;border:1px solid #3AC5FF;color:white;font-size:12px;font-weight:900;
+  box-shadow:0 4px 10px rgba(0,191,255,.18);
+}
+
+.range{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.range-box{padding:14px;border-radius:14px;text-align:center;background:#0B223D;border:1px solid #315D82}
+.range-box strong{display:block;font-size:24px;color:var(--blue);margin-bottom:5px}
+
+.upload{display:block;margin-top:12px;padding:20px 14px;border:2px dashed #3C5F7E;border-radius:14px;text-align:center;background:#0B223D;cursor:pointer}
+.upload:hover{border-color:var(--blue)}
+.upload strong{display:block;margin-bottom:5px}
+.upload small{color:var(--muted);line-height:1.4}
+#capture{display:none}
+.file-name{margin-top:9px;color:#6EE7A0;font-size:13px;word-break:break-word}
+
+.two-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.contact-button{min-height:58px;margin:0;font-size:14px}
+.step{display:flex;gap:11px;margin:14px 0}
+.step-number{min-width:32px;width:32px;height:32px;border-radius:50%;background:var(--blue);color:#001B2D;display:flex;align-items:center;justify-content:center;font-weight:900}
+.step-text strong{display:block;margin-bottom:4px}
+.step-text span{color:var(--muted);font-size:13px;line-height:1.4}
+
+.badge{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:999px;
+  background:#123B60;border:1px solid var(--blue);font-size:12px;font-weight:800;
+}
+.badge-blue{background:#0879BC;border-color:#4CD3FF;box-shadow:0 3px 10px rgba(0,191,255,.25)}
+.user-box{
+  background:linear-gradient(135deg,rgba(20,65,96,.96),rgba(8,38,63,.98));
+  border:1px solid rgba(83,207,255,.42);
+  padding:15px;border-radius:16px;margin-bottom:15px;text-align:center;
+  box-shadow:0 8px 24px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.10);
+  text-shadow:0 2px 0 rgba(0,0,0,.25);
+}
+.user-box strong{display:inline-block;margin-top:4px;color:#FFFFFF;font-size:18px;letter-spacing:.2px;text-shadow:0 2px 0 rgba(0,0,0,.3),0 0 10px rgba(83,207,255,.16)}
+
+.match-card{background:#0C2745;border:1px solid #315D82;border-radius:14px;padding:14px;margin:10px 0}
+.match-title{font-weight:900;margin-bottom:8px}
+.probability{display:flex;justify-content:space-between;gap:7px;flex-wrap:wrap}
+.prob{flex:1;min-width:80px;padding:9px 6px;border-radius:10px;background:#071A2D;border:1px solid #315D82;text-align:center}
+.prob strong{display:block;color:var(--blue);font-size:18px}
+.prob span{color:var(--muted);font-size:11px}
+
+.bookmaker{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px;margin:9px 0;border-radius:14px;background:#0C2745;border:1px solid #315D82}
+.bookmaker-name{font-weight:900}
+.bookmaker-bonus{display:block;margin-top:4px;color:#6EE7A0;font-size:12px}
+.bookmaker .btn{width:auto;min-width:105px;margin:0;min-height:44px;font-size:12px}
+
+.admin-header-icon{
+  width:96px;height:96px;margin:8px auto 12px;padding:7px;
+  display:flex;justify-content:center;align-items:center;
+  border-radius:50%;background:linear-gradient(145deg,#29465c,#0b223a);
+  border:2px solid var(--gold);
+  box-shadow:0 0 0 4px rgba(245,197,66,.10),0 8px 25px rgba(0,0,0,.28),inset 0 1px 3px rgba(255,255,255,.18);
+  overflow:hidden;
+}
+.admin-header-icon img{
+  width:100%!important;height:100%!important;object-fit:contain;
+  display:block;border-radius:50%;padding:2px;
+  background:rgba(255,255,255,.98);
+  border:1.5px solid var(--gold);
+}
+.member-card{background:#0C2745;border:1px solid #315D82;border-radius:13px;padding:13px;margin:9px 0}
+.member-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.member-username{font-weight:800;word-break:break-word}
+.admin-small{color:var(--muted);font-size:12px}
+.admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.admin-actions .btn{margin:0;min-height:42px;font-size:12px}
+.reset-request{background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}
+.social-grid{display:grid;grid-template-columns:1fr;gap:9px}
+.social-btn{min-height:52px}
+
+.profile-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.status-card{display:flex;align-items:center;gap:10px;padding:16px;border-radius:18px;border:1px solid rgba(83,207,255,.35);box-shadow:0 8px 22px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.08);background:linear-gradient(145deg,#12395b,#081e35)}
+.status-card .status-icon{font-size:28px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}.status-card span{display:block;font-size:12px;color:#c4d8e8}.status-card strong{display:block;margin-top:5px;font-size:17px;color:#fff;text-shadow:0 2px 1px rgba(0,0,0,.35)}
+.premium-status-card{border-color:rgba(245,197,66,.5);background:linear-gradient(145deg,#29465c,#10253b)}.ai-status-card{border-color:rgba(0,213,255,.5);background:linear-gradient(145deg,#124c64,#0b263f)}
+.ai-match-fields{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}.ai-match-fields input{margin:0}
+.ai-result{overflow:hidden}.ai-match-result{padding:12px 0;border-bottom:1px solid #315D82}.ai-match-result:last-child{border-bottom:0}
+.ai-result-title{font-size:16px;font-weight:900;margin-bottom:10px}.ai-section-label{color:#6EE7A0;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;margin:12px 0 7px}
+.ai-prob-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.ai-prob-card{padding:9px 5px;text-align:center;border:1px solid #315D82;border-radius:10px;background:#0C2745}.ai-prob-card strong{display:block;font-size:12px}.ai-prob-card span{display:block;color:#6EE7A0;font-weight:900;margin-top:4px}
+.ai-options{display:grid;grid-template-columns:1fr;gap:7px}.ai-option-card{border:1px solid #315D82;border-radius:11px;background:#0C2745;padding:10px}.ai-option-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-close{border:0;background:#193A5C;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer}.ai-option-meta{color:#AFC1D4;font-size:12px;margin-top:5px}.ai-recommendation,.ai-combined{margin-top:10px;padding:11px;border:1px solid rgba(33,197,93,.4);border-radius:11px;background:rgba(33,197,93,.07);line-height:1.45}
+.ai-card{border:1px solid rgba(0,213,255,.45);background:linear-gradient(145deg,#123b5b,#0a223a)}.ai-result{margin-top:14px;padding:15px;border-radius:14px;background:#071a2d;border:1px solid #315d82;white-space:pre-wrap;line-height:1.55}
+@media(max-width:380px){.profile-status-grid{gap:7px}.status-card{padding:12px}.status-card strong{font-size:14px}}
+
+
+.admin-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}.admin-tool-btn{min-height:62px;border:1px solid rgba(0,213,255,.4);border-radius:15px;background:linear-gradient(145deg,#123b5b,#0b223a);color:#fff;font-weight:800;box-shadow:0 5px 15px rgba(0,0,0,.15)}.admin-modal{position:fixed;inset:0;background:rgba(2,10,20,.88);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}.admin-modal-inner{width:min(680px,100%);margin-top:25px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.45)}.admin-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.admin-modal-close{width:auto;margin:0;padding:8px 12px}.admin-modal-body>.card{margin:0}
+
+/* Récupération sécurisée du mot de passe — ajout isolé, sans modifier les autres composants */
+.password-reset-delivery{margin-top:12px;padding:14px;border:1px solid rgba(33,197,93,.38);border-radius:15px;background:linear-gradient(145deg,rgba(18,59,50,.75),rgba(11,34,61,.95));box-shadow:0 8px 22px rgba(0,0,0,.18)}
+.password-reset-delivery.pending{border-color:rgba(245,197,66,.42);background:linear-gradient(145deg,rgba(72,57,20,.38),rgba(11,34,61,.95))}
+.password-reset-delivery-title{font-weight:900;font-size:15px;margin-bottom:6px}
+.password-reset-delivery-password{display:flex;align-items:center;gap:8px;margin:11px 0;padding:12px;border-radius:12px;background:#071A2D;border:1px solid #315D82}
+.password-reset-delivery-password code{flex:1;font-size:19px;font-weight:900;letter-spacing:1px;color:#6EE7A0;word-break:break-all}
+.password-reset-delivery-password .btn{width:auto;min-height:40px;margin:0;padding:8px 11px;font-size:12px}
+.password-reset-meta{font-size:12px;color:var(--muted);line-height:1.45}
+.password-change-card{border:1px solid rgba(0,191,255,.42);background:linear-gradient(145deg,#123b5b,#0a223a)}
+.password-change-card .security-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#123b60;border:1px solid #315d82;color:#d9e7f3;font-size:12px;font-weight:800;margin-bottom:10px}
+.password-reset-modal{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,10,20,.88);backdrop-filter:blur(6px)}
+.password-reset-modal.hidden{display:none}
+.password-reset-modal-inner{width:min(360px,calc(100% - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:16px;border-radius:20px;background:linear-gradient(145deg,#102f4d,#071a2d);border:1px solid rgba(83,207,255,.42);box-shadow:0 20px 65px rgba(0,0,0,.55)}
+.password-reset-modal .notice{font-size:12px;line-height:1.45;padding:10px;margin:9px 0}
+.password-reset-modal-password{padding:10px;margin:9px 0}
+.password-reset-modal-password code{font-size:18px;letter-spacing:1px}
+.password-reset-modal-actions{grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.password-reset-modal-actions .btn{min-height:42px;font-size:12px;padding:8px 10px}
+.batbot-confirm-modal{position:fixed;inset:0;z-index:100002;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(2,10,20,.86);backdrop-filter:blur(7px)}
+.batbot-confirm-modal.hidden{display:none}
+.batbot-confirm-inner{width:min(340px,calc(100% - 24px));padding:18px;border-radius:20px;background:linear-gradient(145deg,#102f4d,#071a2d);border:1px solid rgba(83,207,255,.42);box-shadow:0 18px 55px rgba(0,0,0,.55);text-align:left}
+.batbot-confirm-inner h3{margin:0 0 7px;font-size:18px}
+.batbot-confirm-inner p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.batbot-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}
+.batbot-confirm-actions .btn{margin:0;min-height:42px}
+.password-reset-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.password-reset-modal-head h2{margin:0}
+.password-reset-modal-close{width:auto!important;min-height:42px!important;margin:0!important;padding:8px 12px!important}
+.password-reset-modal-user{color:var(--muted);font-size:13px;margin:4px 0 14px}
+.password-reset-modal-password{display:flex;align-items:center;gap:9px;padding:14px;border-radius:14px;background:#071a2d;border:1px solid #315d82;margin:12px 0}
+.password-reset-modal-password code{flex:1;min-width:0;color:#6EE7A0;font-size:20px;font-weight:900;letter-spacing:1.2px;word-break:normal;white-space:nowrap;overflow-x:auto;overflow-y:hidden}
+.password-reset-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
+.password-reset-modal-actions .btn{margin:0}
+.hidden{display:none!important}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
+footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
+
+@media(max-width:380px){
+  .two-columns{gap:6px}
+  .contact-button{font-size:12px}
+  .container{width:calc(100% - 18px)}
+  .card{padding:15px}
+  .payment-number strong{font-size:17px}
+  h1{font-size:29px}
+  .payment-price strong{font-size:34px}
+  .bookmaker{align-items:flex-start;flex-direction:column}
+  .bookmaker .btn{width:100%}
+}
+.admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
+
+.brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
+.payment-window-launcher{display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0 14px}
+.payment-window-trigger{width:100%;min-height:48px;border:0;border-radius:13px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+.payment-window-source.hidden{display:none!important}
+.payment-window-modal{position:fixed;inset:0;z-index:420;display:flex;align-items:flex-start;justify-content:center;padding:14px;background:rgba(2,10,20,.92);overflow:auto}
+.payment-window-modal.hidden{display:none}
+.payment-window-inner{width:min(620px,100%);margin-top:14px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.55)}
+.payment-window-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;margin-bottom:10px;background:#0b223a}
+.payment-window-head strong{font-size:17px}
+.payment-window-close{width:auto;min-height:42px;margin:0;padding:8px 12px;white-space:nowrap}
+.payment-window-body>.card{margin:10px 0}
+.payment-window-body>.payment-window-source{display:block!important}
+.payment-window-conditions{font-size:14px;line-height:1.55;color:#D9E7F3}
+.payment-window-conditions .notice{margin:9px 0}
+@media(min-width:480px){.payment-window-launcher{grid-template-columns:repeat(3,minmax(0,1fr))}.payment-window-trigger{font-size:12px;min-height:58px}}
+
+.batbot-toast-container{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;width:min(92vw,420px);display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.batbot-toast{display:flex;align-items:flex-start;gap:10px;padding:13px 15px;border:1px solid rgba(110,231,160,.45);border-radius:14px;background:linear-gradient(135deg,#123b32,#0b223d);box-shadow:0 10px 30px rgba(0,0,0,.35);color:#fff;font-weight:700;opacity:0;transform:translateY(-12px);transition:opacity .2s ease,transform .2s ease;pointer-events:auto}
+.batbot-toast.show{opacity:1;transform:translateY(0)}
+.batbot-toast.error{border-color:rgba(248,113,113,.6);background:linear-gradient(135deg,#4a2027,#0b223d)}
+.batbot-toast-icon{font-size:20px;line-height:1.1}.batbot-toast-text{font-size:14px;line-height:1.4}
+
+/* Fenêtre professionnelle BatBot pour la durée des accès */
+.batbot-duration-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,8,20,.78);backdrop-filter:blur(5px)}
+.batbot-duration-modal{width:min(92vw,390px);padding:24px;border:1px solid rgba(75,190,255,.4);border-radius:22px;background:linear-gradient(145deg,#102f4d,#071a2d);box-shadow:0 18px 60px rgba(0,0,0,.5);color:#fff}
+.batbot-duration-modal h3{margin:0 0 9px;font-size:21px}.batbot-duration-modal p{margin:0 0 18px;color:#b9cce0;line-height:1.5}.batbot-duration-modal input{width:100%;box-sizing:border-box;padding:13px;border-radius:12px;border:1px solid #37617f;background:#071a2d;color:#fff;font-size:18px;outline:none}.batbot-duration-actions{display:flex;gap:10px;margin-top:18px}.batbot-duration-actions button{flex:1}
+
+
+/* ===== BATBOT PROFESSIONAL USER DASHBOARD ===== */
+.batbot-pro-dashboard{margin:18px 0;display:grid;gap:14px}.batbot-pro-hero{background:linear-gradient(135deg,#0d3154,#0a2139);border:1px solid rgba(0,191,255,.28);border-radius:20px;padding:18px;box-shadow:0 14px 35px rgba(0,0,0,.18)}.batbot-pro-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.batbot-pro-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--blue);font-weight:800}.batbot-pro-hero h2{margin:5px 0 6px;font-size:22px}.batbot-pro-hero p{margin:0;color:var(--muted);line-height:1.5;font-size:13px}.batbot-pro-live{white-space:nowrap;border:1px solid rgba(33,197,93,.35);background:rgba(33,197,93,.1);color:#7df0a5;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800}.batbot-pro-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}.batbot-pro-stat{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;min-width:0}.batbot-pro-stat span{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.batbot-pro-stat strong{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.batbot-pro-actions{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:10px}.batbot-pro-action{border:1px solid var(--line);background:var(--card);border-radius:15px;padding:13px;text-align:left;color:var(--white);cursor:pointer;min-height:72px;transition:transform .15s ease,border-color .15s ease,background .15s ease}.batbot-pro-action:hover{transform:translateY(-1px);border-color:rgba(0,191,255,.55);background:#123454}.batbot-pro-action.primary-action{border-color:rgba(0,191,255,.55);background:linear-gradient(145deg,#103b5f,#0d2a46)}.batbot-pro-action-icon{font-size:20px;display:block;margin-bottom:6px}.batbot-pro-action strong{font-size:13px;display:block}.batbot-pro-action small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.batbot-pro-activity{display:grid;grid-template-columns:1fr 1fr;gap:10px}.batbot-pro-mini{border:1px solid var(--line);border-radius:15px;padding:13px;background:rgba(16,43,76,.72)}.batbot-pro-mini-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.batbot-pro-mini-head span{font-size:12px;font-weight:800}.batbot-pro-mini-value{font-size:13px;line-height:1.45;color:var(--muted);min-height:38px}.batbot-pro-mini-value strong{color:var(--white)}.batbot-pro-mini-link{margin-top:8px;background:none;border:0;color:var(--blue);padding:0;font-size:11px;font-weight:800;cursor:pointer}@media(max-width:650px){.batbot-pro-stats{grid-template-columns:1fr 1fr}.batbot-pro-actions{grid-template-columns:1fr 1fr}.batbot-pro-action:first-child{grid-column:1/-1}.batbot-pro-activity{grid-template-columns:1fr}.batbot-pro-hero-top{align-items:center}.batbot-pro-live{font-size:10px;padding:6px 8px}}@media(max-width:390px){.batbot-pro-stats{grid-template-columns:1fr}.batbot-pro-actions{grid-template-columns:1fr}.batbot-pro-action:first-child{grid-column:auto}}
+</style>
+</head>
+
+<body>
+
+<div id="loadingScreen">
+  <div class="loading-logo">
+    <img src="logo.png" alt="BatBot"
+      onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
+    <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
+  </div>
+  <div class="loading-title">BatBot</div>
+  <div id="loadingMessage" class="loading-message">Connexion en cours…</div>
+  <div class="loading-spinner"></div>
+</div>
+
+<main class="container">
+
+<section id="auth">
+
+  <div class="center">
+    <div class="logo">
+      <img src="logo.png" alt="BatBot"
+        onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
+      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
+    </div>
+    <h1>BatBot<sup class="brand-mark">•</sup></h1>
+    <p class="muted">Analyse professionnelle de vos matchs</p>
+  </div>
+
+  <div id="registerBox" class="card">
+    <h2>👤 Créer un compte</h2>
+    <p class="muted">Créez votre compte BatBot pour accéder à l'application.</p>
+
+    <input id="registerUsername" type="text" autocomplete="username" autocapitalize="none"
+      maxlength="30" placeholder="Nom d'utilisateur">
+
+    <div class="password-wrap">
+      <input id="registerPassword" type="password" autocomplete="new-password"
+        placeholder="Mot de passe — 6 caractères minimum">
+      <button class="eye" type="button" onclick="togglePassword('registerPassword',this)">👁</button>
+    </div>
+
+    <div class="password-wrap">
+      <input id="registerPassword2" type="password" autocomplete="new-password"
+        placeholder="Confirmer le mot de passe">
+      <button class="eye" type="button" onclick="togglePassword('registerPassword2',this)">👁</button>
+    </div>
+
+    <button id="registerButton" class="btn primary" type="button" onclick="register()">✨ Créer mon compte</button>
+    <div id="registerStatus" class="status"></div>
+
+    <button class="btn secondary" type="button" onclick="showLogin()">🔐 J'ai déjà un compte</button>
+  </div>
+
+  <div id="loginBox" class="card hidden">
+    <button class="btn secondary back-button" type="button" onclick="showRegister()">← Retour</button>
+    <h2>🔐 Connexion</h2>
+
+    <input id="loginUsername" type="text" autocomplete="username" autocapitalize="none"
+      placeholder="Nom d'utilisateur">
+
+    <div class="password-wrap">
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Mot de passe">
+      <button class="eye" type="button" onclick="togglePassword('loginPassword',this)">👁</button>
+    </div>
+
+    <button id="loginButton" class="btn primary" type="button" onclick="login()">🚀 Se connecter</button>
+
+    <a class="forgot" onclick="forgotPassword()">🔑 Mot de passe oublié ?</a>
+    <div id="loginStatus" class="status"></div>
+  </div>
+
+  <div id="forgotBox" class="card hidden">
+    <h2>🔑 Mot de passe oublié</h2>
+    <p class="muted">
+      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation au service BatBot.
+    </p>
+
+    <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
+      placeholder="Votre nom d'utilisateur">
+
+    <button id="forgotButton" class="btn primary" type="button" onclick="submitForgotPassword()">
+      📩 Envoyer la demande
+    </button>
+
+    <div id="forgotStatus" class="status"></div>
+
+    <a id="forgotWhatsApp" class="btn whatsapp hidden" target="_blank" rel="noopener noreferrer">
+      💬 Contacter l'administrateur sur WhatsApp
+    </a>
+
+    <button class="btn secondary" type="button" onclick="hideForgot()">← Retour à la connexion</button>
+  </div>
+
+  <div id="changePasswordBox" class="card password-change-card hidden">
+    <span class="security-badge">🔐 Sécurité du compte</span>
+    <h2>Créer votre nouveau mot de passe</h2>
+    <p class="muted">Votre mot de passe temporaire a été accepté. Pour protéger votre compte, choisissez maintenant un nouveau mot de passe personnel.</p>
+
+    <div class="password-wrap">
+      <input id="newPassword" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe — 6 caractères minimum">
+      <button class="eye" type="button" onclick="togglePassword('newPassword',this)">👁</button>
+    </div>
+
+    <div class="password-wrap">
+      <input id="newPassword2" type="password" autocomplete="new-password" placeholder="Confirmer le nouveau mot de passe">
+      <button class="eye" type="button" onclick="togglePassword('newPassword2',this)">👁</button>
+    </div>
+
+    <button id="changePasswordButton" class="btn primary" type="button" onclick="changePassword()">🔒 Enregistrer mon nouveau mot de passe</button>
+    <div id="changePasswordStatus" class="status"></div>
+  </div>
+
+</section>
+
+<section id="dashboard" class="hidden">
+
+  <div class="center">
+    <div class="logo">
+      <img src="logo.png" alt="BatBot"
+        onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
+      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
+    </div>
+    <h1>BatBot<sup class="brand-mark">•</sup></h1>
+    <p id="welcomeText" class="muted">Bienvenue</p>
+    <span id="profileBadge" class="badge">🏅 Membre BatBot</span>
+  </div>
+
+  <div id="userBox" class="user-box">👤 Compte connecté</div>
+  <div class="profile-status-grid" aria-label="Statuts du compte">
+    <div class="status-card premium-status-card"><div class="status-icon">💎</div><div><span>Statut Premium</span><strong id="premiumStatusText">Non actif</strong></div></div>
+    <div class="status-card ai-status-card"><div class="status-icon">🤖</div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
+  </div>
+
+
+  <section class="batbot-pro-dashboard" aria-label="Tableau de bord BatBot">
+    <div class="batbot-pro-hero"><div class="batbot-pro-hero-top"><div><div class="batbot-pro-kicker">Espace personnel</div><h2 id="batbotProGreeting">Votre espace BatBot</h2><p id="batbotProSubtitle">Gérez vos analyses, votre abonnement et votre accès à BatBot IA depuis un seul espace.</p></div><span class="batbot-pro-live">● Service actif</span></div><div class="batbot-pro-stats"><div class="batbot-pro-stat"><span>⭐ Premium</span><strong id="batbotProPremium">Non actif</strong></div><div class="batbot-pro-stat"><span>🤖 BatBot IA</span><strong id="batbotProAI">Non active</strong></div><div class="batbot-pro-stat"><span>📅 Abonnement</span><strong id="batbotProExpiry">—</strong></div></div></div>
+    <div class="batbot-pro-actions"><button class="batbot-pro-action primary-action" type="button" onclick="document.getElementById('smartDriveAISection')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('aiMatch1')?.focus();"><span class="batbot-pro-action-icon">🤖</span><strong>Analyser mes matchs</strong><small>Lancer BatBot IA</small></button><button class="batbot-pro-action" type="button" onclick="document.getElementById('myTransactionsCard')?.scrollIntoView({behavior:'smooth',block:'start'});"><span class="batbot-pro-action-icon">💳</span><strong>Mes paiements</strong><small>Voir mes transactions</small></button><button class="batbot-pro-action" type="button" onclick="document.getElementById('batbotMessagesCard')?.scrollIntoView({behavior:'smooth',block:'start'});"><span class="batbot-pro-action-icon">🔔</span><strong>Mes messages</strong><small>Informations BatBot</small></button></div>
+    <div class="batbot-pro-activity"><div class="batbot-pro-mini"><div class="batbot-pro-mini-head"><span>💳 Dernière transaction</span></div><div id="batbotProLastTransaction" class="batbot-pro-mini-value">Aucune transaction chargée.</div><button class="batbot-pro-mini-link" type="button" onclick="document.getElementById('myTransactionsCard')?.scrollIntoView({behavior:'smooth',block:'start'});">Voir les transactions →</button></div><div class="batbot-pro-mini"><div class="batbot-pro-mini-head"><span>🔐 État du compte</span></div><div id="batbotProAccountState" class="batbot-pro-mini-value">Compte BatBot actif.</div><button class="batbot-pro-mini-link" type="button" onclick="document.getElementById('userBox')?.scrollIntoView({behavior:'smooth',block:'center'});">Voir mon compte →</button></div></div>
+  </section>
+
+  <section class="card batbot-messages-card" id="batbotMessagesCard">
+    <div class="batbot-messages-head">
+      <h2>🔔 Messages</h2>
+      <span id="batbotMessagesBadge" class="batbot-message-badge hidden">0</span>
+    </div>
+    <p class="muted">Retrouvez ici les annonces et informations importantes de BatBot. Chaque message est conservé pendant 24 heures maximum.</p>
+    <div id="batbotMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des dernières informations…</small></div></div></div>
+  </section>
+
+  <section class="card ai-card" id="smartDriveAISection">
+    <div class="section-kicker">Assistant intelligent</div>
+    <h2>🤖 BatBot IA</h2>
+    <p class="muted">Analysez vos matchs avec BatBot IA. L’accès nécessite un abonnement actif.</p>
+    <div class="ai-match-fields">
+      <input id="aiMatch1" placeholder="Match 1 — équipe 1 vs équipe 2">
+      <input id="aiMatch2" placeholder="Match 2 — équipe 1 vs équipe 2">
+    </div>
+    <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
+    <div id="smartDriveAIStatus" class="status"></div>
+    <div id="smartDriveAIResult" class="ai-result hidden"></div>
+  </section>
+
+  <section class="deposit-space" aria-label="Espace de dépôt et de paiement">
+    <div class="section-kicker">Espace sécurisé</div>
+    <h2>💳 Dépôts & paiements</h2>
+    <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
+    <div class="payment-window-launcher" aria-label="Choisir un moyen de paiement">
+      <button class="payment-window-trigger wave" type="button" data-payment-window="wave">💙 Paiement avec Wave</button>
+      <button class="payment-window-trigger secondary" type="button" data-payment-window="mobile">📱 Orange • MTN • Moov</button>
+      <button class="payment-window-trigger secondary" type="button" data-payment-window="conditions">📋 Conditions de dépôt</button>
+    </div>
+  <div id="waveDayCard" class="card payment-card payment-window-source">
+    <h2>💳 Analyse du jour</h2>
+    <div class="payment-price">
+      <strong>500 F</strong>
+      <span>Paiement pour recevoir l'analyse du jour</span>
+    </div>
+    <div class="notice">
+      📌 Effectuez le paiement de <strong>500 F</strong> avant d'envoyer votre demande d'analyse.
+    </div>
+    <a id="waveDayButton" class="btn wave"
+      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500"
+      target="_blank" rel="noopener noreferrer">💙 Payer 500 F avec Wave</a>
+    <div class="payment-confirm">
+      ✅ Paiement manuel. Après le paiement, revenez dans l'application et envoyez vos matchs à analyser.
+    </div>
+    <div id="paymentStatus" class="status"></div>
+  </div>
+
+  <div id="wavePremiumCard" class="card subscription-card payment-window-source">
+    <h2>⭐ Abonnement 7 jours</h2>
+    <div class="subscription-price">
+      <strong>1 000 F</strong>
+      <span>Accès pendant 7 jours</span>
+    </div>
+    <div class="notice">
+      🏅 Avec l'abonnement, vous n'avez pas besoin de payer <strong>500 F</strong> chaque jour pendant les 7 jours.
+      <br><br>
+      Votre profil reçoit également un <strong>badge bleu</strong>.
+    </div>
+    <a id="wavePremiumButton" class="btn wave"
+      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
+      target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
+    <div class="payment-confirm">
+      📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
+    </div>
+  </div>
+
+  <div id="mobileMoneyCard" class="card payment-window-source">
+    <h2>💰 Autres moyens de paiement</h2>
+    <div class="notice">
+      📱 Vous pouvez également payer par <strong>Orange Money, Moov Money ou MTN Money</strong>.
+      <br><br>
+      Appuyez sur le bouton ci-dessous pour recevoir le numéro de dépôt avec un message prédéfini.
+    </div>
+    <div class="payment-grid">
+      <div class="payment-card"><strong>🟠 Orange Money</strong><span id="orangeMoneyNumber">Chargement...</span><button class="btn secondary" type="button" onclick="copyPaymentNumber('orangeMoneyNumber')">📋 Copier le numéro</button></div>
+      <div class="payment-card"><strong>🟡 MTN Money</strong><span id="mtnMoneyNumber">Chargement...</span><button class="btn secondary" type="button" onclick="copyPaymentNumber('mtnMoneyNumber')">📋 Copier le numéro</button></div>
+      <div class="payment-card"><strong>🔵 Moov Money</strong><span id="moovMoneyNumber">Chargement...</span><button class="btn secondary" type="button" onclick="copyPaymentNumber('moovMoneyNumber')">📋 Copier le numéro</button></div>
+    </div>
+    <label><span class="muted">Offre payée</span><select id="paymentOffer"><option value="Analyse du jour">Analyse du jour — 500 F</option><option value="Premium 7 jours">Premium — 1 000 F / 7 jours</option><option value="Premium + IA 7 jours">Premium + IA — 1 000 F / 7 jours</option></select></label>
+    <label><span class="muted">Opérateur utilisé</span><select id="paymentOperator"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option></select></label>
+    <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
+    <label><span class="muted">Référence de transaction</span><input id="paymentReference" maxlength="120" placeholder="Référence du paiement"></label>
+    <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ Enregistrer la référence</button>
+    <button class="btn whatsapp" type="button" onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
+    <div id="paymentNumberStatus" class="status"></div>
+  </div>
+
+    <div id="paymentWindowModal" class="payment-window-modal hidden" role="dialog" aria-modal="true" aria-labelledby="paymentWindowTitle">
+      <div class="payment-window-inner">
+        <div class="payment-window-head">
+          <strong id="paymentWindowTitle">Paiement</strong>
+          <button id="paymentWindowClose" class="btn secondary payment-window-close" type="button">← Retour</button>
+        </div>
+        <div id="paymentWindowBody" class="payment-window-body"></div>
+      </div>
+    </div>
+
+  </section>
+
+  <div id="myTransactionsCard" class="card">
+    <h2>📊 Mes transactions</h2>
+    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont automatiquement supprimées après 24 heures.</p>
+    <div id="myTransactionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div></div>
+  </div>
+
+
+
+  <div class="card">
+    <h2><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
+    <p class="muted">
+      Après votre paiement de <strong>500 F</strong>, envoyez les différents noms des matchs que vous souhaitez faire analyser.
+    </p>
+
+    <div class="range">
+      <div class="range-box"><strong>2</strong><span>Cote minimum</span></div>
+      <div class="range-box"><strong>10</strong><span>Cote maximum</span></div>
+    </div>
+
+    <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
+
+    <label>
+      <span class="muted">Écrire les matchs à analyser</span>
+      <textarea id="matches" placeholder="Exemple :
+Real Madrid vs FC Barcelone
+PSG vs Marseille"></textarea>
+    </label>
+
+    <label class="upload" for="capture">
+      <strong>📷 Envoyer une capture</strong>
+      <small>Sélectionnez la capture de vos matchs si vous préférez cette méthode.</small>
+      <input id="capture" type="file" accept="image/*" onchange="showFileName()">
+      <div id="fileName" class="file-name"></div>
+    </label>
+
+    <button id="sendAnalysisWhatsAppButton" class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
+    <button id="sendAnalysisTelegramButton" class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
+    <div id="analysisStatus" class="status"></div>
+    <div class="payment-processing-note">⏱️ <strong>Délai de traitement</strong><br>Les demandes d’analyse envoyées au service BatBot ne sont pas traitées instantanément. Le délai habituel est d’environ <strong>5 à 7 minutes</strong>, et peut exceptionnellement atteindre <strong>10 minutes ou plus</strong> selon le nombre de demandes en cours. Le résultat est transmis à l’utilisateur dès que l’analyse est terminée.</div>
+  </div>
+
+  <section class="card" id="dailyFixturesSection" aria-label="Matchs du jour">
+    <h2>⚽ Matchs du jour</h2>
+    <p class="muted">Chargez les matchs disponibles pour préparer vos demandes d’analyse.</p>
+    <button class="btn secondary" type="button" onclick="loadApiFootballFixtures()">⚽ Charger les matchs du jour</button>
+    <div id="apiFootballStatus" class="status"></div>
+    <div id="apiFootballResults" class="ai-result hidden"></div>
+  </section>
+  <section class="partners-space" aria-label="Espace partenaires et bookmakers">
+    <div class="section-kicker">Espace partenaires</div>
+    <h2>🛡️ Partenaires authentifiés</h2>
+    <div class="professional-note">✓ Liens partenaires présentés par BatBot. Avant toute inscription ou utilisation, consultez les conditions de chaque plateforme et vérifiez qu'elle est autorisée dans votre pays.</div>
+  <div class="card">
+    <h2>🏆 Bookmakers disponibles</h2>
+    <p class="muted">Découvrez les plateformes proposées. Vérifiez toujours les conditions et bonus avant utilisation.</p>
+    <div id="bookmakersList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des partenaires</strong><small>Récupération des plateformes disponibles…</small></div></div></div>
+  </div>
+
+  <div class="card">
+    <h2>🎁 Codes coupons disponibles</h2>
+    <p class="muted">Copiez un code, ouvrez la plateforme ou partagez l’offre.</p>
+    <div id="couponsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des coupons</strong><small>Récupération des offres disponibles…</small></div></div></div>
+  </div>
+
+  </section>
+
+  <div class="card">
+    <h2>📊 Probabilités des matchs du jour</h2>
+    <p class="muted">Retrouvez ici les probabilités ajoutées par le service BatBot.</p>
+    <div id="dailyMatches"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des probabilités</strong><small>Récupération des informations BatBot…</small></div></div></div>
+  </div>
+
+
+
+  <div class="card">
+    <h2>👥 Nos groupes</h2>
+    <p class="muted">Rejoignez nos communautés BatBot.</p>
+    <div class="two-columns">
+      <a class="btn contact-button whatsapp"
+        href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
+        target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+      <a class="btn contact-button telegram"
+        href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+    </div>
+  </div>
+
+
+
+  <div id="sdriveReferralCard" class="card hidden">
+    <h2>🚀 Rejoindre BatBot</h2>
+    <p id="sdriveInviteMessage" class="muted"></p>
+    <div id="sdriveReferralActions"></div>
+  </div>
+
+
+
+  <div class="card">
+    <h2>📞 Contacter un agent</h2>
+    <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
+    <div class="two-columns">
+      <a id="whatsappContact" class="btn contact-button whatsapp" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+      <a id="telegramContact" class="btn contact-button telegram"
+        href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+    </div>
+  </div>
+
+
+
+  <div class="card">
+    <h2>📱 Nos réseaux sociaux</h2>
+    <p class="muted">Suivez BatBot sur nos réseaux sociaux.</p>
+    <div class="social-grid">
+      <a class="btn social-btn" style="background:#000;color:white;box-shadow:0 6px 0 #333;"
+        href="https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99ezQTy3tTh" target="_blank" rel="noopener noreferrer">🎵 TikTok</a>
+      <a class="btn social-btn" style="background:#1877F2;color:white;box-shadow:0 6px 0 #0A4A9A;"
+        href="https://www.facebook.com/share/1KDERc7ZAP/" target="_blank" rel="noopener noreferrer">🔵 Facebook</a>
+      <a class="btn social-btn" style="background:linear-gradient(145deg,#E1306C,#833AB4);color:white;box-shadow:0 6px 0 #54206F;"
+        href="https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==" target="_blank" rel="noopener noreferrer">📸 Instagram</a>
+    </div>
+  </div>
+
+
+
+  <div class="card compact-conditions">
+    <h2>📋 Conditions d'utilisation</h2>
+    <details>
+      <summary>🔎 Cliquez ici pour lire les conditions</summary>
+    <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
+    <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
+    <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
+    <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
+    <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>ℹ️ Comment ça fonctionne ?</h2>
+    <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Créez votre compte</strong><span>Inscrivez-vous avec votre nom d'utilisateur et votre mot de passe.</span></div></div>
+    <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Payez 500 F ou abonnez-vous</strong><span>Choisissez le paiement du jour à 500 F ou l'abonnement 7 jours à 1 000 F.</span></div></div>
+    <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d'écran.</span></div></div>
+    <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
+  </div>
+
+  <button class="btn danger" type="button" onclick="logout()">🚪 Se déconnecter</button>
+</section>
+
+<section id="admin" class="hidden">
+
+  <div class="center">
+    <div class="admin-header-icon"><img src="admin-logo.png" alt="Logo administration" style="width:74px;height:74px;object-fit:contain;border-radius:50%;"></div>
+    <h1>Administration<sup class="brand-mark">®</sup></h1>
+    <p class="muted">Gestion des membres BatBot</p>
+  </div>
+
+  <div id="adminLoginBox" class="card">
+    <h2>🔐 Connexion administrateur</h2>
+    <input id="adminPhone" type="text" autocomplete="username" placeholder="Identifiant administrateur">
+    <div class="password-wrap">
+      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Mot de passe administrateur">
+      <button class="eye" type="button" onclick="togglePassword('adminPassword',this)">👁</button>
+    </div>
+    <button id="adminLoginButton" class="btn primary" type="button" onclick="adminLogin()">🔐 Accéder à l'administration</button>
+    <div id="adminLoginStatus" class="status"></div>
+  </div>
+
+  <div id="adminPanel" class="hidden">
+
+    <div class="card">
+      <h2>📊 Tableau de bord</h2>
+      <div id="adminStats" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement du tableau de bord</strong><small>Récupération des données administrateur…</small></div></div>
+    </div>
+
+    <div class="card">
+      <h2>👥 Membres inscrits</h2>
+      <input id="userSearch" type="search" placeholder="🔎 Rechercher un client par son nom..." oninput="filterAdminUsers()">
+      <div id="usersList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des membres</strong><small>Récupération des comptes BatBot…</small></div></div>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Paramètres modifiables</h2>
+      <p class="muted">Modifiez les numéros WhatsApp, Telegram, les liens Wave, les réseaux sociaux et les numéros Mobile Money sans toucher au code.</p>
+      <div id="settingsList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des paramètres</strong><small>Récupération de la configuration…</small></div></div>
+      <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
+      <div id="settingsStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔔 Gestion des messages</h2>
+      <p class="muted">Publiez une annonce visible par les membres pendant 24 heures maximum.</p>
+      <div class="batbot-admin-message-form">
+        <input id="adminMessageTitle" maxlength="120" placeholder="Titre du message">
+        <textarea id="adminMessageBody" maxlength="2000" placeholder="Écrivez le contenu du message…"></textarea>
+        <button id="adminPublishMessageButton" class="btn primary" type="button" onclick="publishBatBotMessage()">📢 Publier le message</button>
+      </div>
+      <div id="adminMessageStatus" class="status"></div>
+      <div id="adminMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des annonces actives…</small></div></div></div>
+    </div>
+
+    <div class="card">
+      <h2>💳 Demandes de paiement manuel</h2>
+      <p class="muted">Vérifiez la preuve reçue sur WhatsApp avant d’accepter une demande.</p>
+      <div id="paymentRequestsAdminList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des demandes</strong><small>Récupération des paiements…</small></div></div>
+    </div>
+
+    <div class="card">
+      <h2>🏆 Gestion des bookmakers</h2>
+      <input id="bmName" placeholder="Nom de la plateforme (ex. 1xBet)">
+      <input id="bmBonus" placeholder="Bonus / description">
+      <input id="bmUrl" type="url" placeholder="Lien officiel HTTPS">
+      <button class="btn green" type="button" onclick="saveBookmaker()">➕ Ajouter le bookmaker</button>
+      <div id="bookmakerAdminStatus" class="status"></div>
+      <div id="adminBookmakersList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎁 Gestion des coupons</h2>
+      <input id="couponPlatform" placeholder="Nom de la plateforme (ex. 1xBet)">
+      <input id="couponCode" placeholder="Code coupon">
+      <input id="couponUrl" type="url" placeholder="Lien officiel de la plateforme">
+      <textarea id="couponDescription" placeholder="Description ou instructions d'utilisation"></textarea>
+      <button class="btn green" type="button" onclick="saveCoupon()">➕ Ajouter le coupon</button>
+      <div id="couponAdminStatus" class="status"></div>
+      <div id="adminCouponsList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔑 Demandes de mot de passe</h2>
+      <p class="muted">Les demandes des utilisateurs qui ont oublié leur mot de passe apparaissent ici.</p>
+      <div id="resetList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des demandes</strong><small>Récupération des demandes de sécurité…</small></div></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Ajouter les probabilités du jour</h2>
+
+      <input id="matchName" type="text" placeholder="Match — Exemple : Real Madrid vs Barça">
+      <input id="homeProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 1 (%)">
+      <input id="drawProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité match nul (%)">
+      <input id="awayProbability" type="number" min="0" max="100" step="0.01" placeholder="Probabilité équipe 2 (%)">
+      <input id="recommendedPick" type="text" placeholder="Pronostic recommandé">
+
+      <button id="addMatchButton" class="btn green" type="button" onclick="addDailyMatch()">➕ Ajouter le match</button>
+      <div id="matchAdminStatus" class="status"></div>
+      <div id="adminDailyMatches"></div>
+    </div>
+
+    <button class="btn danger" type="button" onclick="adminLogout()">🚪 Quitter l'administration</button>
+  </div>
+</section>
+
+<footer>
+  BatBot — Analyse de matchs
+  <br>
+  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="adminSecretTap()">•</button>
+</footer>
+
+</main>
+
+<script>
+"use strict";
+
+let WHATSAPP_NUMBER="2250152171974";
+let TELEGRAM_CONTACT="https://t.me/sdrive12";
+let WAVE_PAYMENT_DAY_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500";
+let WAVE_PAYMENT_7_DAYS_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000";
+const PAYMENT_NUMBER="0152171974";
+let adminUsersCache=[];
+
+function readApiResponse(response){
+  return response.text().then(function(text){
+    if(!text)return {};
+    try{return JSON.parse(text);}
+    catch(_){return {error:text};}
+  });
+}
+
+function showLoading(message,logoPath){
+  const screen=document.getElementById("loadingScreen");
+  const messageElement=document.getElementById("loadingMessage");
+  const logoImage=screen?screen.querySelector(".loading-logo img"):null;
+  if(messageElement)messageElement.textContent=message||"Chargement…";
+  if(logoImage)logoImage.src=logoPath||"logo.png";
+  if(screen)screen.classList.remove("hide");
+}
+
+function hideLoading(){
+  const screen=document.getElementById("loadingScreen");
+  if(!screen)return;
+  setTimeout(function(){screen.classList.add("hide");},250);
+}
+
+function showStatus(id,message,type=""){
+  const element=document.getElementById(id);
+  if(!element)return;
+  const value=String(message||"").trim();
+  element.className="status "+(type||"");
+  if(!value){element.innerHTML="";return;}
+  const isLoading=/en cours|chargement|actualisation|récupération|ouverture|traitement/i.test(value);
+  const icon=type==="success"?"✅":type==="error"?"⚠️":"ℹ️";
+  const title=type==="success"?"Opération réussie":type==="error"?"Action non effectuée":isLoading?"Traitement en cours":"Information";
+  const spinner=isLoading?'<span class="batbot-spinner" aria-hidden="true"></span>':"";
+  element.innerHTML='<div class="professional-status '+(type||"")+(isLoading?' loading':'')+'"><div class="professional-status-head">'+spinner+'<span>'+icon+' '+title+'</span></div><div class="professional-status-body">'+escapeHtml(value)+'</div></div>';
+}
+
+function showToast(message,type="success"){
+  let container=document.getElementById("batbotToastContainer");
+  if(!container){container=document.createElement("div");container.id="batbotToastContainer";container.className="batbot-toast-container";document.body.appendChild(container);}
+  const toast=document.createElement("div");toast.className="batbot-toast "+(type==="error"?"error":"");
+  const icon=document.createElement("span");icon.className="batbot-toast-icon";icon.textContent=type==="error"?"⚠️":"✓";
+  const text=document.createElement("div");text.className="batbot-toast-text";text.textContent=String(message||"");
+  toast.append(icon,text);container.appendChild(toast);requestAnimationFrame(()=>toast.classList.add("show"));
+  setTimeout(()=>{toast.classList.remove("show");setTimeout(()=>toast.remove(),220);},3200);
+}
+window.alert=function(message){showToast(message,"error");};
+
+function setLoading(id,loading,normalText){
+  const button=document.getElementById(id);
+  if(!button)return;
+  button.disabled=loading;
+  if(loading)button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>Patientez…';
+  else button.textContent=normalText;
+}
+
+function setBatBotButtonLoading(id,loading,text){
+  const button=document.getElementById(id);
+  if(!button)return;
+  button.disabled=loading;
+  if(loading)button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>'+escapeHtml(text||"Traitement en cours…");
+  else button.textContent=text||"Continuer";
+}
+
+function formatPaymentDateTime(value){
+  if(!value)return "Date non disponible";
+  const date=new Date(String(value).replace(" ","T")+"Z");
+  if(Number.isNaN(date.getTime()))return String(value);
+  return date.toLocaleString("fr-FR",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+
+async function copyPaymentDetails(value){
+  if(!value)return;
+  try{
+    if(navigator.clipboard)await navigator.clipboard.writeText(value);
+    else{const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
+    showToast("Détails de la transaction copiés avec succès.","success");
+  }catch(_){showToast("Copie impossible. Réessayez.","error");}
+}
+
+function togglePassword(id,button){
+  const input=document.getElementById(id);
+  if(!input)return;
+  if(input.type==="password"){
+    input.type="text";
+    button.textContent="🙈";
+  }else{
+    input.type="password";
+    button.textContent="👁";
+  }
+}
+
+function escapeHtml(value){
+  return String(value ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+function showRegister(){
+  document.getElementById("registerBox").classList.remove("hidden");
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("forgotBox").classList.add("hidden");
+  document.getElementById("changePasswordBox")?.classList.add("hidden");
+}
+
+function showLogin(){
+  document.getElementById("registerBox").classList.add("hidden");
+  document.getElementById("loginBox").classList.remove("hidden");
+  document.getElementById("forgotBox").classList.add("hidden");
+  document.getElementById("changePasswordBox")?.classList.add("hidden");
+}
+
+function showChangePassword(){
+  document.getElementById("registerBox").classList.add("hidden");
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("forgotBox").classList.add("hidden");
+  document.getElementById("changePasswordBox").classList.remove("hidden");
+  document.getElementById("newPassword").value="";
+  document.getElementById("newPassword2").value="";
+  document.getElementById("changePasswordStatus").textContent="";
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function changePassword(){
+  const password=document.getElementById("newPassword").value;
+  const confirmation=document.getElementById("newPassword2").value;
+  if(password.length<6)return showStatus("changePasswordStatus","Le nouveau mot de passe doit contenir au moins 6 caractères.","error");
+  if(password!==confirmation)return showStatus("changePasswordStatus","Les deux mots de passe ne correspondent pas.","error");
+
+  setLoading("changePasswordButton",true,"🔒 Enregistrer mon nouveau mot de passe");
+  try{
+    const response=await fetch("/api/password-change",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify({password,confirm_password:confirmation})});
+    const data=await readApiResponse(response);
+    if(!response.ok){showStatus("changePasswordStatus",data.error||"Impossible de modifier le mot de passe.","error");return;}
+    sessionStorage.removeItem("batbot_password_reset_token");
+    sessionStorage.removeItem("batbot_password_reset_username");
+    stopPasswordResetPolling();
+    showStatus("changePasswordStatus","Mot de passe modifié avec succès. Chargement de votre compte…","success");
+    setTimeout(function(){showDashboard(data.user||data);},700);
+  }catch(error){
+    console.error("PASSWORD CHANGE:",error);
+    showStatus("changePasswordStatus","Impossible de contacter le serveur.","error");
+  }finally{
+    setLoading("changePasswordButton",false,"🔒 Enregistrer mon nouveau mot de passe");
+  }
+}
+
+function forgotPassword(){
+  const box=document.getElementById("forgotBox");
+  const username=document.getElementById("loginUsername").value.trim();
+  box.classList.remove("hidden");
+  if(username)document.getElementById("forgotUsername").value=username;
+  box.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+function hideForgot(){
+  document.getElementById("forgotBox").classList.add("hidden");
+}
+
+function showAuth(){
+  document.getElementById("auth").classList.remove("hidden");
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("admin").classList.add("hidden");
+  document.getElementById("changePasswordBox")?.classList.add("hidden");
+}
+
+function showDashboard(user){
+  document.getElementById("auth").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  document.getElementById("admin").classList.add("hidden");
+
+  user=user||{};
+  updateProfileStatuses(user);
+  updateProfessionalDashboard(user);
+  const username=user.username||user.name||"";
+  const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre BatBot");
+
+  const welcome=document.getElementById("welcomeText");
+  if(welcome)welcome.textContent=username?"Bienvenue, "+username:"Bienvenue";
+
+  const userBox=document.getElementById("userBox");
+  if(userBox){
+    userBox.innerHTML="👤 Compte connecté"+
+      (username?"<br><strong>"+escapeHtml(username)+"</strong>":"")+
+      (user.phone?"<br><span class=\"muted\">"+escapeHtml(user.phone)+"</span>":"");
+  }
+
+  const profileBadge=document.getElementById("profileBadge");
+  if(profileBadge){
+    profileBadge.textContent="🏅 "+badge;
+    if(user.is_subscribed||user.subscribed||user.subscription_active){
+      profileBadge.classList.add("badge-blue");
+    }else{
+      profileBadge.classList.remove("badge-blue");
+    }
+  }
+
+  const contact=document.getElementById("whatsappContact");
+  if(contact){
+    contact.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
+  }
+
+  loadConfig();
+  loadDailyMatches();
+  loadMyTransactions();
+  startBatBotMessagesPolling();
+}
+
+async function register(){
+  const username=document.getElementById("registerUsername").value.trim();
+  const password=document.getElementById("registerPassword").value;
+  const password2=document.getElementById("registerPassword2").value;
+
+  if(!username||!password||!password2)
+    return showStatus("registerStatus","Remplissez tous les champs.","error");
+
+  if(username.length<3)
+    return showStatus("registerStatus","Le nom d'utilisateur doit contenir au moins 3 caractères.","error");
+
+  if(password.length<6)
+    return showStatus("registerStatus","Le mot de passe doit contenir au moins 6 caractères.","error");
+
+  if(password!==password2)
+    return showStatus("registerStatus","Les mots de passe ne correspondent pas.","error");
+
+  setLoading("registerButton",true,"✨ Créer mon compte");
+
+  try{
+    const response=await fetch("/api/register",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({username,password,name:username})
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      showStatus("registerStatus",data.error||"Impossible de créer le compte.","error");
+      return;
+    }
+
+    showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
+    showLoading("Compte créé. Préparation de la connexion…","logo.png");
+
+    setTimeout(function(){
+      showLogin();
+      document.getElementById("loginUsername").value=username;
+      document.getElementById("loginPassword").value="";
+      hideLoading();
+    },1400);
+
+  }catch(error){
+    console.error("REGISTER:",error);
+    showStatus("registerStatus","Impossible de contacter le serveur.","error");
+  }finally{
+    setLoading("registerButton",false,"✨ Créer mon compte");
+  }
+}
+
+async function login(){
+  const username=document.getElementById("loginUsername").value.trim();
+  const password=document.getElementById("loginPassword").value;
+
+  if(!username||!password)
+    return showStatus("loginStatus","Remplissez tous les champs.","error");
+
+  setLoading("loginButton",true,"🚀 Se connecter");
+
+  try{
+    const response=await fetch("/api/login",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({username,password,phone:username})
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      showStatus("loginStatus",data.error||"Identifiant ou mot de passe incorrect.","error");
+      return;
+    }
+
+    if(data.must_change_password || (data.user && data.user.must_change_password)){
+      showStatus("loginStatus","Connexion temporaire réussie.","success");
+      showChangePassword();
+      hideLoading();
+      return;
+    }
+
+    showStatus("loginStatus","Connexion réussie.","success");
+    showLoading("Connexion réussie. Chargement de votre espace…","logo.png");
+    setTimeout(function(){
+      showDashboard(data.user||data);
+      hideLoading();
+    },1400);
+
+  }catch(error){
+    console.error("LOGIN:",error);
+    showStatus("loginStatus","Erreur serveur.","error");
+  }finally{
+    setLoading("loginButton",false,"🚀 Se connecter");
+  }
+}
+
+async function submitForgotPassword(){
+  const username=document.getElementById("forgotUsername").value.trim();
+
+  if(!username)
+    return showStatus("forgotStatus","Entrez votre nom d'utilisateur.","error");
+
+  setLoading("forgotButton",true,"📩 Envoyer la demande");
+
+  try{
+    const response=await fetch("/api/password-reset",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({username})
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      showStatus("forgotStatus",data.error||"Impossible d'envoyer la demande.","error");
+      return;
+    }
+
+    if(data.request_token){
+      sessionStorage.setItem("batbot_password_reset_token",data.request_token);
+      sessionStorage.setItem("batbot_password_reset_username",username);
+    }
+
+    const forgotStatus=document.getElementById("forgotStatus");
+    if(forgotStatus){forgotStatus.innerHTML="";forgotStatus.className="status";}
+    const whatsappButton=document.getElementById("forgotWhatsApp");
+    if(whatsappButton)whatsappButton.classList.add("hidden");
+    renderPasswordResetDelivery({status:"pending"});
+    startPasswordResetPolling();
+
+  }catch(error){
+    console.error("FORGOT:",error);
+    showStatus("forgotStatus","Impossible de contacter le serveur.","error");
+  }finally{
+    setLoading("forgotButton",false,"📩 Envoyer la demande");
+  }
+}
+
+let passwordResetPollTimer=null;
+let passwordResetPollBusy=false;
+
+function renderPasswordResetDelivery(state){
+  let box=document.getElementById("forgotTemporaryBox");
+  if(!box){
+    const status=document.getElementById("forgotStatus");
+    box=document.createElement("div");
+    box.id="forgotTemporaryBox";
+    box.className="password-reset-delivery hidden";
+    status.insertAdjacentElement("afterend",box);
+  }
+
+  if(state.status==="pending"){
+    box.classList.remove("hidden");
+    box.classList.add("pending");
+    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande a bien été envoyée au service BatBot. Veuillez patienter pendant le traitement. Dès que votre mot de passe temporaire sera prêt, il apparaîtra automatiquement ici.</div>';
+    return;
+  }
+
+  if(state.status==="expired"){
+    box.classList.remove("hidden");
+    box.classList.remove("pending");
+    box.innerHTML='<div class="password-reset-delivery-title">⌛ Mot de passe temporaire expiré</div><div class="password-reset-meta">Pour votre sécurité, ce mot de passe n’est plus utilisable. Envoyez une nouvelle demande.</div>';
+    return;
+  }
+
+  if(state.status==="ready"&&state.temporary_password){
+    box.classList.remove("hidden","pending");
+    const expires=state.expires_at?new Date(state.expires_at).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}):"";
+    box.innerHTML='<div class="password-reset-delivery-title">✅ Votre mot de passe temporaire est prêt</div>'+
+      '<div class="password-reset-delivery-password"><code id="temporaryPasswordValue">'+escapeHtml(state.temporary_password)+'</code><button class="btn secondary" type="button" onclick="copyTemporaryPassword()">📋 Copier</button></div>'+
+      '<div class="password-reset-meta">Valable jusqu’au '+escapeHtml(expires)+'. Utilisez-le pour vous connecter, puis créez immédiatement votre nouveau mot de passe.</div>'+
+      '<button class="btn primary" type="button" onclick="useTemporaryPassword()">🔐 Utiliser ce mot de passe pour me connecter</button>';
+  }
+}
+
+async function pollPasswordResetStatus(){
+  if(passwordResetPollBusy)return;
+  const token=sessionStorage.getItem("batbot_password_reset_token");
+  if(!token)return;
+  passwordResetPollBusy=true;
+  try{
+    const response=await fetch("/api/password-reset/status?token="+encodeURIComponent(token),{credentials:"same-origin",cache:"no-store"});
+    const data=await readApiResponse(response);
+    if(response.ok){
+      renderPasswordResetDelivery(data);
+      if(data.status==="ready"||data.status==="expired") stopPasswordResetPolling();
+    }
+  }catch(error){
+    console.warn("RESET STATUS:",error);
+  }finally{
+    passwordResetPollBusy=false;
+  }
+}
+
+function startPasswordResetPolling(){
+  stopPasswordResetPolling();
+  pollPasswordResetStatus();
+  passwordResetPollTimer=setInterval(pollPasswordResetStatus,3000);
+}
+
+function stopPasswordResetPolling(){
+  if(passwordResetPollTimer){clearInterval(passwordResetPollTimer);passwordResetPollTimer=null;}
+}
+
+async function copyTemporaryPassword(){
+  const value=document.getElementById("temporaryPasswordValue")?.textContent?.trim();
+  if(!value)return;
+  try{
+    if(navigator.clipboard)await navigator.clipboard.writeText(value);
+    else{const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
+    showToast("Mot de passe temporaire copié avec succès.","success");
+  }catch(_){showToast("Copie impossible. Sélectionnez le mot de passe manuellement.","error");}
+}
+
+function useTemporaryPassword(){
+  const username=sessionStorage.getItem("batbot_password_reset_username")||document.getElementById("forgotUsername")?.value.trim()||"";
+  const value=document.getElementById("temporaryPasswordValue")?.textContent?.trim()||"";
+  showLogin();
+  document.getElementById("loginUsername").value=username;
+  document.getElementById("loginPassword").value=value;
+  document.getElementById("loginPassword").focus();
+  showStatus("loginStatus","Votre mot de passe temporaire a été rempli. Appuyez sur « Se connecter ».","success");
+}
+
+function createWhatsAppUrl(message){
+  return "https://wa.me/"+WHATSAPP_NUMBER.replace(/[^\d]/g,"")+"?text="+encodeURIComponent(message);
+}
+
+function sendAnalysisWhatsApp(){
+  const matches=document.getElementById("matches").value.trim();
+  const capture=document.getElementById("capture");
+  const button=document.getElementById("sendAnalysisWhatsAppButton");
+  if(!matches&&(!capture||capture.files.length===0))return showStatus("analysisStatus","📋 Votre demande est incomplète. Ajoutez au moins un match ou sélectionnez une capture avant de continuer.","error");
+  if(button?.disabled)return;
+  setBatBotButtonLoading("sendAnalysisWhatsAppButton",true,"Ouverture de WhatsApp…");
+  let message="Bonjour BatBot 👋\n\nJe souhaite faire analyser mes matchs.\n\nPaiement effectué pour l'analyse.\n\n";
+  if(matches)message+="Match(s) à analyser :\n"+matches+"\n\n";
+  if(capture&&capture.files.length>0)message+="📷 Je vais également envoyer ma capture dans cette conversation WhatsApp.\n\n";
+  message+="Merci.";
+  window.open(createWhatsAppUrl(message),"_blank");
+  setTimeout(()=>{setBatBotButtonLoading("sendAnalysisWhatsAppButton",false,"💬 WhatsApp — Envoyer ma demande");showStatus("analysisStatus","💬 WhatsApp est prêt. Vérifiez votre message puis envoyez votre demande et votre capture si nécessaire.","success");},650);
+}
+
+function sendAnalysisTelegram(){
+  const matches=document.getElementById("matches").value.trim();
+  const button=document.getElementById("sendAnalysisTelegramButton");
+  if(!matches){window.open(TELEGRAM_CONTACT,"_blank");showStatus("analysisStatus","✈️ Telegram est prêt. Envoyez votre demande au service BatBot.","success");return;}
+  if(button?.disabled)return;
+  setBatBotButtonLoading("sendAnalysisTelegramButton",true,"Ouverture de Telegram…");
+  const message="Bonjour BatBot 👋\n\nJe souhaite faire analyser ce(s) match(s) :\n\n"+matches+"\n\nPaiement effectué.";
+  window.open(TELEGRAM_CONTACT+"?text="+encodeURIComponent(message),"_blank");
+  setTimeout(()=>{setBatBotButtonLoading("sendAnalysisTelegramButton",false,"✈️ Telegram — Envoyer ma demande");showStatus("analysisStatus","✈️ Telegram est prêt. Vérifiez votre message puis envoyez votre demande.","success");},650);
+}
+
+function showFileName(){
+  const input=document.getElementById("capture");
+  const fileName=document.getElementById("fileName");
+
+  if(input&&input.files&&input.files.length>0){
+    fileName.innerHTML='<span class="batbot-spinner" aria-hidden="true"></span> Capture sélectionnée : '+escapeHtml(input.files[0].name);
+  }else{
+    fileName.textContent="";
+  }
+}
+
+async function submitPaymentReference(){
+  const body={offer:document.getElementById("paymentOffer").value,operator:document.getElementById("paymentOperator").value,amount:document.getElementById("paymentAmount").value,reference:document.getElementById("paymentReference").value.trim()};
+  try{const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Enregistrement impossible.");showStatus("paymentNumberStatus",d.message,"success");}catch(e){showStatus("paymentNumberStatus",e.message,"error");}
+}
+function copyPaymentNumber(id){const value=document.getElementById(id)?.textContent?.trim();if(!value||value==="Chargement...")return; navigator.clipboard?.writeText(value).then(()=>showStatus("paymentNumberStatus","Numéro copié.","success"));}
+function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BatBot 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
+
+(function(){
+  function setupPaymentWindows(){
+    const launcher=document.querySelector('.payment-window-launcher');
+    const modal=document.getElementById('paymentWindowModal');
+    const body=document.getElementById('paymentWindowBody');
+    const title=document.getElementById('paymentWindowTitle');
+    const closeButton=document.getElementById('paymentWindowClose');
+    const waveDay=document.getElementById('waveDayCard');
+    const wavePremium=document.getElementById('wavePremiumCard');
+    const mobile=document.getElementById('mobileMoneyCard');
+    if(!launcher||!modal||!body||!title||!closeButton||!waveDay||!wavePremium||!mobile||modal.dataset.ready==='1')return;
+    modal.dataset.ready='1';
+    [waveDay,wavePremium,mobile].forEach(card=>card.classList.add('hidden'));
+    let activeNodes=[];
+
+    function restoreNodes(){
+      activeNodes.forEach(node=>{
+        if(node._paymentPlaceholder&&node._paymentPlaceholder.parentNode){
+          node._paymentPlaceholder.parentNode.insertBefore(node,node._paymentPlaceholder.nextSibling);
+        }
+        node.classList.add('hidden');
+        node.classList.remove('in-window');
+      });
+      activeNodes=[];
+    }
+    function closePaymentWindow(){
+      restoreNodes();
+      body.innerHTML='';
+      modal.classList.add('hidden');
+      document.body.style.overflow='';
+    }
+    function addNode(node){
+      const placeholder=document.createComment('batbot-payment-window-placeholder');
+      node.parentNode.insertBefore(placeholder,node);
+      node._paymentPlaceholder=placeholder;
+      node.classList.remove('hidden');
+      node.classList.add('in-window');
+      body.appendChild(node);
+      activeNodes.push(node);
+    }
+    function openPaymentWindow(type){
+      closePaymentWindow();
+      if(type==='wave'){
+        title.textContent='💙 Paiement avec Wave';
+        addNode(waveDay);
+        addNode(wavePremium);
+      }else if(type==='mobile'){
+        title.textContent='📱 Paiement Mobile Money';
+        addNode(mobile);
+      }else{
+        title.textContent='📋 Conditions de dépôt';
+        body.innerHTML='<div class="payment-window-conditions"><div class="notice"><strong>1. Choisissez votre offre</strong><br>Analyse du jour : 500 F. Abonnement Premium : 1 000 F pour 7 jours.</div><div class="notice"><strong>2. Effectuez le paiement</strong><br>Utilisez Wave ou le numéro Orange Money, MTN Money ou Moov Money affiché dans la fenêtre correspondante.</div><div class="notice"><strong>3. Conservez votre preuve</strong><br>Gardez la capture et la référence de transaction jusqu’à la confirmation du service.</div><div class="notice"><strong>4. Envoyez les informations</strong><br>Enregistrez le montant et la référence dans le formulaire, puis envoyez la preuve sur WhatsApp au service client.</div><div class="notice"><strong>5. Validation</strong><br>L’activation de Premium ou des services associés se fait après vérification du paiement par l’administrateur.</div></div>';
+      }
+      modal.classList.remove('hidden');
+      document.body.style.overflow='hidden';
+    }
+    launcher.querySelectorAll('[data-payment-window]').forEach(button=>button.addEventListener('click',()=>openPaymentWindow(button.dataset.paymentWindow)));
+    closeButton.addEventListener('click',closePaymentWindow);
+    modal.addEventListener('click',event=>{if(event.target===modal)closePaymentWindow();});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.classList.contains('hidden'))closePaymentWindow();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPaymentWindows);else setupPaymentWindows();
+})();
+
+function requestPaymentNumber(){
+  const message="Bonjour BatBot 👋\n\nJe souhaite recevoir le numéro de dépôt pour effectuer mon paiement par Orange Money, Moov Money ou MTN Money.";
+  window.location.href=createWhatsAppUrl(message);
+  showStatus("paymentNumberStatus","WhatsApp a été ouvert pour recevoir le numéro de dépôt.","success");
+}
+
+
+async function loadBookmakers(){
+  const box=document.getElementById("bookmakersList"); if(!box)return;
+  try{
+    const r=await fetch("/api/config",{cache:"no-store"}); const d=await readApiResponse(r);
+    const items=Array.isArray(d.bookmakers)?d.bookmakers:[];
+    box.innerHTML=items.map(b=>`<div class="bookmaker"><div><div class="bookmaker-name">${escapeHtml(b.name)}</div><span class="bookmaker-bonus">${escapeHtml(b.bonus||"Consulter les conditions")}</span></div><a class="btn green" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer">Ouvrir</a></div>`).join("")||'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun partenaire disponible</div><div class="professional-status-body">Aucun bookmaker n’est actuellement publié.</div></div>';
+  }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Partenaires indisponibles</div><div class="professional-status-body">Impossible de charger les partenaires pour le moment.</div></div>';}
+}
+async function loadCoupons(){
+  const box=document.getElementById("couponsList"); if(!box)return;
+  try{
+    const r=await fetch("/api/coupons",{credentials:"same-origin",cache:"no-store"}); const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Erreur");
+    const items=Array.isArray(d.coupons)?d.coupons:[];
+    box.innerHTML=items.map(c=>`<div class="match-card"><strong>${escapeHtml(c.platform_name)}</strong><div class="notice">Code à utiliser sur ${escapeHtml(c.platform_name)} : <strong>${escapeHtml(c.code)}</strong></div>${c.description?`<p class="muted">${escapeHtml(c.description)}</p>`:""}<button class="btn primary" onclick="copyText('${String(c.code).replace(/'/g,"\\'")}')">📋 Copier le code</button><button class="btn secondary" onclick="copyText('${String(c.platform_url).replace(/'/g,"\\'")}')">🔗 Copier le lien</button><a class="btn green" href="${escapeHtml(c.platform_url)}" target="_blank" rel="noopener noreferrer">Ouvrir la plateforme</a><button class="btn telegram" onclick="shareCoupon('${String(c.platform_name).replace(/'/g,"\\'")}','${String(c.code).replace(/'/g,"\\'")}','${String(c.platform_url).replace(/'/g,"\\'")}')">📤 Partager</button></div>`).join("")||'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun coupon disponible</div><div class="professional-status-body">Aucun code coupon n’est actuellement publié.</div></div>';
+  }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Coupons indisponibles</div><div class="professional-status-body">Impossible de charger les coupons pour le moment.</div></div>';}
+}
+async function copyText(value){
+  try{if(!navigator.clipboard?.writeText)throw new Error("Clipboard indisponible");await navigator.clipboard.writeText(value);showToast("Copié avec succès.","success");}
+  catch(e){showToast("La copie automatique est indisponible.","error");prompt("Copiez ce texte :",value);}
+}
+function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon BatBot",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
+function renderBatBotReferral(data){
+  const card=document.getElementById("sdriveReferralCard");if(!card||!data||!data.sdriveLink)return;
+  const link=String(data.sdriveLink),message=data.sdriveInviteMessage||"Rejoins BatBot et profite de ses avantages.";
+  const messageEl=document.getElementById("sdriveInviteMessage"),actions=document.getElementById("sdriveReferralActions");
+  card.classList.remove("hidden");
+  if(messageEl&&messageEl.textContent!==message)messageEl.textContent=message;
+  if(actions&&actions.dataset.renderedLink!==link){
+    const safe=encodeURIComponent(link);
+    actions.innerHTML=`<button class="btn primary" onclick="copyText(decodeURIComponent('${safe}'))">📋 Copier le lien</button><button class="btn green" onclick="window.open(decodeURIComponent('${safe}'),'_blank','noopener,noreferrer')">🚀 Ouvrir BatBot</button><button class="btn telegram" onclick="shareCoupon('BatBot','',decodeURIComponent('${safe}'))">📤 Partager</button>`;
+    actions.dataset.renderedLink=link;
+  }
+}
+async function toggleUserDisabled(id,disabled){
+  try{const r=await fetch("/api/admin/users/"+id+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({disabled})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible");await loadAdmin();}catch(e){alert(e.message);}
+}
+async function saveBookmaker(){
+  const body={name:document.getElementById("bmName").value.trim(),bonus:document.getElementById("bmBonus").value.trim(),url:document.getElementById("bmUrl").value.trim(),active:true};
+  try{const r=await fetch("/api/admin/bookmakers",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("bookmakerAdminStatus",d.message||"Ajouté","success");await loadAdminBookmakers();await loadBookmakers();}catch(e){showStatus("bookmakerAdminStatus",e.message,"error");}
+}
+async function saveCoupon(){
+  const body={platform_name:document.getElementById("couponPlatform").value.trim(),code:document.getElementById("couponCode").value.trim(),platform_url:document.getElementById("couponUrl").value.trim(),description:document.getElementById("couponDescription").value.trim(),active:true};
+  try{const r=await fetch("/api/admin/coupons",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("couponAdminStatus",d.message||"Ajouté","success");await loadAdminCoupons();await loadCoupons();}catch(e){showStatus("couponAdminStatus",e.message,"error");}
+}
+async function loadAdminBookmakers(){
+  const box=document.getElementById("adminBookmakersList");if(!box)return;const r=await fetch("/api/admin/bookmakers",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
+  box.innerHTML=(d.bookmakers||[]).map(b=>`<div class="member-card"><strong>${escapeHtml(b.name)}</strong><div class="admin-small">${escapeHtml(b.url)}</div><button class="btn danger" onclick="deleteBookmaker(${b.id})">🗑️ Supprimer</button></div>`).join("")||'<p class="muted">Aucun bookmaker.</p>';
+}
+async function deleteBookmaker(id){if(!confirm("Supprimer ce bookmaker ?"))return;await fetch("/api/admin/bookmakers/"+id,{method:"DELETE",credentials:"same-origin"});await loadAdminBookmakers();await loadBookmakers();}
+async function loadAdminCoupons(){
+  const box=document.getElementById("adminCouponsList");if(!box)return;const r=await fetch("/api/admin/coupons",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
+  box.innerHTML=(d.coupons||[]).map(c=>`<div class="member-card"><strong>${escapeHtml(c.platform_name)} — ${escapeHtml(c.code)}</strong><div class="admin-small">${escapeHtml(c.platform_url)}</div><button class="btn danger" onclick="deleteCoupon(${c.id})">🗑️ Supprimer</button></div>`).join("")||'<p class="muted">Aucun coupon.</p>';
+}
+async function deleteCoupon(id){if(!confirm("Supprimer ce coupon ?"))return;await fetch("/api/admin/coupons/"+id,{method:"DELETE",credentials:"same-origin"});await loadAdminCoupons();await loadCoupons();}
+function filterAdminUsers(){
+  const q=(document.getElementById("userSearch").value||"").trim().toLowerCase();
+  renderAdminUsers(adminUsersCache.filter(u=>String(u.username||u.name||"").toLowerCase().includes(q)));
+}
+
+function renderAdminUsers(users){
+  document.getElementById("usersList").innerHTML=users.map(function(user){
+    const active=Boolean(user.subscription_active||user.is_subscribed||user.subscribed);
+    return `<div class="member-card">
+      <div class="member-card-top">
+        <div class="member-username">👤 ${escapeHtml(user.username||user.name||"Utilisateur")}</div>
+        <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre BatBot'}</span>
+      </div>
+      <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
+      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
+      <div class="admin-small">🤖 IA : ${user.ai_active?'Active':'Non active'}</div>
+      ${user.ai_active && user.ai_until?`<div class="admin-small">⏳ IA jusqu'au : ${escapeHtml(formatDateTime(user.ai_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
+      <div class="admin-actions">
+        <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium</button>
+        <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
+        <button class="btn primary" type="button" onclick="setAISubscription(${Number(user.id)},true)">🤖 Activer IA</button>
+        <button class="btn gold" type="button" onclick="setAISubscription(${Number(user.id)},false)">🚫 Désactiver IA</button>
+        <button class="btn secondary" type="button" onclick="toggleUserDisabled(${Number(user.id)},${user.disabled?false:true})">${user.disabled?"▶️ Réactiver":"⛔ Désactiver"}</button><button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
+      </div>
+    </div>`;
+  }).join("")||'<p class="muted">Aucun client trouvé.</p>';
+}
+
+function askBatBotDuration(feature){
+  return new Promise(resolve=>{
+    const overlay=document.createElement("div");
+    overlay.className="batbot-duration-overlay";
+    overlay.innerHTML=`<div class="batbot-duration-modal" role="dialog" aria-modal="true" aria-label="Durée de l'accès"><h3>⚙️ ${feature} BatBot</h3><p>Choisissez la durée d'activation de cette fonctionnalité.</p><input id="batbotDurationInput" type="number" min="1" max="3650" value="7" inputmode="numeric"><div class="batbot-duration-actions"><button class="btn secondary" type="button" id="batbotDurationCancel">Annuler</button><button class="btn green" type="button" id="batbotDurationConfirm">Continuer</button></div></div>`;
+    document.body.appendChild(overlay);
+    const input=overlay.querySelector("#batbotDurationInput");
+    const close=value=>{overlay.remove();resolve(value);};
+    overlay.querySelector("#batbotDurationCancel").addEventListener("click",()=>close(null));
+    overlay.querySelector("#batbotDurationConfirm").addEventListener("click",()=>{const days=Number(input.value);if(!Number.isInteger(days)||days<1||days>3650){showToast("Veuillez saisir une durée valide (1 à 3650 jours).","error");input.focus();return;}close(days);});
+    overlay.addEventListener("click",event=>{if(event.target===overlay)close(null);});
+    input.addEventListener("keydown",event=>{if(event.key==="Enter")overlay.querySelector("#batbotDurationConfirm").click();if(event.key==="Escape")close(null);});
+    setTimeout(()=>{input.focus();input.select();},0);
+  });
+}
+
+async function setPremium(id,enabled){
+  try{
+    const duration=enabled?await askBatBotDuration("Premium"):7;
+    if(enabled&&duration===null)return;
+    const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Action impossible.");
+    showToast(data.message|| (enabled?"Premium activé avec succès.":"Premium désactivé avec succès."),"success");
+    await loadAdmin();
+  }catch(e){showToast(e.message||"Action impossible.","error");}
+}
+
+async function setAISubscription(id,enabled){
+  try{
+    const duration=enabled?await askBatBotDuration("IA"):7;
+    if(enabled&&duration===null)return;
+    const response=await fetch("/api/admin/ai-subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Action IA impossible.");
+    showToast(data.message|| (enabled?"Accès IA activé avec succès.":"Accès IA désactivé avec succès."),"success");
+    await loadAdmin();
+  }catch(e){showToast(e.message||"Action IA impossible.","error");}
+}
+
+async function deleteAdminUser(id){
+  if(!confirm("Supprimer définitivement ce client ?"))return;
+  try{
+    const response=await fetch("/api/admin/users/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin"});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Suppression impossible.");
+    await loadAdmin();
+  }catch(e){alert(e.message);}
+}
+
+function renderSettingsForm(settings){
+  const fields=[
+    ["whatsapp","Numéro WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Lien groupe WhatsApp"],["telegramGroup","Lien groupe Telegram"],
+    ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
+    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien BatBot"],["sdriveInviteMessage","Message BatBot"],["adminPhone","Numéro administrateur"]
+  ];
+  return '<div class="settings-grid">'+fields.map(([k,label])=>`<label>${label}<input data-setting="${k}" value="${escapeHtml(settings[k]||'')}"></label>`).join('')+'</div>';
+}
+
+async function loadConfig(){
+  try{
+    const response=await fetch("/api/config",{cache:"no-store"});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Configuration indisponible");
+    if(data.whatsapp)WHATSAPP_NUMBER=data.whatsapp;
+    if(data.telegram)TELEGRAM_CONTACT=data.telegram;
+    const day=document.getElementById("waveDayButton");if(day&&data.wave500)day.href=data.wave500;
+    const premium=document.getElementById("wavePremiumButton");if(premium&&data.wave1000)premium.href=data.wave1000;
+  }catch(error){console.warn("CONFIG:",error.message);}
+}
+
+async function saveAdminSettings(){
+  const body={};
+  document.querySelectorAll('[data-setting]').forEach(el=>body[el.dataset.setting]=el.value.trim());
+  try{
+    const response=await fetch('/api/admin/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||'Enregistrement impossible.');
+    showStatus('settingsStatus','Paramètres enregistrés avec succès.','success');
+    await loadConfig();
+  }catch(e){showStatus('settingsStatus',e.message,'error');}
+}
+
+async function logout(){
+  try{
+    await fetch("/api/logout",{method:"POST",credentials:"same-origin"});
+  }catch(_){}
+  showLoading("Déconnexion en cours…");
+  setTimeout(function(){location.reload();},300);
+}
+
+let adminTapCount=0;let adminTapTimer=null;
+function adminSecretTap(){
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer=setTimeout(()=>{adminTapCount=0;},2500);
+  if(adminTapCount>=10){adminTapCount=0;openAdmin();}
+}
+function updateProfessionalDashboard(user){
+  user=user||{};
+  const username=String(user.username||user.name||'').trim();
+  const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+  const aiActive=premium&&Boolean(user.ai_active);
+  const greeting=document.getElementById('batbotProGreeting');
+  const subtitle=document.getElementById('batbotProSubtitle');
+  const premiumEl=document.getElementById('batbotProPremium');
+  const aiEl=document.getElementById('batbotProAI');
+  const expiryEl=document.getElementById('batbotProExpiry');
+  const accountEl=document.getElementById('batbotProAccountState');
+  if(greeting)greeting.textContent=username?'Bonjour, '+username+' 👋':'Votre espace BatBot';
+  if(subtitle)subtitle.textContent=premium?'Votre espace Premium est prêt. Accédez rapidement à vos outils et à vos informations.':'Gérez votre compte et activez les services dont vous avez besoin depuis cet espace.';
+  if(premiumEl)premiumEl.textContent=premium?'🟢 Actif':'🔴 Non actif';
+  if(aiEl)aiEl.textContent=aiActive?'🟢 Active':'🔴 Non active';
+  if(expiryEl){const until=user.premium_until||user.subscription_until||user.premiumUntil;expiryEl.textContent=until?(formatDateTime(until)||'Active'):(premium?'Active':'—');}
+  if(accountEl)accountEl.innerHTML=premium?'Compte actif · <strong>Premium</strong><br><span>Accès IA : '+(aiActive?'activé':'non activé')+'</span>':'Compte actif · <strong>Membre BatBot</strong>';
+}
+function updateProfessionalLastTransaction(items){
+  const box=document.getElementById('batbotProLastTransaction');if(!box)return;
+  const item=Array.isArray(items)&&items.length?items[0]:null;
+  if(!item){box.textContent='Aucune transaction récente.';return;}
+  const status=item.status==='accepted'?'✅ Paiement approuvé':item.status==='rejected'?'❌ Paiement refusé':'⏳ Vérification en cours';
+  box.innerHTML='<strong>'+escapeHtml(String(item.offer||'Paiement'))+'</strong><br>'+escapeHtml(String(Number(item.amount)||0))+' FCFA · '+status;
+}
+
+function updateProfileStatuses(user){
+  const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
+  const aiActive=premium && Boolean(user&&user.ai_active);
+  const p=document.getElementById("premiumStatusText"); const a=document.getElementById("aiStatusText");
+  if(p)p.textContent=premium?"🟢 Actif":"🔴 Non actif";
+  if(a)a.textContent=aiActive?"🟢 Active":"🔴 Non active";
+}
+function splitMatch(value){
+  const parts=String(value||"").split(/\s+(?:vs|v|contre)\s+/i).map(x=>x.trim()).filter(Boolean);
+  return {home:parts[0]||"",away:parts.slice(1).join(" vs ")||""};
+}
+
+function renderBatBotAIResult(raw){
+  const box=document.getElementById("smartDriveAIResult");
+  box.classList.remove("hidden");
+  let data=null;
+  try{
+    const cleaned=String(raw||"").replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"").trim();
+    data=JSON.parse(cleaned);
+  }catch(_){}
+  if(!data||!Array.isArray(data.matches)){
+    box.textContent=raw||"Aucun résultat disponible.";
+    return;
+  }
+  const modalId="batbotAiOptionModal";
+  let modal=document.getElementById(modalId);
+  if(!modal){
+    modal=document.createElement("div");
+    modal.id=modalId;
+    modal.style.cssText="position:fixed;inset:0;z-index:300;background:rgba(2,10,20,.88);display:none;align-items:center;justify-content:center;padding:14px;overflow:auto";
+    modal.innerHTML='<div style="width:min(560px,100%);max-height:88vh;overflow:auto;background:#0b223a;border:1px solid #2f628a;border-radius:18px;padding:15px;box-shadow:0 15px 45px rgba(0,0,0,.5)"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><strong id="batbotAiOptionTitle">Option</strong><button type="button" id="batbotAiOptionClose" class="btn secondary" style="width:auto;margin:0;padding:8px 12px">✕</button></div><div id="batbotAiOptionBody"></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener("click",e=>{if(e.target===modal)modal.style.display="none";});
+    modal.querySelector("#batbotAiOptionClose").addEventListener("click",()=>{modal.style.display="none";});
+  }
+  const title=modal.querySelector("#batbotAiOptionTitle");
+  const body=modal.querySelector("#batbotAiOptionBody");
+  const openOption=(option)=>{
+    title.textContent=option.name||"Option de pari";
+    body.innerHTML='<div style="display:grid;gap:9px">'+
+      '<div><strong>Probabilité :</strong> '+escapeHtml(option.probability||"Non précisée")+'</div>'+
+      '<div><strong>Niveau de risque :</strong> '+escapeHtml(option.risk||"Non précisé")+'</div>'+ 
+      (option.reason?'<div><strong>Explication :</strong> '+escapeHtml(option.reason)+'</div>':"")+ 
+      (option.odds?'<div><strong>Cote indicative :</strong> '+escapeHtml(option.odds)+'</div>':"")+ 
+      '</div>';
+    modal.style.display="flex";
+  };
+  const optionButton=(option)=>'<button type="button" class="btn secondary" style="width:100%;margin:0;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px" data-ai-option="1"><span>'+escapeHtml(option.name||"Option")+'</span><span>›</span></button>';
+  let html="";
+  if(data.combined){
+    html+='<div class="ai-combined" style="margin-top:0;margin-bottom:12px"><div class="ai-result-title">🎯 Cote combinée estimée</div><strong style="font-size:20px">'+escapeHtml(data.combined.estimated_odds||"Non précisée")+'</strong><div style="margin-top:6px">'+escapeHtml(data.combined.selections||"")+'</div></div>';
+  }
+  html+=data.matches.map((match,index)=>{
+    const options=match.options||[];
+    return '<div class="ai-match-result"><div class="ai-result-title">⚽ Match '+(index+1)+' — '+escapeHtml(match.name||"")+'</div>'+ 
+      '<div class="ai-section-label">Probabilités</div><div class="ai-prob-grid">'+(match.probabilities||[]).map(p=>'<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(p.value||"")+'</span></div>').join("")+'</div>'+ 
+      '<div class="ai-section-label">Options proposées</div><div class="ai-options">'+options.map(optionButton).join("")+'</div>'+ 
+      (match.recommendation?'<div class="ai-recommendation"><strong>Choix proposé :</strong> '+escapeHtml(match.recommendation)+'</div>':"")+ '</div>';
+  }).join("");
+  box.innerHTML=html;
+  box.querySelectorAll('[data-ai-option="1"]').forEach((button,index)=>{
+    const all=[].concat(...data.matches.map(m=>m.options||[]));
+    button.addEventListener("click",()=>openOption(all[index]||{}));
+  });
+}
+
+async function submitBatBotAI(){
+  const button=document.getElementById("smartDriveAIButton");
+  const status=document.getElementById("smartDriveAIStatus");
+  const result=document.getElementById("smartDriveAIResult");
+  const match1=document.getElementById("aiMatch1").value.trim();
+  const match2=document.getElementById("aiMatch2").value.trim();
+  const first=splitMatch(match1),second=splitMatch(match2);
+  if(!first.home||!first.away||!second.home||!second.away)return showStatus("smartDriveAIStatus","⚠️ Saisissez les 2 matchs au format : Équipe 1 vs Équipe 2.","error");
+  if(button?.disabled)return;
+  setLoading("smartDriveAIButton",true,"🤖 Lancer l’analyse");
+  status.className="status";
+  status.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA analyse les matchs sélectionnés…</small></div></div>';
+  if(result)result.classList.add("hidden");
+  try{
+    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:first.home,away_team:first.away,second_home_team:second.home,second_away_team:second.away})});
+    const d=await readApiResponse(r);
+    if(!r.ok){
+      if(r.status===401||r.status===403){status.className="status";status.innerHTML='<div class="professional-status error">🔒 <strong>Accès à BatBot IA limité</strong><br><span>⭐ Cette fonctionnalité nécessite un abonnement Premium actif et une autorisation IA activée.</span><br><small>🔐 Activez votre accès pour utiliser l’analyse intelligente des matchs.</small></div>';}else throw new Error(d.error||"Analyse indisponible.");
+      return;
+    }
+    renderBatBotAIResult(d.analysis);
+    status.className="status";status.innerHTML='<div class="professional-status success">✅ <strong>Analyse terminée</strong><br><span>Les résultats de BatBot IA sont prêts.</span></div>';
+  }catch(e){status.className="status";status.innerHTML='<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(e&&e.message?e.message:"Une erreur est survenue pendant l’analyse.")+'</span></div>';}
+  finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
+}
+
+async function loadApiFootballFixtures(){
+  const status=document.getElementById("apiFootballStatus");
+  const box=document.getElementById("apiFootballResults");
+  if(!status||!box)return;
+  status.className="status";
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation des matchs</strong><small>Vérification des rencontres disponibles…</small></div></div>';
+  box.classList.remove("hidden");
+  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les matchs du jour sont en préparation…</small></div></div>';
+  try{
+    const r=await fetch("/api/football/fixtures?timezone=Africa%2FAbidjan",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error("fixtures_unavailable");
+    const fixtures=Array.isArray(d.response)?d.response:[];
+    if(!fixtures.length){
+      box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est actuellement disponible dans cette section.</div></div>';
+      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Vérification terminée</div><div class="professional-status-body">La liste des rencontres a été vérifiée.</div></div>';
+      return;
+    }
+    box.innerHTML=fixtures.slice(0,30).map(function(item){
+      const f=item.fixture||{},teams=item.teams||{},league=item.league||{};
+      const date=f.date?new Date(f.date).toLocaleString("fr-FR"):"Date non disponible";
+      return '<div class="match-card"><div class="match-title">⚽ '+escapeHtml(teams.home?.name||"Équipe 1")+' — '+escapeHtml(teams.away?.name||"Équipe 2")+'</div><div class="muted">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+'</div></div>';
+    }).join("");
+    status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs disponibles</div><div class="professional-status-body">'+fixtures.length+' rencontre(s) peuvent être consultées.</div></div>';
+  }catch(e){
+    box.innerHTML='<div class="professional-status"><div class="professional-status-head">🚀 Fonctionnalité bientôt disponible</div><div class="professional-status-body">La section « Matchs du jour » est actuellement en préparation et sera proposée dans une prochaine mise à jour de BatBot.</div></div>';
+    status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Service en préparation</div><div class="professional-status-body">Cette fonctionnalité sera disponible prochainement.</div></div>';
+  }
+}
+
+function openAdmin(){
+  document.getElementById("auth").classList.add("hidden");
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("admin").classList.remove("hidden");
+  document.getElementById("adminLoginBox").classList.remove("hidden");
+  document.getElementById("adminPanel").classList.add("hidden");
+  window.scrollTo(0,0);
+}
+
+async function adminLogin(){
+  const phone=document.getElementById("adminPhone").value.trim();
+  const password=document.getElementById("adminPassword").value;
+
+  if(!phone||!password)
+    return showStatus("adminLoginStatus","Remplissez tous les champs.","error");
+
+  setLoading("adminLoginButton",true,"🔐 Accéder à l'administration");
+
+  try{
+    const response=await fetch("/api/admin/login",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({phone,password})
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      showStatus("adminLoginStatus",data.error||"Accès refusé.","error");
+      return;
+    }
+
+    showLoading("Connexion réussie. Chargement de l’administration…","admin-logo.png");
+    setTimeout(function(){
+      Promise.resolve().then(function(){ return loadAdmin(); })
+        .catch(function(error){
+          console.error("ADMIN LOAD:",error);
+          showStatus("adminLoginStatus","Impossible de charger l’administration. Réessayez.","error");
+        })
+        .finally(function(){ hideLoading(); });
+    },1400);
+
+  }catch(error){
+    console.error("ADMIN LOGIN:",error);
+    showStatus("adminLoginStatus","Erreur serveur.","error");
+  }finally{
+    setLoading("adminLoginButton",false,"🔐 Accéder à l'administration");
+  }
+}
+
+
+let adminOrganizerReady=false;
+function organizeAdminPanel(){
+  if(adminOrganizerReady)return;
+  const panel=document.getElementById("adminPanel");
+  if(!panel)return;
+  const cards=Array.from(panel.children).filter(function(el){
+    return el.classList.contains("card") && el.querySelector("h2");
+  });
+  if(!cards.length)return;
+  const dashboardCard=cards[0], optionCards=cards.slice(1);
+  const tools=document.createElement("div");
+  tools.className="admin-tools";
+  tools.setAttribute("aria-label","Menu d’administration");
+  const modal=document.createElement("div");
+  modal.className="admin-modal hidden";
+  modal.setAttribute("role","dialog");
+  modal.setAttribute("aria-modal","true");
+  modal.innerHTML='<div class="admin-modal-inner"><div class="admin-modal-head"><div><span class="admin-modal-kicker">ESPACE ADMIN</span><strong id="adminModalTitle">Option administrateur</strong></div><button class="btn secondary admin-modal-close" type="button">✕ Fermer</button></div><div class="admin-modal-body"></div></div>';
+  document.body.appendChild(modal);
+  const body=modal.querySelector(".admin-modal-body");
+  const title=modal.querySelector("#adminModalTitle");
+  const closeButton=modal.querySelector(".admin-modal-close");
+  function close(){
+    const card=modal._activeCard;
+    if(card && card._adminPlaceholder){
+      card.classList.add("hidden");
+      card._adminPlaceholder.parentNode.insertBefore(card,card._adminPlaceholder.nextSibling);
+    }
+    modal.classList.add("hidden");
+    modal._activeCard=null;
+  }
+  closeButton.addEventListener("click",close);
+  modal.addEventListener("click",function(e){if(e.target===modal)close();});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!modal.classList.contains("hidden"))close();});
+  optionCards.forEach(function(card,index){
+    const heading=card.querySelector("h2");
+    const label=(heading&&heading.textContent||"Option").trim();
+    const placeholder=document.createComment("admin-card-placeholder");
+    card.parentNode.insertBefore(placeholder,card);
+    card._adminPlaceholder=placeholder;
+    card.classList.add("hidden");
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="admin-tool-btn";
+    button.innerHTML='<span class="admin-tool-icon">'+(["👥","⚙️","🏆","🎁","🔑","📊"][index]||"🛠️")+'</span><span class="admin-tool-label">'+label.replace(/^[^\wÀ-ÿ]+/,"")+'</span><span class="admin-tool-arrow">›</span>';
+    button.addEventListener("click",function(){
+      if(modal._activeCard)close();
+      title.textContent=label;
+      card.classList.remove("hidden");
+      body.appendChild(card);
+      modal._activeCard=card;
+      modal.classList.remove("hidden");
+      closeButton.focus();
+    });
+    tools.appendChild(button);
+  });
+  dashboardCard.classList.add("admin-dashboard-card");
+  dashboardCard.insertAdjacentElement("afterend",tools);
+  adminOrganizerReady=true;
+}
+
+function getPaymentStatusMeta(status){
+  const normalized=status==="accepted"?"accepted":status==="rejected"?"rejected":"pending";
+  if(normalized==="accepted")return {key:normalized,label:"Paiement approuvé",stamp:"APPROUVÉ"};
+  if(normalized==="rejected")return {key:normalized,label:"Paiement refusé",stamp:"REFUSÉ"};
+  return {key:"pending",label:"Vérification en cours",stamp:"EN VÉRIFICATION"};
+}
+
+function renderBatBotReceipt(x,options={}){
+  const meta=getPaymentStatusMeta(x.status);
+  const username=String(
+    x.username||
+    options.username||
+    document.querySelector("#userBox strong")?.textContent||
+    "Utilisateur"
+  );
+  const reference=String(x.reference||"—");
+  const amount=Number(x.amount)||0;
+  const adminNote=x.admin_note?`<div class="batbot-receipt-row"><span>📝 Note</span><strong>${escapeHtml(x.admin_note)}</strong></div>`:"";
+  const stampName=username.length>20?username.slice(0,20)+"…":username;
+  const details=[
+    `Transaction #${x.id}`,
+    `Nom : ${username}`,
+    `Offre : ${x.offer||"—"}`,
+    `Montant : ${amount} FCFA`,
+    `Opérateur : ${x.operator||"—"}`,
+    `Référence : ${reference}`,
+    `Date et heure : ${formatPaymentDateTime(x.created_at)}`,
+    `Statut : ${meta.label}`,
+    x.admin_note?`Note : ${x.admin_note}`:""
+  ].filter(Boolean).join("\n");
+  const encodedDetails=encodeURIComponent(details);
+  const encodedReference=encodeURIComponent(reference);
+  return `
+    <div class="batbot-receipt">
+      <div class="batbot-receipt-head">
+        <div class="batbot-receipt-brand">
+          <img src="logo.png" alt="BatBot">
+          <div><div>BATBOT</div><div class="batbot-receipt-subtitle">Reçu de transaction</div></div>
+        </div>
+        <div class="batbot-receipt-id">N° ${escapeHtml(String(x.id||"—"))}</div>
+      </div>
+      <div class="batbot-receipt-body">
+        <div class="batbot-receipt-row client"><span>👤 Client</span><strong>${escapeHtml(username)}</strong></div>
+        <div class="batbot-receipt-row"><span>🎯 Offre</span><strong>${escapeHtml(x.offer||"—")}</strong></div>
+        <div class="batbot-receipt-row"><span>💰 Montant</span><strong>${escapeHtml(String(amount))} FCFA</strong></div>
+        <div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>${escapeHtml(x.operator||"—")}</strong></div>
+        <div class="batbot-receipt-row"><span>📅 Date</span><strong>${escapeHtml(formatPaymentDateTime(x.created_at))}</strong></div>
+        ${adminNote}
+        <div class="batbot-receipt-reference">
+          <span class="batbot-receipt-reference-label">🔖 Référence de transaction</span>
+          <code>${escapeHtml(reference)}</code>
+        </div>
+      </div>
+      <div class="batbot-receipt-footer">
+        <div class="batbot-receipt-status ${meta.key}">${meta.key==="accepted"?"🟢":meta.key==="rejected"?"🔴":"🟡"} ${meta.label}</div>
+        <div class="batbot-receipt-stamp ${meta.key}">BATBOT<br>${escapeHtml(meta.stamp)}<span>${escapeHtml(stampName)}</span></div>
+      </div>
+      <div class="batbot-receipt-actions">
+        <button class="btn secondary batbot-receipt-copy-reference" type="button" data-copy="${encodedReference}" onclick="copyPaymentDetails(decodeURIComponent(this.dataset.copy))">📋 Copier la référence</button>
+        <button class="btn secondary" type="button" data-copy="${encodedDetails}" onclick="copyPaymentDetails(decodeURIComponent(this.dataset.copy))">📋 Copier tous les détails</button>
+      </div>
+    </div>`;
+}
+
+let batbotMessagesPollTimer=null;
+let batbotMessageModalActiveId=null;
+
+function ensureBatBotMessageModal(){
+  let modal=document.getElementById("batbotMessageModal");
+  if(modal)return modal;
+  modal=document.createElement("div");
+  modal.id="batbotMessageModal";
+  modal.className="batbot-message-modal hidden";
+  modal.setAttribute("role","dialog");
+  modal.setAttribute("aria-modal","true");
+  modal.innerHTML='<div class="batbot-message-modal-inner"><div class="batbot-message-modal-kicker">BATBOT • INFORMATION</div><div id="batbotMessageModalTitle" class="batbot-message-modal-title"></div><div id="batbotMessageModalBody" class="batbot-message-modal-body"></div><div id="batbotMessageModalDate" class="batbot-message-date"></div><div class="batbot-message-modal-actions"><button class="btn primary" type="button" onclick="markBatBotMessageReadAndClose()">✓ J’ai lu le message</button></div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener("click",function(e){if(e.target===modal)markBatBotMessageReadAndClose();});
+  return modal;
+}
+
+function renderBatBotMessages(items){
+  const box=document.getElementById("batbotMessagesList");
+  const badge=document.getElementById("batbotMessagesBadge");
+  if(!box)return;
+  const unread=items.filter(x=>!x.is_read).length;
+  if(badge){badge.textContent=String(unread);badge.classList.toggle("hidden",unread===0);}
+  box.innerHTML=items.length?'<div class="batbot-message-list">'+items.map(x=>`<div class="batbot-message-item ${x.is_read?'':'unread'}"><div class="batbot-message-title">${escapeHtml(x.title)}</div><div class="batbot-message-date">${escapeHtml(formatPaymentDateTime(x.created_at))}${x.is_read?'':' • Nouveau'}</div><div class="batbot-message-body">${escapeHtml(x.body)}</div></div>`).join("")+'</div>':'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun message</div><div class="professional-status-body">Les annonces importantes de BatBot apparaîtront ici.</div></div>';
+}
+
+async function loadBatBotMessages(options={}){
+  const box=document.getElementById("batbotMessagesList");
+  if(!box)return;
+  if(options.loading&&!box.dataset.hasContent){box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des messages</strong><small>Récupération des dernières informations…</small></div></div>';}
+  try{
+    const r=await fetch("/api/messages/mine",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    const items=Array.isArray(d.messages)?d.messages:[];
+    const signature=JSON.stringify(items.map(x=>[x.id,x.title,x.body,x.created_at,x.is_read]));
+    if(box.dataset.signature!==signature){box.dataset.signature=signature;box.dataset.hasContent="true";renderBatBotMessages(items);}
+    const unread=items.filter(x=>!x.is_read);
+    if(unread.length&&!document.hidden&&!batbotMessageModalActiveId){showBatBotMessageModal(unread[0]);}
+  }catch(e){
+    if(!box.dataset.hasContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Messages indisponibles</div><div class="professional-status-body">Impossible de charger les messages pour le moment.</div></div>';
+  }
+}
+
+function showBatBotMessageModal(message){
+  const modal=ensureBatBotMessageModal();
+  batbotMessageModalActiveId=Number(message.id);
+  document.getElementById("batbotMessageModalTitle").textContent=message.title||"Information BatBot";
+  document.getElementById("batbotMessageModalBody").textContent=message.body||"";
+  document.getElementById("batbotMessageModalDate").textContent=formatPaymentDateTime(message.created_at);
+  modal.classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+
+async function markBatBotMessageReadAndClose(){
+  const id=batbotMessageModalActiveId;
+  batbotMessageModalActiveId=null;
+  const modal=document.getElementById("batbotMessageModal");
+  if(modal)modal.classList.add("hidden");
+  document.body.style.overflow="";
+  if(!id)return;
+  try{await fetch("/api/messages/"+encodeURIComponent(id)+"/read",{method:"POST",credentials:"same-origin"});}catch(_){ }
+  await loadBatBotMessages();
+}
+
+function startBatBotMessagesPolling(){
+  if(batbotMessagesPollTimer)return;
+  loadBatBotMessages({loading:true});
+  batbotMessagesPollTimer=setInterval(function(){
+    if(!document.hidden&&!document.getElementById("dashboard")?.classList.contains("hidden"))loadBatBotMessages();
+  },5000);
+}
+
+async function loadAdminMessages(){
+  const box=document.getElementById("adminMessagesList");
+  if(!box)return;
+  const hadContent=box.dataset.hasContent==="true";
+  if(!hadContent){
+    box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des annonces actives…</small></div></div>';
+  }
+  try{
+    const r=await fetch("/api/admin/messages",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    const items=Array.isArray(d.messages)?d.messages:[];
+    const signature=JSON.stringify(items.map(x=>[x.id,x.title,x.body,x.created_at,x.expires_at]));
+    if(box.dataset.signature===signature)return;
+    box.dataset.signature=signature;
+    box.dataset.hasContent="true";
+    box.innerHTML=items.length?'<div class="batbot-admin-message-list">'+items.map(x=>`<div class="batbot-admin-message-item"><div class="batbot-message-title">${escapeHtml(x.title)}</div><div class="batbot-admin-message-meta">Publié le ${escapeHtml(formatPaymentDateTime(x.created_at))} • Expire le ${escapeHtml(formatPaymentDateTime(x.expires_at))}</div><div class="batbot-message-body">${escapeHtml(x.body)}</div><button class="btn danger" type="button" onclick="deleteBatBotMessage(${x.id},this)">🗑️ Supprimer</button></div>`).join(""):'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun message actif</div><div class="professional-status-body">Publiez une annonce pour la rendre visible aux membres pendant 24 heures.</div></div>';
+  }catch(e){
+    if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Messages indisponibles</div><div class="professional-status-body">Impossible de charger les annonces.</div></div>';
+  }
+}
+
+async function publishBatBotMessage(){
+  const title=document.getElementById("adminMessageTitle")?.value.trim()||"";
+  const body=document.getElementById("adminMessageBody")?.value.trim()||"";
+  if(!title||!body)return showStatus("adminMessageStatus","📋 Votre message est incomplet. Ajoutez un titre et un contenu avant de publier.","error");
+  setLoading("adminPublishMessageButton",true,"📢 Publier le message");
+  try{
+    const r=await fetch("/api/admin/messages",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({title,body})});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Publication impossible.");
+    document.getElementById("adminMessageTitle").value="";
+    document.getElementById("adminMessageBody").value="";
+    showStatus("adminMessageStatus",d.message||"Message publié avec succès.","success");
+    await loadAdminMessages();
+  }catch(e){showStatus("adminMessageStatus",e.message||"Publication impossible.","error");}
+  finally{setLoading("adminPublishMessageButton",false,"📢 Publier le message");}
+}
+
+async function deleteBatBotMessage(id,button){
+  if(button?.disabled)return;
+  const confirmed=await showProfessionalConfirm({
+    title:"🗑️ Supprimer le message",
+    message:"Voulez-vous vraiment supprimer définitivement ce message ? Cette action est irréversible.",
+    confirmText:"🗑️ Supprimer"
+  });
+  if(!confirmed)return;
+  if(button){button.disabled=true;button.innerHTML='<span class="batbot-spinner batbot-btn-spinner"></span>Suppression…';}
+  try{
+    const r=await fetch("/api/admin/messages/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin"});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Suppression impossible.");
+    showToast(d.message||"Message supprimé.","success");
+    await loadAdminMessages();
+  }catch(e){showToast(e.message||"Suppression impossible.","error");if(button){button.disabled=false;button.textContent="🗑️ Supprimer";}}
+}
+
+async function loadMyTransactions(){
+  const box=document.getElementById("myTransactionsList");
+  if(!box)return;
+  const hadContent=box.dataset.hasContent==="true";
+  if(!hadContent){
+    box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div>';
+  }
+  try{
+    const r=await fetch("/api/payment-requests/mine",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    const items=Array.isArray(d.requests)?d.requests:[];
+    updateProfessionalLastTransaction(items);
+    const signature=JSON.stringify(items.map(x=>[x.id,x.status,x.offer,x.amount,x.operator,x.reference,x.created_at,x.admin_note||""]));
+    if(box.dataset.signature===signature)return;
+    box.dataset.signature=signature;
+    box.dataset.hasContent="true";
+    box.innerHTML=items.length
+      ? items.map(x=>`<div class="payment-request-card"><div class="payment-request-title">🧾 Reçu de transaction #${x.id}</div>${renderBatBotReceipt(x)}</div>`).join("")
+      : '<div class="professional-status"><div class="professional-status-head">ℹ️ Aucune transaction récente</div><div class="professional-status-body">Vos demandes de paiement apparaîtront ici après leur enregistrement.</div></div>';
+  }catch(e){
+    if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Transactions indisponibles</div><div class="professional-status-body">Impossible de charger vos transactions pour le moment. Veuillez réessayer dans quelques instants.</div></div>';
+  }
+}
+
+async function loadAdminPaymentRequests(){
+  const box=document.getElementById("paymentRequestsAdminList");
+  if(!box)return;
+  const hadContent=box.dataset.hasContent==="true";
+  if(!hadContent){
+    box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des demandes</strong><small>Récupération des paiements en attente…</small></div></div>';
+  }
+  try{
+    const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    const items=Array.isArray(d.requests)?d.requests:[];
+    const signature=JSON.stringify(items.map(x=>[x.id,x.status,x.username,x.offer,x.amount,x.operator,x.reference,x.created_at,x.admin_note||""]));
+    if(box.dataset.signature===signature)return;
+    box.dataset.signature=signature;
+    box.dataset.hasContent="true";
+    box.innerHTML=items.length
+      ? items.map(x=>{
+          const meta=getPaymentStatusMeta(x.status);
+          const actionButtons=meta.key==="pending"
+            ? `<div class="two-columns" style="margin-top:8px">
+                 <button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted',this)">✅ Approuver le paiement</button>
+                 <button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected',this)">❌ Refuser le paiement</button>
+               </div>`
+            : "";
+          return `<div class="payment-request-card"><div class="payment-request-title">🧾 Reçu de transaction #${x.id}</div>${renderBatBotReceipt(x)}${actionButtons}</div>`;
+        }).join("")
+      : '<div class="professional-status"><div class="professional-status-head">ℹ️ Aucune demande de paiement</div><div class="professional-status-body">Les nouvelles demandes apparaîtront automatiquement ici.</div></div>';
+  }catch(e){
+    if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Demandes indisponibles</div><div class="professional-status-body">Impossible de charger les demandes de paiement pour le moment. Veuillez réessayer dans quelques instants.</div></div>';
+  }
+}
+
+async function resolvePaymentRequest(id,status,button){
+  if(button?.disabled)return;
+  if(button){
+    button.disabled=true;
+    button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>Traitement…';
+  }
+  try{
+    const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Action impossible.");
+    showToast(d.message||(status==="accepted"?"Paiement approuvé.":"Paiement refusé."),"success");
+    await loadAdminPaymentRequests();
+  }catch(e){
+    showToast(e.message||"Impossible de traiter le paiement.","error");
+    if(button){button.disabled=false;button.textContent=status==="accepted"?"✅ Approuver le paiement":"❌ Refuser le paiement";}
+  }
+}
+
+async function loadAdmin(){
+  document.getElementById("auth").classList.add("hidden");
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("admin").classList.remove("hidden");
+  document.getElementById("adminLoginBox").classList.add("hidden");
+  document.getElementById("adminPanel").classList.remove("hidden");
+  organizeAdminPanel();
+  loadAdminPaymentRequests();
+  loadAdminMessages();
+
+  try{
+    const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      document.getElementById("adminStats").textContent=data.error||"Impossible de charger les données administrateur.";
+      return;
+    }
+
+    const users=Array.isArray(data.users)?data.users:[];
+    adminUsersCache=users;
+    document.getElementById("adminStats").textContent=
+      "Nombre total de membres inscrits : "+users.length;
+    renderAdminUsers(users);
+
+    const settingsResponse=await fetch("/api/admin/settings",{credentials:"same-origin",cache:"no-store"});
+    const settingsData=await readApiResponse(settingsResponse);
+    if(settingsResponse.ok){
+      document.getElementById("settingsList").innerHTML=renderSettingsForm(settingsData.settings||{});
+    }
+
+    const resetResponse=await fetch("/api/admin/reset-requests",{credentials:"same-origin",cache:"no-store"});
+    const resetData=await readApiResponse(resetResponse);
+
+    if(!resetResponse.ok){
+      document.getElementById("resetList").innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Demandes indisponibles</div><div class="professional-status-body">Impossible de charger les demandes de réinitialisation pour le moment.</div></div>';
+    }else{
+      const requests=Array.isArray(resetData.requests)?resetData.requests:[];
+      document.getElementById("resetList").innerHTML=
+        requests.map(function(request){
+          return `
+            <div class="reset-request">
+              <strong>🔐 ${escapeHtml(request.username||request.name||"Utilisateur")}</strong>
+              ${request.phone?`<br><span class="admin-small">📱 ${escapeHtml(request.phone)}</span>`:""}
+              ${request.created_at?`<br><span class="admin-small">📅 Demande : ${escapeHtml(formatDateTime(request.created_at))}</span>`:""}
+              <br>
+              <span class="admin-small">⏳ Demande en attente de traitement par le service BatBot</span>
+              <button class="btn green" type="button" onclick="resolveReset(${Number(request.id)})">
+                🆕 Générer un nouveau mot de passe
+              </button>
+            </div>
+          `;
+        }).join("")||'<p class="muted">Aucune demande en attente.</p>';
+    }
+
+    await loadAdminBookmakers();
+    await loadAdminCoupons();
+    await loadAdminDailyMatches();
+
+  }catch(error){
+    console.error("ADMIN:",error);
+    document.getElementById("adminStats").textContent="Impossible de contacter le serveur.";
+  }
+}
+
+async function loadDailyMatches(){
+  const container=document.getElementById("dailyMatches");
+  if(!container)return;
+
+  const hasDisplayedResults=container.dataset.loaded==="true";
+  if(!hasDisplayedResults && !container.querySelector(".professional-loading"))container.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des probabilités</strong><small>Récupération des informations BatBot…</small></div></div>';
+
+  try{
+    const response=await fetch("/api/daily-matches",{
+      method:"GET",credentials:"same-origin",cache:"no-store"
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      if(!hasDisplayedResults)container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Probabilités indisponibles</div><div class="professional-status-body">Les probabilités ne peuvent pas être chargées pour le moment. Veuillez réessayer plus tard.</div></div>';
+      return;
+    }
+
+    const matches=Array.isArray(data)?data:(Array.isArray(data.matches)?data.matches:[]);
+
+    if(matches.length===0){
+      if(!hasDisplayedResults)container.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match ajouté</div><div class="professional-status-body">Aucune probabilité n’a encore été publiée par le service BatBot.</div></div>';
+      return;
+    }
+
+    container.innerHTML=matches.map(function(match){
+      const home=match.home_probability??match.homeProbability??"0";
+      const draw=match.draw_probability??match.drawProbability??"0";
+      const away=match.away_probability??match.awayProbability??"0";
+      const pick=match.recommended_pick??match.recommendedPick??"";
+
+      return `
+        <div class="match-card">
+          <div class="match-title"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
+          <div class="probability">
+            <div class="prob"><strong>${escapeHtml(home)}%</strong><span>Équipe 1</span></div>
+            <div class="prob"><strong>${escapeHtml(draw)}%</strong><span>Match nul</span></div>
+            <div class="prob"><strong>${escapeHtml(away)}%</strong><span>Équipe 2</span></div>
+          </div>
+          ${pick?`<div class="notice">🎯 Pronostic recommandé : <strong>${escapeHtml(pick)}</strong></div>`:""}
+        </div>
+      `;
+    }).join("");
+    container.dataset.loaded="true";
+
+  }catch(error){
+    console.error("DAILY MATCHES:",error);
+    if(!hasDisplayedResults)container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service temporairement indisponible</div><div class="professional-status-body">Impossible de récupérer les informations pour le moment.</div></div>';
+  }
+}
+
+async function addDailyMatch(){
+  const matchName=document.getElementById("matchName").value.trim();
+  const homeProbability=document.getElementById("homeProbability").value.trim();
+  const drawProbability=document.getElementById("drawProbability").value.trim();
+  const awayProbability=document.getElementById("awayProbability").value.trim();
+  const recommendedPick=document.getElementById("recommendedPick").value.trim();
+
+  if(!matchName)
+    return showStatus("matchAdminStatus","Entrez le nom du match.","error");
+
+  if(homeProbability===""||drawProbability===""||awayProbability==="")
+    return showStatus("matchAdminStatus","Remplissez les trois probabilités.","error");
+
+  const home=Number(homeProbability);
+  const draw=Number(drawProbability);
+  const away=Number(awayProbability);
+
+  if(!Number.isFinite(home)||!Number.isFinite(draw)||!Number.isFinite(away))
+    return showStatus("matchAdminStatus","Les probabilités doivent être des nombres valides.","error");
+
+  if(home<0||home>100||draw<0||draw>100||away<0||away>100)
+    return showStatus("matchAdminStatus","Chaque probabilité doit être comprise entre 0 et 100 %.","error");
+
+  const total=home+draw+away;
+
+  if(Math.abs(total-100)>0.01)
+    return showStatus("matchAdminStatus","Les probabilités doivent avoir un total de 100 %. Total actuel : "+total.toFixed(2)+" %.","error");
+
+  setLoading("addMatchButton",true,"➕ Ajouter le match");
+  showStatus("matchAdminStatus","Ajout du match en cours...","");
+
+  try{
+    const response=await fetch("/api/admin/daily-matches",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({
+        match_name:matchName,
+        home_probability:home,
+        draw_probability:draw,
+        away_probability:away,
+        recommended_pick:recommendedPick
+      })
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      console.error("ADD DAILY MATCH ERROR:",response.status,data);
+      showStatus("matchAdminStatus",data.error||data.message||"Impossible d'ajouter le match.","error");
+      return;
+    }
+
+    showStatus("matchAdminStatus",data.message||"Match ajouté avec succès.","success");
+
+    document.getElementById("matchName").value="";
+    document.getElementById("homeProbability").value="";
+    document.getElementById("drawProbability").value="";
+    document.getElementById("awayProbability").value="";
+    document.getElementById("recommendedPick").value="";
+
+    await loadAdminDailyMatches();
+    await loadDailyMatches();
+
+  }catch(error){
+    console.error("ADD DAILY MATCH:",error);
+    showStatus("matchAdminStatus","Impossible de contacter le serveur.","error");
+  }finally{
+    setLoading("addMatchButton",false,"➕ Ajouter le match");
+  }
+}
+
+async function loadAdminDailyMatches(){
+  const container=document.getElementById("adminDailyMatches");
+  if(!container)return;
+
+  container.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des matchs</strong><small>Récupération des données administrateur…</small></div></div>';
+
+  try{
+    const response=await fetch("/api/admin/daily-matches",{
+      method:"GET",credentials:"same-origin",cache:"no-store"
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs indisponibles</div><div class="professional-status-body">Impossible de charger les matchs pour le moment.</div></div>';
+      return;
+    }
+
+    const matches=Array.isArray(data)?data:(Array.isArray(data.matches)?data.matches:[]);
+
+    if(matches.length===0){
+      container.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match enregistré</div><div class="professional-status-body">Ajoutez un match pour qu’il apparaisse dans cet espace.</div></div>';
+      return;
+    }
+
+    container.innerHTML=matches.map(function(match){
+      const id=Number(match.id??match.match_id);
+      const home=match.home_probability??match.homeProbability??"0";
+      const draw=match.draw_probability??match.drawProbability??"0";
+      const away=match.away_probability??match.awayProbability??"0";
+      const pick=match.recommended_pick??match.recommendedPick??"";
+
+      return `
+        <div class="match-card">
+          <div class="match-title"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
+          <div class="probability">
+            <div class="prob"><strong>${escapeHtml(home)}%</strong><span>Équipe 1</span></div>
+            <div class="prob"><strong>${escapeHtml(draw)}%</strong><span>Match nul</span></div>
+            <div class="prob"><strong>${escapeHtml(away)}%</strong><span>Équipe 2</span></div>
+          </div>
+          ${pick?`<div class="notice">🎯 Recommandé : <strong>${escapeHtml(pick)}</strong></div>`:""}
+          ${Number.isFinite(id)&&id>0?`
+            <button class="btn danger" type="button" onclick="deleteDailyMatch(${id})">🗑️ Supprimer</button>
+          `:""}
+        </div>
+      `;
+    }).join("");
+
+  }catch(error){
+    console.error("ADMIN DAILY MATCHES:",error);
+    container.innerHTML='<div class="notice">Impossible de contacter le serveur.</div>';
+  }
+}
+
+async function deleteDailyMatch(id){
+  if(!id)return;
+  if(!confirm("Voulez-vous vraiment supprimer ce match ?"))return;
+
+  try{
+    const response=await fetch("/api/admin/daily-matches/"+encodeURIComponent(id),{
+      method:"DELETE",credentials:"same-origin"
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      showStatus("matchAdminStatus",data.error||data.message||"Impossible de supprimer le match.","error");
+      return;
+    }
+
+    showStatus("matchAdminStatus",data.message||"Match supprimé avec succès.","success");
+    await loadAdminDailyMatches();
+    await loadDailyMatches();
+
+  }catch(error){
+    console.error("DELETE DAILY MATCH:",error);
+    showStatus("matchAdminStatus","Impossible de contacter le serveur.","error");
+  }
+}
+
+function formatDateTime(value){
+  if(!value)return "";
+  const date=new Date(String(value).replace(" ","T")+"Z");
+  if(Number.isNaN(date.getTime()))return String(value);
+  return date.toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"});
+}
+
+function showTemporaryPasswordModal(data){
+  let modal=document.getElementById("passwordResetModal");
+  if(!modal){
+    modal=document.createElement("div");
+    modal.id="passwordResetModal";
+    modal.className="password-reset-modal hidden";
+    modal.setAttribute("role","dialog");
+    modal.setAttribute("aria-modal","true");
+    document.body.appendChild(modal);
+  }
+
+  const expires=data.expires_at?new Date(data.expires_at).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}):"";
+  modal.innerHTML='<div class="password-reset-modal-inner">'+
+    '<div class="password-reset-modal-head"><div><h2>🔐 Mot de passe temporaire</h2><div class="password-reset-modal-user">Utilisateur : <strong>'+escapeHtml(data.username||"")+'</strong></div></div><button class="btn secondary password-reset-modal-close" type="button" onclick="closeTemporaryPasswordModal()">✕</button></div>'+
+    '<div class="notice">Le mot de passe permanent de l’utilisateur n’est pas remplacé. Ce code est temporaire et devra être changé après la première connexion.</div>'+
+    '<div class="password-reset-modal-password"><code id="adminTemporaryPassword">'+escapeHtml(data.new_password||"")+'</code></div>'+
+    '<div class="password-reset-meta">Expiration : '+escapeHtml(expires)+'</div>'+
+    '<div class="password-reset-modal-actions"><button class="btn primary" type="button" onclick="copyAdminTemporaryPassword()">📋 Copier</button><button class="btn secondary" type="button" onclick="closeTemporaryPasswordModal()">✓ Terminer</button></div>'+
+    '</div>';
+  modal.classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+
+function closeTemporaryPasswordModal(){
+  const modal=document.getElementById("passwordResetModal");
+  if(modal)modal.classList.add("hidden");
+  document.body.style.overflow="";
+}
+
+async function copyAdminTemporaryPassword(){
+  const value=document.getElementById("adminTemporaryPassword")?.textContent?.trim();
+  if(!value)return;
+  try{
+    if(navigator.clipboard)await navigator.clipboard.writeText(value);
+    else{const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
+    showToast("Mot de passe temporaire copié avec succès.","success");
+  }catch(_){showToast("Copie impossible.","error");}
+}
+
+function showProfessionalConfirm(options){
+  return new Promise(function(resolve){
+    let modal=document.getElementById("batbotConfirmModal");
+    if(!modal){
+      modal=document.createElement("div");
+      modal.id="batbotConfirmModal";
+      modal.className="batbot-confirm-modal hidden";
+      modal.setAttribute("role","dialog");
+      modal.setAttribute("aria-modal","true");
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML='<div class="batbot-confirm-inner">'+
+      '<h3>'+escapeHtml(options.title||"Confirmation")+'</h3>'+
+      '<p>'+escapeHtml(options.message||"Confirmez cette action.")+'</p>'+
+      '<div class="batbot-confirm-actions">'+
+      '<button class="btn secondary" type="button" id="batbotConfirmCancel">Annuler</button>'+
+      '<button class="btn primary" type="button" id="batbotConfirmOk">'+escapeHtml(options.confirmText||"Confirmer")+'</button>'+
+      '</div></div>';
+    modal.classList.remove("hidden");
+    document.body.style.overflow="hidden";
+    const close=function(value){
+      modal.classList.add("hidden");
+      document.body.style.overflow="";
+      resolve(value);
+    };
+    document.getElementById("batbotConfirmCancel").onclick=function(){close(false);};
+    document.getElementById("batbotConfirmOk").onclick=function(){close(true);};
+  });
+}
+
+async function resolveReset(id){
+  if(!id)return;
+  const confirmed=await showProfessionalConfirm({
+    title:"🔐 Traiter la demande",
+    message:"Un mot de passe temporaire sécurisé sera généré pour cet utilisateur. Son mot de passe permanent ne sera pas remplacé.",
+    confirmText:"Générer le code"
+  });
+  if(!confirmed)return;
+
+  try{
+    const response=await fetch("/api/admin/reset-requests/"+encodeURIComponent(id)+"/resolve",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin"
+    });
+
+    const data=await readApiResponse(response);
+
+    if(!response.ok){
+      showToast(data.error||data.message||"Impossible de traiter la demande.","error");
+      return;
+    }
+
+    showTemporaryPasswordModal(data);
+    await loadAdmin();
+
+  }catch(error){
+    console.error("RESOLVE RESET:",error);
+    showToast("Impossible de contacter le serveur.","error");
+  }
+}
+
+async function adminLogout(){
+  try{
+    await fetch("/api/admin/logout",{
+      method:"POST",credentials:"same-origin"
+    });
+  }catch(_){}
+
+  showLoading("Déconnexion de l'administration…");
+
+  setTimeout(function(){
+    showAuth();
+    showRegister();
+    document.getElementById("adminPhone").value="";
+    document.getElementById("adminPassword").value="";
+    hideLoading();
+    window.scrollTo(0,0);
+  },300);
+}
+
+async function checkSession(){
+  try{
+    const response=await fetch("/api/me",{
+      method:"GET",credentials:"same-origin",cache:"no-store"
+    });
+
+    const data=await readApiResponse(response);
+
+    if(response.ok && data.user){
+      if(data.user.must_change_password){
+        showAuth();
+        showChangePassword();
+      }else{
+        showDashboard(data.user||data);
+      }
+      hideLoading();
+      return;
+    }
+
+  }catch(error){
+    console.error("SESSION:",error);
+  }
+
+  showAuth();
+  showRegister();
+  hideLoading();
+}
+
+async function loadPublicConfig(){
+  try{
+    const response=await fetch("/api/config",{cache:"no-store"});
+    const data=await readApiResponse(response);
+    if(!response.ok)return;
+    if(data.whatsapp)WHATSAPP_NUMBER=String(data.whatsapp);
+    if(data.telegram)TELEGRAM_CONTACT="https://t.me/"+String(data.telegram).replace(/^@/,"");
+    if(data.wave500){WAVE_PAYMENT_DAY_URL=data.wave500;const el=document.getElementById("waveDayButton");if(el)el.href=data.wave500;}
+    if(data.wave1000){WAVE_PAYMENT_7_DAYS_URL=data.wave1000;const el=document.getElementById("wavePremiumButton");if(el)el.href=data.wave1000;}
+    ["orangeMoney","mtnMoney","moovMoney"].forEach(k=>{const el=document.getElementById(k+"Number");if(el&&data[k])el.textContent=data[k];});
+    const wa=document.getElementById("whatsappContact");if(wa)wa.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
+    const tg=document.getElementById("telegramContact");if(tg)tg.href=TELEGRAM_CONTACT;
+    const groupWa=document.querySelector('a[href*="chat.whatsapp.com"]');if(groupWa&&data.whatsappGroup)groupWa.href=data.whatsappGroup;
+    const groupTg=document.querySelector('a[href="https://t.me/sdrive123"]');if(groupTg&&data.telegramGroup)groupTg.href=data.telegramGroup;
+    renderBatBotReferral(data);
+    loadBookmakers();
+    loadCoupons();
+    const socialMap={"TikTok":data.tiktok,"Facebook":data.facebook,"Instagram":data.instagram};
+    document.querySelectorAll('.social-grid a').forEach(a=>{const key=a.textContent.trim().replace(/^🎵 |^🔵 |^📸 /,'');if(socialMap[key])a.href=socialMap[key];});
+  }catch(e){console.error("CONFIG:",e);}
+}
+
+
+async function refreshCurrentUserSilently(){
+  if(document.getElementById("dashboard")?.classList.contains("hidden"))return;
+  try{
+    const r=await fetch("/api/me",{credentials:"same-origin",cache:"no-store"});
+    const d=await readApiResponse(r);
+    if(!r.ok||!d.user)return;
+    updateProfileStatuses(d.user);
+    const badge=d.user.is_subscribed||d.user.subscribed||d.user.subscription_active;
+    const el=document.getElementById("profileBadge");
+    if(el){
+      el.textContent="🏅 "+(badge?"Membre premium":"Membre BatBot");
+      el.classList.toggle("badge-blue",Boolean(badge));
+    }
+  }catch(e){console.warn("USER_SYNC:",e);}
+}
+
+let batbotLiveSyncStarted=false;
+function startBatBotLiveSync(){
+  if(batbotLiveSyncStarted)return;
+  batbotLiveSyncStarted=true;
+  setInterval(async function(){
+    if(document.hidden)return;
+    try{
+      await Promise.allSettled([
+        loadPublicConfig(),
+        loadDailyMatches(),
+        loadMyTransactions(),
+        loadBatBotMessages(),
+        refreshCurrentUserSilently()
+      ]);
+      // Ne pas recharger toute l'administration automatiquement : cela
+      // recréait les champs et effaçait le numéro pendant la saisie.
+      if(document.getElementById("adminPanel") && !document.getElementById("adminPanel").classList.contains("hidden")){
+        await Promise.allSettled([loadAdminPaymentRequests(),loadAdminMessages()]);
+      }
+    }catch(error){console.warn("LIVE_SYNC:",error);}
+  },5000);
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+  loadPublicConfig();
+  showLoading("Connexion en cours…");
+
+  const whatsappContact=document.getElementById("whatsappContact");
+  if(whatsappContact){
+    whatsappContact.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
+  }
+
+  if(sessionStorage.getItem("batbot_password_reset_token")){
+    startPasswordResetPolling();
+  }
+  checkSession();
+  startBatBotLiveSync();
+});
+
+document.addEventListener("keydown",function(event){
+  if(event.key!=="Enter")return;
+
+  const target=event.target;
+  if(!target||target.tagName==="TEXTAREA")return;
+
+  if(
+    target.id==="registerUsername"||
+    target.id==="registerPassword"||
+    target.id==="registerPassword2"
+  ){
+    register();
+  }else if(
+    target.id==="loginUsername"||
+    target.id==="loginPassword"
+  ){
+    login();
+  }else if(target.id==="forgotUsername"){
+    submitForgotPassword();
+  }else if(
+    target.id==="adminPhone"||
+    target.id==="adminPassword"
+  ){
+    adminLogin();
+  }
+});
+</script>
+
+
+<style id="batbot-public-options-style">
+  .public-options-launcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+  .public-option-btn{min-height:66px;border:1px solid rgba(0,213,255,.38);border-radius:16px;background:linear-gradient(145deg,#123b5b,#0b223a);color:#fff;font-weight:800;font-size:14px;padding:10px;box-shadow:0 5px 14px rgba(0,0,0,.16);cursor:pointer}
+  .public-option-btn:active{transform:scale(.98)}
+  .public-options-label{margin:18px 0 8px;color:#6EE7A0;font-weight:900;letter-spacing:1px;text-transform:uppercase;font-size:12px}
+  .public-option-modal{position:fixed;inset:0;background:rgba(2,10,20,.9);z-index:150;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}
+  .public-option-modal.hidden{display:none}
+  .public-option-modal-inner{width:min(720px,100%);margin-top:18px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.5)}
+  .public-option-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;position:sticky;top:0;background:#0b223a;z-index:2;padding-bottom:8px}
+  .public-option-modal-head strong{font-size:17px}
+  .public-option-modal-close{width:auto;margin:0;padding:9px 12px;white-space:nowrap}
+  .public-option-modal-body>.card,.public-option-modal-body>section{margin-top:0}
+  @media(min-width:640px){.public-options-launcher{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+<script id="batbot-public-options-script">
+(function(){
+  function setupPublicOptionWindows(){
+    const dashboard=document.getElementById('dashboard');
+    const statusGrid=dashboard&&dashboard.querySelector('.profile-status-grid');
+    if(!dashboard||!statusGrid||dashboard.dataset.publicWindowsReady==='1')return;
+    dashboard.dataset.publicWindowsReady='1';
+
+    const launcher=document.createElement('div');
+    launcher.className='public-options-launcher-wrap';
+    launcher.innerHTML='<div class="public-options-label">Menu principal</div><div class="public-options-launcher"></div>';
+    statusGrid.insertAdjacentElement('afterend',launcher);
+    const grid=launcher.querySelector('.public-options-launcher');
+
+    const modal=document.createElement('div');
+    modal.className='public-option-modal hidden';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    modal.innerHTML='<div class="public-option-modal-inner"><div class="public-option-modal-head"><strong id="publicOptionModalTitle">Option</strong><button type="button" class="btn secondary public-option-modal-close">← Retour</button></div><div class="public-option-modal-body"></div></div>';
+    document.body.appendChild(modal);
+    const title=modal.querySelector('#publicOptionModalTitle');
+    const body=modal.querySelector('.public-option-modal-body');
+    const closeButton=modal.querySelector('.public-option-modal-close');
+    let active=null;
+
+    function closeModal(){
+      if(!active)return;
+      active.classList.add('hidden');
+      if(active._publicPlaceholder&&active._publicPlaceholder.parentNode){
+        active._publicPlaceholder.parentNode.insertBefore(active,active._publicPlaceholder.nextSibling);
+      }
+      active=null;
+      modal.classList.add('hidden');
+      document.body.style.overflow='';
+    }
+    function openModal(card,label){
+      if(active)closeModal();
+      title.textContent=label;
+      const placeholder=document.createComment('batbot-public-option-placeholder');
+      card.parentNode.insertBefore(placeholder,card);
+      card._publicPlaceholder=placeholder;
+      card.classList.remove('hidden');
+      body.appendChild(card);
+      active=card;
+      modal.classList.remove('hidden');
+      document.body.style.overflow='hidden';
+    }
+    closeButton.addEventListener('click',closeModal);
+    modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.classList.contains('hidden'))closeModal();});
+
+    const children=Array.from(dashboard.children);
+    const start=children.indexOf(statusGrid)+1;
+    const contentItems=children.slice(start).filter(function(el){
+      return !(el.matches('button[onclick="logout()"]'));
+    });
+
+    // Ordre fixe demandé pour l’interface client. Le contenu et les identifiants
+    // des cartes restent inchangés afin de préserver les fonctionnalités existantes.
+    const requestedOrder=[
+      'Dépôts & paiements','Mes transactions','🔔 Messages','BatBot IA','Demander une analyse',
+      'Matchs du jour','Probabilités des matchs du jour','Partenaires authentifiés',
+      'Nos groupes','Contacter un agent','Joindre BatBot','Nos réseaux sociaux',
+      'Comment ça fonctionne','Conditions d’utilisation'
+    ];
+    function cardOrder(card){
+      const text=(card.querySelector('h2')||card).textContent.replace(/\s+/g,' ').trim();
+      const index=requestedOrder.findIndex(function(item){return text.includes(item);});
+      return index===-1?999:index;
+    }
+    contentItems.sort(function(a,b){return cardOrder(a)-cardOrder(b);});
+
+    contentItems.forEach(function(card){
+      if(card===launcher||card.classList.contains('public-options-launcher-wrap'))return;
+      const heading=card.querySelector('h2');
+      let label=(heading&&heading.textContent||card.getAttribute('aria-label')||'Option').replace(/\s+/g,' ').trim();
+      if(!label)label='Option';
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='public-option-btn';
+      button.textContent=label;
+      button.addEventListener('click',function(){openModal(card,label);});
+      grid.appendChild(button);
+      card.classList.add('hidden');
+    });
+
+    const logout=document.createElement('button');
+    logout.type='button';
+    logout.className='public-option-btn';
+    logout.textContent='🚪 Se déconnecter';
+    logout.addEventListener('click',function(){if(typeof window.logout==='function')window.logout();});
+    grid.appendChild(logout);
+
+    const oldLogout=dashboard.querySelector('button[onclick="logout()"]');
+    if(oldLogout)oldLogout.classList.add('hidden');
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPublicOptionWindows);else setupPublicOptionWindows();
+})();
+</script>
+
+</body>
+</html>
