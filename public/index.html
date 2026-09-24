@@ -233,6 +233,22 @@ textarea{min-height:120px;resize:vertical}
   .batbot-receipt-row span{font-size:11px}
 }
 
+
+/* Pronostics des membres */
+.member-prediction-card{background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(0,191,255,.28);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 8px 22px rgba(0,0,0,.16)}
+.member-prediction-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.member-prediction-user{font-weight:900;color:#fff}.member-prediction-date{font-size:11px;color:#7892AA;margin-top:3px}
+.member-prediction-match{font-size:16px;font-weight:900;margin:12px 0 9px;color:#fff}
+.member-prediction-probs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.member-prediction-prob{padding:9px 6px;text-align:center;border-radius:10px;background:#071A2D;border:1px solid #315D82}
+.member-prediction-prob strong{display:block;color:var(--blue);font-size:17px}.member-prediction-prob span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.member-prediction-pick{margin-top:9px;padding:9px 11px;border-radius:10px;background:rgba(33,197,93,.08);border:1px solid rgba(33,197,93,.28);color:#D9FBE5}
+.member-prediction-coupon{margin-top:10px;padding:10px;border-radius:11px;background:#071A2D;border:1px solid rgba(245,197,66,.28)}
+.member-prediction-coupon code{display:block;margin-top:5px;color:#fff;font-size:15px;font-weight:900;letter-spacing:.4px;overflow-wrap:anywhere}
+.member-prediction-actions{display:grid;grid-template-columns:1fr;gap:7px;margin-top:9px}.member-prediction-actions .btn{margin:0;min-height:42px}
+.member-prediction-comment{margin-top:9px;color:#D9E7F3;line-height:1.45;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:380px){.member-prediction-probs{gap:5px}.member-prediction-prob{padding:8px 4px}.member-prediction-prob strong{font-size:15px}}
+
 /* Centre de notifications BatBot */
 .batbot-messages-card{border:1px solid rgba(0,191,255,.35);background:linear-gradient(145deg,#102F52,#0B223D)}
 .batbot-messages-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -586,6 +602,45 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div id="batbotMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des dernières informations…</small></div></div></div>
   </section>
 
+
+  <section class="card" id="memberPredictionsSection">
+    <div class="section-kicker">Communauté BatBot</div>
+    <h2>📢 Pronostics des membres</h2>
+    <p class="muted">Publiez votre propre pronostic. Une fois publié, il devient visible par les autres membres de BatBot.</p>
+
+    <div class="notice">📊 Les probabilités <strong>1 / N / 2</strong> doivent totaliser exactement <strong>100 %</strong>. Le code coupon et le site sont facultatifs, mais le site est obligatoire si vous ajoutez un coupon.</div>
+
+    <input id="memberPredictionHome" maxlength="80" placeholder="Équipe 1 — Exemple : Real Madrid">
+    <input id="memberPredictionAway" maxlength="80" placeholder="Équipe 2 — Exemple : FC Barcelone">
+
+    <div class="two-columns">
+      <input id="memberPredictionHomeProb" type="number" min="0" max="100" step="0.01" placeholder="1 — Probabilité (%)">
+      <input id="memberPredictionDrawProb" type="number" min="0" max="100" step="0.01" placeholder="N — Probabilité (%)">
+    </div>
+    <input id="memberPredictionAwayProb" type="number" min="0" max="100" step="0.01" placeholder="2 — Probabilité (%)">
+
+    <label><span class="muted">Votre pronostic</span>
+      <select id="memberPredictionPick">
+        <option value="1">1 — Équipe 1</option>
+        <option value="N">N — Match nul</option>
+        <option value="2">2 — Équipe 2</option>
+      </select>
+    </label>
+
+    <input id="memberPredictionCoupon" maxlength="120" placeholder="🎫 Code coupon (facultatif)">
+    <input id="memberPredictionBookmaker" maxlength="120" placeholder="🏷️ Site / bookmaker du coupon (facultatif)">
+    <textarea id="memberPredictionComment" maxlength="500" placeholder="📝 Commentaire ou explication (facultatif)"></textarea>
+
+    <button id="publishMemberPredictionButton" class="btn green" type="button" onclick="publishMemberPrediction()">📢 Publier mon pronostic</button>
+    <div id="memberPredictionStatus" class="status"></div>
+
+    <div style="margin-top:18px">
+      <h3>🌍 Pronostics publiés par la communauté</h3>
+      <p class="muted">Les dernières publications sont visibles ici par tous les membres connectés.</p>
+      <div id="memberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications de la communauté…</small></div></div></div>
+    </div>
+  </section>
+
   <section class="card ai-card" id="smartDriveAISection">
     <div class="section-kicker">Assistant intelligent</div>
     <h2>🤖 BatBot IA</h2>
@@ -876,6 +931,13 @@ PSG vs Marseille"></textarea>
       <div id="adminMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des annonces actives…</small></div></div></div>
     </div>
 
+
+    <div class="card" id="adminMemberPredictionsCard">
+      <h2>📢 Gestion des pronostics des membres</h2>
+      <p class="muted">Contrôlez les publications de la communauté. Vous pouvez consulter chaque contenu et supprimer immédiatement un pronostic si nécessaire.</p>
+      <div id="adminMemberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications des membres…</small></div></div></div>
+    </div>
+
     <div class="card">
       <h2>💳 Demandes de paiement manuel</h2>
       <p class="muted">Vérifiez la preuve reçue sur WhatsApp avant d’accepter une demande.</p>
@@ -1151,6 +1213,7 @@ function showDashboard(user){
   loadConfig();
   loadDailyMatches();
   loadMyTransactions();
+  loadMemberPredictions();
   startBatBotMessagesPolling();
 }
 
@@ -2196,6 +2259,123 @@ async function resolvePaymentRequest(id,status,button){
   }
 }
 
+
+function formatMemberPredictionDate(value){
+  if(!value)return "Date non disponible";
+  const d=new Date(String(value).replace(" ","T")+"Z");
+  if(Number.isNaN(d.getTime()))return String(value);
+  return d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+
+function renderMemberPredictionCard(item,adminMode){
+  const id=Number(item.id||0);
+  const home=escapeHtml(item.home_team||"Équipe 1");
+  const away=escapeHtml(item.away_team||"Équipe 2");
+  const username=escapeHtml(item.username||"Membre BatBot");
+  const pick=escapeHtml(item.prediction||"");
+  const coupon=String(item.coupon_code||"");
+  const bookmaker=String(item.bookmaker||"");
+  const comment=String(item.comment||"");
+  const couponSafe=escapeHtml(coupon);
+  const bookmakerSafe=escapeHtml(bookmaker);
+  const commentSafe=escapeHtml(comment);
+  const disabled=item.disabled?'<span class="badge" style="background:#7F1D1D;border-color:#FF8A8A">Compte désactivé</span>':'';
+  return `
+    <article class="member-prediction-card">
+      <div class="member-prediction-head">
+        <div><div class="member-prediction-user">👤 ${username}</div><div class="member-prediction-date">📅 ${escapeHtml(formatMemberPredictionDate(item.created_at))}</div></div>
+        ${disabled}
+      </div>
+      <div class="member-prediction-match">⚽ ${home} <span class="muted">vs</span> ${away}</div>
+      <div class="member-prediction-probs">
+        <div class="member-prediction-prob"><strong>${escapeHtml(String(item.home_probability))}%</strong><span>1 — Équipe 1</span></div>
+        <div class="member-prediction-prob"><strong>${escapeHtml(String(item.draw_probability))}%</strong><span>N — Nul</span></div>
+        <div class="member-prediction-prob"><strong>${escapeHtml(String(item.away_probability))}%</strong><span>2 — Équipe 2</span></div>
+      </div>
+      <div class="member-prediction-pick">🎯 <strong>Pronostic : ${pick}</strong></div>
+      ${comment?`<div class="member-prediction-comment">📝 ${commentSafe}</div>`:""}
+      ${coupon?`<div class="member-prediction-coupon"><span class="admin-small">🎫 Code coupon${bookmaker?" · 🏷️ "+bookmakerSafe:""}</span><code id="memberCoupon_${id}">${couponSafe}</code><div class="member-prediction-actions"><button class="btn secondary" type="button" onclick="copyText(${JSON.stringify(coupon)})">📋 Copier le code</button></div></div>`:""}
+      ${adminMode?`<div class="member-prediction-actions"><button class="btn danger" type="button" onclick="deleteMemberPrediction(${id})">🗑️ Supprimer ce pronostic</button></div>`:""}
+    </article>`;
+}
+
+async function loadMemberPredictions(){
+  const container=document.getElementById("memberPredictionsList");
+  if(!container)return;
+  try{
+    const response=await fetch("/api/member-predictions",{credentials:"same-origin",cache:"no-store"});
+    const data=await readApiResponse(response);
+    if(!response.ok){
+      container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Pronostics indisponibles</div><div class="professional-status-body">Impossible de charger les pronostics de la communauté pour le moment.</div></div>';
+      return;
+    }
+    const predictions=Array.isArray(data.predictions)?data.predictions:[];
+    container.innerHTML=predictions.length?predictions.map(x=>renderMemberPredictionCard(x,false)).join(""):'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun pronostic publié</div><div class="professional-status-body">Soyez le premier membre à partager un pronostic avec la communauté.</div></div>';
+  }catch(error){
+    console.error("MEMBER PREDICTIONS:",error);
+    container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion indisponible</div><div class="professional-status-body">Les pronostics ne peuvent pas être chargés actuellement.</div></div>';
+  }
+}
+
+async function publishMemberPrediction(){
+  const home=document.getElementById("memberPredictionHome").value.trim();
+  const away=document.getElementById("memberPredictionAway").value.trim();
+  const h=Number(document.getElementById("memberPredictionHomeProb").value);
+  const d=Number(document.getElementById("memberPredictionDrawProb").value);
+  const a=Number(document.getElementById("memberPredictionAwayProb").value);
+  const prediction=document.getElementById("memberPredictionPick").value;
+  const coupon=document.getElementById("memberPredictionCoupon").value.trim();
+  const bookmaker=document.getElementById("memberPredictionBookmaker").value.trim();
+  const comment=document.getElementById("memberPredictionComment").value.trim();
+  if(!home||!away)return showStatus("memberPredictionStatus","Indiquez les deux équipes du match.","error");
+  if(![h,d,a].every(Number.isFinite)||h<0||h>100||d<0||d>100||a<0||a>100||Math.abs(h+d+a-100)>0.01)return showStatus("memberPredictionStatus","Les probabilités 1 / N / 2 doivent totaliser exactement 100 %. ","error");
+  if(coupon&&!bookmaker)return showStatus("memberPredictionStatus","Indiquez le site ou bookmaker correspondant au code coupon.","error");
+  setLoading("publishMemberPredictionButton",true,"📢 Publier mon pronostic");
+  try{
+    const response=await fetch("/api/member-predictions",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,home_probability:h,draw_probability:d,away_probability:a,prediction,coupon_code:coupon,bookmaker,comment})});
+    const data=await readApiResponse(response);
+    if(!response.ok){showStatus("memberPredictionStatus",data.error||"Impossible de publier le pronostic.","error");return;}
+    showStatus("memberPredictionStatus","✅ Votre pronostic a été publié et est maintenant visible par les membres.","success");
+    ["memberPredictionHome","memberPredictionAway","memberPredictionHomeProb","memberPredictionDrawProb","memberPredictionAwayProb","memberPredictionCoupon","memberPredictionBookmaker","memberPredictionComment"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    document.getElementById("memberPredictionPick").value="1";
+    await loadMemberPredictions();
+  }catch(error){
+    console.error("PUBLISH MEMBER PREDICTION:",error);
+    showStatus("memberPredictionStatus","Impossible de contacter le serveur.","error");
+  }finally{setLoading("publishMemberPredictionButton",false,"📢 Publier mon pronostic");}
+}
+
+async function loadAdminMemberPredictions(){
+  const container=document.getElementById("adminMemberPredictionsList");
+  if(!container)return;
+  try{
+    const response=await fetch("/api/admin/member-predictions",{credentials:"same-origin",cache:"no-store"});
+    const data=await readApiResponse(response);
+    if(!response.ok){container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Pronostics indisponibles</div><div class="professional-status-body">Impossible de charger les publications des membres.</div></div>';return;}
+    const predictions=Array.isArray(data.predictions)?data.predictions:[];
+    container.innerHTML=predictions.length?predictions.map(x=>renderMemberPredictionCard(x,true)).join(""):'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun pronostic publié</div><div class="professional-status-body">Aucune publication à contrôler pour le moment.</div></div>';
+  }catch(error){
+    console.error("ADMIN MEMBER PREDICTIONS:",error);
+    container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Erreur de chargement</div><div class="professional-status-body">Impossible de récupérer les pronostics administrateur.</div></div>';
+  }
+}
+
+async function deleteMemberPrediction(id){
+  if(!Number.isFinite(Number(id)))return;
+  if(!confirm("Supprimer ce pronostic de la communauté ?"))return;
+  try{
+    const response=await fetch("/api/admin/member-predictions/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin",headers:{"Accept":"application/json"}});
+    const data=await readApiResponse(response);
+    if(!response.ok){showToast(data.error||"Impossible de supprimer le pronostic.","error");return;}
+    showToast(data.message||"Pronostic supprimé avec succès.","success");
+    await loadAdminMemberPredictions();
+    await loadMemberPredictions();
+  }catch(error){
+    console.error("DELETE MEMBER PREDICTION:",error);
+    showToast("Impossible de contacter le serveur.","error");
+  }
+}
+
 async function loadAdmin(){
   document.getElementById("auth").classList.add("hidden");
   document.getElementById("dashboard").classList.add("hidden");
@@ -2205,6 +2385,7 @@ async function loadAdmin(){
   organizeAdminPanel();
   loadAdminPaymentRequests();
   loadAdminMessages();
+  loadAdminMemberPredictions();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -2801,7 +2982,7 @@ document.addEventListener("keydown",function(event){
     // Ordre fixe demandé pour l’interface client. Le contenu et les identifiants
     // des cartes restent inchangés afin de préserver les fonctionnalités existantes.
     const requestedOrder=[
-      'Dépôts & paiements','Mes transactions','🔔 Messages','BatBot IA','Demander une analyse',
+      'Dépôts & paiements','Mes transactions','🔔 Messages','Pronostics des membres','BatBot IA','Demander une analyse',
       'Matchs du jour','Probabilités des matchs du jour','Partenaires authentifiés',
       'Nos groupes','Contacter un agent','Joindre BatBot','Nos réseaux sociaux',
       'Comment ça fonctionne','Conditions d’utilisation'
