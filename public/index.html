@@ -1624,13 +1624,19 @@ async function setAISubscription(id,enabled){
 }
 
 async function deleteAdminUser(id){
-  if(!confirm("Supprimer définitivement ce client ?"))return;
+  const confirmed=await showProfessionalConfirm({
+    title:"🗑️ Supprimer le client",
+    message:"Cette action supprimera définitivement ce client et ses données associées. Voulez-vous continuer ?",
+    confirmText:"Supprimer"
+  });
+  if(!confirmed)return;
   try{
     const response=await fetch("/api/admin/users/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin"});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Suppression impossible.");
     await loadAdmin();
-  }catch(e){alert(e.message);}
+    showToast("Client supprimé avec succès.","success");
+  }catch(e){showToast(e.message||"Suppression impossible.","error");}
 }
 
 function renderSettingsForm(settings){
