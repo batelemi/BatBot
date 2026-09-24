@@ -108,6 +108,21 @@ CREATE TABLE IF NOT EXISTS batbot_message_reads(
   FOREIGN KEY(message_id) REFERENCES batbot_messages(id) ON DELETE CASCADE,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS member_predictions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  home_team TEXT NOT NULL,
+  away_team TEXT NOT NULL,
+  home_probability REAL NOT NULL,
+  draw_probability REAL NOT NULL,
+  away_probability REAL NOT NULL,
+  prediction TEXT NOT NULL,
+  coupon_code TEXT DEFAULT "",
+  bookmaker TEXT DEFAULT "",
+  comment TEXT DEFAULT "",
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 `);
 
 // Migrations pour les bases déjà existantes
@@ -859,6 +874,114 @@ app.patch("/api/admin/requests/:id", requireAdmin, (req, res) => {
   ).run(status, Number(req.params.id));
 
   res.json({ message: "Demande mise à jour." });
+});
+
+// ======================================================
+// PRONOSTICS DES MEMBRES
+// ======================================================
+app.get("/api/member-predictions", requireUser, (req, res) => {
+  const predictions = DB.prepare(`
+    SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
+           p.home_probability,p.draw_probability,p.away_probability,
+           p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
+    FROM member_predictions p
+    JOIN users u ON u.id=p.user_id
+    WHERE u.disabled=0
+    ORDER BY p.id DESC
+    LIMIT 100
+  `).all();
+  res.json({ predictions });
+});
+
+app.post("/api/member-predictions", requireUser, (req, res) => {
+  const homeTeam = String(req.body.home_team || "").trim();
+  const awayTeam = String(req.body.away_team || "").trim();
+  const prediction = String(req.body.prediction || "").trim();
+  const couponCode = String(req.body.coupon_code || "").trim();
+  const bookmaker = String(req.body.bookmaker || "").trim();
+  const comment = String(req.body.comment || "").trim();
+
+  const homeProbability = Number(req.body.home_probability);
+  const drawProbability = Number(req.body.draw_probability);
+  const awayProbability = Number(req.body.away_probability);
+
+  if (!homeTeam || !awayTeam || !prediction) {
+    return res.status(400).json({ error: "Les deux équipes et le pronostic sont obligatoires." });
+  }
+
+  if (
+    homeTeam.length > 80 || awayTeam.length > 80 ||
+    prediction.length > 120 || couponCode.length > 120 ||
+    bookmaker.length > 80 || comment.length > 500
+  ) {
+    return res.status(400).json({ error: "Un ou plusieurs champs sont trop longs." });
+  }
+
+  if (
+    ![homeProbability, drawProbability, awayProbability].every(Number.isFinite) ||
+    homeProbability < 0 || homeProbability > 100 ||
+    drawProbability < 0 || drawProbability > 100 ||
+    awayProbability < 0 || awayProbability > 100 ||
+    Math.abs(homeProbability + drawProbability + awayProbability - 100) > 0.01
+  ) {
+    return res.status(400).json({
+      error: "Les probabilités doivent être comprises entre 0 et 100% et totaliser exactement 100%."
+    });
+  }
+
+  if (couponCode && !bookmaker) {
+    return res.status(400).json({
+      error: "Indiquez le site ou bookmaker correspondant au code coupon."
+    });
+  }
+
+  const result = DB.prepare(`
+    INSERT INTO member_predictions(
+      user_id,home_team,away_team,home_probability,draw_probability,
+      away_probability,prediction,coupon_code,bookmaker,comment
+    ) VALUES(?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    req.session.userId,homeTeam,awayTeam,homeProbability,drawProbability,
+    awayProbability,prediction,couponCode,bookmaker,comment
+  );
+
+  const created = DB.prepare(`
+    SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
+           p.home_probability,p.draw_probability,p.away_probability,
+           p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
+    FROM member_predictions p
+    JOIN users u ON u.id=p.user_id
+    WHERE p.id=?
+  `).get(Number(result.lastInsertRowid));
+
+  res.status(201).json({
+    message: "Pronostic publié avec succès.",
+    prediction: created
+  });
+});
+
+app.get("/api/admin/member-predictions", requireAdmin, (req, res) => {
+  const predictions = DB.prepare(`
+    SELECT p.id,p.user_id,u.username,u.disabled,p.home_team,p.away_team,
+           p.home_probability,p.draw_probability,p.away_probability,
+           p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
+    FROM member_predictions p
+    JOIN users u ON u.id=p.user_id
+    ORDER BY p.id DESC
+  `).all();
+  res.json({ predictions });
+});
+
+app.delete("/api/admin/member-predictions/:id", requireAdmin, (req, res) => {
+  const result = DB.prepare(
+    "DELETE FROM member_predictions WHERE id=?"
+  ).run(Number(req.params.id));
+
+  if (!result.changes) {
+    return res.status(404).json({ error: "Pronostic introuvable." });
+  }
+
+  res.json({ message: "Pronostic supprimé avec succès." });
 });
 
 app.post("/api/admin/daily-matches", requireAdmin, (req, res) => {
