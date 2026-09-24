@@ -185,8 +185,8 @@ textarea{min-height:120px;resize:vertical}
 .batbot-receipt-reference{position:relative;margin-top:3px;padding:10px;border-radius:11px;background:#071A2D;color:#fff}
 .batbot-receipt-reference-label{display:block;color:#6EE7A0;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.65px;margin-bottom:4px}
 .batbot-receipt-reference code{font-size:13px;word-break:break-all;color:#FFFFFF;font-weight:900}
-.batbot-receipt-row.client strong{color:#000000;font-weight:1000}
-.batbot-receipt-row strong{color:#000000;font-weight:900}
+.batbot-receipt-row.client strong{color:#000000!important;font-weight:1000;opacity:1!important;text-shadow:none!important}
+.batbot-receipt-row strong{color:#000000!important;font-weight:900;opacity:1!important;text-shadow:none!important}
 .batbot-receipt-copy-reference{background:linear-gradient(145deg,#285477,#142F4B);color:#fff}
 .batbot-receipt-actions .btn{font-size:12px}
 .batbot-receipt-footer{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid rgba(11,34,61,.14)}
@@ -201,53 +201,6 @@ textarea{min-height:120px;resize:vertical}
 .professional-loading{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);color:#D9E7F3;line-height:1.4}
 .professional-loading strong{display:block;color:#fff}.professional-loading small{display:block;color:#AFC1D4;margin-top:2px}
 @media(max-width:380px){.batbot-receipt{padding:13px}.batbot-receipt-row{font-size:12px}.batbot-receipt-stamp{width:96px;min-height:62px}}
-/* Transactions verticales et lisibilité renforcée */
-#myTransactionsList,#paymentRequestsAdminList{display:flex;flex-direction:column;width:100%;min-width:0;overflow-x:hidden}
-.payment-request-card{width:100%;min-width:0;overflow:hidden}
-.batbot-receipt{width:100%;min-width:0;overflow:hidden}
-.batbot-receipt-row{display:grid;grid-template-columns:minmax(110px,42%) minmax(0,1fr);align-items:start}
-.batbot-receipt-row span{font-weight:800;color:#35536D!important}
-.batbot-receipt-row strong{color:#000000!important;font-weight:900!important;opacity:1!important;text-align:right;text-shadow:none!important}
-.batbot-receipt-row span:first-child{color:#35536D!important;font-weight:800}
-.batbot-receipt-body{gap:9px}
-.batbot-receipt-reference{margin-top:5px}
-.batbot-receipt-actions{margin-top:14px;padding-top:12px;border-top:1px solid rgba(11,34,61,.14);gap:9px}
-.batbot-receipt-reference{width:100%;min-width:0;overflow:hidden}
-.batbot-receipt-reference code{display:block;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
-.batbot-receipt-actions{width:100%;min-width:0}
-@media(max-width:520px){
-  #usersList{display:flex;flex-direction:column;gap:12px;width:100%;min-width:0}
-  #usersList .member-card{width:100%;min-width:0;margin:0;padding:14px}
-  #usersList .member-card-top{align-items:flex-start;gap:10px}
-  #usersList .member-username{min-width:0;flex:1;line-height:1.35;overflow-wrap:anywhere}
-  #usersList .member-card-top .badge{flex:0 0 auto;max-width:46%;white-space:normal;text-align:center}
-  #usersList .admin-actions{grid-template-columns:1fr;gap:8px}
-  #usersList .admin-actions .btn{width:100%;min-height:44px;font-size:13px}
-  .batbot-receipt{width:100%;min-width:0;padding:14px}
-  .batbot-receipt-row{grid-template-columns:minmax(108px,40%) minmax(0,60%);gap:9px}
-  .batbot-receipt-row strong{font-size:13px;text-align:right}
-}
-@media(max-width:380px){
-  .batbot-receipt-row{grid-template-columns:minmax(96px,38%) minmax(0,62%);gap:8px}
-  .batbot-receipt-row strong{text-align:right;font-size:12px}
-  .batbot-receipt-row span{font-size:11px}
-}
-
-/* Centre de notifications BatBot */
-.batbot-messages-card{border:1px solid rgba(0,191,255,.35);background:linear-gradient(145deg,#102F52,#0B223D)}
-.batbot-messages-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.batbot-message-badge{display:inline-flex;align-items:center;justify-content:center;min-width:27px;height:27px;padding:0 8px;border-radius:999px;background:#DC2626;color:#fff;font-size:12px;font-weight:900;box-shadow:0 4px 12px rgba(220,38,38,.25)}
-.batbot-message-badge.hidden{display:none}
-.batbot-message-list{display:grid;gap:10px;margin-top:12px}
-.batbot-message-item{padding:13px;border-radius:14px;background:#071A2D;border:1px solid rgba(83,207,255,.22)}
-.batbot-message-item.unread{border-color:rgba(33,197,93,.55);box-shadow:0 0 0 1px rgba(33,197,93,.08)}
-.batbot-message-title{font-weight:900;color:#fff;font-size:15px}.batbot-message-date{margin-top:4px;color:#7892AA;font-size:11px}.batbot-message-body{margin-top:8px;color:#D9E7F3;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
-.batbot-message-modal{position:fixed;inset:0;z-index:250;background:rgba(2,10,20,.88);display:flex;align-items:center;justify-content:center;padding:16px}
-.batbot-message-modal.hidden{display:none}
-.batbot-message-modal-inner{width:min(420px,100%);max-height:calc(100vh - 32px);overflow:auto;background:linear-gradient(145deg,#102F52,#071A2D);border:1px solid rgba(83,207,255,.45);border-radius:20px;padding:17px;box-shadow:0 20px 65px rgba(0,0,0,.55)}
-.batbot-message-modal-kicker{color:#6EE7A0;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.batbot-message-modal-title{margin:5px 0 0;color:#fff;font-size:21px;font-weight:900}.batbot-message-modal-body{margin-top:12px;color:#D9E7F3;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.batbot-message-modal-actions{display:grid;gap:8px;margin-top:15px}.batbot-admin-message-form{display:grid;gap:7px}.batbot-admin-message-list{display:grid;gap:9px;margin-top:12px}.batbot-admin-message-item{padding:12px;border-radius:13px;background:#071A2D;border:1px solid rgba(83,207,255,.2)}
-.batbot-admin-message-meta{font-size:11px;color:#AFC1D4;margin-top:4px}
-
 
 .batbot-btn-spinner{width:16px;height:16px;margin-right:8px}
 @keyframes batbotSpin{to{transform:rotate(360deg)}}
@@ -342,7 +295,7 @@ textarea{min-height:120px;resize:vertical}
 .admin-small{color:var(--muted);font-size:12px}
 .admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .admin-actions .btn{margin:0;min-height:42px;font-size:12px}
-.reset-request{display:block;width:100%;box-sizing:border-box;min-width:0;overflow:hidden;background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}.reset-request .btn{width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}.reset-request *{max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+.reset-request{background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}
 .social-grid{display:grid;grid-template-columns:1fr;gap:9px}
 .social-btn{min-height:52px}
 
@@ -438,9 +391,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .batbot-duration-modal{width:min(92vw,390px);padding:24px;border:1px solid rgba(75,190,255,.4);border-radius:22px;background:linear-gradient(145deg,#102f4d,#071a2d);box-shadow:0 18px 60px rgba(0,0,0,.5);color:#fff}
 .batbot-duration-modal h3{margin:0 0 9px;font-size:21px}.batbot-duration-modal p{margin:0 0 18px;color:#b9cce0;line-height:1.5}.batbot-duration-modal input{width:100%;box-sizing:border-box;padding:13px;border-radius:12px;border:1px solid #37617f;background:#071a2d;color:#fff;font-size:18px;outline:none}.batbot-duration-actions{display:flex;gap:10px;margin-top:18px}.batbot-duration-actions button{flex:1}
 
-
-/* ===== BATBOT PROFESSIONAL USER DASHBOARD ===== */
-.batbot-pro-dashboard{margin:18px 0;display:grid;gap:14px}.batbot-pro-hero{background:linear-gradient(135deg,#0d3154,#0a2139);border:1px solid rgba(0,191,255,.28);border-radius:20px;padding:18px;box-shadow:0 14px 35px rgba(0,0,0,.18)}.batbot-pro-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.batbot-pro-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--blue);font-weight:800}.batbot-pro-hero h2{margin:5px 0 6px;font-size:22px}.batbot-pro-hero p{margin:0;color:var(--muted);line-height:1.5;font-size:13px}.batbot-pro-live{white-space:nowrap;border:1px solid rgba(33,197,93,.35);background:rgba(33,197,93,.1);color:#7df0a5;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800}.batbot-pro-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}.batbot-pro-stat{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;min-width:0}.batbot-pro-stat span{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.batbot-pro-stat strong{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.batbot-pro-actions{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:10px}.batbot-pro-action{border:1px solid var(--line);background:var(--card);border-radius:15px;padding:13px;text-align:left;color:var(--white);cursor:pointer;min-height:72px;transition:transform .15s ease,border-color .15s ease,background .15s ease}.batbot-pro-action:hover{transform:translateY(-1px);border-color:rgba(0,191,255,.55);background:#123454}.batbot-pro-action.primary-action{border-color:rgba(0,191,255,.55);background:linear-gradient(145deg,#103b5f,#0d2a46)}.batbot-pro-action-icon{font-size:20px;display:block;margin-bottom:6px}.batbot-pro-action strong{font-size:13px;display:block}.batbot-pro-action small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.batbot-pro-activity{display:grid;grid-template-columns:1fr 1fr;gap:10px}.batbot-pro-mini{border:1px solid var(--line);border-radius:15px;padding:13px;background:rgba(16,43,76,.72)}.batbot-pro-mini-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.batbot-pro-mini-head span{font-size:12px;font-weight:800}.batbot-pro-mini-value{font-size:13px;line-height:1.45;color:var(--muted);min-height:38px}.batbot-pro-mini-value strong{color:var(--white)}.batbot-pro-mini-link{margin-top:8px;background:none;border:0;color:var(--blue);padding:0;font-size:11px;font-weight:800;cursor:pointer}@media(max-width:650px){.batbot-pro-stats{grid-template-columns:1fr 1fr}.batbot-pro-actions{grid-template-columns:1fr 1fr}.batbot-pro-action:first-child{grid-column:1/-1}.batbot-pro-activity{grid-template-columns:1fr}.batbot-pro-hero-top{align-items:center}.batbot-pro-live{font-size:10px;padding:6px 8px}}@media(max-width:390px){.batbot-pro-stats{grid-template-columns:1fr}.batbot-pro-actions{grid-template-columns:1fr}.batbot-pro-action:first-child{grid-column:auto}}
 </style>
 </head>
 
@@ -576,22 +526,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="status-card ai-status-card"><div class="status-icon">🤖</div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
   </div>
 
-
-  <section class="batbot-pro-dashboard" aria-label="Tableau de bord BatBot">
-    <div class="batbot-pro-hero"><div class="batbot-pro-hero-top"><div><div class="batbot-pro-kicker">Espace personnel</div><h2 id="batbotProGreeting">Votre espace BatBot</h2><p id="batbotProSubtitle">Gérez vos analyses, votre abonnement et votre accès à BatBot IA depuis un seul espace.</p></div><span class="batbot-pro-live">● Service actif</span></div><div class="batbot-pro-stats"><div class="batbot-pro-stat"><span>⭐ Premium</span><strong id="batbotProPremium">Non actif</strong></div><div class="batbot-pro-stat"><span>🤖 BatBot IA</span><strong id="batbotProAI">Non active</strong></div><div class="batbot-pro-stat"><span>📅 Abonnement</span><strong id="batbotProExpiry">—</strong></div></div></div>
-    <div class="batbot-pro-actions"><button class="batbot-pro-action primary-action" type="button" onclick="document.getElementById('smartDriveAISection')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('aiMatch1')?.focus();"><span class="batbot-pro-action-icon">🤖</span><strong>Analyser mes matchs</strong><small>Lancer BatBot IA</small></button><button class="batbot-pro-action" type="button" onclick="document.getElementById('myTransactionsCard')?.scrollIntoView({behavior:'smooth',block:'start'});"><span class="batbot-pro-action-icon">💳</span><strong>Mes paiements</strong><small>Voir mes transactions</small></button><button class="batbot-pro-action" type="button" onclick="document.getElementById('batbotMessagesCard')?.scrollIntoView({behavior:'smooth',block:'start'});"><span class="batbot-pro-action-icon">🔔</span><strong>Mes messages</strong><small>Informations BatBot</small></button></div>
-    <div class="batbot-pro-activity"><div class="batbot-pro-mini"><div class="batbot-pro-mini-head"><span>💳 Dernière transaction</span></div><div id="batbotProLastTransaction" class="batbot-pro-mini-value">Aucune transaction chargée.</div><button class="batbot-pro-mini-link" type="button" onclick="document.getElementById('myTransactionsCard')?.scrollIntoView({behavior:'smooth',block:'start'});">Voir les transactions →</button></div><div class="batbot-pro-mini"><div class="batbot-pro-mini-head"><span>🔐 État du compte</span></div><div id="batbotProAccountState" class="batbot-pro-mini-value">Compte BatBot actif.</div><button class="batbot-pro-mini-link" type="button" onclick="document.getElementById('userBox')?.scrollIntoView({behavior:'smooth',block:'center'});">Voir mon compte →</button></div></div>
-  </section>
-
-  <section class="card batbot-messages-card" id="batbotMessagesCard">
-    <div class="batbot-messages-head">
-      <h2>🔔 Messages</h2>
-      <span id="batbotMessagesBadge" class="batbot-message-badge hidden">0</span>
-    </div>
-    <p class="muted">Retrouvez ici les annonces et informations importantes de BatBot. Chaque message est conservé pendant 24 heures maximum.</p>
-    <div id="batbotMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des dernières informations…</small></div></div></div>
-  </section>
-
   <section class="card ai-card" id="smartDriveAISection">
     <div class="section-kicker">Assistant intelligent</div>
     <h2>🤖 BatBot IA</h2>
@@ -686,7 +620,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div id="myTransactionsCard" class="card">
     <h2>📊 Mes transactions</h2>
-    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont automatiquement supprimées après 24 heures.</p>
+    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont supprimées après 2 jours.</p>
     <div id="myTransactionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div></div>
   </div>
 
@@ -868,18 +802,6 @@ PSG vs Marseille"></textarea>
       <div id="settingsList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des paramètres</strong><small>Récupération de la configuration…</small></div></div>
       <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
       <div id="settingsStatus" class="status"></div>
-    </div>
-
-    <div class="card">
-      <h2>🔔 Gestion des messages</h2>
-      <p class="muted">Publiez une annonce visible par les membres pendant 24 heures maximum.</p>
-      <div class="batbot-admin-message-form">
-        <input id="adminMessageTitle" maxlength="120" placeholder="Titre du message">
-        <textarea id="adminMessageBody" maxlength="2000" placeholder="Écrivez le contenu du message…"></textarea>
-        <button id="adminPublishMessageButton" class="btn primary" type="button" onclick="publishBatBotMessage()">📢 Publier le message</button>
-      </div>
-      <div id="adminMessageStatus" class="status"></div>
-      <div id="adminMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des annonces actives…</small></div></div></div>
     </div>
 
     <div class="card">
@@ -1126,7 +1048,6 @@ function showDashboard(user){
 
   user=user||{};
   updateProfileStatuses(user);
-  updateProfessionalDashboard(user);
   const username=user.username||user.name||"";
   const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre BatBot");
 
@@ -1158,7 +1079,6 @@ function showDashboard(user){
   loadConfig();
   loadDailyMatches();
   loadMyTransactions();
-  startBatBotMessagesPolling();
 }
 
 async function register(){
@@ -1688,32 +1608,6 @@ function adminSecretTap(){
   adminTapTimer=setTimeout(()=>{adminTapCount=0;},2500);
   if(adminTapCount>=10){adminTapCount=0;openAdmin();}
 }
-function updateProfessionalDashboard(user){
-  user=user||{};
-  const username=String(user.username||user.name||'').trim();
-  const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
-  const aiActive=premium&&Boolean(user.ai_active);
-  const greeting=document.getElementById('batbotProGreeting');
-  const subtitle=document.getElementById('batbotProSubtitle');
-  const premiumEl=document.getElementById('batbotProPremium');
-  const aiEl=document.getElementById('batbotProAI');
-  const expiryEl=document.getElementById('batbotProExpiry');
-  const accountEl=document.getElementById('batbotProAccountState');
-  if(greeting)greeting.textContent=username?'Bonjour, '+username+' 👋':'Votre espace BatBot';
-  if(subtitle)subtitle.textContent=premium?'Votre espace Premium est prêt. Accédez rapidement à vos outils et à vos informations.':'Gérez votre compte et activez les services dont vous avez besoin depuis cet espace.';
-  if(premiumEl)premiumEl.textContent=premium?'🟢 Actif':'🔴 Non actif';
-  if(aiEl)aiEl.textContent=aiActive?'🟢 Active':'🔴 Non active';
-  if(expiryEl){const until=user.premium_until||user.subscription_until||user.premiumUntil;expiryEl.textContent=until?(formatDateTime(until)||'Active'):(premium?'Active':'—');}
-  if(accountEl)accountEl.innerHTML=premium?'Compte actif · <strong>Premium</strong><br><span>Accès IA : '+(aiActive?'activé':'non activé')+'</span>':'Compte actif · <strong>Membre BatBot</strong>';
-}
-function updateProfessionalLastTransaction(items){
-  const box=document.getElementById('batbotProLastTransaction');if(!box)return;
-  const item=Array.isArray(items)&&items.length?items[0]:null;
-  if(!item){box.textContent='Aucune transaction récente.';return;}
-  const status=item.status==='accepted'?'✅ Paiement approuvé':item.status==='rejected'?'❌ Paiement refusé':'⏳ Vérification en cours';
-  box.innerHTML='<strong>'+escapeHtml(String(item.offer||'Paiement'))+'</strong><br>'+escapeHtml(String(Number(item.amount)||0))+' FCFA · '+status;
-}
-
 function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
   const aiActive=premium && Boolean(user&&user.ai_active);
@@ -2013,136 +1907,6 @@ function renderBatBotReceipt(x,options={}){
     </div>`;
 }
 
-let batbotMessagesPollTimer=null;
-let batbotMessageModalActiveId=null;
-
-function ensureBatBotMessageModal(){
-  let modal=document.getElementById("batbotMessageModal");
-  if(modal)return modal;
-  modal=document.createElement("div");
-  modal.id="batbotMessageModal";
-  modal.className="batbot-message-modal hidden";
-  modal.setAttribute("role","dialog");
-  modal.setAttribute("aria-modal","true");
-  modal.innerHTML='<div class="batbot-message-modal-inner"><div class="batbot-message-modal-kicker">BATBOT • INFORMATION</div><div id="batbotMessageModalTitle" class="batbot-message-modal-title"></div><div id="batbotMessageModalBody" class="batbot-message-modal-body"></div><div id="batbotMessageModalDate" class="batbot-message-date"></div><div class="batbot-message-modal-actions"><button class="btn primary" type="button" onclick="markBatBotMessageReadAndClose()">✓ J’ai lu le message</button></div></div>';
-  document.body.appendChild(modal);
-  modal.addEventListener("click",function(e){if(e.target===modal)markBatBotMessageReadAndClose();});
-  return modal;
-}
-
-function renderBatBotMessages(items){
-  const box=document.getElementById("batbotMessagesList");
-  const badge=document.getElementById("batbotMessagesBadge");
-  if(!box)return;
-  const unread=items.filter(x=>!x.is_read).length;
-  if(badge){badge.textContent=String(unread);badge.classList.toggle("hidden",unread===0);}
-  box.innerHTML=items.length?'<div class="batbot-message-list">'+items.map(x=>`<div class="batbot-message-item ${x.is_read?'':'unread'}"><div class="batbot-message-title">${escapeHtml(x.title)}</div><div class="batbot-message-date">${escapeHtml(formatPaymentDateTime(x.created_at))}${x.is_read?'':' • Nouveau'}</div><div class="batbot-message-body">${escapeHtml(x.body)}</div></div>`).join("")+'</div>':'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun message</div><div class="professional-status-body">Les annonces importantes de BatBot apparaîtront ici.</div></div>';
-}
-
-async function loadBatBotMessages(options={}){
-  const box=document.getElementById("batbotMessagesList");
-  if(!box)return;
-  if(options.loading&&!box.dataset.hasContent){box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des messages</strong><small>Récupération des dernières informations…</small></div></div>';}
-  try{
-    const r=await fetch("/api/messages/mine",{credentials:"same-origin",cache:"no-store"});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
-    const items=Array.isArray(d.messages)?d.messages:[];
-    const signature=JSON.stringify(items.map(x=>[x.id,x.title,x.body,x.created_at,x.is_read]));
-    if(box.dataset.signature!==signature){box.dataset.signature=signature;box.dataset.hasContent="true";renderBatBotMessages(items);}
-    const unread=items.filter(x=>!x.is_read);
-    if(unread.length&&!document.hidden&&!batbotMessageModalActiveId){showBatBotMessageModal(unread[0]);}
-  }catch(e){
-    if(!box.dataset.hasContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Messages indisponibles</div><div class="professional-status-body">Impossible de charger les messages pour le moment.</div></div>';
-  }
-}
-
-function showBatBotMessageModal(message){
-  const modal=ensureBatBotMessageModal();
-  batbotMessageModalActiveId=Number(message.id);
-  document.getElementById("batbotMessageModalTitle").textContent=message.title||"Information BatBot";
-  document.getElementById("batbotMessageModalBody").textContent=message.body||"";
-  document.getElementById("batbotMessageModalDate").textContent=formatPaymentDateTime(message.created_at);
-  modal.classList.remove("hidden");
-  document.body.style.overflow="hidden";
-}
-
-async function markBatBotMessageReadAndClose(){
-  const id=batbotMessageModalActiveId;
-  batbotMessageModalActiveId=null;
-  const modal=document.getElementById("batbotMessageModal");
-  if(modal)modal.classList.add("hidden");
-  document.body.style.overflow="";
-  if(!id)return;
-  try{await fetch("/api/messages/"+encodeURIComponent(id)+"/read",{method:"POST",credentials:"same-origin"});}catch(_){ }
-  await loadBatBotMessages();
-}
-
-function startBatBotMessagesPolling(){
-  if(batbotMessagesPollTimer)return;
-  loadBatBotMessages({loading:true});
-  batbotMessagesPollTimer=setInterval(function(){
-    if(!document.hidden&&!document.getElementById("dashboard")?.classList.contains("hidden"))loadBatBotMessages();
-  },5000);
-}
-
-async function loadAdminMessages(){
-  const box=document.getElementById("adminMessagesList");
-  if(!box)return;
-  const hadContent=box.dataset.hasContent==="true";
-  if(!hadContent){
-    box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des annonces actives…</small></div></div>';
-  }
-  try{
-    const r=await fetch("/api/admin/messages",{credentials:"same-origin",cache:"no-store"});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
-    const items=Array.isArray(d.messages)?d.messages:[];
-    const signature=JSON.stringify(items.map(x=>[x.id,x.title,x.body,x.created_at,x.expires_at]));
-    if(box.dataset.signature===signature)return;
-    box.dataset.signature=signature;
-    box.dataset.hasContent="true";
-    box.innerHTML=items.length?'<div class="batbot-admin-message-list">'+items.map(x=>`<div class="batbot-admin-message-item"><div class="batbot-message-title">${escapeHtml(x.title)}</div><div class="batbot-admin-message-meta">Publié le ${escapeHtml(formatPaymentDateTime(x.created_at))} • Expire le ${escapeHtml(formatPaymentDateTime(x.expires_at))}</div><div class="batbot-message-body">${escapeHtml(x.body)}</div><button class="btn danger" type="button" onclick="deleteBatBotMessage(${x.id},this)">🗑️ Supprimer</button></div>`).join(""):'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun message actif</div><div class="professional-status-body">Publiez une annonce pour la rendre visible aux membres pendant 24 heures.</div></div>';
-  }catch(e){
-    if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Messages indisponibles</div><div class="professional-status-body">Impossible de charger les annonces.</div></div>';
-  }
-}
-
-async function publishBatBotMessage(){
-  const title=document.getElementById("adminMessageTitle")?.value.trim()||"";
-  const body=document.getElementById("adminMessageBody")?.value.trim()||"";
-  if(!title||!body)return showStatus("adminMessageStatus","📋 Votre message est incomplet. Ajoutez un titre et un contenu avant de publier.","error");
-  setLoading("adminPublishMessageButton",true,"📢 Publier le message");
-  try{
-    const r=await fetch("/api/admin/messages",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({title,body})});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||"Publication impossible.");
-    document.getElementById("adminMessageTitle").value="";
-    document.getElementById("adminMessageBody").value="";
-    showStatus("adminMessageStatus",d.message||"Message publié avec succès.","success");
-    await loadAdminMessages();
-  }catch(e){showStatus("adminMessageStatus",e.message||"Publication impossible.","error");}
-  finally{setLoading("adminPublishMessageButton",false,"📢 Publier le message");}
-}
-
-async function deleteBatBotMessage(id,button){
-  if(button?.disabled)return;
-  const confirmed=await showProfessionalConfirm({
-    title:"🗑️ Supprimer le message",
-    message:"Voulez-vous vraiment supprimer définitivement ce message ? Cette action est irréversible.",
-    confirmText:"🗑️ Supprimer"
-  });
-  if(!confirmed)return;
-  if(button){button.disabled=true;button.innerHTML='<span class="batbot-spinner batbot-btn-spinner"></span>Suppression…';}
-  try{
-    const r=await fetch("/api/admin/messages/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin"});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||"Suppression impossible.");
-    showToast(d.message||"Message supprimé.","success");
-    await loadAdminMessages();
-  }catch(e){showToast(e.message||"Suppression impossible.","error");if(button){button.disabled=false;button.textContent="🗑️ Supprimer";}}
-}
-
 async function loadMyTransactions(){
   const box=document.getElementById("myTransactionsList");
   if(!box)return;
@@ -2155,7 +1919,6 @@ async function loadMyTransactions(){
     const d=await readApiResponse(r);
     if(!r.ok)throw new Error(d.error||"Chargement impossible.");
     const items=Array.isArray(d.requests)?d.requests:[];
-    updateProfessionalLastTransaction(items);
     const signature=JSON.stringify(items.map(x=>[x.id,x.status,x.offer,x.amount,x.operator,x.reference,x.created_at,x.admin_note||""]));
     if(box.dataset.signature===signature)return;
     box.dataset.signature=signature;
@@ -2227,7 +1990,6 @@ async function loadAdmin(){
   document.getElementById("adminPanel").classList.remove("hidden");
   organizeAdminPanel();
   loadAdminPaymentRequests();
-  loadAdminMessages();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -2693,13 +2455,12 @@ function startBatBotLiveSync(){
         loadPublicConfig(),
         loadDailyMatches(),
         loadMyTransactions(),
-        loadBatBotMessages(),
         refreshCurrentUserSilently()
       ]);
       // Ne pas recharger toute l'administration automatiquement : cela
       // recréait les champs et effaçait le numéro pendant la saisie.
       if(document.getElementById("adminPanel") && !document.getElementById("adminPanel").classList.contains("hidden")){
-        await Promise.allSettled([loadAdminPaymentRequests(),loadAdminMessages()]);
+        await loadAdminPaymentRequests();
       }
     }catch(error){console.warn("LIVE_SYNC:",error);}
   },5000);
@@ -2824,7 +2585,7 @@ document.addEventListener("keydown",function(event){
     // Ordre fixe demandé pour l’interface client. Le contenu et les identifiants
     // des cartes restent inchangés afin de préserver les fonctionnalités existantes.
     const requestedOrder=[
-      'Dépôts & paiements','Mes transactions','🔔 Messages','BatBot IA','Demander une analyse',
+      'Dépôts & paiements','Mes transactions','BatBot IA','Demander une analyse',
       'Matchs du jour','Probabilités des matchs du jour','Partenaires authentifiés',
       'Nos groupes','Contacter un agent','Joindre BatBot','Nos réseaux sociaux',
       'Comment ça fonctionne','Conditions d’utilisation'
