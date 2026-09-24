@@ -1518,8 +1518,13 @@ async function loadCoupons(){
   }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Coupons indisponibles</div><div class="professional-status-body">Impossible de charger les coupons pour le moment.</div></div>';}
 }
 async function copyText(value){
-  try{if(!navigator.clipboard?.writeText)throw new Error("Clipboard indisponible");await navigator.clipboard.writeText(value);showToast("Copié avec succès.","success");}
-  catch(e){showToast("La copie automatique est indisponible.","error");prompt("Copiez ce texte :",value);}
+  try{
+    if(!navigator.clipboard?.writeText)throw new Error("Clipboard indisponible");
+    await navigator.clipboard.writeText(value);
+    showToast("Copie réussie — le contenu est maintenant disponible dans le presse-papiers.","success");
+  }catch(e){
+    showToast("La copie automatique n’a pas pu être effectuée. Veuillez réessayer.","error");
+  }
 }
 function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon BatBot",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
 function renderBatBotReferral(data){
