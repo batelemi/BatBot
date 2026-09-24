@@ -343,6 +343,10 @@ textarea{min-height:120px;resize:vertical}
 .admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .admin-actions .btn{margin:0;min-height:42px;font-size:12px}
 .reset-request{background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}
+/* Correction mobile : les demandes de mot de passe doivent rester empilées verticalement. */
+#resetList{display:block;width:100%;min-width:0;overflow-x:hidden}
+#resetList .reset-request{display:block;width:100%;min-width:0;box-sizing:border-box}
+#resetList .reset-request .btn{width:100%;min-width:0;white-space:normal;line-height:1.25}
 .social-grid{display:grid;grid-template-columns:1fr;gap:9px}
 .social-btn{min-height:52px}
 
