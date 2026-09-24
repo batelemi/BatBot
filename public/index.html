@@ -184,7 +184,11 @@ textarea{min-height:120px;resize:vertical}
 .batbot-receipt-row strong{color:#0B223D;text-align:right;word-break:break-word}
 .batbot-receipt-reference{position:relative;margin-top:3px;padding:10px;border-radius:11px;background:#071A2D;color:#fff}
 .batbot-receipt-reference-label{display:block;color:#6EE7A0;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.65px;margin-bottom:4px}
-.batbot-receipt-reference code{font-size:13px;word-break:break-all}
+.batbot-receipt-reference code{font-size:13px;word-break:break-all;color:#FFFFFF;font-weight:900}
+.batbot-receipt-row.client strong{color:#000000;font-weight:1000}
+.batbot-receipt-row strong{color:#000000;font-weight:900}
+.batbot-receipt-copy-reference{background:linear-gradient(145deg,#285477,#142F4B);color:#fff}
+.batbot-receipt-actions .btn{font-size:12px}
 .batbot-receipt-footer{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid rgba(11,34,61,.14)}
 .batbot-receipt-status{font-size:12px;font-weight:900}
 .batbot-receipt-status.accepted{color:#087A38}.batbot-receipt-status.rejected{color:#A51D1D}.batbot-receipt-status.pending{color:#9A6A00}
@@ -1848,7 +1852,13 @@ function getPaymentStatusMeta(status){
 
 function renderBatBotReceipt(x,options={}){
   const meta=getPaymentStatusMeta(x.status);
-  const username=String(x.username||options.username||"Utilisateur");
+  const username=String(
+    x.username||
+    options.username||
+    document.querySelector("#userBox strong")?.textContent||
+    "Utilisateur"
+  );
+  const reference=String(x.reference||"—");
   const amount=Number(x.amount)||0;
   const adminNote=x.admin_note?`<div class="batbot-receipt-row"><span>📝 Note</span><strong>${escapeHtml(x.admin_note)}</strong></div>`:"";
   const stampName=username.length>20?username.slice(0,20)+"…":username;
@@ -1858,11 +1868,13 @@ function renderBatBotReceipt(x,options={}){
     `Offre : ${x.offer||"—"}`,
     `Montant : ${amount} FCFA`,
     `Opérateur : ${x.operator||"—"}`,
-    `Référence : ${x.reference||"—"}`,
+    `Référence : ${reference}`,
     `Date et heure : ${formatPaymentDateTime(x.created_at)}`,
     `Statut : ${meta.label}`,
     x.admin_note?`Note : ${x.admin_note}`:""
   ].filter(Boolean).join("\n");
+  const encodedDetails=encodeURIComponent(details);
+  const encodedReference=encodeURIComponent(reference);
   return `
     <div class="batbot-receipt">
       <div class="batbot-receipt-head">
@@ -1873,20 +1885,24 @@ function renderBatBotReceipt(x,options={}){
         <div class="batbot-receipt-id">N° ${escapeHtml(String(x.id||"—"))}</div>
       </div>
       <div class="batbot-receipt-body">
-        <div class="batbot-receipt-row"><span>👤 Client</span><strong>${escapeHtml(username)}</strong></div>
+        <div class="batbot-receipt-row client"><span>👤 Client</span><strong>${escapeHtml(username)}</strong></div>
         <div class="batbot-receipt-row"><span>🎯 Offre</span><strong>${escapeHtml(x.offer||"—")}</strong></div>
         <div class="batbot-receipt-row"><span>💰 Montant</span><strong>${escapeHtml(String(amount))} FCFA</strong></div>
         <div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>${escapeHtml(x.operator||"—")}</strong></div>
         <div class="batbot-receipt-row"><span>📅 Date</span><strong>${escapeHtml(formatPaymentDateTime(x.created_at))}</strong></div>
         ${adminNote}
-        <div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">🔖 Référence de transaction</span><code>${escapeHtml(x.reference||"—")}</code></div>
+        <div class="batbot-receipt-reference">
+          <span class="batbot-receipt-reference-label">🔖 Référence de transaction</span>
+          <code>${escapeHtml(reference)}</code>
+        </div>
       </div>
       <div class="batbot-receipt-footer">
         <div class="batbot-receipt-status ${meta.key}">${meta.key==="accepted"?"🟢":meta.key==="rejected"?"🔴":"🟡"} ${meta.label}</div>
         <div class="batbot-receipt-stamp ${meta.key}">BATBOT<br>${escapeHtml(meta.stamp)}<span>${escapeHtml(stampName)}</span></div>
       </div>
       <div class="batbot-receipt-actions">
-        <button class="btn secondary" type="button" onclick="copyPaymentDetails(${JSON.stringify(details).replace(/</g,'\\u003c')})">📋 Copier tous les détails</button>
+        <button class="btn secondary batbot-receipt-copy-reference" type="button" data-copy="${encodedReference}" onclick="copyPaymentDetails(decodeURIComponent(this.dataset.copy))">📋 Copier la référence</button>
+        <button class="btn secondary" type="button" data-copy="${encodedDetails}" onclick="copyPaymentDetails(decodeURIComponent(this.dataset.copy))">📋 Copier tous les détails</button>
       </div>
     </div>`;
 }
