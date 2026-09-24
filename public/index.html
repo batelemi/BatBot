@@ -164,6 +164,40 @@ textarea{min-height:120px;resize:vertical}
 .ai-progress-status{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(0,213,255,.35);color:#D9E7F3;line-height:1.4;text-align:left}
 .ai-progress-status strong{display:block;color:#fff}.ai-progress-status small{display:block;color:#AFC1D4;margin-top:2px}
 .batbot-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.28);border-top-color:#39CFFF;border-radius:50%;animation:batbotSpin .8s linear infinite;vertical-align:-3px;flex:0 0 auto}
+.professional-status.loading{border-color:rgba(0,191,255,.34)}
+.professional-status-head{display:flex;align-items:center;gap:8px;font-weight:900;margin-bottom:4px}
+.professional-status-body{color:#D9E7F3;line-height:1.48}
+.professional-status-body small{display:block;color:#AFC1D4;margin-top:4px}
+.status:empty{display:none}
+.status{width:100%;margin-top:10px}
+.status .professional-status{width:100%}
+.batbot-receipt{position:relative;margin-top:12px;padding:16px;border-radius:18px;background:linear-gradient(145deg,#f8fbff,#dfeaf3);color:#0B223D;border:1px solid rgba(83,207,255,.55);box-shadow:0 12px 28px rgba(0,0,0,.22);overflow:hidden}
+.batbot-receipt::before{content:"";position:absolute;inset:7px;border:1px dashed rgba(11,34,61,.20);border-radius:13px;pointer-events:none}
+.batbot-receipt-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:11px;border-bottom:1px solid rgba(11,34,61,.14)}
+.batbot-receipt-brand{display:flex;align-items:center;gap:9px;font-weight:1000;letter-spacing:.6px}
+.batbot-receipt-brand img{width:36px;height:36px;object-fit:contain;border-radius:50%;background:#fff;border:2px solid #21C55D}
+.batbot-receipt-subtitle{font-size:10px;color:#52708A;margin-top:2px;text-transform:uppercase;letter-spacing:.8px}
+.batbot-receipt-id{font-size:11px;font-weight:900;color:#52708A;text-align:right}
+.batbot-receipt-body{position:relative;display:grid;gap:7px;padding:12px 0}
+.batbot-receipt-row{display:flex;justify-content:space-between;gap:12px;font-size:13px;line-height:1.4}
+.batbot-receipt-row span:first-child{color:#52708A}
+.batbot-receipt-row strong{color:#0B223D;text-align:right;word-break:break-word}
+.batbot-receipt-reference{position:relative;margin-top:3px;padding:10px;border-radius:11px;background:#071A2D;color:#fff}
+.batbot-receipt-reference-label{display:block;color:#6EE7A0;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.65px;margin-bottom:4px}
+.batbot-receipt-reference code{font-size:13px;word-break:break-all}
+.batbot-receipt-footer{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid rgba(11,34,61,.14)}
+.batbot-receipt-status{font-size:12px;font-weight:900}
+.batbot-receipt-status.accepted{color:#087A38}.batbot-receipt-status.rejected{color:#A51D1D}.batbot-receipt-status.pending{color:#9A6A00}
+.batbot-receipt-stamp{width:108px;min-height:68px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px double currentColor;border-radius:10px;transform:rotate(-6deg);font-weight:1000;text-align:center;line-height:1.05;text-transform:uppercase;letter-spacing:.45px;background:rgba(255,255,255,.42);opacity:.92}
+.batbot-receipt-stamp span{font-size:9px;margin-top:4px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.batbot-receipt-stamp.accepted{color:#079447}.batbot-receipt-stamp.rejected{color:#C12727}.batbot-receipt-stamp.pending{color:#B17A00}
+.batbot-receipt-actions{position:relative;margin-top:11px;display:grid;grid-template-columns:1fr;gap:7px}
+.batbot-receipt-actions .btn{margin:0;min-height:43px}
+.payment-request-card .batbot-receipt{margin-top:13px}
+.professional-loading{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);color:#D9E7F3;line-height:1.4}
+.professional-loading strong{display:block;color:#fff}.professional-loading small{display:block;color:#AFC1D4;margin-top:2px}
+@media(max-width:380px){.batbot-receipt{padding:13px}.batbot-receipt-row{font-size:12px}.batbot-receipt-stamp{width:96px;min-height:62px}}
+
 .batbot-btn-spinner{width:16px;height:16px;margin-right:8px}
 @keyframes batbotSpin{to{transform:rotate(360deg)}}
 .notice{padding:13px;border-left:3px solid var(--blue);background:#0C2745;border-radius:8px;line-height:1.5;margin:10px 0;color:#D9E7F3}
@@ -306,7 +340,7 @@ textarea{min-height:120px;resize:vertical}
 .password-reset-modal-close{width:auto!important;min-height:42px!important;margin:0!important;padding:8px 12px!important}
 .password-reset-modal-user{color:var(--muted);font-size:13px;margin:4px 0 14px}
 .password-reset-modal-password{display:flex;align-items:center;gap:9px;padding:14px;border-radius:14px;background:#071a2d;border:1px solid #315d82;margin:12px 0}
-.password-reset-modal-password code{flex:1;color:#6EE7A0;font-size:21px;font-weight:900;letter-spacing:1.2px;word-break:break-all}
+.password-reset-modal-password code{flex:1;min-width:0;color:#6EE7A0;font-size:20px;font-weight:900;letter-spacing:1.2px;word-break:normal;white-space:nowrap;overflow-x:auto;overflow-y:hidden}
 .password-reset-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
 .password-reset-modal-actions .btn{margin:0}
 .hidden{display:none!important}
@@ -429,7 +463,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   <div id="forgotBox" class="card hidden">
     <h2>🔑 Mot de passe oublié</h2>
     <p class="muted">
-      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation à l'administrateur.
+      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation au service BatBot.
     </p>
 
     <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
@@ -485,7 +519,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   <div id="userBox" class="user-box">👤 Compte connecté</div>
   <div class="profile-status-grid" aria-label="Statuts du compte">
     <div class="status-card premium-status-card"><div class="status-icon">💎</div><div><span>Statut Premium</span><strong id="premiumStatusText">Non actif</strong></div></div>
-    <div class="status-card ai-status-card"><div class="status-icon">🤖</div><div><span>Statut IA</span><strong id="aiStatusText">Non active</strong></div></div>
+    <div class="status-card ai-status-card"><div class="status-icon">🤖</div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
   </div>
 
   <section class="card ai-card" id="smartDriveAISection">
@@ -583,7 +617,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   <div id="myTransactionsCard" class="card">
     <h2>📊 Mes transactions</h2>
     <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont supprimées après 2 jours.</p>
-    <div id="myTransactionsList"><div class="notice">Chargement des transactions...</div></div>
+    <div id="myTransactionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div></div>
   </div>
 
 
@@ -635,13 +669,13 @@ PSG vs Marseille"></textarea>
   <div class="card">
     <h2>🏆 Bookmakers disponibles</h2>
     <p class="muted">Découvrez les plateformes proposées. Vérifiez toujours les conditions et bonus avant utilisation.</p>
-    <div id="bookmakersList"><div class="notice">Chargement des bookmakers...</div></div>
+    <div id="bookmakersList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des partenaires</strong><small>Récupération des plateformes disponibles…</small></div></div></div>
   </div>
 
   <div class="card">
     <h2>🎁 Codes coupons disponibles</h2>
     <p class="muted">Copiez un code, ouvrez la plateforme ou partagez l’offre.</p>
-    <div id="couponsList"><div class="notice">Chargement des coupons...</div></div>
+    <div id="couponsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des coupons</strong><small>Récupération des offres disponibles…</small></div></div></div>
   </div>
 
   </section>
@@ -649,7 +683,7 @@ PSG vs Marseille"></textarea>
   <div class="card">
     <h2>📊 Probabilités des matchs du jour</h2>
     <p class="muted">Retrouvez ici les probabilités ajoutées par le service BatBot.</p>
-    <div id="dailyMatches"><div class="notice">Chargement des probabilités...</div></div>
+    <div id="dailyMatches"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des probabilités</strong><small>Récupération des informations BatBot…</small></div></div></div>
   </div>
 
 
@@ -749,19 +783,19 @@ PSG vs Marseille"></textarea>
 
     <div class="card">
       <h2>📊 Tableau de bord</h2>
-      <div id="adminStats" class="notice">Chargement...</div>
+      <div id="adminStats" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement du tableau de bord</strong><small>Récupération des données administrateur…</small></div></div>
     </div>
 
     <div class="card">
       <h2>👥 Membres inscrits</h2>
       <input id="userSearch" type="search" placeholder="🔎 Rechercher un client par son nom..." oninput="filterAdminUsers()">
-      <div id="usersList">Chargement...</div>
+      <div id="usersList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des membres</strong><small>Récupération des comptes BatBot…</small></div></div>
     </div>
 
     <div class="card">
       <h2>⚙️ Paramètres modifiables</h2>
       <p class="muted">Modifiez les numéros WhatsApp, Telegram, les liens Wave, les réseaux sociaux et les numéros Mobile Money sans toucher au code.</p>
-      <div id="settingsList">Chargement...</div>
+      <div id="settingsList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des paramètres</strong><small>Récupération de la configuration…</small></div></div>
       <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
       <div id="settingsStatus" class="status"></div>
     </div>
@@ -769,7 +803,7 @@ PSG vs Marseille"></textarea>
     <div class="card">
       <h2>💳 Demandes de paiement manuel</h2>
       <p class="muted">Vérifiez la preuve reçue sur WhatsApp avant d’accepter une demande.</p>
-      <div id="paymentRequestsAdminList">Chargement...</div>
+      <div id="paymentRequestsAdminList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des demandes</strong><small>Récupération des paiements…</small></div></div>
     </div>
 
     <div class="card">
@@ -796,7 +830,7 @@ PSG vs Marseille"></textarea>
     <div class="card">
       <h2>🔑 Demandes de mot de passe</h2>
       <p class="muted">Les demandes des utilisateurs qui ont oublié leur mot de passe apparaissent ici.</p>
-      <div id="resetList">Chargement...</div>
+      <div id="resetList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des demandes</strong><small>Récupération des demandes de sécurité…</small></div></div>
     </div>
 
     <div class="card">
@@ -861,8 +895,14 @@ function hideLoading(){
 function showStatus(id,message,type=""){
   const element=document.getElementById(id);
   if(!element)return;
-  element.textContent=message||"";
-  element.className="status "+type;
+  const value=String(message||"").trim();
+  element.className="status "+(type||"");
+  if(!value){element.innerHTML="";return;}
+  const isLoading=/en cours|chargement|actualisation|récupération|ouverture|traitement/i.test(value);
+  const icon=type==="success"?"✅":type==="error"?"⚠️":"ℹ️";
+  const title=type==="success"?"Opération réussie":type==="error"?"Action non effectuée":isLoading?"Traitement en cours":"Information";
+  const spinner=isLoading?'<span class="batbot-spinner" aria-hidden="true"></span>':"";
+  element.innerHTML='<div class="professional-status '+(type||"")+(isLoading?' loading':'')+'"><div class="professional-status-head">'+spinner+'<span>'+icon+' '+title+'</span></div><div class="professional-status-body">'+escapeHtml(value)+'</div></div>';
 }
 
 function showToast(message,type="success"){
@@ -880,7 +920,8 @@ function setLoading(id,loading,normalText){
   const button=document.getElementById(id);
   if(!button)return;
   button.disabled=loading;
-  button.textContent=loading?"Patientez...":normalText;
+  if(loading)button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>Patientez…';
+  else button.textContent=normalText;
 }
 
 function setBatBotButtonLoading(id,loading,text){
@@ -1162,16 +1203,12 @@ async function submitForgotPassword(){
       sessionStorage.setItem("batbot_password_reset_username",username);
     }
 
-    showStatus("forgotStatus",data.message||"Demande enregistrée avec succès.","success");
-    startPasswordResetPolling();
-
+    const forgotStatus=document.getElementById("forgotStatus");
+    if(forgotStatus){forgotStatus.innerHTML="";forgotStatus.className="status";}
     const whatsappButton=document.getElementById("forgotWhatsApp");
-    if(whatsappButton){
-      whatsappButton.href=data.whatsapp_url||createWhatsAppUrl(
-        "Bonjour BatBot 👋\n\nJe souhaite réinitialiser mon mot de passe.\n\nNom d'utilisateur : "+username
-      );
-      whatsappButton.classList.remove("hidden");
-    }
+    if(whatsappButton)whatsappButton.classList.add("hidden");
+    renderPasswordResetDelivery({status:"pending"});
+    startPasswordResetPolling();
 
   }catch(error){
     console.error("FORGOT:",error);
@@ -1197,7 +1234,7 @@ function renderPasswordResetDelivery(state){
   if(state.status==="pending"){
     box.classList.remove("hidden");
     box.classList.add("pending");
-    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande est bien enregistrée. Dès que l’administrateur génère votre mot de passe temporaire, il apparaîtra automatiquement ici.</div>';
+    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande a bien été envoyée au service BatBot. Veuillez patienter pendant le traitement. Dès que votre mot de passe temporaire sera prêt, il apparaîtra automatiquement ici.</div>';
     return;
   }
 
@@ -1391,8 +1428,8 @@ async function loadBookmakers(){
   try{
     const r=await fetch("/api/config",{cache:"no-store"}); const d=await readApiResponse(r);
     const items=Array.isArray(d.bookmakers)?d.bookmakers:[];
-    box.innerHTML=items.map(b=>`<div class="bookmaker"><div><div class="bookmaker-name">${escapeHtml(b.name)}</div><span class="bookmaker-bonus">${escapeHtml(b.bonus||"Consulter les conditions")}</span></div><a class="btn green" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer">Ouvrir</a></div>`).join("")||'<div class="notice">Aucun bookmaker disponible.</div>';
-  }catch(e){box.innerHTML='<div class="notice">Impossible de charger les bookmakers.</div>';}
+    box.innerHTML=items.map(b=>`<div class="bookmaker"><div><div class="bookmaker-name">${escapeHtml(b.name)}</div><span class="bookmaker-bonus">${escapeHtml(b.bonus||"Consulter les conditions")}</span></div><a class="btn green" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer">Ouvrir</a></div>`).join("")||'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun partenaire disponible</div><div class="professional-status-body">Aucun bookmaker n’est actuellement publié.</div></div>';
+  }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Partenaires indisponibles</div><div class="professional-status-body">Impossible de charger les partenaires pour le moment.</div></div>';}
 }
 async function loadCoupons(){
   const box=document.getElementById("couponsList"); if(!box)return;
@@ -1400,8 +1437,8 @@ async function loadCoupons(){
     const r=await fetch("/api/coupons",{credentials:"same-origin",cache:"no-store"}); const d=await readApiResponse(r);
     if(!r.ok)throw new Error(d.error||"Erreur");
     const items=Array.isArray(d.coupons)?d.coupons:[];
-    box.innerHTML=items.map(c=>`<div class="match-card"><strong>${escapeHtml(c.platform_name)}</strong><div class="notice">Code à utiliser sur ${escapeHtml(c.platform_name)} : <strong>${escapeHtml(c.code)}</strong></div>${c.description?`<p class="muted">${escapeHtml(c.description)}</p>`:""}<button class="btn primary" onclick="copyText('${String(c.code).replace(/'/g,"\\'")}')">📋 Copier le code</button><button class="btn secondary" onclick="copyText('${String(c.platform_url).replace(/'/g,"\\'")}')">🔗 Copier le lien</button><a class="btn green" href="${escapeHtml(c.platform_url)}" target="_blank" rel="noopener noreferrer">Ouvrir la plateforme</a><button class="btn telegram" onclick="shareCoupon('${String(c.platform_name).replace(/'/g,"\\'")}','${String(c.code).replace(/'/g,"\\'")}','${String(c.platform_url).replace(/'/g,"\\'")}')">📤 Partager</button></div>`).join("")||'<div class="notice">Aucun code coupon disponible.</div>';
-  }catch(e){box.innerHTML='<div class="notice">Aucun coupon disponible pour le moment.</div>';}
+    box.innerHTML=items.map(c=>`<div class="match-card"><strong>${escapeHtml(c.platform_name)}</strong><div class="notice">Code à utiliser sur ${escapeHtml(c.platform_name)} : <strong>${escapeHtml(c.code)}</strong></div>${c.description?`<p class="muted">${escapeHtml(c.description)}</p>`:""}<button class="btn primary" onclick="copyText('${String(c.code).replace(/'/g,"\\'")}')">📋 Copier le code</button><button class="btn secondary" onclick="copyText('${String(c.platform_url).replace(/'/g,"\\'")}')">🔗 Copier le lien</button><a class="btn green" href="${escapeHtml(c.platform_url)}" target="_blank" rel="noopener noreferrer">Ouvrir la plateforme</a><button class="btn telegram" onclick="shareCoupon('${String(c.platform_name).replace(/'/g,"\\'")}','${String(c.code).replace(/'/g,"\\'")}','${String(c.platform_url).replace(/'/g,"\\'")}')">📤 Partager</button></div>`).join("")||'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun coupon disponible</div><div class="professional-status-body">Aucun code coupon n’est actuellement publié.</div></div>';
+  }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Coupons indisponibles</div><div class="professional-status-body">Impossible de charger les coupons pour le moment.</div></div>';}
 }
 async function copyText(value){
   try{if(!navigator.clipboard?.writeText)throw new Error("Clipboard indisponible");await navigator.clipboard.writeText(value);showToast("Copié avec succès.","success");}
@@ -1569,9 +1606,10 @@ function adminSecretTap(){
 }
 function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
+  const aiActive=premium && Boolean(user&&user.ai_active);
   const p=document.getElementById("premiumStatusText"); const a=document.getElementById("aiStatusText");
-  if(p)p.textContent=premium?"Actif":"Non actif";
-  if(a)a.textContent=(premium && Boolean(user&&user.ai_active))?"Active":"Non active";
+  if(p)p.textContent=premium?"🟢 Actif":"🔴 Non actif";
+  if(a)a.textContent=aiActive?"🟢 Active":"🔴 Non active";
 }
 function splitMatch(value){
   const parts=String(value||"").split(/\s+(?:vs|v|contre)\s+/i).map(x=>x.trim()).filter(Boolean);
@@ -1662,23 +1700,29 @@ async function loadApiFootballFixtures(){
   const status=document.getElementById("apiFootballStatus");
   const box=document.getElementById("apiFootballResults");
   if(!status||!box)return;
-  status.className="status";status.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Préparation des matchs disponibles…</small></div></div>';
-  box.classList.remove("hidden"); box.textContent="Chargement…";
+  status.className="status";
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation des matchs</strong><small>Vérification des rencontres disponibles…</small></div></div>';
+  box.classList.remove("hidden");
+  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les matchs du jour sont en préparation…</small></div></div>';
   try{
     const r=await fetch("/api/football/fixtures?timezone=Africa%2FAbidjan",{credentials:"same-origin",cache:"no-store"});
     const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.details||d.error||"API-Football indisponible.");
+    if(!r.ok)throw new Error("fixtures_unavailable");
     const fixtures=Array.isArray(d.response)?d.response:[];
-    if(!fixtures.length){box.textContent="Aucun match trouvé pour aujourd’hui.";return;}
-    box.textContent=fixtures.slice(0,30).map(function(item){
-      const f=item.fixture||{}, teams=item.teams||{}, league=item.league||{};
-      const date=f.date?new Date(f.date).toLocaleString("fr-FR"):"Date inconnue";
-      return (teams.home?.name||"Équipe 1")+" — "+(teams.away?.name||"Équipe 2")+"\n"+(league.name||"Compétition")+" • "+date;
-    }).join("\n\n");
-    status.innerHTML='<div class="professional-status success">⚽ <strong>'+fixtures.length+' match(s) disponible(s)</strong><br><span>Les rencontres du jour sont prêtes à être consultées.</span></div>';
+    if(!fixtures.length){
+      box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est actuellement disponible dans cette section.</div></div>';
+      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Vérification terminée</div><div class="professional-status-body">La liste des rencontres a été vérifiée.</div></div>';
+      return;
+    }
+    box.innerHTML=fixtures.slice(0,30).map(function(item){
+      const f=item.fixture||{},teams=item.teams||{},league=item.league||{};
+      const date=f.date?new Date(f.date).toLocaleString("fr-FR"):"Date non disponible";
+      return '<div class="match-card"><div class="match-title">⚽ '+escapeHtml(teams.home?.name||"Équipe 1")+' — '+escapeHtml(teams.away?.name||"Équipe 2")+'</div><div class="muted">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+'</div></div>';
+    }).join("");
+    status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs disponibles</div><div class="professional-status-body">'+fixtures.length+' rencontre(s) peuvent être consultées.</div></div>';
   }catch(e){
-    box.textContent="";
-    status.innerHTML='<div class="professional-status error">⚠️ <strong>Chargement indisponible</strong><br><span>Les matchs du jour ne peuvent pas être chargés pour le moment.</span></div>';
+    box.innerHTML='<div class="professional-status"><div class="professional-status-head">🚀 Fonctionnalité bientôt disponible</div><div class="professional-status-body">La section « Matchs du jour » est actuellement en préparation et sera proposée dans une prochaine mise à jour de BatBot.</div></div>';
+    status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Service en préparation</div><div class="professional-status-body">Cette fonctionnalité sera disponible prochainement.</div></div>';
   }
 }
 
@@ -1795,40 +1839,132 @@ function organizeAdminPanel(){
   adminOrganizerReady=true;
 }
 
+function getPaymentStatusMeta(status){
+  const normalized=status==="accepted"?"accepted":status==="rejected"?"rejected":"pending";
+  if(normalized==="accepted")return {key:normalized,label:"Paiement approuvé",stamp:"APPROUVÉ"};
+  if(normalized==="rejected")return {key:normalized,label:"Paiement refusé",stamp:"REFUSÉ"};
+  return {key:"pending",label:"Vérification en cours",stamp:"EN VÉRIFICATION"};
+}
+
+function renderBatBotReceipt(x,options={}){
+  const meta=getPaymentStatusMeta(x.status);
+  const username=String(x.username||options.username||"Utilisateur");
+  const amount=Number(x.amount)||0;
+  const adminNote=x.admin_note?`<div class="batbot-receipt-row"><span>📝 Note</span><strong>${escapeHtml(x.admin_note)}</strong></div>`:"";
+  const stampName=username.length>20?username.slice(0,20)+"…":username;
+  const details=[
+    `Transaction #${x.id}`,
+    `Nom : ${username}`,
+    `Offre : ${x.offer||"—"}`,
+    `Montant : ${amount} FCFA`,
+    `Opérateur : ${x.operator||"—"}`,
+    `Référence : ${x.reference||"—"}`,
+    `Date et heure : ${formatPaymentDateTime(x.created_at)}`,
+    `Statut : ${meta.label}`,
+    x.admin_note?`Note : ${x.admin_note}`:""
+  ].filter(Boolean).join("\n");
+  return `
+    <div class="batbot-receipt">
+      <div class="batbot-receipt-head">
+        <div class="batbot-receipt-brand">
+          <img src="logo.png" alt="BatBot">
+          <div><div>BATBOT</div><div class="batbot-receipt-subtitle">Reçu de transaction</div></div>
+        </div>
+        <div class="batbot-receipt-id">N° ${escapeHtml(String(x.id||"—"))}</div>
+      </div>
+      <div class="batbot-receipt-body">
+        <div class="batbot-receipt-row"><span>👤 Client</span><strong>${escapeHtml(username)}</strong></div>
+        <div class="batbot-receipt-row"><span>🎯 Offre</span><strong>${escapeHtml(x.offer||"—")}</strong></div>
+        <div class="batbot-receipt-row"><span>💰 Montant</span><strong>${escapeHtml(String(amount))} FCFA</strong></div>
+        <div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>${escapeHtml(x.operator||"—")}</strong></div>
+        <div class="batbot-receipt-row"><span>📅 Date</span><strong>${escapeHtml(formatPaymentDateTime(x.created_at))}</strong></div>
+        ${adminNote}
+        <div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">🔖 Référence de transaction</span><code>${escapeHtml(x.reference||"—")}</code></div>
+      </div>
+      <div class="batbot-receipt-footer">
+        <div class="batbot-receipt-status ${meta.key}">${meta.key==="accepted"?"🟢":meta.key==="rejected"?"🔴":"🟡"} ${meta.label}</div>
+        <div class="batbot-receipt-stamp ${meta.key}">BATBOT<br>${escapeHtml(meta.stamp)}<span>${escapeHtml(stampName)}</span></div>
+      </div>
+      <div class="batbot-receipt-actions">
+        <button class="btn secondary" type="button" onclick="copyPaymentDetails(${JSON.stringify(details).replace(/</g,'\\u003c')})">📋 Copier tous les détails</button>
+      </div>
+    </div>`;
+}
+
 async function loadMyTransactions(){
   const box=document.getElementById("myTransactionsList");
   if(!box)return;
-  box.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div>';
+  const hadContent=box.dataset.hasContent==="true";
+  if(!hadContent){
+    box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div>';
+  }
   try{
     const r=await fetch("/api/payment-requests/mine",{credentials:"same-origin",cache:"no-store"});
-    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");
-    const items=d.requests||[];
-    box.innerHTML=items.map(x=>{
-      const status=x.status==="accepted"?"accepted":x.status==="rejected"?"rejected":"pending";
-      const label=status==="accepted"?"✅ Paiement approuvé":status==="rejected"?"❌ Paiement refusé":"⏳ Vérification en cours";
-      const details=[`Transaction #${x.id}`,`Offre : ${x.offer}`,`Montant : ${Number(x.amount)||0} FCFA`,`Opérateur : ${x.operator}`,`Référence : ${x.reference}`,`Date et heure : ${formatPaymentDateTime(x.created_at)}`,`Statut : ${label}`].join("\n");
-      return `<div class="payment-request-card"><div class="payment-request-title">💳 Transaction #${x.id}</div><div class="payment-request-details"><div>🎯 <strong>${escapeHtml(x.offer)}</strong></div><div>💰 ${Number(x.amount)||0} FCFA</div><div>📱 ${escapeHtml(x.operator)}</div></div><div class="payment-request-reference"><span class="payment-request-reference-label">🔖 Référence de transaction</span><code>${escapeHtml(x.reference)}</code></div><div class="payment-request-date">📅 ${escapeHtml(formatPaymentDateTime(x.created_at))}</div><div class="payment-request-status ${status}">${label}</div><div class="payment-request-actions"><button class="btn secondary" type="button" onclick="copyPaymentDetails(${JSON.stringify(details).replace(/</g,'\u003c')})">📋 Copier tous les détails</button></div></div>`;
-    }).join("")||'<p class="muted">Aucune transaction récente.</p>';
-  }catch(e){box.innerHTML='<div class="professional-status error">⚠️ <strong>Transactions indisponibles</strong><br><span>Impossible de charger vos transactions pour le moment.</span></div>';}
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    const items=Array.isArray(d.requests)?d.requests:[];
+    const signature=JSON.stringify(items.map(x=>[x.id,x.status,x.offer,x.amount,x.operator,x.reference,x.created_at,x.admin_note||""]));
+    if(box.dataset.signature===signature)return;
+    box.dataset.signature=signature;
+    box.dataset.hasContent="true";
+    box.innerHTML=items.length
+      ? items.map(x=>`<div class="payment-request-card"><div class="payment-request-title">🧾 Reçu de transaction #${x.id}</div>${renderBatBotReceipt(x)}</div>`).join("")
+      : '<div class="professional-status"><div class="professional-status-head">ℹ️ Aucune transaction récente</div><div class="professional-status-body">Vos demandes de paiement apparaîtront ici après leur enregistrement.</div></div>';
+  }catch(e){
+    if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Transactions indisponibles</div><div class="professional-status-body">Impossible de charger vos transactions pour le moment. Veuillez réessayer dans quelques instants.</div></div>';
+  }
 }
 
 async function loadAdminPaymentRequests(){
   const box=document.getElementById("paymentRequestsAdminList");
   if(!box)return;
-  box.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Actualisation des demandes</strong><small>Récupération des paiements en attente…</small></div></div>';
+  const hadContent=box.dataset.hasContent==="true";
+  if(!hadContent){
+    box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des demandes</strong><small>Récupération des paiements en attente…</small></div></div>';
+  }
   try{
     const r=await fetch("/api/admin/payment-requests",{credentials:"same-origin",cache:"no-store"});
-    const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Chargement impossible.");
-    box.innerHTML=(d.requests||[]).map(x=>{
-      const status=x.status==="accepted"?"accepted":x.status==="rejected"?"rejected":"pending";
-      const label=status==="accepted"?"✅ Paiement approuvé":status==="rejected"?"❌ Paiement refusé":"⏳ En attente de vérification";
-      const details=[`Transaction #${x.id}`,`Client : ${x.username||"Utilisateur"}`,`Offre : ${x.offer}`,`Montant : ${x.amount} FCFA`,`Opérateur : ${x.operator}`,`Référence : ${x.reference}`,`Date et heure : ${formatPaymentDateTime(x.created_at)}`,`Statut : ${label}`,x.admin_note?`Note : ${x.admin_note}`:""].filter(Boolean).join("\n");
-      return `<div class="payment-request-card"><div class="payment-request-title">💳 Transaction #${x.id} — ${escapeHtml(x.username||"Utilisateur")}</div><div class="payment-request-details"><div>🎯 <strong>${escapeHtml(x.offer)}</strong></div><div>💰 ${Number(x.amount)||0} FCFA</div><div>📱 ${escapeHtml(x.operator)}</div></div><div class="payment-request-reference"><span class="payment-request-reference-label">🔖 Référence de transaction</span><code>${escapeHtml(x.reference)}</code></div><div class="payment-request-date">📅 ${escapeHtml(formatPaymentDateTime(x.created_at))}</div><div class="payment-request-status ${status}">${label}</div><div class="payment-request-actions"><button class="btn secondary" type="button" onclick="copyPaymentDetails(${JSON.stringify(details).replace(/</g,'\u003c')})">📋 Copier tous les détails</button>${status==="pending"?`<div class="two-columns"><button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted')">✅ Approuver le paiement</button><button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected')">❌ Refuser le paiement</button></div>`:""}</div></div>`;
-    }).join("")||'<p class="muted">Aucune demande de paiement.</p>';
-  }catch(e){box.innerHTML='<div class="professional-status error">⚠️ <strong>Demandes indisponibles</strong><br><span>Impossible de charger les demandes de paiement pour le moment.</span></div>';}
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Chargement impossible.");
+    const items=Array.isArray(d.requests)?d.requests:[];
+    const signature=JSON.stringify(items.map(x=>[x.id,x.status,x.username,x.offer,x.amount,x.operator,x.reference,x.created_at,x.admin_note||""]));
+    if(box.dataset.signature===signature)return;
+    box.dataset.signature=signature;
+    box.dataset.hasContent="true";
+    box.innerHTML=items.length
+      ? items.map(x=>{
+          const meta=getPaymentStatusMeta(x.status);
+          const actionButtons=meta.key==="pending"
+            ? `<div class="two-columns" style="margin-top:8px">
+                 <button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted',this)">✅ Approuver le paiement</button>
+                 <button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected',this)">❌ Refuser le paiement</button>
+               </div>`
+            : "";
+          return `<div class="payment-request-card"><div class="payment-request-title">🧾 Reçu de transaction #${x.id}</div>${renderBatBotReceipt(x)}${actionButtons}</div>`;
+        }).join("")
+      : '<div class="professional-status"><div class="professional-status-head">ℹ️ Aucune demande de paiement</div><div class="professional-status-body">Les nouvelles demandes apparaîtront automatiquement ici.</div></div>';
+  }catch(e){
+    if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Demandes indisponibles</div><div class="professional-status-body">Impossible de charger les demandes de paiement pour le moment. Veuillez réessayer dans quelques instants.</div></div>';
+  }
 }
 
-async function resolvePaymentRequest(id,status){try{const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible.");await loadAdminPaymentRequests();alert(d.message);}catch(e){alert(e.message);}}
+async function resolvePaymentRequest(id,status,button){
+  if(button?.disabled)return;
+  if(button){
+    button.disabled=true;
+    button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>Traitement…';
+  }
+  try{
+    const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Action impossible.");
+    showToast(d.message||(status==="accepted"?"Paiement approuvé.":"Paiement refusé."),"success");
+    await loadAdminPaymentRequests();
+  }catch(e){
+    showToast(e.message||"Impossible de traiter le paiement.","error");
+    if(button){button.disabled=false;button.textContent=status==="accepted"?"✅ Approuver le paiement":"❌ Refuser le paiement";}
+  }
+}
 
 async function loadAdmin(){
   document.getElementById("auth").classList.add("hidden");
@@ -1864,7 +2000,7 @@ async function loadAdmin(){
     const resetData=await readApiResponse(resetResponse);
 
     if(!resetResponse.ok){
-      document.getElementById("resetList").innerHTML='<p class="muted">Impossible de charger les demandes.</p>';
+      document.getElementById("resetList").innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Demandes indisponibles</div><div class="professional-status-body">Impossible de charger les demandes de réinitialisation pour le moment.</div></div>';
     }else{
       const requests=Array.isArray(resetData.requests)?resetData.requests:[];
       document.getElementById("resetList").innerHTML=
@@ -1875,7 +2011,7 @@ async function loadAdmin(){
               ${request.phone?`<br><span class="admin-small">📱 ${escapeHtml(request.phone)}</span>`:""}
               ${request.created_at?`<br><span class="admin-small">📅 Demande : ${escapeHtml(formatDateTime(request.created_at))}</span>`:""}
               <br>
-              <span class="admin-small">Demande de réinitialisation en attente</span>
+              <span class="admin-small">⏳ Demande en attente de traitement par le service BatBot</span>
               <button class="btn green" type="button" onclick="resolveReset(${Number(request.id)})">
                 🆕 Générer un nouveau mot de passe
               </button>
@@ -1899,7 +2035,7 @@ async function loadDailyMatches(){
   if(!container)return;
 
   const hasDisplayedResults=container.dataset.loaded==="true";
-  if(!hasDisplayedResults && !container.querySelector(".notice"))container.innerHTML='<div class="notice">Chargement des probabilités...</div>';
+  if(!hasDisplayedResults && !container.querySelector(".professional-loading"))container.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des probabilités</strong><small>Récupération des informations BatBot…</small></div></div>';
 
   try{
     const response=await fetch("/api/daily-matches",{
@@ -1909,14 +2045,14 @@ async function loadDailyMatches(){
     const data=await readApiResponse(response);
 
     if(!response.ok){
-      if(!hasDisplayedResults)container.innerHTML='<div class="notice">'+escapeHtml(data.error||"Impossible de charger les probabilités.")+'</div>';
+      if(!hasDisplayedResults)container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Probabilités indisponibles</div><div class="professional-status-body">Les probabilités ne peuvent pas être chargées pour le moment. Veuillez réessayer plus tard.</div></div>';
       return;
     }
 
     const matches=Array.isArray(data)?data:(Array.isArray(data.matches)?data.matches:[]);
 
     if(matches.length===0){
-      if(!hasDisplayedResults)container.innerHTML='<div class="notice">Aucun match ajouté pour le moment.</div>';
+      if(!hasDisplayedResults)container.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match ajouté</div><div class="professional-status-body">Aucune probabilité n’a encore été publiée par le service BatBot.</div></div>';
       return;
     }
 
@@ -1942,7 +2078,7 @@ async function loadDailyMatches(){
 
   }catch(error){
     console.error("DAILY MATCHES:",error);
-    if(!hasDisplayedResults)container.innerHTML='<div class="notice">Impossible de contacter le serveur.</div>';
+    if(!hasDisplayedResults)container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service temporairement indisponible</div><div class="professional-status-body">Impossible de récupérer les informations pour le moment.</div></div>';
   }
 }
 
@@ -2022,7 +2158,7 @@ async function loadAdminDailyMatches(){
   const container=document.getElementById("adminDailyMatches");
   if(!container)return;
 
-  container.innerHTML='<div class="notice">Chargement des matchs...</div>';
+  container.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des matchs</strong><small>Récupération des données administrateur…</small></div></div>';
 
   try{
     const response=await fetch("/api/admin/daily-matches",{
@@ -2032,14 +2168,14 @@ async function loadAdminDailyMatches(){
     const data=await readApiResponse(response);
 
     if(!response.ok){
-      container.innerHTML='<div class="notice">'+escapeHtml(data.error||"Impossible de charger les matchs.")+'</div>';
+      container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs indisponibles</div><div class="professional-status-body">Impossible de charger les matchs pour le moment.</div></div>';
       return;
     }
 
     const matches=Array.isArray(data)?data:(Array.isArray(data.matches)?data.matches:[]);
 
     if(matches.length===0){
-      container.innerHTML='<div class="notice">Aucun match enregistré.</div>';
+      container.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match enregistré</div><div class="professional-status-body">Ajoutez un match pour qu’il apparaisse dans cet espace.</div></div>';
       return;
     }
 
@@ -2120,9 +2256,9 @@ function showTemporaryPasswordModal(data){
   modal.innerHTML='<div class="password-reset-modal-inner">'+
     '<div class="password-reset-modal-head"><div><h2>🔐 Mot de passe temporaire</h2><div class="password-reset-modal-user">Utilisateur : <strong>'+escapeHtml(data.username||"")+'</strong></div></div><button class="btn secondary password-reset-modal-close" type="button" onclick="closeTemporaryPasswordModal()">✕</button></div>'+
     '<div class="notice">Le mot de passe permanent de l’utilisateur n’est pas remplacé. Ce code est temporaire et devra être changé après la première connexion.</div>'+
-    '<div class="password-reset-modal-password"><code id="adminTemporaryPassword">'+escapeHtml(data.new_password||"")+'</code><button class="btn secondary" type="button" onclick="copyAdminTemporaryPassword()">📋 Copier</button></div>'+
+    '<div class="password-reset-modal-password"><code id="adminTemporaryPassword">'+escapeHtml(data.new_password||"")+'</code></div>'+
     '<div class="password-reset-meta">Expiration : '+escapeHtml(expires)+'</div>'+
-    '<div class="password-reset-modal-actions"><button class="btn primary" type="button" onclick="copyAdminTemporaryPassword()">📋 Copier & préparer l’envoi</button><button class="btn secondary" type="button" onclick="closeTemporaryPasswordModal()">✓ Terminer</button></div>'+
+    '<div class="password-reset-modal-actions"><button class="btn primary" type="button" onclick="copyAdminTemporaryPassword()">📋 Copier</button><button class="btn secondary" type="button" onclick="closeTemporaryPasswordModal()">✓ Terminer</button></div>'+
     '</div>';
   modal.classList.remove("hidden");
   document.body.style.overflow="hidden";
