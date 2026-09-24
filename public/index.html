@@ -207,31 +207,11 @@ textarea{min-height:120px;resize:vertical}
 .batbot-receipt{width:100%;min-width:0;overflow:hidden}
 .batbot-receipt-row{display:grid;grid-template-columns:minmax(110px,42%) minmax(0,1fr);align-items:start}
 .batbot-receipt-row span{font-weight:800;color:#35536D!important}
-.batbot-receipt-row strong{color:#000000!important;font-weight:900!important;opacity:1!important;text-align:right;text-shadow:none!important}
-.batbot-receipt-row span:first-child{color:#35536D!important;font-weight:800}
-.batbot-receipt-body{gap:9px}
-.batbot-receipt-reference{margin-top:5px}
-.batbot-receipt-actions{margin-top:14px;padding-top:12px;border-top:1px solid rgba(11,34,61,.14);gap:9px}
+.batbot-receipt-row strong{font-size:14px;line-height:1.45;min-width:0;overflow-wrap:anywhere;word-break:break-word}
 .batbot-receipt-reference{width:100%;min-width:0;overflow:hidden}
 .batbot-receipt-reference code{display:block;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
 .batbot-receipt-actions{width:100%;min-width:0}
-@media(max-width:520px){
-  #usersList{display:flex;flex-direction:column;gap:12px;width:100%;min-width:0}
-  #usersList .member-card{width:100%;min-width:0;margin:0;padding:14px}
-  #usersList .member-card-top{align-items:flex-start;gap:10px}
-  #usersList .member-username{min-width:0;flex:1;line-height:1.35;overflow-wrap:anywhere}
-  #usersList .member-card-top .badge{flex:0 0 auto;max-width:46%;white-space:normal;text-align:center}
-  #usersList .admin-actions{grid-template-columns:1fr;gap:8px}
-  #usersList .admin-actions .btn{width:100%;min-height:44px;font-size:13px}
-  .batbot-receipt{width:100%;min-width:0;padding:14px}
-  .batbot-receipt-row{grid-template-columns:minmax(108px,40%) minmax(0,60%);gap:9px}
-  .batbot-receipt-row strong{font-size:13px;text-align:right}
-}
-@media(max-width:380px){
-  .batbot-receipt-row{grid-template-columns:minmax(96px,38%) minmax(0,62%);gap:8px}
-  .batbot-receipt-row strong{text-align:right;font-size:12px}
-  .batbot-receipt-row span{font-size:11px}
-}
+@media(max-width:380px){.batbot-receipt-row{grid-template-columns:1fr;gap:2px}.batbot-receipt-row strong{text-align:left;font-size:13px}.batbot-receipt-row span{font-size:11px}}
 
 /* Centre de notifications BatBot */
 .batbot-messages-card{border:1px solid rgba(0,191,255,.35);background:linear-gradient(145deg,#102F52,#0B223D)}
@@ -2052,23 +2032,14 @@ function startBatBotMessagesPolling(){
 async function loadAdminMessages(){
   const box=document.getElementById("adminMessagesList");
   if(!box)return;
-  const hadContent=box.dataset.hasContent==="true";
-  if(!hadContent){
-    box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des annonces actives…</small></div></div>';
-  }
+  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des messages</strong><small>Récupération des annonces actives…</small></div></div>';
   try{
     const r=await fetch("/api/admin/messages",{credentials:"same-origin",cache:"no-store"});
     const d=await readApiResponse(r);
     if(!r.ok)throw new Error(d.error||"Chargement impossible.");
     const items=Array.isArray(d.messages)?d.messages:[];
-    const signature=JSON.stringify(items.map(x=>[x.id,x.title,x.body,x.created_at,x.expires_at]));
-    if(box.dataset.signature===signature)return;
-    box.dataset.signature=signature;
-    box.dataset.hasContent="true";
     box.innerHTML=items.length?'<div class="batbot-admin-message-list">'+items.map(x=>`<div class="batbot-admin-message-item"><div class="batbot-message-title">${escapeHtml(x.title)}</div><div class="batbot-admin-message-meta">Publié le ${escapeHtml(formatPaymentDateTime(x.created_at))} • Expire le ${escapeHtml(formatPaymentDateTime(x.expires_at))}</div><div class="batbot-message-body">${escapeHtml(x.body)}</div><button class="btn danger" type="button" onclick="deleteBatBotMessage(${x.id},this)">🗑️ Supprimer</button></div>`).join(""):'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun message actif</div><div class="professional-status-body">Publiez une annonce pour la rendre visible aux membres pendant 24 heures.</div></div>';
-  }catch(e){
-    if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Messages indisponibles</div><div class="professional-status-body">Impossible de charger les annonces.</div></div>';
-  }
+  }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Messages indisponibles</div><div class="professional-status-body">Impossible de charger les annonces.</div></div>';}
 }
 
 async function publishBatBotMessage(){
@@ -2090,12 +2061,7 @@ async function publishBatBotMessage(){
 
 async function deleteBatBotMessage(id,button){
   if(button?.disabled)return;
-  const confirmed=await showProfessionalConfirm({
-    title:"🗑️ Supprimer le message",
-    message:"Voulez-vous vraiment supprimer définitivement ce message ? Cette action est irréversible.",
-    confirmText:"🗑️ Supprimer"
-  });
-  if(!confirmed)return;
+  if(!confirm("Supprimer définitivement ce message ?"))return;
   if(button){button.disabled=true;button.innerHTML='<span class="batbot-spinner batbot-btn-spinner"></span>Suppression…';}
   try{
     const r=await fetch("/api/admin/messages/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin"});
