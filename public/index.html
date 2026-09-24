@@ -342,7 +342,7 @@ textarea{min-height:120px;resize:vertical}
 .admin-small{color:var(--muted);font-size:12px}
 .admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .admin-actions .btn{margin:0;min-height:42px;font-size:12px}
-.reset-request{background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}
+.reset-request{display:block;width:100%;box-sizing:border-box;min-width:0;overflow:hidden;background:#0C2745;border:1px solid rgba(245,197,66,.4);border-left:3px solid var(--gold);border-radius:10px;padding:13px;margin:9px 0}.reset-request .btn{width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}.reset-request *{max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
 .social-grid{display:grid;grid-template-columns:1fr;gap:9px}
 .social-btn{min-height:52px}
 
@@ -438,6 +438,9 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .batbot-duration-modal{width:min(92vw,390px);padding:24px;border:1px solid rgba(75,190,255,.4);border-radius:22px;background:linear-gradient(145deg,#102f4d,#071a2d);box-shadow:0 18px 60px rgba(0,0,0,.5);color:#fff}
 .batbot-duration-modal h3{margin:0 0 9px;font-size:21px}.batbot-duration-modal p{margin:0 0 18px;color:#b9cce0;line-height:1.5}.batbot-duration-modal input{width:100%;box-sizing:border-box;padding:13px;border-radius:12px;border:1px solid #37617f;background:#071a2d;color:#fff;font-size:18px;outline:none}.batbot-duration-actions{display:flex;gap:10px;margin-top:18px}.batbot-duration-actions button{flex:1}
 
+
+/* ===== BATBOT PROFESSIONAL USER DASHBOARD ===== */
+.batbot-pro-dashboard{margin:18px 0;display:grid;gap:14px}.batbot-pro-hero{background:linear-gradient(135deg,#0d3154,#0a2139);border:1px solid rgba(0,191,255,.28);border-radius:20px;padding:18px;box-shadow:0 14px 35px rgba(0,0,0,.18)}.batbot-pro-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.batbot-pro-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--blue);font-weight:800}.batbot-pro-hero h2{margin:5px 0 6px;font-size:22px}.batbot-pro-hero p{margin:0;color:var(--muted);line-height:1.5;font-size:13px}.batbot-pro-live{white-space:nowrap;border:1px solid rgba(33,197,93,.35);background:rgba(33,197,93,.1);color:#7df0a5;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800}.batbot-pro-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}.batbot-pro-stat{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;min-width:0}.batbot-pro-stat span{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.batbot-pro-stat strong{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.batbot-pro-actions{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:10px}.batbot-pro-action{border:1px solid var(--line);background:var(--card);border-radius:15px;padding:13px;text-align:left;color:var(--white);cursor:pointer;min-height:72px;transition:transform .15s ease,border-color .15s ease,background .15s ease}.batbot-pro-action:hover{transform:translateY(-1px);border-color:rgba(0,191,255,.55);background:#123454}.batbot-pro-action.primary-action{border-color:rgba(0,191,255,.55);background:linear-gradient(145deg,#103b5f,#0d2a46)}.batbot-pro-action-icon{font-size:20px;display:block;margin-bottom:6px}.batbot-pro-action strong{font-size:13px;display:block}.batbot-pro-action small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.batbot-pro-activity{display:grid;grid-template-columns:1fr 1fr;gap:10px}.batbot-pro-mini{border:1px solid var(--line);border-radius:15px;padding:13px;background:rgba(16,43,76,.72)}.batbot-pro-mini-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.batbot-pro-mini-head span{font-size:12px;font-weight:800}.batbot-pro-mini-value{font-size:13px;line-height:1.45;color:var(--muted);min-height:38px}.batbot-pro-mini-value strong{color:var(--white)}.batbot-pro-mini-link{margin-top:8px;background:none;border:0;color:var(--blue);padding:0;font-size:11px;font-weight:800;cursor:pointer}@media(max-width:650px){.batbot-pro-stats{grid-template-columns:1fr 1fr}.batbot-pro-actions{grid-template-columns:1fr 1fr}.batbot-pro-action:first-child{grid-column:1/-1}.batbot-pro-activity{grid-template-columns:1fr}.batbot-pro-hero-top{align-items:center}.batbot-pro-live{font-size:10px;padding:6px 8px}}@media(max-width:390px){.batbot-pro-stats{grid-template-columns:1fr}.batbot-pro-actions{grid-template-columns:1fr}.batbot-pro-action:first-child{grid-column:auto}}
 </style>
 </head>
 
@@ -572,6 +575,13 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="status-card premium-status-card"><div class="status-icon">💎</div><div><span>Statut Premium</span><strong id="premiumStatusText">Non actif</strong></div></div>
     <div class="status-card ai-status-card"><div class="status-icon">🤖</div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
   </div>
+
+
+  <section class="batbot-pro-dashboard" aria-label="Tableau de bord BatBot">
+    <div class="batbot-pro-hero"><div class="batbot-pro-hero-top"><div><div class="batbot-pro-kicker">Espace personnel</div><h2 id="batbotProGreeting">Votre espace BatBot</h2><p id="batbotProSubtitle">Gérez vos analyses, votre abonnement et votre accès à BatBot IA depuis un seul espace.</p></div><span class="batbot-pro-live">● Service actif</span></div><div class="batbot-pro-stats"><div class="batbot-pro-stat"><span>⭐ Premium</span><strong id="batbotProPremium">Non actif</strong></div><div class="batbot-pro-stat"><span>🤖 BatBot IA</span><strong id="batbotProAI">Non active</strong></div><div class="batbot-pro-stat"><span>📅 Abonnement</span><strong id="batbotProExpiry">—</strong></div></div></div>
+    <div class="batbot-pro-actions"><button class="batbot-pro-action primary-action" type="button" onclick="document.getElementById('smartDriveAISection')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('aiMatch1')?.focus();"><span class="batbot-pro-action-icon">🤖</span><strong>Analyser mes matchs</strong><small>Lancer BatBot IA</small></button><button class="batbot-pro-action" type="button" onclick="document.getElementById('myTransactionsCard')?.scrollIntoView({behavior:'smooth',block:'start'});"><span class="batbot-pro-action-icon">💳</span><strong>Mes paiements</strong><small>Voir mes transactions</small></button><button class="batbot-pro-action" type="button" onclick="document.getElementById('batbotMessagesCard')?.scrollIntoView({behavior:'smooth',block:'start'});"><span class="batbot-pro-action-icon">🔔</span><strong>Mes messages</strong><small>Informations BatBot</small></button></div>
+    <div class="batbot-pro-activity"><div class="batbot-pro-mini"><div class="batbot-pro-mini-head"><span>💳 Dernière transaction</span></div><div id="batbotProLastTransaction" class="batbot-pro-mini-value">Aucune transaction chargée.</div><button class="batbot-pro-mini-link" type="button" onclick="document.getElementById('myTransactionsCard')?.scrollIntoView({behavior:'smooth',block:'start'});">Voir les transactions →</button></div><div class="batbot-pro-mini"><div class="batbot-pro-mini-head"><span>🔐 État du compte</span></div><div id="batbotProAccountState" class="batbot-pro-mini-value">Compte BatBot actif.</div><button class="batbot-pro-mini-link" type="button" onclick="document.getElementById('userBox')?.scrollIntoView({behavior:'smooth',block:'center'});">Voir mon compte →</button></div></div>
+  </section>
 
   <section class="card batbot-messages-card" id="batbotMessagesCard">
     <div class="batbot-messages-head">
@@ -1116,6 +1126,7 @@ function showDashboard(user){
 
   user=user||{};
   updateProfileStatuses(user);
+  updateProfessionalDashboard(user);
   const username=user.username||user.name||"";
   const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre BatBot");
 
@@ -1677,6 +1688,32 @@ function adminSecretTap(){
   adminTapTimer=setTimeout(()=>{adminTapCount=0;},2500);
   if(adminTapCount>=10){adminTapCount=0;openAdmin();}
 }
+function updateProfessionalDashboard(user){
+  user=user||{};
+  const username=String(user.username||user.name||'').trim();
+  const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+  const aiActive=premium&&Boolean(user.ai_active);
+  const greeting=document.getElementById('batbotProGreeting');
+  const subtitle=document.getElementById('batbotProSubtitle');
+  const premiumEl=document.getElementById('batbotProPremium');
+  const aiEl=document.getElementById('batbotProAI');
+  const expiryEl=document.getElementById('batbotProExpiry');
+  const accountEl=document.getElementById('batbotProAccountState');
+  if(greeting)greeting.textContent=username?'Bonjour, '+username+' 👋':'Votre espace BatBot';
+  if(subtitle)subtitle.textContent=premium?'Votre espace Premium est prêt. Accédez rapidement à vos outils et à vos informations.':'Gérez votre compte et activez les services dont vous avez besoin depuis cet espace.';
+  if(premiumEl)premiumEl.textContent=premium?'🟢 Actif':'🔴 Non actif';
+  if(aiEl)aiEl.textContent=aiActive?'🟢 Active':'🔴 Non active';
+  if(expiryEl){const until=user.premium_until||user.subscription_until||user.premiumUntil;expiryEl.textContent=until?(formatDateTime(until)||'Active'):(premium?'Active':'—');}
+  if(accountEl)accountEl.innerHTML=premium?'Compte actif · <strong>Premium</strong><br><span>Accès IA : '+(aiActive?'activé':'non activé')+'</span>':'Compte actif · <strong>Membre BatBot</strong>';
+}
+function updateProfessionalLastTransaction(items){
+  const box=document.getElementById('batbotProLastTransaction');if(!box)return;
+  const item=Array.isArray(items)&&items.length?items[0]:null;
+  if(!item){box.textContent='Aucune transaction récente.';return;}
+  const status=item.status==='accepted'?'✅ Paiement approuvé':item.status==='rejected'?'❌ Paiement refusé':'⏳ Vérification en cours';
+  box.innerHTML='<strong>'+escapeHtml(String(item.offer||'Paiement'))+'</strong><br>'+escapeHtml(String(Number(item.amount)||0))+' FCFA · '+status;
+}
+
 function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
   const aiActive=premium && Boolean(user&&user.ai_active);
@@ -2118,6 +2155,7 @@ async function loadMyTransactions(){
     const d=await readApiResponse(r);
     if(!r.ok)throw new Error(d.error||"Chargement impossible.");
     const items=Array.isArray(d.requests)?d.requests:[];
+    updateProfessionalLastTransaction(items);
     const signature=JSON.stringify(items.map(x=>[x.id,x.status,x.offer,x.amount,x.operator,x.reference,x.created_at,x.admin_note||""]));
     if(box.dataset.signature===signature)return;
     box.dataset.signature=signature;
