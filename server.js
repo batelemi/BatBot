@@ -1066,11 +1066,26 @@ app.get("/api/config", (req, res) => {
     whatsappGroup: s.whatsappGroup, telegramGroup: s.telegramGroup,
     tiktok: s.tiktok, facebook: s.facebook, instagram: s.instagram,
     wave500: s.wave500, wave1000: s.wave1000, wavePromo: s.wavePromo,
-    promoFee: s.promoFee, orangeMoney: s.orangeMoney,
-    moovMoney: s.moovMoney, mtnMoney: s.mtnMoney,
+    promoFee: s.promoFee,
     sdriveLink: s.sdriveLink || "", sdriveInviteMessage: s.sdriveInviteMessage || "",
     bookmakers: DB.prepare("SELECT id,name,bonus,url FROM bookmakers WHERE active=1 ORDER BY id DESC").all()
   });
+});
+
+app.get("/api/payment-number", requireUser, (req, res) => {
+  const operator = String(req.query.operator || "").trim();
+  const keyByOperator = {
+    "Orange Money": "orangeMoney",
+    "MTN Money": "mtnMoney",
+    "Moov Money": "moovMoney"
+  };
+  const key = keyByOperator[operator];
+  if (!key) return res.status(400).json({ error: "Opérateur de paiement invalide." });
+  const settings = getSettings();
+  const number = cleanPhone(settings[key]);
+  if (!number) return res.status(404).json({ error: "Numéro de dépôt indisponible pour cet opérateur." });
+  res.set("Cache-Control","no-store");
+  res.json({ number });
 });
 
 app.get("/api/coupons", requireUser, (req, res) => {
