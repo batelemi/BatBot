@@ -629,7 +629,7 @@ app.post("/api/payment-requests", requireUser, (req, res) => {
   const operator = String(req.body.operator || "").trim();
   const amount = Number(req.body.amount);
   const reference = String(req.body.reference || "").trim();
-  const allowedOperators = ["Orange Money", "MTN Money", "Moov Money"];
+  const allowedOperators = ["Orange Money", "MTN Money", "Moov Money", "Wave"];
 
   if (!offer || !allowedOperators.includes(operator) || !Number.isFinite(amount) || amount <= 0 || !reference) {
     return res.status(400).json({ error: "Veuillez remplir correctement tous les champs du paiement." });
