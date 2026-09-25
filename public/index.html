@@ -2108,33 +2108,101 @@ async function submitBatBotAI(){
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
+function analyzeApiFootballMatch(home,away){
+  const input1=document.getElementById("aiMatch1");
+  const input2=document.getElementById("aiMatch2");
+  const section=document.getElementById("smartDriveAISection");
+  if(!input1||!input2)return;
+
+  input1.value=String(home||"").trim()+" vs "+String(away||"").trim();
+  input2.value="";
+  if(section){
+    section.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  setTimeout(()=>{
+    input1.focus();
+    submitBatBotAI();
+  },250);
+}
+
+function analyzeFirstTwoApiFootballMatches(){
+  const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
+  const first=fixtures[0], second=fixtures[1];
+  const home1=first?.teams?.home?.name||"";
+  const away1=first?.teams?.away?.name||"";
+  const home2=second?.teams?.home?.name||"";
+  const away2=second?.teams?.away?.name||"";
+
+  if(!home1||!away1){
+    return showStatus("apiFootballStatus","⚠️ Aucun match exploitable pour l’analyse.","error");
+  }
+
+  const input1=document.getElementById("aiMatch1");
+  const input2=document.getElementById("aiMatch2");
+  const section=document.getElementById("smartDriveAISection");
+  if(!input1||!input2)return;
+
+  input1.value=home1+" vs "+away1;
+  input2.value=(home2&&away2)?home2+" vs "+away2:"";
+  if(section) section.scrollIntoView({behavior:"smooth",block:"start"});
+  setTimeout(()=>submitBatBotAI(),250);
+}
+
 async function loadApiFootballFixtures(){
   const status=document.getElementById("apiFootballStatus");
   const box=document.getElementById("apiFootballResults");
   if(!status||!box)return;
+
   status.className="status";
   status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation des matchs</strong><small>Vérification des rencontres disponibles…</small></div></div>';
   box.classList.remove("hidden");
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les matchs du jour sont en préparation…</small></div></div>';
+
   try{
     const r=await fetch("/api/football/fixtures?timezone=Africa%2FAbidjan",{credentials:"same-origin",cache:"no-store"});
     const d=await readApiResponse(r);
-    if(!r.ok)throw new Error("fixtures_unavailable");
+    if(!r.ok)throw new Error(d.error||d.details||"fixtures_unavailable");
+
     const fixtures=Array.isArray(d.response)?d.response:[];
+    window.batBotDailyFixtures=fixtures;
+
     if(!fixtures.length){
       box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est actuellement disponible dans cette section.</div></div>';
       status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Vérification terminée</div><div class="professional-status-body">La liste des rencontres a été vérifiée.</div></div>';
       return;
     }
-    box.innerHTML=fixtures.slice(0,30).map(function(item){
+
+    const topAction=(fixtures.length>=2)
+      ? '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoApiFootballMatches()">🤖 Analyser les 2 premiers matchs avec BatBot IA</button>'
+      : '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoApiFootballMatches()">🤖 Analyser avec BatBot IA</button>';
+
+    box.innerHTML=topAction+fixtures.slice(0,30).map(function(item,index){
       const f=item.fixture||{},teams=item.teams||{},league=item.league||{};
+      const home=teams.home?.name||"Équipe 1";
+      const away=teams.away?.name||"Équipe 2";
       const date=f.date?new Date(f.date).toLocaleString("fr-FR"):"Date non disponible";
-      return '<div class="match-card"><div class="match-title">⚽ '+escapeHtml(teams.home?.name||"Équipe 1")+' — '+escapeHtml(teams.away?.name||"Équipe 2")+'</div><div class="muted">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+'</div></div>';
+      return '<div class="match-card" style="margin-bottom:10px">'+
+        '<div class="match-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div>'+
+        '<div class="muted">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+'</div>'+
+        '<button type="button" class="btn secondary" style="width:100%;margin-top:10px" data-batbot-fixture-index="'+index+'">🤖 Analyser ce match avec BatBot IA</button>'+
+      '</div>';
     }).join("");
-    status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs disponibles</div><div class="professional-status-body">'+fixtures.length+' rencontre(s) peuvent être consultées.</div></div>';
+
+    box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){
+      button.addEventListener("click",function(){
+        const index=Number(button.getAttribute("data-batbot-fixture-index"));
+        const item=fixtures[index];
+        const home=item?.teams?.home?.name||"";
+        const away=item?.teams?.away?.name||"";
+        analyzeApiFootballMatch(home,away);
+      });
+    });
+
+    status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs disponibles</div><div class="professional-status-body">'+fixtures.length+' rencontre(s) peuvent être consultées et analysées avec BatBot IA.</div></div>';
   }catch(e){
-    box.innerHTML='<div class="professional-status"><div class="professional-status-head">🚀 Fonctionnalité bientôt disponible</div><div class="professional-status-body">La section « Matchs du jour » est actuellement en préparation et sera proposée dans une prochaine mise à jour de BatBot.</div></div>';
-    status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Service en préparation</div><div class="professional-status-body">Cette fonctionnalité sera disponible prochainement.</div></div>';
+    window.batBotDailyFixtures=[];
+    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs indisponibles</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs du jour.")+'</div></div>';
+    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service indisponible</div><div class="professional-status-body">Impossible de charger les matchs API-Football pour le moment.</div></div>';
   }
 }
 
