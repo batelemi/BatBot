@@ -290,6 +290,18 @@ textarea{min-height:120px;resize:vertical}
 .payment-number.mtn-network{border-color:rgba(255,215,0,.55);background:linear-gradient(145deg,rgba(255,215,0,.12),#071A2D)}
 .payment-number.moov-network{border-color:rgba(0,112,255,.60);background:linear-gradient(145deg,rgba(0,112,255,.16),#071A2D)}
 .payment-number.wave-network{border-color:rgba(0,191,255,.60);background:linear-gradient(145deg,rgba(0,191,255,.15),#071A2D)}
+.payment-number.orange-network{box-shadow:0 9px 22px rgba(255,132,0,.10),inset 0 1px 0 rgba(255,255,255,.05)}
+.payment-number.mtn-network{box-shadow:0 9px 22px rgba(255,215,0,.09),inset 0 1px 0 rgba(255,255,255,.05)}
+.payment-number.moov-network{box-shadow:0 9px 22px rgba(0,112,255,.11),inset 0 1px 0 rgba(255,255,255,.05)}
+.payment-number.wave-network{box-shadow:0 9px 22px rgba(0,191,255,.11),inset 0 1px 0 rgba(255,255,255,.05)}
+.payment-number.orange-network .payment-network-icon{background:linear-gradient(145deg,#FF9800,#E86E00);border-color:#FFB74D;padding:4px}
+.payment-number.mtn-network .payment-network-icon{background:linear-gradient(145deg,#FFE84A,#F2C900);border-color:#FFF176;padding:4px}
+.payment-number.moov-network .payment-network-icon{background:linear-gradient(145deg,#24A5FF,#0067E8);border-color:#5DBBFF;padding:4px}
+.payment-number.wave-network .payment-network-icon{background:linear-gradient(145deg,#38C8F4,#129ED4);border-color:#6BD8F8;padding:4px}
+.payment-number.orange-network .payment-network-name{color:#FFD29A}
+.payment-number.mtn-network .payment-network-name{color:#FFF29A}
+.payment-number.moov-network .payment-network-name{color:#BFE4FF}
+.payment-number.wave-network .payment-network-name{color:#C9F4FF}
 .copy-number{width:auto;min-height:40px;padding:9px 12px;margin:0;font-size:12px}
 @media(max-width:430px){
   .payment-number{align-items:center;gap:8px;padding:11px}
@@ -456,8 +468,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .payment-window-trigger.wave-first{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(145deg,#38C8F4,#129ED4);text-align:left}
 .payment-window-trigger.wave-first small{display:block;margin-top:3px;color:#EAFBFF;font-size:11px;font-weight:700}
 .payment-window-launcher{grid-template-columns:1fr!important}
-.mobile-payment-intro{margin-bottom:10px}
-.deposit-conditions-trigger{width:100%;display:flex;align-items:center;gap:10px;margin:10px 0 12px;padding:12px 14px;border:1px solid #3A6F98;border-radius:15px;background:linear-gradient(145deg,#173B5D,#102D49);color:#fff;text-align:left;box-shadow:0 5px 0 rgba(0,0,0,.22);cursor:pointer}
+.deposit-conditions-trigger{width:100%;display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:12px 14px;border:1px solid #3A6F98;border-radius:15px;background:linear-gradient(145deg,#173B5D,#102D49);color:#fff;text-align:left;box-shadow:0 5px 0 rgba(0,0,0,.22);cursor:pointer}
 .deposit-conditions-trigger>span:first-child{font-size:22px}
 .deposit-conditions-trigger strong{display:block;font-size:14px}
 .deposit-conditions-trigger small{display:block;margin-top:3px;color:#BFD4E7;font-size:11px}
@@ -491,7 +502,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .wave-mobile-payment-button{margin:0;min-height:48px;display:flex;align-items:center;gap:8px}
 .wave-mobile-payment-button img{width:25px;height:25px;object-fit:contain;border-radius:7px;background:#fff}
 .payment-operator-select{border:1px solid #315D82!important;font-weight:900!important;transition:background .2s,border-color .2s,color .2s}
-.payment-offer-select{border:1px solid #315D82!important;background:linear-gradient(145deg,#173B5D,#102D49)!important;color:#fff!important;font-weight:900!important}
+.payment-offer-select{border:1px solid #315D82!important;background:linear-gradient(145deg,#173B5D,#102D49)!important;color:#fff!important;font-weight:900!important;transition:background .2s,border-color .2s,color .2s,box-shadow .2s}
+.payment-offer-select.offer-analysis{background:linear-gradient(145deg,#FF9800,#F57C00)!important;color:#111!important;border-color:#FFB74D!important;box-shadow:0 6px 18px rgba(255,152,0,.16)}
+.payment-offer-select.offer-premium{background:linear-gradient(145deg,#FFE84A,#F2C900)!important;color:#111!important;border-color:#FFF176!important;box-shadow:0 6px 18px rgba(255,215,0,.13)}
+.payment-offer-select.offer-premium-ia{background:linear-gradient(145deg,#38D878,#16A34A)!important;color:#fff!important;border-color:#6EE7A0!important;box-shadow:0 6px 18px rgba(33,197,93,.15)}
 
 .payment-operator-select.operator-orange{background:linear-gradient(145deg,#FF9800,#F57C00)!important;color:#111!important;border-color:#FFB74D!important}
 .payment-operator-select.operator-mtn{background:linear-gradient(145deg,#FFE84A,#F2C900)!important;color:#111!important;border-color:#FFF176!important}
@@ -775,13 +789,6 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div id="mobileMoneyCard" class="card payment-window-source">
     <h2>💰 Paiement mobile tous réseaux</h2>
-    <div class="notice mobile-payment-intro">
-      📱 Choisissez votre moyen de paiement ci-dessous.
-      <br><br>
-      Pour <strong>Orange Money, Moov Money ou MTN Money</strong>, cliquez sur le petit bouton <strong>Copier</strong>. Le numéro sera automatiquement copié, puis vous pourrez ouvrir votre application de paiement sur votre téléphone pour effectuer le transfert.
-      <br><br>
-      Après le paiement, revenez dans BatBot pour enregistrer votre référence de transaction.
-    </div>
     <button class="deposit-conditions-trigger" type="button" data-payment-window="conditions">
       <span>📋</span>
       <span><strong>Conditions de dépôt</strong><small>Appuyez ici pour consulter les conditions</small></span>
@@ -806,21 +813,21 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <div class="payment-number orange-network">
         <div class="payment-number-main">
           <img class="payment-network-icon" src="/orange-money.png" alt="Orange Money">
-          <div class="payment-network-copy"><span class="payment-network-name">Orange Money</span><span class="payment-number-hidden">•••• •••• ••</span></div>
+          <div class="payment-network-copy"><span class="payment-network-name">Orange Money</span></div>
         </div>
         <button class="btn orange payment-number-action" type="button" onclick="copyPaymentNumber('Orange Money')">📋 Copier</button>
       </div>
       <div class="payment-number mtn-network">
         <div class="payment-number-main">
           <img class="payment-network-icon" src="/mtn-money.png" alt="MTN Money">
-          <div class="payment-network-copy"><span class="payment-network-name">MTN Money</span><span class="payment-number-hidden">•••• •••• ••</span></div>
+          <div class="payment-network-copy"><span class="payment-network-name">MTN Money</span></div>
         </div>
         <button class="btn payment-number-action" type="button" style="background:linear-gradient(145deg,#FFE84A,#F2C900);color:#111;box-shadow:0 6px 0 #A88700,0 10px 18px rgba(255,215,0,.18)" onclick="copyPaymentNumber('MTN Money')">📋 Copier</button>
       </div>
       <div class="payment-number moov-network">
         <div class="payment-number-main">
           <img class="payment-network-icon" src="/moov-money.png" alt="Moov Money">
-          <div class="payment-network-copy"><span class="payment-network-name">Moov Money</span><span class="payment-number-hidden">•••• •••• ••</span></div>
+          <div class="payment-network-copy"><span class="payment-network-name">Moov Money</span></div>
         </div>
         <button class="btn payment-number-action" type="button" style="background:linear-gradient(145deg,#24A5FF,#0067E8);color:#fff;box-shadow:0 6px 0 #004AA8,0 10px 18px rgba(0,112,255,.18)" onclick="copyPaymentNumber('Moov Money')">📋 Copier</button>
       </div>
@@ -1618,7 +1625,7 @@ function showFileName(){
 
 async function submitPaymentReference(){
   const body={offer:document.getElementById("paymentOffer").value,operator:document.getElementById("paymentOperator").value,amount:document.getElementById("paymentAmount").value,reference:document.getElementById("paymentReference").value.trim()};
-  try{const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Enregistrement impossible.");showStatus("paymentNumberStatus",d.message,"success");}catch(e){showStatus("paymentNumberStatus",e.message,"error");}
+  try{const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Enregistrement impossible.");showStatus("paymentNumberStatus","Référence enregistrée. Vous pouvez aussi envoyer votre référence ou votre preuve par WhatsApp au service BatBot.","success");}catch(e){showStatus("paymentNumberStatus",e.message,"error");}
 }
 async function copyPaymentNumber(operator){
   const statusId="paymentNumberStatus";
@@ -1630,12 +1637,22 @@ async function copyPaymentNumber(operator){
     if(!data.number)throw new Error("Numéro indisponible.");
     if(!navigator.clipboard?.writeText)throw new Error("Copie indisponible sur cet appareil.");
     await navigator.clipboard.writeText(String(data.number));
-    showStatus(statusId,"Numéro "+operator+" copié. Il reste masqué à l’écran.","success");
+    showStatus(statusId,"Numéro "+operator+" copié.","success");
   }catch(error){
     showStatus(statusId,error.message||"Impossible de copier le numéro pour le moment.","error");
   }
 }
 function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BatBot 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
+
+function updatePaymentOfferStyle(){
+  const select=document.getElementById('paymentOffer');
+  if(!select)return;
+  const value=select.value;
+  select.classList.remove('offer-analysis','offer-premium','offer-premium-ia');
+  if(value==='Analyse du jour')select.classList.add('offer-analysis');
+  else if(value==='Premium 7 jours')select.classList.add('offer-premium');
+  else if(value==='Premium + IA 7 jours')select.classList.add('offer-premium-ia');
+}
 
 function updatePaymentOperatorStyle(){
   const select=document.getElementById('paymentOperator');
@@ -1649,8 +1666,14 @@ function updatePaymentOperatorStyle(){
 }
 document.addEventListener('change',event=>{
   if(event.target&&event.target.id==='paymentOperator')updatePaymentOperatorStyle();
+  if(event.target&&event.target.id==='paymentOffer')updatePaymentOfferStyle();
 });
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',updatePaymentOperatorStyle);else updatePaymentOperatorStyle();
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>{updatePaymentOperatorStyle();updatePaymentOfferStyle();});
+}else{
+  updatePaymentOperatorStyle();
+  updatePaymentOfferStyle();
+}
 
 (function(){
   function setupPaymentWindows(){
