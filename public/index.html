@@ -2096,7 +2096,7 @@ async function submitBatBotAI(){
   status.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA analyse les matchs sélectionnés…</small></div></div>';
   if(result)result.classList.add("hidden");
   try{
-    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:first.home,away_team:first.away,second_home_team:second.home,second_away_team:second.away})});
+    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:first.home,away_team:first.away,second_home_team:second.home,second_away_team:second.away,home_team_id:window.batBotSelectedIds?.home||"",away_team_id:window.batBotSelectedIds?.away||"",second_home_team_id:window.batBotSelectedIds2?.home||"",second_away_team_id:window.batBotSelectedIds2?.away||""})});
     const d=await readApiResponse(r);
     if(!r.ok){
       if(r.status===401||r.status===403){status.className="status";status.innerHTML='<div class="professional-status error">🔒 <strong>Accès à BatBot IA limité</strong><br><span>⭐ Cette fonctionnalité nécessite un abonnement Premium actif et une autorisation IA activée.</span><br><small>🔐 Activez votre accès pour utiliser l’analyse intelligente des matchs.</small></div>';}else throw new Error(d.error||"Analyse indisponible.");
@@ -2108,7 +2108,7 @@ async function submitBatBotAI(){
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
-function analyzeApiFootballMatch(home,away){
+function analyzeApiFootballMatch(home,away,homeId,awayId){
   const input1=document.getElementById("aiMatch1");
   const input2=document.getElementById("aiMatch2");
   const section=document.getElementById("smartDriveAISection");
@@ -2116,6 +2116,8 @@ function analyzeApiFootballMatch(home,away){
 
   input1.value=String(home||"").trim()+" vs "+String(away||"").trim();
   input2.value="";
+  window.batBotSelectedIds={home:String(homeId||""),away:String(awayId||"")};
+  window.batBotSelectedIds2={home:"",away:""};
   if(section){
     section.scrollIntoView({behavior:"smooth",block:"start"});
   }
@@ -2144,6 +2146,8 @@ function analyzeFirstTwoApiFootballMatches(){
 
   input1.value=home1+" vs "+away1;
   input2.value=(home2&&away2)?home2+" vs "+away2:"";
+  window.batBotSelectedIds={home:String(first?.teams?.home?.id||""),away:String(first?.teams?.away?.id||"")};
+  window.batBotSelectedIds2={home:String(second?.teams?.home?.id||""),away:String(second?.teams?.away?.id||"")};
   if(section) section.scrollIntoView({behavior:"smooth",block:"start"});
   setTimeout(()=>submitBatBotAI(),250);
 }
@@ -2194,7 +2198,7 @@ async function loadApiFootballFixtures(){
         const item=fixtures[index];
         const home=item?.teams?.home?.name||"";
         const away=item?.teams?.away?.name||"";
-        analyzeApiFootballMatch(home,away);
+        analyzeApiFootballMatch(home,away,teams.home?.id,teams.away?.id);
       });
     });
 
