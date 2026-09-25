@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS users(
   premium_until TEXT,
   premium_started_at TEXT,
   ai_until TEXT,
+  ai_started_at TEXT,
   disabled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -125,9 +126,15 @@ CREATE TABLE IF NOT EXISTS member_predictions(
 );
 `);
 
+DB.exec(`
+CREATE INDEX IF NOT EXISTS idx_member_predictions_user_created ON member_predictions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_member_predictions_created ON member_predictions(created_at DESC);
+`);
+
 // Migrations pour les bases déjà existantes
 try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
+try { DB.prepare("ALTER TABLE users ADD COLUMN ai_started_at TEXT").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
 try { DB.prepare("ALTER TABLE users ADD COLUMN temporary_password_hash TEXT").run(); } catch (_) {}
@@ -237,6 +244,7 @@ function userView(user) {
     premium_until: user.premium_until,
     premium_started_at: user.premium_started_at || null,
     ai_until: user.ai_until || null,
+    ai_started_at: user.ai_started_at || null,
     ai_active: aiActive && active && !Boolean(user.disabled),
     disabled: Boolean(user.disabled),
     must_change_password: Boolean(user.must_change_password),
@@ -673,8 +681,8 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, (req, res) => {
       const user = DB.prepare("SELECT premium_until, ai_until FROM users WHERE id=?").get(request.user_id);
       const currentUntil = user?.premium_until && new Date(user.premium_until) > now ? new Date(user.premium_until) : now;
       const until = new Date(currentUntil.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
-      DB.prepare("UPDATE users SET premium_started_at=COALESCE(premium_started_at,?), premium_until=? WHERE id=?").run(now.toISOString(), until, request.user_id);
-      if (/ia/i.test(request.offer)) DB.prepare("UPDATE users SET ai_until=? WHERE id=?").run(until, request.user_id);
+      DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?").run(now.toISOString(), until, request.user_id);
+      if (/ia/i.test(request.offer)) DB.prepare("UPDATE users SET ai_started_at=?, ai_until=? WHERE id=?").run(now.toISOString(), until, request.user_id);
     }
     const result = DB.prepare("UPDATE payment_requests SET status=?, resolved_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").run(status, request.id);
     if (result.changes !== 1) throw new Error("Cette demande a déjà été traitée.");
@@ -727,7 +735,7 @@ app.post("/api/admin/ai-subscription", requireAdmin, (req, res) => {
       });
     }
     const until = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
-    DB.prepare("UPDATE users SET ai_until=? WHERE id=?").run(until, id);
+    DB.prepare("UPDATE users SET ai_started_at=?, ai_until=? WHERE id=?").run(new Date().toISOString(), until, id);
     return res.json({ message: `IA activée pour ${durationDays} jour(s).`, ai_until: until });
   }
 
@@ -877,9 +885,66 @@ app.patch("/api/admin/requests/:id", requireAdmin, (req, res) => {
 });
 
 // ======================================================
+// VALIDATION DES ÉQUIPES + TEMPS RÉEL DES PRONOSTICS
+// ======================================================
+const footballTeamCache = new Map();
+const memberPredictionClients = new Set();
+const MEMBER_PREDICTION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function cleanupExpiredMemberPredictions(notify = true) {
+  const result = DB.prepare("DELETE FROM member_predictions WHERE created_at <= datetime('now','-24 hours')").run();
+  if (result.changes && notify) broadcastMemberPredictionEvent({ type: "expired", count: result.changes });
+  return result.changes;
+}
+
+function broadcastMemberPredictionEvent(payload) {
+  const data = `data: ${JSON.stringify(payload)}\n\n`;
+  for (const client of memberPredictionClients) {
+    try { client.write(data); } catch (_) { memberPredictionClients.delete(client); }
+  }
+}
+
+async function validateFootballTeam(teamName) {
+  const name = String(teamName || '').trim();
+  if (!name) return false;
+  if (!API_FOOTBALL_KEY) return null;
+  const cacheKey = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+  const cached = footballTeamCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.valid;
+  try {
+    const data = await callApiFootball('teams', { search: name });
+    const valid = Array.isArray(data.response) && data.response.length > 0;
+    footballTeamCache.set(cacheKey, { valid, expiresAt: Date.now() + 15 * 60 * 1000 });
+    return valid;
+  } catch (error) {
+    console.error('TEAM VALIDATION:', error.message);
+    return null;
+  }
+}
+
+app.get('/api/member-predictions/stream', requireUser, (req, res) => {
+  res.status(200);
+  res.set({
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.flushHeaders?.();
+  res.write(`retry: 1500\n\n`);
+  const client = res;
+  memberPredictionClients.add(client);
+  const keepAlive = setInterval(() => { try { client.write(': keep-alive\n\n'); } catch (_) {} }, 15000);
+  req.on('close', () => { clearInterval(keepAlive); memberPredictionClients.delete(client); });
+});
+
+setInterval(() => cleanupExpiredMemberPredictions(true), 60 * 1000);
+
+// ======================================================
 // PRONOSTICS DES MEMBRES
 // ======================================================
 app.get("/api/member-predictions", requireUser, (req, res) => {
+  cleanupExpiredMemberPredictions(false);
   const predictions = DB.prepare(`
     SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
            p.home_probability,p.draw_probability,p.away_probability,
@@ -887,13 +952,14 @@ app.get("/api/member-predictions", requireUser, (req, res) => {
     FROM member_predictions p
     JOIN users u ON u.id=p.user_id
     WHERE u.disabled=0
+      AND p.created_at > datetime('now','-24 hours')
     ORDER BY p.id DESC
     LIMIT 100
   `).all();
   res.json({ predictions });
 });
 
-app.post("/api/member-predictions", requireUser, (req, res) => {
+app.post("/api/member-predictions", requireUser, async (req, res) => {
   const homeTeam = String(req.body.home_team || "").trim();
   const awayTeam = String(req.body.away_team || "").trim();
   const prediction = String(req.body.prediction || "").trim();
@@ -907,6 +973,20 @@ app.post("/api/member-predictions", requireUser, (req, res) => {
 
   if (!homeTeam || !awayTeam || !prediction) {
     return res.status(400).json({ error: "Les deux équipes et le pronostic sont obligatoires." });
+  }
+
+  cleanupExpiredMemberPredictions(false);
+  const recent = DB.prepare("SELECT id FROM member_predictions WHERE user_id=? AND created_at > datetime('now','-24 hours') LIMIT 1").get(req.session.userId);
+  if (recent) {
+    return res.status(409).json({ error: "Vous avez déjà publié un pronostic au cours des dernières 24 heures. Vous pourrez en publier un nouveau après ce délai." });
+  }
+
+  const [homeValid, awayValid] = await Promise.all([validateFootballTeam(homeTeam), validateFootballTeam(awayTeam)]);
+  if (homeValid === null || awayValid === null) {
+    return res.status(503).json({ error: "La vérification des équipes est temporairement indisponible. Réessayez dans quelques instants." });
+  }
+  if (!homeValid || !awayValid) {
+    return res.status(400).json({ error: "Les deux noms doivent correspondre à des équipes de football reconnues." });
   }
 
   if (
@@ -954,6 +1034,7 @@ app.post("/api/member-predictions", requireUser, (req, res) => {
     WHERE p.id=?
   `).get(Number(result.lastInsertRowid));
 
+  broadcastMemberPredictionEvent({ type: "created", prediction: created });
   res.status(201).json({
     message: "Pronostic publié avec succès.",
     prediction: created
@@ -981,6 +1062,7 @@ app.delete("/api/admin/member-predictions/:id", requireAdmin, (req, res) => {
     return res.status(404).json({ error: "Pronostic introuvable." });
   }
 
+  broadcastMemberPredictionEvent({ type: "deleted", id: Number(req.params.id) });
   res.json({ message: "Pronostic supprimé avec succès." });
 });
 
@@ -1199,30 +1281,43 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const secondHome = String(req.body.second_home_team || "").trim();
   const secondAway = String(req.body.second_away_team || "").trim();
 
-  if (!home || !away || !secondHome || !secondAway) {
-    return res.status(400).json({
-      error: "Les deux matchs sont obligatoires. Saisissez Match 1 et Match 2."
-    });
+  if (!home && !away && !secondHome && !secondAway) {
+    return res.status(400).json({ error: "Saisissez au moins un match au format : Équipe 1 vs Équipe 2." });
+  }
+  if ((home && !away) || (!home && away) || (secondHome && !secondAway) || (!secondHome && secondAway)) {
+    return res.status(400).json({ error: "Chaque match renseigné doit contenir deux équipes : Équipe 1 vs Équipe 2." });
   }
 
-  const matches = [`1) ${home} vs ${away}`, `2) ${secondHome} vs ${secondAway}`];
+  const rawMatches = [[home, away], [secondHome, secondAway]].filter(([h, a]) => h && a);
+  const validation = await Promise.all(rawMatches.flatMap(([h, a]) => [validateFootballTeam(h), validateFootballTeam(a)]));
+  if (validation.some(value => value === null)) {
+    return res.status(503).json({ error: "La vérification des équipes est temporairement indisponible. Réessayez dans quelques instants." });
+  }
+  if (validation.some(value => value === false)) {
+    return res.status(400).json({ error: "L’analyse accepte uniquement des équipes de football reconnues. Vérifiez les noms saisis." });
+  }
 
+  const matches = rawMatches.map(([h, a], index) => `${index + 1}) ${h} vs ${a}`);
+  const matchCount = matches.length;
+  const combinedInstruction = matchCount > 1
+    ? 'Si deux matchs sont fournis, retourne aussi combined avec :\n- selections : les deux choix retenus, très courts ;\n- estimated_odds : une cote combinée estimée, par exemple "2.00 à 3.00".'
+    : 'Si un seul match est fourni, ne retourne pas combined.';
+  const combinedStructure = matchCount > 1
+    ? ',\n  "combined": {\n    "selections":"...",\n    "estimated_odds":"..."\n  }'
+    : '';
   const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds uniquement avec un JSON valide, sans introduction, sans Markdown et sans texte supplémentaire.
 
 Matchs à analyser :
 ${matches.join("\n")}
 
 Objectif : fournir une fiche courte, claire et directement lisible sur téléphone.
-Pour chacun des 2 matchs, retourne :
+Pour chacun des ${matchCount} match${matchCount > 1 ? 's' : ''}, retourne :
 - name : nom du match ;
 - probabilities : 3 à 5 probabilités courtes parmi 1, X, 2, double chance, buts ;
 - options : 4 à 6 options pertinentes parmi 1X, X2, 12, victoire, plus/moins de buts, BTTS, handicap et score exact. Pour chaque option, indique name, probability et risk en quelques mots ;
 - recommendation : une seule option principale.
 
-À la fin, retourne combined avec :
-- selections : les deux choix retenus, très courts ;
-- estimated_odds : une cote combinée estimée, par exemple "2.00 à 3.00".
-
+${combinedInstruction}
 N’invente pas de statistiques, de blessures, de résultats ou de cotes en direct. Ne donne aucune longue explication. Utilise exactement cette structure :
 {
   "matches": [
@@ -1231,18 +1326,8 @@ N’invente pas de statistiques, de blessures, de résultats ou de cotes en dire
       "probabilities": [{"label":"1","value":"..."},{"label":"X","value":"..."},{"label":"2","value":"..."}],
       "options": [{"name":"...","probability":"...","risk":"..."}],
       "recommendation":"..."
-    },
-    {
-      "name": "...",
-      "probabilities": [],
-      "options": [],
-      "recommendation":"..."
     }
-  ],
-  "combined": {
-    "selections":"...",
-    "estimated_odds":"..."
-  }
+  ]${combinedStructure}
 }`;
 
   const systemInstruction = "Retourne uniquement le JSON demandé en français. Sois bref, organisé et ne fabrique aucune donnée précise non fournie.";
