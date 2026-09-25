@@ -904,7 +904,7 @@ function broadcastMemberPredictionEvent(payload) {
   }
 }
 
-async function validateFootballTeam(teamName) {
+async function validateFootballTeamForAI(teamName) {
   const name = String(teamName || '').trim();
   if (!name) return false;
   if (!API_FOOTBALL_KEY) return null;
@@ -917,7 +917,7 @@ async function validateFootballTeam(teamName) {
     footballTeamCache.set(cacheKey, { valid, expiresAt: Date.now() + 15 * 60 * 1000 });
     return valid;
   } catch (error) {
-    console.error('TEAM VALIDATION:', error.message);
+    console.error('TEAM VALIDATION IA:', error.message);
     return null;
   }
 }
@@ -940,6 +940,680 @@ app.get('/api/member-predictions/stream', requireUser, (req, res) => {
 
 setInterval(() => cleanupExpiredMemberPredictions(true), 60 * 1000);
 
+// Catalogue local des équipes reconnues par les publications de membres.
+// IMPORTANT : ce catalogue est volontairement local : aucune requête API-Football
+// n'est effectuée lors de la publication d'un pronostic membre.
+const LOCAL_FOOTBALL_TEAMS = [
+  "Afghanistan",
+  "Albania",
+  "Algeria",
+  "American Samoa",
+  "Andorra",
+  "Angola",
+  "Anguilla",
+  "Antigua and Barbuda",
+  "Argentina",
+  "Armenia",
+  "Aruba",
+  "Australia",
+  "Austria",
+  "Azerbaijan",
+  "Bahamas",
+  "Bahrain",
+  "Bangladesh",
+  "Barbados",
+  "Belarus",
+  "Belgium",
+  "Belize",
+  "Benin",
+  "Bermuda",
+  "Bhutan",
+  "Bolivia",
+  "Bosnia and Herzegovina",
+  "Botswana",
+  "Brazil",
+  "British Virgin Islands",
+  "Brunei",
+  "Bulgaria",
+  "Burkina Faso",
+  "Burundi",
+  "Cambodia",
+  "Cameroon",
+  "Canada",
+  "Cape Verde",
+  "Cayman Islands",
+  "Central African Republic",
+  "Chad",
+  "Chile",
+  "China",
+  "Chinese Taipei",
+  "Colombia",
+  "Comoros",
+  "Congo",
+  "Costa Rica",
+  "Croatia",
+  "Cuba",
+  "Curacao",
+  "Cyprus",
+  "Czech Republic",
+  "Democratic Republic of the Congo",
+  "Denmark",
+  "Djibouti",
+  "Dominica",
+  "Dominican Republic",
+  "Ecuador",
+  "Egypt",
+  "El Salvador",
+  "Equatorial Guinea",
+  "Eritrea",
+  "Estonia",
+  "Eswatini",
+  "Ethiopia",
+  "Faroe Islands",
+  "Fiji",
+  "Finland",
+  "France",
+  "French Guiana",
+  "Gabon",
+  "Gambia",
+  "Georgia",
+  "Germany",
+  "Ghana",
+  "Gibraltar",
+  "Greece",
+  "Grenada",
+  "Guadeloupe",
+  "Guam",
+  "Guatemala",
+  "Guinea",
+  "Guinea-Bissau",
+  "Guyana",
+  "Haiti",
+  "Honduras",
+  "Hong Kong",
+  "Hungary",
+  "Iceland",
+  "India",
+  "Indonesia",
+  "Iran",
+  "Iraq",
+  "Ireland",
+  "Israel",
+  "Italy",
+  "Ivory Coast",
+  "Côte d'Ivoire",
+  "Jamaica",
+  "Japan",
+  "Jordan",
+  "Kazakhstan",
+  "Kenya",
+  "Kiribati",
+  "Kosovo",
+  "Kuwait",
+  "Kyrgyzstan",
+  "Laos",
+  "Latvia",
+  "Lebanon",
+  "Lesotho",
+  "Liberia",
+  "Libya",
+  "Liechtenstein",
+  "Lithuania",
+  "Luxembourg",
+  "Macau",
+  "Madagascar",
+  "Malawi",
+  "Malaysia",
+  "Maldives",
+  "Mali",
+  "Malta",
+  "Martinique",
+  "Mauritania",
+  "Mauritius",
+  "Mexico",
+  "Moldova",
+  "Mongolia",
+  "Montenegro",
+  "Montserrat",
+  "Morocco",
+  "Mozambique",
+  "Myanmar",
+  "Namibia",
+  "Nepal",
+  "Netherlands",
+  "New Caledonia",
+  "New Zealand",
+  "Nicaragua",
+  "Niger",
+  "Nigeria",
+  "North Korea",
+  "North Macedonia",
+  "Northern Mariana Islands",
+  "Norway",
+  "Oman",
+  "Pakistan",
+  "Palestine",
+  "Panama",
+  "Papua New Guinea",
+  "Paraguay",
+  "Peru",
+  "Philippines",
+  "Poland",
+  "Portugal",
+  "Puerto Rico",
+  "Qatar",
+  "Republic of Ireland",
+  "Romania",
+  "Russia",
+  "Rwanda",
+  "Saint Kitts and Nevis",
+  "Saint Lucia",
+  "Saint Vincent and the Grenadines",
+  "Samoa",
+  "San Marino",
+  "Sao Tome and Principe",
+  "Saudi Arabia",
+  "Senegal",
+  "Serbia",
+  "Seychelles",
+  "Sierra Leone",
+  "Singapore",
+  "Slovakia",
+  "Slovenia",
+  "Solomon Islands",
+  "Somalia",
+  "South Africa",
+  "South Korea",
+  "South Sudan",
+  "Spain",
+  "Sri Lanka",
+  "Sudan",
+  "Suriname",
+  "Sweden",
+  "Switzerland",
+  "Syria",
+  "Tahiti",
+  "Taiwan",
+  "Tajikistan",
+  "Tanzania",
+  "Thailand",
+  "Timor-Leste",
+  "Togo",
+  "Tonga",
+  "Trinidad and Tobago",
+  "Tunisia",
+  "Turkey",
+  "Turkmenistan",
+  "Uganda",
+  "Ukraine",
+  "United Arab Emirates",
+  "United Kingdom",
+  "Uruguay",
+  "US Virgin Islands",
+  "USA",
+  "Uzbekistan",
+  "Vanuatu",
+  "Vatican City",
+  "Venezuela",
+  "Vietnam",
+  "Wales",
+  "Yemen",
+  "Zambia",
+  "Zanzibar",
+  "Zimbabwe",
+  "Arsenal",
+  "Chelsea",
+  "Tottenham Hotspur",
+  "West Ham United",
+  "Fulham",
+  "Crystal Palace",
+  "Everton",
+  "Liverpool",
+  "Manchester United",
+  "Manchester City",
+  "Newcastle United",
+  "Aston Villa",
+  "Birmingham City",
+  "Leicester City",
+  "Wolverhampton Wanderers",
+  "West Bromwich Albion",
+  "Leeds United",
+  "Sheffield United",
+  "Sheffield Wednesday",
+  "Sunderland",
+  "Middlesbrough",
+  "Southampton",
+  "Brighton and Hove Albion",
+  "Brentford",
+  "Nottingham Forest",
+  "Burnley",
+  "Blackburn Rovers",
+  "Bolton Wanderers",
+  "Wigan Athletic",
+  "Stoke City",
+  "Watford",
+  "Norwich City",
+  "Cardiff City",
+  "Swansea City",
+  "Queens Park Rangers",
+  "Millwall",
+  "Coventry City",
+  "Derby County",
+  "Ipswich Town",
+  "Portsmouth",
+  "Reading",
+  "Hull City",
+  "Bristol City",
+  "Bristol Rovers",
+  "Preston North End",
+  "Blackpool",
+  "Rangers",
+  "Celtic",
+  "Aberdeen",
+  "Hearts",
+  "Hibernian",
+  "Dundee United",
+  "Dundee FC",
+  "Real Madrid",
+  "Barcelona",
+  "Atletico Madrid",
+  "Sevilla",
+  "Valencia",
+  "Villarreal",
+  "Real Sociedad",
+  "Athletic Club",
+  "Real Betis",
+  "Celta Vigo",
+  "Getafe",
+  "Osasuna",
+  "Girona",
+  "Espanyol",
+  "Mallorca",
+  "Rayo Vallecano",
+  "Alaves",
+  "Las Palmas",
+  "Real Valladolid",
+  "AC Milan",
+  "Inter Milan",
+  "Juventus",
+  "Roma",
+  "Lazio",
+  "Napoli",
+  "Atalanta",
+  "Fiorentina",
+  "Bologna",
+  "Torino",
+  "Genoa",
+  "Sassuolo",
+  "Udinese",
+  "Monza",
+  "Parma",
+  "Bayern Munich",
+  "Borussia Dortmund",
+  "RB Leipzig",
+  "Bayer Leverkusen",
+  "Eintracht Frankfurt",
+  "Schalke 04",
+  "Werder Bremen",
+  "Hamburg",
+  "VfB Stuttgart",
+  "Borussia Monchengladbach",
+  "Wolfsburg",
+  "Union Berlin",
+  "Freiburg",
+  "Hoffenheim",
+  "Mainz 05",
+  "Ajax",
+  "PSV Eindhoven",
+  "Feyenoord",
+  "AZ Alkmaar",
+  "Twente",
+  "Utrecht",
+  "Anderlecht",
+  "Club Brugge",
+  "Genk",
+  "Gent",
+  "Standard Liege",
+  "Porto",
+  "Benfica",
+  "Sporting CP",
+  "Braga",
+  "Boavista",
+  "Marseille",
+  "Paris Saint-Germain",
+  "PSG",
+  "Lyon",
+  "Monaco",
+  "Lille",
+  "Nice",
+  "Lens",
+  "Rennes",
+  "Nantes",
+  "Montpellier",
+  "Bordeaux",
+  "Saint-Etienne",
+  "Strasbourg",
+  "Toulouse",
+  "Fenerbahce",
+  "Galatasaray",
+  "Besiktas",
+  "Trabzonspor",
+  "Shakhtar Donetsk",
+  "Dynamo Kyiv",
+  "Olympiacos",
+  "Panathinaikos",
+  "PAOK",
+  "Red Star Belgrade",
+  "Partizan Belgrade",
+  "Dinamo Zagreb",
+  "Hajduk Split",
+  "Sparta Prague",
+  "Slavia Prague",
+  "Copenhagen",
+  "Brondby",
+  "Molde",
+  "Rosenborg",
+  "Bodo Glimt",
+  "Malmo FF",
+  "AIK",
+  "Hammarby",
+  "IFK Goteborg",
+  "Young Boys",
+  "Basel",
+  "Red Bull Salzburg",
+  "Rapid Vienna",
+  "Austria Vienna",
+  "Dinamo Moscow",
+  "CSKA Moscow",
+  "Spartak Moscow",
+  "Zenit Saint Petersburg",
+  "Lokomotiv Moscow",
+  "Krasnodar",
+  "Ajax Cape Town",
+  "Mamelodi Sundowns",
+  "Kaizer Chiefs",
+  "Orlando Pirates",
+  "SuperSport United",
+  "Cape Town City",
+  "AmaZulu",
+  "Al Ahly",
+  "Zamalek",
+  "Pyramids FC",
+  "Al Masry",
+  "Ismaily",
+  "ENPPI",
+  "Al Mokawloon Al Arab",
+  "Wydad Casablanca",
+  "Raja Casablanca",
+  "Esperance Tunis",
+  "Etoile du Sahel",
+  "Club Africain",
+  "CS Sfaxien",
+  "TP Mazembe",
+  "AS Vita Club",
+  "Young Africans",
+  "Simba SC",
+  "APR FC",
+  "Rivers United",
+  "Enyimba",
+  "Kano Pillars",
+  "Hearts of Oak",
+  "Asante Kotoko",
+  "ASEC Mimosas",
+  "Africa Sports",
+  "Stade d'Abidjan",
+  "FC San Pedro",
+  "SOA",
+  "Stella Club",
+  "Al Hilal",
+  "Al Nassr",
+  "Al Ittihad",
+  "Al Ahli Saudi",
+  "Al Shabab",
+  "Urawa Red Diamonds",
+  "Yokohama F. Marinos",
+  "Kawasaki Frontale",
+  "Gamba Osaka",
+  "Cerezo Osaka",
+  "Kashima Antlers",
+  "Vissel Kobe",
+  "FC Tokyo",
+  "Nagoya Grampus",
+  "Sanfrecce Hiroshima",
+  "Jeonbuk Hyundai Motors",
+  "Ulsan Hyundai",
+  "FC Seoul",
+  "Pohang Steelers",
+  "Beijing Guoan",
+  "Shanghai Shenhua",
+  "Shandong Taishan",
+  "Guangzhou FC",
+  "Sydney FC",
+  "Melbourne Victory",
+  "Melbourne City",
+  "Western Sydney Wanderers",
+  "Perth Glory",
+  "Auckland City",
+  "LA Galaxy",
+  "Los Angeles FC",
+  "Inter Miami",
+  "New York City FC",
+  "New York Red Bulls",
+  "Seattle Sounders",
+  "Portland Timbers",
+  "Atlanta United",
+  "Orlando City",
+  "Toronto FC",
+  "CF Montreal",
+  "Club America",
+  "Chivas Guadalajara",
+  "Cruz Azul",
+  "Pumas UNAM",
+  "Tigres UANL",
+  "Monterrey",
+  "Santos Laguna",
+  "Toluca",
+  "Pachuca",
+  "Flamengo",
+  "Fluminense",
+  "Palmeiras",
+  "Corinthians",
+  "Sao Paulo",
+  "Santos",
+  "Gremio",
+  "Internacional",
+  "Atletico Mineiro",
+  "Cruzeiro",
+  "Botafogo",
+  "Vasco da Gama",
+  "River Plate",
+  "Boca Juniors",
+  "Racing Club",
+  "Independiente",
+  "San Lorenzo",
+  "Estudiantes",
+  "Lanus",
+  "Velez Sarsfield",
+  "Colo-Colo",
+  "Universidad de Chile",
+  "Universidad Catolica",
+  "Penarol",
+  "Nacional",
+  "Olimpia",
+  "Cerro Porteno",
+  "LDU Quito",
+  "Barcelona SC",
+  "Emelec",
+  "Atletico Nacional",
+  "Millonarios",
+  "America de Cali",
+  "Alianza Lima",
+  "Universitario",
+  "Sporting Cristal",
+  "Bolivar",
+  "The Strongest",
+  "Independiente del Valle",
+  "Deportivo Tachira",
+  "Man United",
+  "Man Utd",
+  "Man U",
+  "Manchester Utd",
+  "Man City",
+  "Tottenham",
+  "Spurs",
+  "FC Barcelona",
+  "Barca",
+  "Barça",
+  "Atlético Madrid",
+  "Atletico de Madrid",
+  "Real Madrid CF",
+  "Paris SG",
+  "Bayern",
+  "FC Bayern",
+  "Bayern Munchen",
+  "Dortmund",
+  "BVB",
+  "Inter",
+  "Internazionale",
+  "Milan",
+  "Juve",
+  "Arsenal FC",
+  "Chelsea FC",
+  "Liverpool FC",
+  "Glasgow Rangers",
+  "Celtic FC",
+  "Al Ahly SC",
+  "Al Ahli",
+  "Zamalek SC",
+  "Wydad AC",
+  "Wydad",
+  "Raja CA",
+  "Raja",
+  "Espérance de Tunis",
+  "Esperance",
+  "ASEC",
+  "Stade d’Abidjan",
+  "San-Pédro",
+  "River Plate Buenos Aires",
+  "Boca",
+  "CR Flamengo",
+  "SE Palmeiras",
+  "Inter Miami CF",
+  "Club América",
+  "Chivas",
+  "Al-Hilal",
+  "Al-Nassr",
+  "Al-Ittihad",
+  "Al-Ahli"
+];
+
+function normalizeFootballTeamName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .toLowerCase()
+    .replace(/\b(fc|cf|sc|afc|ac|bk|fk|sk|nk|ks|kfc|pfc|cd|cs|as|rc|rsc|sv|kv|ka|fk|club|football club)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const LOCAL_FOOTBALL_TEAM_SET = new Set(
+  LOCAL_FOOTBALL_TEAMS.map(normalizeFootballTeamName).filter(Boolean)
+);
+
+function validateLocalFootballTeam(teamName) {
+  const normalized = normalizeFootballTeamName(teamName);
+  if (!normalized || normalized.length < 2) return false;
+  return LOCAL_FOOTBALL_TEAM_SET.has(normalized);
+}
+
+const FOOTBALL_ANALYSIS_TERMS = [
+  "victoire", "gagner", "gagnant", "nul", "defaite", "perdre", "perd",
+  "buts", "but", "score", "mi temps", "premiere mi temps", "seconde mi temps",
+  "forme", "forme actuelle", "attaque", "defense", "defensive", "offensive",
+  "domicile", "exterieur", "classement", "statistique", "statistiques",
+  "probabilite", "probabilites", "pronostic", "analyse", "match", "rencontre",
+  "carton", "cartons", "corner", "corners", "btts", "over", "under",
+  "plus de", "moins de", "handicap", "cote", "cotes", "confiance",
+  "historique", "face a face", "h2h", "joueur", "effectif", "blessure",
+  "absent", "absents", "titulaire", "titulaires", "composition", "terrain"
+];
+
+const BANNED_COMMENT_TERMS = [
+  "bonjour", "bonsoir", "salut", "cc", "coucou", "hello", "yo",
+  "insulte", "idiot", "imbecile", "connard", "pute", "putain",
+  "merde", "encule", "enculé", "batard", "bâtard", "nique", "fuck",
+  "spam", "test test", "lorem ipsum"
+];
+
+const BANNED_ANALYSIS_ABBREVIATIONS = new Set([
+  "mdr", "ptdr", "lol", "bjr", "bsr", "svp", "stp", "wsh", "wshh",
+  "asl", "irl", "omg", "wtf", "idk", "tg"
+]);
+
+function validateMemberPredictionComment(comment, homeTeam, awayTeam) {
+  const value = String(comment || "").trim();
+  if (!value) return { valid: true };
+
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (value.length < 12) {
+    return { valid: false, error: "La description doit contenir une véritable explication de l'analyse du match." };
+  }
+
+  if (/[<>]/.test(value) || /https?:\/\/|www\./i.test(value)) {
+    return { valid: false, error: "Les liens et contenus techniques ne sont pas autorisés dans la description." };
+  }
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.some(word => BANNED_ANALYSIS_ABBREVIATIONS.has(word.replace(/[^\w]/g, "")))) {
+    return { valid: false, error: "Les abréviations et messages de type chat ne sont pas autorisés dans la description." };
+  }
+
+  const normalizedWords = normalized.split(/[^a-z0-9]+/).filter(Boolean);
+  const hasBannedWord = BANNED_COMMENT_TERMS.some(term => {
+    if (term.includes(" ")) return normalized.includes(term);
+    return normalizedWords.includes(term);
+  });
+  if (hasBannedWord) {
+    return { valid: false, error: "La description contient un terme interdit ou un contenu qui n'est pas adapté à l'analyse football." };
+  }
+
+  const footballContext = FOOTBALL_ANALYSIS_TERMS.some(term => normalized.includes(term));
+  const hasTeamContext =
+    normalized.includes(normalizeFootballTeamName(homeTeam)) ||
+    normalized.includes(normalizeFootballTeamName(awayTeam));
+
+  if (!footballContext && !hasTeamContext) {
+    return { valid: false, error: "La description doit être directement liée à l'analyse du match et aux équipes sélectionnées." };
+  }
+
+  if ((value.match(/[!?]{3,}/g) || []).length > 0 || (value.match(/(.)\1{6,}/g) || []).length > 0) {
+    return { valid: false, error: "Évitez le spam, les répétitions et les caractères excessifs dans la description." };
+  }
+
+  return { valid: true };
+}
+
+function findActiveCoupon(code, bookmaker) {
+  if (!code) return null;
+  const normalizedCode = code.trim().toLowerCase();
+  const coupons = DB.prepare(
+    "SELECT id,platform_name,code,platform_url,description FROM coupons WHERE active=1"
+  ).all();
+
+  const match = coupons.find(c =>
+    String(c.code || "").trim().toLowerCase() === normalizedCode &&
+    (!bookmaker || String(c.platform_name || "").trim().toLowerCase() === bookmaker.trim().toLowerCase())
+  );
+  return match || null;
+}
+
 // ======================================================
 // PRONOSTICS DES MEMBRES
 // ======================================================
@@ -959,7 +1633,7 @@ app.get("/api/member-predictions", requireUser, (req, res) => {
   res.json({ predictions });
 });
 
-app.post("/api/member-predictions", requireUser, async (req, res) => {
+app.post("/api/member-predictions", requireUser, (req, res) => {
   const homeTeam = String(req.body.home_team || "").trim();
   const awayTeam = String(req.body.away_team || "").trim();
   const prediction = String(req.body.prediction || "").trim();
@@ -981,12 +1655,12 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
     return res.status(409).json({ error: "Vous avez déjà publié un pronostic au cours des dernières 24 heures. Vous pourrez en publier un nouveau après ce délai." });
   }
 
-  const [homeValid, awayValid] = await Promise.all([validateFootballTeam(homeTeam), validateFootballTeam(awayTeam)]);
-  if (homeValid === null || awayValid === null) {
-    return res.status(503).json({ error: "La vérification des équipes est temporairement indisponible. Réessayez dans quelques instants." });
-  }
+  const homeValid = validateLocalFootballTeam(homeTeam);
+  const awayValid = validateLocalFootballTeam(awayTeam);
   if (!homeValid || !awayValid) {
-    return res.status(400).json({ error: "Les deux noms doivent correspondre à des équipes de football reconnues." });
+    return res.status(400).json({
+      error: "Les deux noms doivent correspondre à des équipes de football reconnues dans le catalogue local de BatBot."
+    });
   }
 
   if (
@@ -1013,6 +1687,20 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
     return res.status(400).json({
       error: "Indiquez le site ou bookmaker correspondant au code coupon."
     });
+  }
+
+  const commentValidation = validateMemberPredictionComment(comment, homeTeam, awayTeam);
+  if (!commentValidation.valid) {
+    return res.status(400).json({ error: commentValidation.error });
+  }
+
+  if (couponCode) {
+    const coupon = findActiveCoupon(couponCode, bookmaker);
+    if (!coupon) {
+      return res.status(400).json({
+        error: "Le code coupon indiqué n'est pas un coupon actif enregistré dans BatBot pour ce bookmaker."
+      });
+    }
   }
 
   const result = DB.prepare(`
@@ -1289,7 +1977,7 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   }
 
   const rawMatches = [[home, away], [secondHome, secondAway]].filter(([h, a]) => h && a);
-  const validation = await Promise.all(rawMatches.flatMap(([h, a]) => [validateFootballTeam(h), validateFootballTeam(a)]));
+  const validation = await Promise.all(rawMatches.flatMap(([h, a]) => [validateFootballTeamForAI(h), validateFootballTeamForAI(a)]));
   if (validation.some(value => value === null)) {
     return res.status(503).json({ error: "La vérification des équipes est temporairement indisponible. Réessayez dans quelques instants." });
   }
