@@ -248,6 +248,8 @@ textarea{min-height:120px;resize:vertical}
 .member-prediction-actions{display:grid;grid-template-columns:1fr;gap:7px;margin-top:9px}.member-prediction-actions .btn{margin:0;min-height:42px}
 .member-prediction-comment{margin-top:9px;color:#D9E7F3;line-height:1.45;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:380px){.member-prediction-probs{gap:5px}.member-prediction-prob{padding:8px 4px}.member-prediction-prob strong{font-size:15px}}
+.member-prediction-pick-field{margin:12px 0 4px}.member-prediction-pick-label{display:block;margin-bottom:7px;font-size:13px;font-weight:800}.member-prediction-pick-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.member-prediction-pick-option{appearance:none;border:1px solid #244866;background:linear-gradient(145deg,#0B223D,#071A2D);color:#B8CAD9;border-radius:13px;min-height:58px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:inherit;font-weight:800;cursor:pointer;transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease;color:#D9E7F3}.member-prediction-pick-option:active{transform:scale(.98)}.member-prediction-pick-option.active{border-color:#21C55D;background:linear-gradient(145deg,rgba(33,197,93,.22),rgba(7,26,45,.98));box-shadow:0 0 0 2px rgba(33,197,93,.13),0 8px 18px rgba(0,0,0,.16);color:#fff}.member-pick-code{font-size:18px;font-weight:1000;color:#6EE7A0;line-height:1}.member-prediction-pick-option span:last-child{font-size:10px;line-height:1.15;text-align:center}.member-prediction-pick-option.active .member-pick-code{color:#fff}
+.batbot-copy-success{display:inline-flex;align-items:center;justify-content:center;gap:7px;color:#B9FFD0;font-weight:900;font-size:12px;margin-top:7px;min-height:18px}.member-prediction-actions .copy-member-coupon{background:linear-gradient(145deg,#285477,#142F4B);border-color:#47799F}
 
 /* Centre de notifications BatBot */
 .batbot-messages-card{border:1px solid rgba(0,191,255,.35);background:linear-gradient(145deg,#102F52,#0B223D)}
@@ -619,13 +621,21 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
     <input id="memberPredictionAwayProb" type="number" min="0" max="100" step="0.01" placeholder="2 — Probabilité (%)">
 
-    <label><span class="muted">Votre pronostic</span>
-      <select id="memberPredictionPick">
-        <option value="1">1 — Équipe 1</option>
-        <option value="N">N — Match nul</option>
-        <option value="2">2 — Équipe 2</option>
-      </select>
-    </label>
+    <div class="member-prediction-pick-field">
+      <span class="muted member-prediction-pick-label">Votre pronostic</span>
+      <input id="memberPredictionPick" type="hidden" value="1">
+      <div class="member-prediction-pick-options" role="group" aria-label="Choisissez votre pronostic">
+        <button type="button" class="member-prediction-pick-option active" data-pick="1" aria-pressed="true">
+          <span class="member-pick-code">1</span><span>Équipe 1</span>
+        </button>
+        <button type="button" class="member-prediction-pick-option" data-pick="N" aria-pressed="false">
+          <span class="member-pick-code">N</span><span>Match nul</span>
+        </button>
+        <button type="button" class="member-prediction-pick-option" data-pick="2" aria-pressed="false">
+          <span class="member-pick-code">2</span><span>Équipe 2</span>
+        </button>
+      </div>
+    </div>
 
     <input id="memberPredictionCoupon" maxlength="120" placeholder="🎫 Code coupon (facultatif)">
     <input id="memberPredictionBookmaker" maxlength="120" placeholder="🏷️ Site / bookmaker du coupon (facultatif)">
@@ -1581,12 +1591,32 @@ async function loadCoupons(){
   }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Coupons indisponibles</div><div class="professional-status-body">Impossible de charger les coupons pour le moment.</div></div>';}
 }
 async function copyText(value){
+  const text=String(value??"");
+  if(!text){showToast("Aucun contenu à copier.","error");return false;}
   try{
-    if(!navigator.clipboard?.writeText)throw new Error("Clipboard indisponible");
-    await navigator.clipboard.writeText(value);
-    showToast("Copie réussie — le contenu est maintenant disponible dans le presse-papiers.","success");
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const ta=document.createElement("textarea");
+      ta.value=text;ta.setAttribute("readonly","");
+      ta.style.position="fixed";ta.style.left="-9999px";ta.style.top="0";
+      document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+      const copied=document.execCommand("copy");ta.remove();
+      if(!copied)throw new Error("Fallback clipboard failed");
+    }
+    showToast("Code copié avec succès.","success");
+    return true;
   }catch(e){
-    showToast("La copie automatique n’a pas pu être effectuée. Veuillez réessayer.","error");
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=text;ta.setAttribute("readonly","");
+      ta.style.position="fixed";ta.style.opacity="0";ta.style.pointerEvents="none";
+      document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+      const copied=document.execCommand("copy");ta.remove();
+      if(copied){showToast("Code copié avec succès.","success");return true;}
+    }catch(_){}
+    showToast("La copie automatique n’a pas pu être effectuée. Appuyez longuement sur le code pour le copier manuellement.","error");
+    return false;
   }
 }
 function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon BatBot",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
@@ -2260,6 +2290,32 @@ async function resolvePaymentRequest(id,status,button){
 }
 
 
+async function copyMemberCoupon(value,button){
+  const copied=await copyText(value);
+  if(!copied||!button)return;
+  const original=button.innerHTML;
+  button.innerHTML="✓ Code copié";
+  button.disabled=true;
+  setTimeout(()=>{button.innerHTML=original;button.disabled=false;},1800);
+}
+
+function initMemberPredictionPick(){
+  const input=document.getElementById("memberPredictionPick");
+  const buttons=document.querySelectorAll(".member-prediction-pick-option[data-pick]");
+  if(!input||!buttons.length)return;
+  buttons.forEach(button=>{
+    button.addEventListener("click",()=>{
+      const value=button.dataset.pick||"1";
+      input.value=value;
+      buttons.forEach(item=>{
+        const active=item===button;
+        item.classList.toggle("active",active);
+        item.setAttribute("aria-pressed",active?"true":"false");
+      });
+    });
+  });
+}
+
 function formatMemberPredictionDate(value){
   if(!value)return "Date non disponible";
   const d=new Date(String(value).replace(" ","T")+"Z");
@@ -2294,10 +2350,12 @@ function renderMemberPredictionCard(item,adminMode){
       </div>
       <div class="member-prediction-pick">🎯 <strong>Pronostic : ${pick}</strong></div>
       ${comment?`<div class="member-prediction-comment">📝 ${commentSafe}</div>`:""}
-      ${coupon?`<div class="member-prediction-coupon"><span class="admin-small">🎫 Code coupon${bookmaker?" · 🏷️ "+bookmakerSafe:""}</span><code id="memberCoupon_${id}">${couponSafe}</code><div class="member-prediction-actions"><button class="btn secondary" type="button" onclick="copyText(${JSON.stringify(coupon)})">📋 Copier le code</button></div></div>`:""}
+      ${coupon?`<div class="member-prediction-coupon"><span class="admin-small">🎫 Code coupon${bookmaker?" · 🏷️ "+bookmakerSafe:""}</span><code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code><div class="member-prediction-actions"><button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(${JSON.stringify(coupon)},this)">📋 Copier le code</button></div></div>`:""}
       ${adminMode?`<div class="member-prediction-actions"><button class="btn danger" type="button" onclick="deleteMemberPrediction(${id})">🗑️ Supprimer ce pronostic</button></div>`:""}
     </article>`;
 }
+
+initMemberPredictionPick();
 
 async function loadMemberPredictions(){
   const container=document.getElementById("memberPredictionsList");
@@ -2337,7 +2395,15 @@ async function publishMemberPrediction(){
     if(!response.ok){showStatus("memberPredictionStatus",data.error||"Impossible de publier le pronostic.","error");return;}
     showStatus("memberPredictionStatus","✅ Votre pronostic a été publié et est maintenant visible par les membres.","success");
     ["memberPredictionHome","memberPredictionAway","memberPredictionHomeProb","memberPredictionDrawProb","memberPredictionAwayProb","memberPredictionCoupon","memberPredictionBookmaker","memberPredictionComment"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
-    document.getElementById("memberPredictionPick").value="1";
+    const pickInput=document.getElementById("memberPredictionPick");
+    if(pickInput){
+      pickInput.value="1";
+      document.querySelectorAll(".member-prediction-pick-option[data-pick]").forEach(item=>{
+        const active=item.dataset.pick==="1";
+        item.classList.toggle("active",active);
+        item.setAttribute("aria-pressed",active?"true":"false");
+      });
+    }
     await loadMemberPredictions();
   }catch(error){
     console.error("PUBLISH MEMBER PREDICTION:",error);
@@ -2362,7 +2428,12 @@ async function loadAdminMemberPredictions(){
 
 async function deleteMemberPrediction(id){
   if(!Number.isFinite(Number(id)))return;
-  if(!confirm("Supprimer ce pronostic de la communauté ?"))return;
+  const confirmed=await showProfessionalConfirm({
+    title:"🗑️ Supprimer le pronostic",
+    message:"Cette publication sera retirée de la communauté BatBot. Cette action est définitive.",
+    confirmText:"Supprimer"
+  });
+  if(!confirmed)return;
   try{
     const response=await fetch("/api/admin/member-predictions/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin",headers:{"Accept":"application/json"}});
     const data=await readApiResponse(response);
