@@ -462,14 +462,23 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .deposit-conditions-trigger strong{display:block;font-size:14px}
 .deposit-conditions-trigger small{display:block;margin-top:3px;color:#BFD4E7;font-size:11px}
 .deposit-conditions-trigger .conditions-chevron{margin-left:auto;font-size:26px;color:#6EE7A0}
-.payment-conditions-source{display:none!important}
+.payment-conditions-source{display:none!important}.payment-conditions-source.in-window{display:block!important}
 .conditions-modal-card{padding:6px 2px 8px}
 .conditions-modal-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:linear-gradient(145deg,#193F63,#0C2945);font-size:24px;margin-bottom:8px}
 .conditions-modal-card h3{margin:0 0 12px;font-size:20px}
 .conditions-list{display:grid;gap:8px}
 .conditions-list>div{display:flex;gap:10px;align-items:flex-start;padding:10px 11px;border-radius:12px;background:#102F4D;border:1px solid #244F72;color:#D9E7F3;line-height:1.45;font-size:13px}
-.conditions-list b{flex:0 0 auto;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#16B8E8;color:#fff}
+.conditions-list b{flex:0 0 auto;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#16B8E8;color:#fff}.conditions-close-button{margin-top:12px;margin-bottom:0}
 .wave-mobile-payment-block{order:-1}
+.payment-field{display:block;margin-top:10px}
+.payment-field>.muted{display:block;margin-bottom:5px;font-weight:800}
+.payment-field select{width:100%;min-height:48px;padding:11px 40px 11px 13px;border-radius:13px;border:1px solid #315D82;background:#102F4D;color:#fff;font-weight:900;font-size:15px;outline:none}
+.payment-offer-select{border-color:rgba(0,191,255,.45)!important;background:linear-gradient(145deg,#123A5D,#0B2947)!important}
+.payment-operator-select.operator-orange{border-color:#F59E0B!important;background:linear-gradient(145deg,#7A4308,#3C270F)!important;color:#FFE7B0!important}
+.payment-operator-select.operator-mtn{border-color:#F5C542!important;background:linear-gradient(145deg,#6F6108,#38320B)!important;color:#FFF2A8!important}
+.payment-operator-select.operator-moov{border-color:#1683FF!important;background:linear-gradient(145deg,#124B82,#0B2947)!important;color:#D9EEFF!important}
+.payment-operator-select.operator-wave{border-color:#25BFF2!important;background:linear-gradient(145deg,#0E6484,#0B2947)!important;color:#DDF8FF!important}
+
 
 .payment-window-trigger.mobile-all-networks .payment-trigger-icon-wrap{font-size:25px;line-height:1}
 .payment-window-trigger.mobile-all-networks small{display:block;margin-top:3px;color:#D9E7F3;font-size:11px;font-weight:700}
@@ -721,14 +730,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="section-kicker">Espace sécurisé</div>
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
-    <div class="payment-window-launcher" aria-label="Choisir un moyen de paiement">
-      <button class="payment-window-trigger wave-first" type="button" data-payment-window="mobile">
-        <img class="payment-trigger-icon" src="/wave.png" alt="" aria-hidden="true">
-        <span><strong>Paiement avec Wave</strong><small>Paiement web sécurisé</small></span>
-      </button>
+    <div class="payment-window-launcher" aria-label="Effectuer un dépôt">
       <button class="payment-window-trigger mobile-all-networks" type="button" data-payment-window="mobile">
         <span class="payment-trigger-icon-wrap">📱</span>
-        <span><strong>Paiement mobile tous réseaux</strong><small>Orange • MTN • Moov</small></span>
+        <span><strong>Effectuer un dépôt</strong><small>Wave • Orange • MTN • Moov</small></span>
       </button>
     </div>
   <div id="waveDayCard" class="card payment-card payment-window-source">
@@ -771,9 +776,11 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   <div id="mobileMoneyCard" class="card payment-window-source">
     <h2>💰 Paiement mobile tous réseaux</h2>
     <div class="notice mobile-payment-intro">
-      📱 Vous pouvez payer par <strong>Orange Money, Moov Money, MTN Money ou Wave</strong>.
+      📱 Choisissez votre moyen de paiement ci-dessous.
       <br><br>
-      Si vous souhaitez payer par <strong>Orange Money, Moov Money ou MTN Money</strong>, cliquez sur le bouton <strong>Copier</strong> du réseau choisi. Le numéro sera copié automatiquement. Rendez-vous ensuite dans votre application de paiement sur votre téléphone pour effectuer le transfert, puis envoyez la référence de dépôt.
+      Pour <strong>Orange Money, Moov Money ou MTN Money</strong>, cliquez sur le petit bouton <strong>Copier</strong>. Le numéro sera automatiquement copié, puis vous pourrez ouvrir votre application de paiement sur votre téléphone pour effectuer le transfert.
+      <br><br>
+      Après le paiement, revenez dans BatBot pour enregistrer votre référence de transaction.
     </div>
     <button class="deposit-conditions-trigger" type="button" data-payment-window="conditions">
       <span>📋</span>
@@ -826,16 +833,18 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         <div class="conditions-list">
           <div><b>1.</b><span>Choisissez l’offre que vous souhaitez payer.</span></div>
           <div><b>2.</b><span>Choisissez votre moyen de paiement.</span></div>
-          <div><b>3.</b><span>Pour Orange Money, MTN Money ou Moov Money, cliquez sur <strong>Copier</strong>, puis ouvrez votre application de paiement pour effectuer le transfert.</span></div>
-          <div><b>4.</b><span>Pour Wave, utilisez le bouton de paiement correspondant à votre offre.</span></div>
-          <div><b>5.</b><span>Après le paiement, renseignez le montant et la référence de transaction.</span></div>
-          <div><b>6.</b><span>Envoyez la référence ou votre preuve de paiement sur WhatsApp si nécessaire.</span></div>
+          <div><b>3.</b><span>Pour Orange Money, MTN Money ou Moov Money, cliquez sur le petit bouton <strong>Copier</strong>. Le numéro sera automatiquement copié.</span></div>
+          <div><b>4.</b><span>Ouvrez ensuite votre application de paiement sur votre téléphone et effectuez le transfert.</span></div>
+          <div><b>5.</b><span>Pour Wave, appuyez sur le bouton correspondant à l’offre choisie et suivez les instructions de paiement.</span></div>
+          <div><b>6.</b><span>Après le paiement, revenez dans BatBot, indiquez le montant payé et saisissez votre référence de transaction.</span></div>
+          <div><b>7.</b><span>Appuyez sur <strong>Enregistrer la référence</strong>, puis envoyez votre preuve sur WhatsApp si nécessaire.</span></div>
         </div>
+        <button class="btn secondary conditions-close-button" type="button">← Retour au paiement</button>
       </div>
     </div>
 
-    <label><span class="muted">Offre payée</span><select id="paymentOffer" class="payment-offer-select"><option value="Analyse du jour">Analyse du jour — 500 F</option><option value="Premium 7 jours">Premium — 1 000 F / 7 jours</option><option value="Premium + IA 7 jours">Premium + IA — 1 000 F / 7 jours</option></select></label>
-    <label><span class="muted">Opérateur utilisé</span><select id="paymentOperator" class="payment-operator-select"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option><option>Wave</option></select></label>
+    <label class="payment-field payment-offer-field"><span class="muted">Offre payée</span><select id="paymentOffer" class="payment-offer-select" aria-label="Offre payée"><option value="Analyse du jour">Analyse du jour — 500 F</option><option value="Premium 7 jours">Premium — 1 000 F / 7 jours</option><option value="Premium + IA 7 jours">Premium + IA — 1 000 F / 7 jours</option></select></label>
+    <label class="payment-field payment-operator-field"><span class="muted">Opérateur utilisé</span><select id="paymentOperator" class="payment-operator-select" aria-label="Opérateur utilisé"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option><option>Wave</option></select></label>
     <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
     <label><span class="muted">Référence de transaction</span><input id="paymentReference" maxlength="120" placeholder="Référence du paiement"></label>
     <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ Enregistrer la référence</button>
@@ -1676,9 +1685,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       document.body.style.overflow='';
     }
     function addNode(node){
-      const placeholder=document.createComment('batbot-payment-window-placeholder');
-      node.parentNode.insertBefore(placeholder,node);
-      node._paymentPlaceholder=placeholder;
+      if(!node._paymentPlaceholder){
+        const placeholder=document.createComment('batbot-payment-window-placeholder');
+        node.parentNode.insertBefore(placeholder,node);
+        node._paymentPlaceholder=placeholder;
+      }
       node.classList.remove('hidden');
       node.classList.add('in-window');
       body.appendChild(node);
@@ -1687,7 +1698,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     function openPaymentWindow(type){
       closePaymentWindow();
       if(type==='mobile'){
-        title.textContent='📱 Paiement mobile tous réseaux';
+        title.textContent='📱 Paiement — tous les moyens';
         addNode(mobile);
       }else if(type==='conditions'){
         title.textContent='📋 Conditions de dépôt';
@@ -1696,7 +1707,25 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
     }
-    launcher.querySelectorAll('[data-payment-window]').forEach(button=>button.addEventListener('click',()=>openPaymentWindow(button.dataset.paymentWindow)));
+
+    launcher.querySelectorAll('[data-payment-window]').forEach(button=>{
+      button.addEventListener('click',()=>openPaymentWindow(button.dataset.paymentWindow));
+    });
+
+    document.addEventListener('click',event=>{
+      const conditionsButton=event.target.closest('.deposit-conditions-trigger');
+      if(conditionsButton){
+        event.preventDefault();
+        openPaymentWindow('conditions');
+        return;
+      }
+      const conditionsClose=event.target.closest('.conditions-close-button');
+      if(conditionsClose){
+        event.preventDefault();
+        openPaymentWindow('mobile');
+      }
+    });
+
     closeButton.addEventListener('click',closePaymentWindow);
     modal.addEventListener('click',event=>{if(event.target===modal)closePaymentWindow();});
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.classList.contains('hidden'))closePaymentWindow();});
