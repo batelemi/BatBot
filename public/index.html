@@ -452,6 +452,18 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
 .payment-trigger-icon{width:30px;height:30px;object-fit:contain;vertical-align:middle;margin-right:6px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.2))}\n.payment-window-launcher{display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0 14px}
 .payment-window-trigger{width:100%;min-height:48px;border:0;border-radius:13px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+.payment-window-trigger.mobile-all-networks{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(145deg,#2B587A,#173B5D);text-align:left}
+.payment-window-trigger.mobile-all-networks .payment-trigger-icon-wrap{font-size:25px;line-height:1}
+.payment-window-trigger.mobile-all-networks small{display:block;margin-top:3px;color:#D9E7F3;font-size:11px;font-weight:700}
+.payment-link-disabled{opacity:.52;filter:grayscale(.25);cursor:not-allowed!important;pointer-events:none;box-shadow:0 4px 0 rgba(0,0,0,.20)!important}
+.mobile-payment-conditions{margin-bottom:10px}
+.wave-mobile-payment-block{margin-top:14px;padding:14px;border-radius:16px;background:linear-gradient(145deg,#0D3153,#0A2038);border:1px solid rgba(83,207,255,.30);box-shadow:0 8px 22px rgba(0,0,0,.16)}
+.wave-mobile-payment-title{display:flex;align-items:center;gap:9px;font-weight:900;font-size:16px;margin-bottom:10px}
+.wave-mobile-payment-title img{width:34px;height:34px;object-fit:contain;border-radius:10px;background:#fff}
+.wave-mobile-payment-actions{display:grid;gap:8px}
+.wave-mobile-payment-button{margin:0;min-height:48px;display:flex;align-items:center;gap:8px}
+.wave-mobile-payment-button img{width:25px;height:25px;object-fit:contain;border-radius:7px;background:#fff}
+
 .payment-window-source.hidden{display:none!important}
 .payment-window-modal{position:fixed;inset:0;z-index:420;display:flex;align-items:flex-start;justify-content:center;padding:14px;background:rgba(2,10,20,.92);overflow:auto}
 .payment-window-modal.hidden{display:none}
@@ -685,9 +697,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <h2>💳 Dépôts & paiements</h2>
     <div class="professional-note">🔐 Choisissez votre moyen de paiement. Vérifiez toujours le montant avant de confirmer et conservez votre preuve de paiement.</div>
     <div class="payment-window-launcher" aria-label="Choisir un moyen de paiement">
-      <button class="payment-window-trigger wave" type="button" data-payment-window="wave"><img class="payment-trigger-icon" src="/wave.png" alt="" aria-hidden="true"> Paiement avec Wave</button>
-      <button class="payment-window-trigger secondary" type="button" data-payment-window="mobile">📱 Orange • MTN • Moov</button>
-      <button class="payment-window-trigger secondary" type="button" data-payment-window="conditions">📋 Conditions de dépôt</button>
+      <button class="payment-window-trigger mobile-all-networks" type="button" data-payment-window="mobile">
+        <span class="payment-trigger-icon-wrap">📱</span>
+        <span><strong>Paiement mobile tous réseaux</strong><small>Cliquez ici pour payer</small></span>
+      </button>
     </div>
   <div id="waveDayCard" class="card payment-card payment-window-source">
     <h2>💳 Analyse du jour</h2>
@@ -699,7 +712,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       📌 Effectuez le paiement de <strong>500 F</strong> avant d'envoyer votre demande d'analyse.
     </div>
     <a id="waveDayButton" class="btn wave"
-      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500"
+      href=""
       target="_blank" rel="noopener noreferrer">💙 Payer 500 F avec Wave</a>
     <div class="payment-confirm">
       ✅ Paiement manuel. Après le paiement, revenez dans l'application et envoyez vos matchs à analyser.
@@ -719,7 +732,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       Votre profil reçoit également un <strong>badge bleu</strong>.
     </div>
     <a id="wavePremiumButton" class="btn wave"
-      href="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000"
+      href=""
       target="_blank" rel="noopener noreferrer">💙 Souscrire 7 jours — 1 000 F</a>
     <div class="payment-confirm">
       📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
@@ -727,11 +740,20 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   </div>
 
   <div id="mobileMoneyCard" class="card payment-window-source">
-    <h2>💰 Autres moyens de paiement</h2>
+    <h2>💰 Paiement mobile tous réseaux</h2>
+    <div class="payment-window-conditions mobile-payment-conditions">
+      <div class="notice">
+        <strong>📋 Conditions de dépôt</strong><br>
+        1. Choisissez votre offre et votre moyen de paiement.<br>
+        2. Pour Orange Money, Moov Money et MTN Money, copiez le numéro puis effectuez le transfert depuis votre application Mobile Money.<br>
+        3. Pour Wave, utilisez directement l'un des boutons de paiement ci-dessous.<br>
+        4. Après le paiement, renseignez le montant et la référence de transaction, puis envoyez votre preuve sur WhatsApp si nécessaire.
+      </div>
+    </div>
     <div class="notice">
-      📱 Vous pouvez également payer par <strong>Orange Money, Moov Money ou MTN Money</strong>.
+      📱 Vous pouvez payer par <strong>Orange Money, Moov Money, MTN Money ou Wave</strong>.
       <br><br>
-      Appuyez sur le bouton ci-dessous pour recevoir le numéro de dépôt avec un message prédéfini.
+      Les numéros Mobile Money restent masqués à l'écran. Appuyez sur <strong>Copier</strong> pour copier le numéro, puis effectuez votre transfert.
     </div>
     <div class="payment-grid">
       <div class="payment-number orange-network">
@@ -756,8 +778,24 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         <button class="btn payment-number-action" type="button" style="background:linear-gradient(145deg,#24A5FF,#0067E8);color:#fff;box-shadow:0 6px 0 #004AA8,0 10px 18px rgba(0,112,255,.18)" onclick="copyPaymentNumber('Moov Money')">📋 Copier</button>
       </div>
     </div>
+
+    <div class="wave-mobile-payment-block">
+      <div class="wave-mobile-payment-title">
+        <img src="/wave.png" alt="Wave">
+        <span>Payer avec Wave</span>
+      </div>
+      <div class="wave-mobile-payment-actions">
+        <a id="waveMobileDayButton" class="btn wave wave-mobile-payment-button" href="" target="_blank" rel="noopener noreferrer">
+          <img src="/wave.png" alt="" aria-hidden="true"> Payer 500 F avec Wave
+        </a>
+        <a id="waveMobilePremiumButton" class="btn wave wave-mobile-payment-button" href="" target="_blank" rel="noopener noreferrer">
+          <img src="/wave.png" alt="" aria-hidden="true"> Souscrire 7 jours — 1 000 F
+        </a>
+      </div>
+    </div>
+
     <label><span class="muted">Offre payée</span><select id="paymentOffer"><option value="Analyse du jour">Analyse du jour — 500 F</option><option value="Premium 7 jours">Premium — 1 000 F / 7 jours</option><option value="Premium + IA 7 jours">Premium + IA — 1 000 F / 7 jours</option></select></label>
-    <label><span class="muted">Opérateur utilisé</span><select id="paymentOperator"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option></select></label>
+    <label><span class="muted">Opérateur utilisé</span><select id="paymentOperator"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option><option>Wave</option></select></label>
     <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
     <label><span class="muted">Référence de transaction</span><input id="paymentReference" maxlength="120" placeholder="Référence du paiement"></label>
     <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ Enregistrer la référence</button>
@@ -1592,16 +1630,9 @@ function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer
     }
     function openPaymentWindow(type){
       closePaymentWindow();
-      if(type==='wave'){
-        title.textContent='💙 Paiement avec Wave';
-        addNode(waveDay);
-        addNode(wavePremium);
-      }else if(type==='mobile'){
-        title.textContent='📱 Paiement Mobile Money';
+      if(type==='mobile'){
+        title.textContent='📱 Paiement mobile tous réseaux';
         addNode(mobile);
-      }else{
-        title.textContent='📋 Conditions de dépôt';
-        body.innerHTML='<div class="payment-window-conditions"><div class="notice"><strong>1. Choisissez votre offre</strong><br>Analyse du jour : 500 F. Abonnement Premium : 1 000 F pour 7 jours.</div><div class="notice"><strong>2. Effectuez le paiement</strong><br>Utilisez Wave ou le numéro Orange Money, MTN Money ou Moov Money affiché dans la fenêtre correspondante.</div><div class="notice"><strong>3. Conservez votre preuve</strong><br>Gardez la capture et la référence de transaction jusqu’à la confirmation du service.</div><div class="notice"><strong>4. Envoyez les informations</strong><br>Enregistrez le montant et la référence dans le formulaire, puis envoyez la preuve sur WhatsApp au service client.</div><div class="notice"><strong>5. Validation</strong><br>L’activation de Premium ou des services associés se fait après vérification du paiement par l’administrateur.</div></div>';
       }
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
@@ -1801,8 +1832,17 @@ async function loadConfig(){
     if(!response.ok)throw new Error(data.error||"Configuration indisponible");
     if(data.whatsapp)WHATSAPP_NUMBER=data.whatsapp;
     if(data.telegram)TELEGRAM_CONTACT=data.telegram;
-    const day=document.getElementById("waveDayButton");if(day&&data.wave500)day.href=data.wave500;
-    const premium=document.getElementById("wavePremiumButton");if(premium&&data.wave1000)premium.href=data.wave1000;
+    const syncPaymentLink=(ids,url)=>{
+      ids.forEach(id=>{
+        const button=document.getElementById(id);if(!button)return;
+        button.classList.remove("payment-link-disabled");
+        button.removeAttribute("aria-disabled");
+        if(url){button.href=url;}
+        else{button.removeAttribute("href");button.classList.add("payment-link-disabled");button.setAttribute("aria-disabled","true");}
+      });
+    };
+    syncPaymentLink(["waveDayButton","waveMobileDayButton"],data.wave500);
+    syncPaymentLink(["wavePremiumButton","waveMobilePremiumButton"],data.wave1000);
   }catch(error){console.warn("CONFIG:",error.message);}
 }
 
