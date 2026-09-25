@@ -1352,6 +1352,8 @@ function showDashboard(user){
   loadDailyMatches();
   loadMyTransactions();
   loadMemberPredictions();
+  loadAdminMemberPredictions();
+  startMemberPredictionsRealtime();
   startBatBotMessagesPolling();
 }
 
@@ -1837,7 +1839,17 @@ async function loadAdminBookmakers(){
   const box=document.getElementById("adminBookmakersList");if(!box)return;const r=await fetch("/api/admin/bookmakers",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
   box.innerHTML=(d.bookmakers||[]).map(b=>`<div class="member-card"><strong>${escapeHtml(b.name)}</strong><div class="admin-small">${escapeHtml(b.url)}</div><button class="btn danger" onclick="deleteBookmaker(${b.id})">🗑️ Supprimer</button></div>`).join("")||'<p class="muted">Aucun bookmaker.</p>';
 }
-async function deleteBookmaker(id){if(!confirm("Supprimer ce bookmaker ?"))return;await fetch("/api/admin/bookmakers/"+id,{method:"DELETE",credentials:"same-origin"});await loadAdminBookmakers();await loadBookmakers();}
+async function deleteBookmaker(id){
+  const confirmed=await showProfessionalConfirm({title:"🗑️ Supprimer le bookmaker",message:"Ce bookmaker sera retiré de la liste des partenaires. Cette action est définitive.",confirmText:"Supprimer"});
+  if(!confirmed)return;
+  try{
+    const response=await fetch("/api/admin/bookmakers/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin",headers:{"Accept":"application/json"}});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Impossible de supprimer le bookmaker.");
+    showToast(data.message||"Bookmaker supprimé avec succès.","success");
+    await Promise.allSettled([loadAdminBookmakers(),loadBookmakers()]);
+  }catch(error){showToast(error.message||"Impossible de supprimer le bookmaker.","error");}
+}
 async function loadAdminCoupons(){
   const box=document.getElementById("adminCouponsList");if(!box)return;const r=await fetch("/api/admin/coupons",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
   box.innerHTML=(d.coupons||[]).map(c=>`<div class="member-card"><strong>${escapeHtml(c.platform_name)} — ${escapeHtml(c.code)}</strong><div class="admin-small">${escapeHtml(c.platform_url)}</div><button class="btn danger" onclick="deleteCoupon(${c.id})">🗑️ Supprimer</button></div>`).join("")||'<p class="muted">Aucun coupon.</p>';
@@ -1857,9 +1869,11 @@ function renderAdminUsers(users){
         <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre BatBot'}</span>
       </div>
       <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
-      ${active?`<div class="admin-small">⏳ Jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
+      ${user.premium_started_at?`<div class="admin-small">💎 Premium activé : ${escapeHtml(formatDateTime(user.premium_started_at))}</div>`:''}
+      ${active?`<div class="admin-small">⏳ Premium jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
       <div class="admin-small">🤖 IA : ${user.ai_active?'Active':'Non active'}</div>
-      ${user.ai_active && user.ai_until?`<div class="admin-small">⏳ IA jusqu'au : ${escapeHtml(formatDateTime(user.ai_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
+      ${user.ai_started_at?`<div class="admin-small">🤖 IA activée : ${escapeHtml(formatDateTime(user.ai_started_at))}</div>`:''}
+      ${user.ai_until?`<div class="admin-small">⏳ IA jusqu'au : ${escapeHtml(formatDateTime(user.ai_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
       <div class="admin-actions">
         <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium</button>
         <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
@@ -2057,7 +2071,8 @@ async function submitBatBotAI(){
   const match1=document.getElementById("aiMatch1").value.trim();
   const match2=document.getElementById("aiMatch2").value.trim();
   const first=splitMatch(match1),second=splitMatch(match2);
-  if(!first.home||!first.away||!second.home||!second.away)return showStatus("smartDriveAIStatus","⚠️ Saisissez les 2 matchs au format : Équipe 1 vs Équipe 2.","error");
+  if(!match1&&!match2)return showStatus("smartDriveAIStatus","⚠️ Saisissez au moins un match au format : Équipe 1 vs Équipe 2.","error");
+  if((match1&&(!first.home||!first.away))||(match2&&(!second.home||!second.away)))return showStatus("smartDriveAIStatus","⚠️ Chaque match renseigné doit être au format : Équipe 1 vs Équipe 2.","error");
   if(button?.disabled)return;
   setLoading("smartDriveAIButton",true,"🤖 Lancer l’analyse");
   status.className="status";
@@ -2491,11 +2506,32 @@ async function resolvePaymentRequest(id,status,button){
 
 async function copyMemberCoupon(value,button){
   const copied=await copyText(value);
-  if(!copied||!button)return;
+  if(!copied){showToast("Impossible de copier le code. Réessayez.","error");return;}
+  if(!button)return;
   const original=button.innerHTML;
-  button.innerHTML="✓ Code copié";
+  button.innerHTML="✅ Code copié avec succès";
   button.disabled=true;
   setTimeout(()=>{button.innerHTML=original;button.disabled=false;},1800);
+}
+
+let memberPredictionsStream=null;
+function startMemberPredictionsRealtime(){
+  if(memberPredictionsStream||typeof EventSource!=="function")return;
+  try{
+    memberPredictionsStream=new EventSource("/api/member-predictions/stream");
+    memberPredictionsStream.onmessage=function(event){
+      try{
+        const payload=JSON.parse(event.data||"{}");
+        if(["created","deleted","expired"].includes(payload.type)){
+          Promise.allSettled([loadMemberPredictions(),loadAdminMemberPredictions()]);
+        }
+      }catch(_){}
+    };
+    memberPredictionsStream.onerror=function(){
+      if(memberPredictionsStream){memberPredictionsStream.close();memberPredictionsStream=null;}
+      setTimeout(startMemberPredictionsRealtime,3000);
+    };
+  }catch(_){memberPredictionsStream=null;}
 }
 
 function initMemberPredictionPick(){
@@ -2519,7 +2555,7 @@ function formatMemberPredictionDate(value){
   if(!value)return "Date non disponible";
   const d=new Date(String(value).replace(" ","T")+"Z");
   if(Number.isNaN(d.getTime()))return String(value);
-  return d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  return d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"});
 }
 
 function renderMemberPredictionCard(item,adminMode){
@@ -2536,7 +2572,7 @@ function renderMemberPredictionCard(item,adminMode){
   const commentSafe=escapeHtml(comment);
   const disabled=item.disabled?'<span class="badge" style="background:#7F1D1D;border-color:#FF8A8A">Compte désactivé</span>':'';
   return `
-    <article class="member-prediction-card">
+    <article class="member-prediction-card" id="memberPredictionCard_${id}">
       <div class="member-prediction-head">
         <div><div class="member-prediction-user">👤 ${username}</div><div class="member-prediction-date">📅 ${escapeHtml(formatMemberPredictionDate(item.created_at))}</div></div>
         ${disabled}
@@ -2656,6 +2692,7 @@ async function loadAdmin(){
   loadAdminPaymentRequests();
   loadAdminMessages();
   loadAdminMemberPredictions();
+  startMemberPredictionsRealtime();
 
   try{
     const response=await fetch("/api/admin/users",{credentials:"same-origin",cache:"no-store"});
@@ -2918,9 +2955,11 @@ async function deleteDailyMatch(id){
 
 function formatDateTime(value){
   if(!value)return "";
-  const date=new Date(String(value).replace(" ","T")+"Z");
-  if(Number.isNaN(date.getTime()))return String(value);
-  return date.toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"});
+  const raw=String(value).trim();
+  const iso=/Z$|[+-]\d{2}:?\d{2}$/.test(raw)?raw:raw.replace(" ","T")+"Z";
+  const date=new Date(iso);
+  if(Number.isNaN(date.getTime()))return raw;
+  return date.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"});
 }
 
 function showTemporaryPasswordModal(data){
