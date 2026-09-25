@@ -686,7 +686,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <h2>📢 Pronostics des membres</h2>
     <p class="muted">Publiez votre propre pronostic. Une fois publié, il devient visible par les autres membres de BatBot.</p>
 
-    <div class="notice">📊 Les probabilités <strong>1 / N / 2</strong> doivent totaliser exactement <strong>100 %</strong>. Le code coupon et le site sont facultatifs, mais le site est obligatoire si vous ajoutez un coupon.</div>
+    <div class="notice">📊 Les probabilités <strong>1 / N / 2</strong> doivent totaliser exactement <strong>100 %</strong>. Le code coupon est facultatif, mais s’il est renseigné, il doit correspondre à un coupon actif enregistré dans BatBot. La description doit rester strictement liée à l’analyse du match.</div>
 
     <input id="memberPredictionHome" maxlength="80" placeholder="Équipe 1 — Exemple : Real Madrid">
     <input id="memberPredictionAway" maxlength="80" placeholder="Équipe 2 — Exemple : FC Barcelone">
@@ -715,7 +715,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
     <input id="memberPredictionCoupon" maxlength="120" placeholder="🎫 Code coupon (facultatif)">
     <input id="memberPredictionBookmaker" maxlength="120" placeholder="🏷️ Site / bookmaker du coupon (facultatif)">
-    <textarea id="memberPredictionComment" maxlength="500" placeholder="📝 Commentaire ou explication (facultatif)"></textarea>
+    <textarea id="memberPredictionComment" maxlength="500" placeholder="📝 Analyse du match : forme, buts, défense, statistiques… (obligatoire)"></textarea>
 
     <button id="publishMemberPredictionButton" class="btn green" type="button" onclick="publishMemberPrediction()">📢 Publier mon pronostic</button>
     <div id="memberPredictionStatus" class="status"></div>
@@ -1854,7 +1854,24 @@ async function loadAdminCoupons(){
   const box=document.getElementById("adminCouponsList");if(!box)return;const r=await fetch("/api/admin/coupons",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
   box.innerHTML=(d.coupons||[]).map(c=>`<div class="member-card"><strong>${escapeHtml(c.platform_name)} — ${escapeHtml(c.code)}</strong><div class="admin-small">${escapeHtml(c.platform_url)}</div><button class="btn danger" onclick="deleteCoupon(${c.id})">🗑️ Supprimer</button></div>`).join("")||'<p class="muted">Aucun coupon.</p>';
 }
-async function deleteCoupon(id){if(!confirm("Supprimer ce coupon ?"))return;await fetch("/api/admin/coupons/"+id,{method:"DELETE",credentials:"same-origin"});await loadAdminCoupons();await loadCoupons();}
+async function deleteCoupon(id){
+  if(!id)return;
+  const confirmed=await showProfessionalConfirm({
+    title:"🗑️ Supprimer le coupon",
+    message:"Ce code coupon sera retiré des coupons actifs de BatBot. Cette action est définitive.",
+    confirmText:"Supprimer"
+  });
+  if(!confirmed)return;
+  try{
+    const response=await fetch("/api/admin/coupons/"+encodeURIComponent(id),{method:"DELETE",credentials:"same-origin",headers:{"Accept":"application/json"}});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Impossible de supprimer le coupon.");
+    showToast(data.message||"Coupon supprimé avec succès.","success");
+    await Promise.allSettled([loadAdminCoupons(),loadCoupons()]);
+  }catch(error){
+    showToast(error.message||"Impossible de supprimer le coupon.","error");
+  }
+}
 function filterAdminUsers(){
   const q=(document.getElementById("userSearch").value||"").trim().toLowerCase();
   renderAdminUsers(adminUsersCache.filter(u=>String(u.username||u.name||"").toLowerCase().includes(q)));
@@ -2621,6 +2638,7 @@ async function publishMemberPrediction(){
   const bookmaker=document.getElementById("memberPredictionBookmaker").value.trim();
   const comment=document.getElementById("memberPredictionComment").value.trim();
   if(!home||!away)return showStatus("memberPredictionStatus","Indiquez les deux équipes du match.","error");
+  if(!comment)return showStatus("memberPredictionStatus","Ajoutez une description directement liée à l'analyse du match.","error");
   if(![h,d,a].every(Number.isFinite)||h<0||h>100||d<0||d>100||a<0||a>100||Math.abs(h+d+a-100)>0.01)return showStatus("memberPredictionStatus","Les probabilités 1 / N / 2 doivent totaliser exactement 100 %. ","error");
   if(coupon&&!bookmaker)return showStatus("memberPredictionStatus","Indiquez le site ou bookmaker correspondant au code coupon.","error");
   setLoading("publishMemberPredictionButton",true,"📢 Publier mon pronostic");
