@@ -1,4 +1,4 @@
-const CACHE = "batbot-v2";
+const CACHE = "batbot-v3";
 const ASSETS = ["/", "/index.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", event => {
