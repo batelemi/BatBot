@@ -907,7 +907,17 @@ function broadcastMemberPredictionEvent(payload) {
 async function validateFootballTeamForAI(teamName) {
   const name = String(teamName || '').trim();
   if (!name) return false;
+
+  // Priorité au catalogue local BATBOT : les noms déjà reconnus localement
+  // ne dépendent pas d'un résultat de recherche API-Football. Cela évite les
+  // faux refus sur les variantes connues (ex. Côte d'Ivoire, FC Barcelona, etc.).
+  if (validateLocalFootballTeam(name)) return true;
+
+  // Pour les équipes absentes du catalogue local, on conserve la vérification
+  // API-Football afin de permettre une couverture plus large sans accepter des
+  // noms inventés.
   if (!API_FOOTBALL_KEY) return null;
+
   const cacheKey = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
   const cached = footballTeamCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.valid;
