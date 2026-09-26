@@ -2198,7 +2198,7 @@ async function loadApiFootballFixtures(){
         const item=fixtures[index];
         const home=item?.teams?.home?.name||"";
         const away=item?.teams?.away?.name||"";
-        analyzeApiFootballMatch(home,away,teams.home?.id,teams.away?.id);
+        analyzeApiFootballMatch(home,away,item?.teams?.home?.id,item?.teams?.away?.id);
       });
     });
 
