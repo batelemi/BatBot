@@ -907,17 +907,7 @@ function broadcastMemberPredictionEvent(payload) {
 async function validateFootballTeamForAI(teamName) {
   const name = String(teamName || '').trim();
   if (!name) return false;
-
-  // Priorité au catalogue local BATBOT : les noms déjà reconnus localement
-  // ne dépendent pas d'un résultat de recherche API-Football. Cela évite les
-  // faux refus sur les variantes connues (ex. Côte d'Ivoire, FC Barcelona, etc.).
-  if (validateLocalFootballTeam(name)) return true;
-
-  // Pour les équipes absentes du catalogue local, on conserve la vérification
-  // API-Football afin de permettre une couverture plus large sans accepter des
-  // noms inventés.
   if (!API_FOOTBALL_KEY) return null;
-
   const cacheKey = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
   const cached = footballTeamCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.valid;
@@ -969,218 +959,26 @@ try {
   throw new Error("Impossible de charger data/football-teams.json. Le serveur ne peut pas démarrer sans son catalogue local.");
 }
 
-// Variantes et appellations françaises courantes des équipes demandées pour BatBot IA.
-// Elles sont normalisées vers les noms déjà présents dans le catalogue local.
-const FOOTBALL_TEAM_ALIASES = new Map([
-  ["fc barcelone", "barcelona"],
-  ["barcelone", "barcelona"],
-  ["atletico de madrid", "atletico madrid"],
-  ["atletico madrid", "atletico madrid"],
-  ["athletic bilbao", "athletic club"],
-  ["villarreal cf", "villarreal"],
-  ["seville fc", "sevilla"],
-  ["valence cf", "valencia"],
-  ["juventus turin", "juventus"],
-  ["ssc naples", "napoli"],
-  ["naples", "napoli"],
-  ["as rome", "roma"],
-  ["lazio rome", "lazio"],
-  ["atalanta bergame", "atalanta"],
-  ["ajax amsterdam", "ajax"],
-  ["feyenoord rotterdam", "feyenoord"],
-  ["benfica lisbonne", "benfica"],
-  ["fc porto", "porto"],
-  ["arsenal fc", "arsenal"],
-  ["manchester utd", "manchester united"],
-  ["manchester u", "manchester united"],
-  ["man u", "man united"],
-  ["celtic fc", "celtic"],
-  ["rangers fc", "rangers"],
-  ["raja club athletic", "raja casablanca"],
-  ["wydad athletic club", "wydad casablanca"],
-  ["espérance sportive de tunis", "esperance tunis"],
-  ["esperance sportive de tunis", "esperance tunis"],
-  ["etoile sportive du sahel", "etoile du sahel"],
-  ["usm alger", "usm alger"],
-  ["js kabylie", "js kabylie"],
-  ["mc alger", "mc alger"],
-  ["cr belouizdad", "cr belouizdad"],
-  ["mimosas", "asec mimosas"],
-  ["africa sports d abidjan", "africa sports"],
-  ["al ahly sc", "al ahly"],
-  ["zamalek sc", "zamalek"],
-  ["tp mazembe", "tp mazembe"],
-  ["as vita club", "as vita club"],
-  ["mamelodi sundowns", "mamelodi sundowns"],
-  ["orlando pirates", "orlando pirates"],
-  ["kaizer chiefs", "kaizer chiefs"],
-  ["al hilal soudan", "al hilal"],
-  ["al merrikh", "al merrikh"],
-  ["horoya ac", "horoya ac"],
-  ["petro de luanda", "petro de luanda"],
-  ["young africans sc", "young africans"],
-  ["sao paulo fc", "sao paulo"],
-  ["santos fc", "santos"],
-  ["river plate", "river plate"],
-  ["boca juniors", "boca juniors"],
-  ["al hilal arabie saoudite", "al hilal"],
-  ["al nassr arabie saoudite", "al nassr"],
-  ["al ittihad arabie saoudite", "al ittihad"],
-  ["al ahli arabie saoudite", "al ahli"],
-  ["al ain", "al ain"],
-  ["ulsan hd", "ulsan hyundai"],
-  ["inter miami", "inter miami"],
-  ["los angeles fc", "los angeles fc"],
-  ["club america", "club america"],
-  ["tigres uanl", "tigres uanl"],
-  ["auckland city", "auckland city"]
-]);
-
-const FRENCH_NATIONAL_TEAM_ALIASES = new Map([
-  ["afrique du sud", "south africa"], ["algerie", "algeria"], ["angola", "angola"],
-  ["benin", "benin"], ["botswana", "botswana"], ["burkina faso", "burkina faso"],
-  ["burundi", "burundi"], ["cameroun", "cameroon"], ["cap vert", "cape verde"],
-  ["republique centrafricaine", "central african republic"], ["comores", "comoros"],
-  ["congo", "congo"], ["republique democratique du congo", "democratic republic of the congo"],
-  ["djibouti", "djibouti"], ["egypte", "egypt"], ["guinee equatoriale", "equatorial guinea"],
-  ["erythree", "eritrea"], ["eswatini", "eswatini"], ["ethiopie", "ethiopia"],
-  ["gabon", "gabon"], ["gambie", "gambia"], ["ghana", "ghana"], ["guinee", "guinea"],
-  ["guinee bissau", "guinea bissau"], ["kenya", "kenya"], ["lesotho", "lesotho"],
-  ["liberia", "liberia"], ["libye", "libya"], ["madagascar", "madagascar"],
-  ["malawi", "malawi"], ["mali", "mali"], ["maroc", "morocco"], ["maurice", "mauritius"],
-  ["mauritanie", "mauritania"], ["mozambique", "mozambique"], ["namibie", "namibia"],
-  ["niger", "niger"], ["nigeria", "nigeria"], ["ouganda", "uganda"], ["rwanda", "rwanda"],
-  ["sao tome et principe", "sao tome and principe"], ["senegal", "senegal"], ["seychelles", "seychelles"],
-  ["sierra leone", "sierra leone"], ["somalie", "somalia"], ["soudan", "sudan"],
-  ["soudan du sud", "south sudan"], ["tanzanie", "tanzania"], ["tchad", "chad"],
-  ["togo", "togo"], ["tunisie", "tunisia"], ["zambie", "zambia"], ["zimbabwe", "zimbabwe"]
-]);
-
 function normalizeFootballTeamName(value) {
-  let normalized = String(value || "")
-    .replace(/\([^)]*\)/g, " ")
+  return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/&/g, " and ")
     .toLowerCase()
-    .replace(/^equipe nationale (?:d[’']|de l[’']|du |de la |des |de )/i, "")
-    .replace(/\b(fc|cf|sc|afc|ac|bk|fk|sk|nk|ks|kfc|pfc|cd|cs|as|rc|rsc|sv|kv|ka|club|football club)\b/g, " ")
+    .replace(/\b(fc|cf|sc|afc|ac|bk|fk|sk|nk|ks|kfc|pfc|cd|cs|as|rc|rsc|sv|kv|ka|fk|club|football club)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-
-  normalized = FRENCH_NATIONAL_TEAM_ALIASES.get(normalized) || normalized;
-  normalized = FOOTBALL_TEAM_ALIASES.get(normalized) || normalized;
-  return normalized;
 }
 
-const FOOTBALL_TEAM_EXTRA_NAMES = [
-  "Real Madrid (Espagne)", "FC Barcelone (Espagne)", "Atlético de Madrid (Espagne)", "Athletic Bilbao (Espagne)",
-  "Real Sociedad (Espagne)", "Villarreal CF (Espagne)", "Séville FC (Espagne)", "Real Betis (Espagne)", "Valence CF (Espagne)",
-  "Manchester City (Angleterre)", "Arsenal FC (Angleterre)", "Liverpool FC (Angleterre)", "Manchester United (Angleterre)",
-  "Chelsea FC (Angleterre)", "Tottenham Hotspur (Angleterre)", "Newcastle United (Angleterre)", "Aston Villa (Angleterre)",
-  "West Ham United (Angleterre)", "Bayern Munich (Allemagne)", "Borussia Dortmund (Allemagne)", "Bayer Leverkusen (Allemagne)",
-  "RB Leipzig (Allemagne)", "Eintracht Frankfurt (Allemagne)", "VfB Stuttgart (Allemagne)", "Paris Saint-Germain (France)",
-  "Olympique de Marseille (France)", "AS Monaco (France)", "Olympique Lyonnais (France)", "Lille OSC (France)", "OGC Nice (France)",
-  "Inter Milan (Italie)", "AC Milan (Italie)", "Juventus Turin (Italie)", "SSC Naples (Italie)", "AS Rome (Italie)",
-  "Lazio Rome (Italie)", "Atalanta Bergame (Italie)", "Ajax Amsterdam (Pays-Bas)", "Feyenoord Rotterdam (Pays-Bas)",
-  "PSV Eindhoven (Pays-Bas)", "Benfica Lisbonne (Portugal)", "Sporting CP (Portugal)", "FC Porto (Portugal)",
-  "Galatasaray (Turquie)", "Fenerbahçe (Turquie)", "Beşiktaş (Turquie)", "Celtic FC (Écosse)", "Rangers FC (Écosse)",
-  "Raja Club Athletic (Maroc)", "Wydad Athletic Club (Maroc)", "AS FAR (Maroc)", "RS Berkane (Maroc)", "FUS de Rabat (Maroc)",
-  "Al Ahly SC (Égypte)", "Zamalek SC (Égypte)", "Pyramids FC (Égypte)", "Espérance Sportive de Tunis (Tunisie)",
-  "Étoile Sportive du Sahel (Tunisie)", "Club Africain (Tunisie)", "USM Alger (Algérie)", "JS Kabylie (Algérie)",
-  "MC Alger (Algérie)", "CR Belouizdad (Algérie)", "Mimosas (ASEC Mimosas, Côte d'Ivoire)", "Africa Sports d'Abidjan (Côte d'Ivoire)",
-  "TP Mazembe (RD Congo)", "AS Vita Club (RD Congo)", "Mamelodi Sundowns (Afrique du Sud)", "Orlando Pirates (Afrique du Sud)",
-  "Kaizer Chiefs (Afrique du Sud)", "Al Hilal (Soudan)", "Al Merrikh (Soudan)", "Horoya AC (Guinée)", "Petro de Luanda (Angola)",
-  "Simba SC (Tanzanie)", "Young Africans SC (Tanzanie)", "Flamengo (Brésil)", "Palmeiras (Brésil)", "São Paulo FC (Brésil)",
-  "Santos FC (Brésil)", "Corinthians (Brésil)", "Fluminense (Brésil)", "River Plate (Argentine)", "Boca Juniors (Argentine)",
-  "Independiente (Argentine)", "Racing Club (Argentine)", "Al Hilal (Arabie saoudite)", "Al Nassr (Arabie saoudite)",
-  "Al Ittihad (Arabie saoudite)", "Al Ahli (Arabie saoudite)", "Al Ain (Émirats arabes unis)", "Ulsan HD (Corée du Sud)",
-  "Jeonbuk Hyundai Motors (Corée du Sud)", "Urawa Red Diamonds (Japon)", "Vissel Kobe (Japon)", "Yokohama F. Marinos (Japon)",
-  "Inter Miami (États-Unis)", "LA Galaxy (États-Unis)", "Los Angeles FC (États-Unis)", "Club América (Mexique)",
-  "Tigres UANL (Mexique)", "Monterrey (Mexique)", "Auckland City (Nouvelle-Zélande)",
-  "Équipe nationale d'Afrique du Sud", "Équipe nationale d'Algérie", "Équipe nationale d'Angola", "Équipe nationale du Bénin",
-  "Équipe nationale du Botswana", "Équipe nationale du Burkina Faso", "Équipe nationale du Burundi", "Équipe nationale du Cameroun",
-  "Équipe nationale du Cap-Vert", "Équipe nationale de la République centrafricaine", "Équipe nationale des Comores", "Équipe nationale du Congo",
-  "Équipe nationale de la République démocratique du Congo", "Équipe nationale de Djibouti", "Équipe nationale d'Égypte",
-  "Équipe nationale de la Guinée équatoriale", "Équipe nationale d'Érythrée", "Équipe nationale d'Eswatini", "Équipe nationale d'Éthiopie",
-  "Équipe nationale du Gabon", "Équipe nationale de Gambie", "Équipe nationale du Ghana", "Équipe nationale de Guinée",
-  "Équipe nationale de Guinée-Bissau", "Équipe nationale du Kenya", "Équipe nationale du Lesotho", "Équipe nationale du Liberia",
-  "Équipe nationale de Libye", "Équipe nationale de Madagascar", "Équipe nationale du Malawi", "Équipe nationale du Mali",
-  "Équipe nationale du Maroc", "Équipe nationale de Maurice", "Équipe nationale de Mauritanie", "Équipe nationale du Mozambique",
-  "Équipe nationale de Namibie", "Équipe nationale du Niger", "Équipe nationale du Nigéria", "Équipe nationale d'Ouganda",
-  "Équipe nationale du Rwanda", "Équipe nationale de Sao Tomé-et-Principe", "Équipe nationale du Sénégal", "Équipe nationale des Seychelles",
-  "Équipe nationale de Sierra Leone", "Équipe nationale de Somalie", "Équipe nationale du Soudan", "Équipe nationale du Soudan du Sud",
-  "Équipe nationale de Tanzanie", "Équipe nationale du Tchad", "Équipe nationale du Togo", "Équipe nationale de Tunisie",
-  "Équipe nationale de Zambie", "Équipe nationale du Zimbabwe"
-];
-
 const LOCAL_FOOTBALL_TEAM_SET = new Set(
-  [...LOCAL_FOOTBALL_TEAMS, ...FOOTBALL_TEAM_EXTRA_NAMES].map(normalizeFootballTeamName).filter(Boolean)
+  LOCAL_FOOTBALL_TEAMS.map(normalizeFootballTeamName).filter(Boolean)
 );
 
 function validateLocalFootballTeam(teamName) {
   const normalized = normalizeFootballTeamName(teamName);
   if (!normalized || normalized.length < 2) return false;
   return LOCAL_FOOTBALL_TEAM_SET.has(normalized);
-}
-
-// Compétitions explicitement reconnues par BatBot IA. La liste est locale afin
-// que la reconnaissance des compétitions ne dépende pas d'un résultat de recherche.
-const FOOTBALL_COMPETITIONS = [
-  "Coupe du Monde de la FIFA", "Coupe du Monde des Clubs de la FIFA", "Coupe Intercontinentale de la FIFA",
-  "Jeux Olympiques", "Coupe du Monde Féminine de la FIFA", "Coupe du Monde U-20 de la FIFA",
-  "Coupe du Monde U-17 de la FIFA", "Coupe d'Afrique des Nations (CAN)", "Ligue des Champions de la CAF",
-  "Coupe de la Confédération de la CAF", "Supercoupe de la CAF", "Championnat d'Afrique des Nations (CHAN)",
-  "Ligue des Champions Féminine de la CAF", "Botola Pro (Maroc)", "Coupe du Trône (Maroc)",
-  "Ligue 1 Pro (Tunisie)", "Coupe de Tunisie", "Ligue 1 (Algérie)", "Coupe d'Algérie",
-  "Premier League (Égypte)", "Coupe d'Égypte", "Ligue 1 (Côte d'Ivoire)", "Ligue 1 (Sénégal)",
-  "Linafoot (RD Congo)", "Premier League (Afrique du Sud)", "Championnat d'Europe de l'UEFA (Euro)",
-  "Ligue des Nations de l'UEFA", "Ligue des Champions de l'UEFA (C1)", "Ligue Europa (C3)",
-  "Ligue Europa Conférence", "Supercoupe de l'UEFA", "Premier League (Angleterre)", "FA Cup (Angleterre)",
-  "EFL Cup (Angleterre)", "Championship (Angleterre)", "La Liga (Espagne)", "Copa del Rey (Espagne)",
-  "Supercopa de España (Espagne)", "Serie A (Italie)", "Coppa Italia (Italie)", "Supercoppa Italiana (Italie)",
-  "Bundesliga (Allemagne)", "DFB-Pokal (Allemagne)", "DFL-Supercup (Allemagne)", "Ligue 1 (France)",
-  "Ligue 2 (France)", "Coupe de France (France)", "Trophée des Champions (France)", "Eredivisie (Pays-Bas)",
-  "KNVB Beker (Pays-Bas)", "Liga Portugal (Portugal)", "Taça de Portugal (Portugal)", "Süper Lig (Turquie)",
-  "Premyer-Liga (Russie)", "Jupiler Pro League (Belgique)", "Scottish Premiership (Écosse)",
-  "Super League (Suisse)", "Bundesliga (Autriche)", "Superliga (Danemark)", "Eliteserien (Norvège)",
-  "Allsvenskan (Suède)", "Ekstraklasa (Pologne)", "Copa América", "Copa Libertadores", "Copa Sudamericana",
-  "Brasileirão (Brésil)", "Primera División (Argentine)", "MLS (États-Unis)", "Canadian Premier League (Canada)",
-  "Liga MX (Mexique)", "CONCACAF Champions Cup", "Ligue des Nations de la CONCACAF", "Coupe d'Asie des Nations",
-  "Ligue des Champions de l'AFC", "Saudi Pro League (Arabie saoudite)", "UAE Pro League (Émirats arabes unis)",
-  "J1 League (Japon)", "K League 1 (Corée du Sud)", "Coupe d'Océanie des Nations (OFC)", "Ligue des Champions de l'OFC"
-];
-
-const FOOTBALL_COMPETITION_ALIASES = new Map([
-  ["can", "coupe d afrique des nations can"], ["chan", "championnat d afrique des nations chan"],
-  ["cdm", "coupe du monde de la fifa"], ["coupe du monde", "coupe du monde de la fifa"],
-  ["mondial", "coupe du monde de la fifa"], ["euro", "championnat d europe de l uefa euro"],
-  ["c1", "ligue des champions de l uefa c1"], ["ligue des champions", "ligue des champions de l uefa c1"],
-  ["c3", "ligue europa c3"], ["ligue europa", "ligue europa c3"],
-  ["conference league", "ligue europa conference"], ["champions cup", "concacaf champions cup"]
-]);
-
-function normalizeFootballCompetitionName(value) {
-  let normalized = String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\b(?:fifa|uefa|caf|afc|ofc|concacaf)\b/g, m => m)
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return FOOTBALL_COMPETITION_ALIASES.get(normalized) || normalized;
-}
-
-const LOCAL_FOOTBALL_COMPETITION_SET = new Set(
-  FOOTBALL_COMPETITIONS.map(normalizeFootballCompetitionName).filter(Boolean)
-);
-
-function validateLocalFootballCompetition(competition) {
-  const normalized = normalizeFootballCompetitionName(competition);
-  if (!normalized || normalized.length < 3) return false;
-  return LOCAL_FOOTBALL_COMPETITION_SET.has(normalized);
 }
 
 const FOOTBALL_ANALYSIS_TERMS = [
@@ -1622,17 +1420,12 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const away = String(req.body.away_team || "").trim();
   const secondHome = String(req.body.second_home_team || "").trim();
   const secondAway = String(req.body.second_away_team || "").trim();
-  const competition = String(req.body.competition || "").trim();
 
   if (!home && !away && !secondHome && !secondAway) {
     return res.status(400).json({ error: "Saisissez au moins un match au format : Équipe 1 vs Équipe 2." });
   }
   if ((home && !away) || (!home && away) || (secondHome && !secondAway) || (!secondHome && secondAway)) {
     return res.status(400).json({ error: "Chaque match renseigné doit contenir deux équipes : Équipe 1 vs Équipe 2." });
-  }
-
-  if (competition && !validateLocalFootballCompetition(competition)) {
-    return res.status(400).json({ error: "La compétition indiquée n'est pas reconnue par BatBot." });
   }
 
   const rawMatches = [[home, away], [secondHome, secondAway]].filter(([h, a]) => h && a);
@@ -1654,7 +1447,7 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
     : '';
   const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds uniquement avec un JSON valide, sans introduction, sans Markdown et sans texte supplémentaire.
 
-${competition ? `Compétition : ${competition}\n` : ""}Matchs à analyser :
+Matchs à analyser :
 ${matches.join("\n")}
 
 Objectif : fournir une fiche courte, claire et directement lisible sur téléphone.
@@ -1795,6 +1588,10 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       });
     }
 
+    if (params.date && !/^\d{4}-\d{2}-\d{2}$/.test(String(params.date))) {
+      return res.status(400).json({ ok: false, error: "La date doit être au format YYYY-MM-DD." });
+    }
+
     const hasDateFilter = params.date || params.from || params.to || params.live || params.next || params.last;
     if (!hasDateFilter) {
       params.date = new Intl.DateTimeFormat("en-CA", {
@@ -1803,11 +1600,18 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
         month: "2-digit",
         day: "2-digit"
       }).format(new Date());
-      params.timezone = params.timezone || "Africa/Abidjan";
     }
+    params.timezone = params.timezone || "Africa/Abidjan";
 
     const data = await callApiFootball("fixtures", params);
-    res.json({ ok: true, source: "api-football", ...data });
+    const fixtures = Array.isArray(data.response) ? data.response : [];
+    res.json({
+      ok: true,
+      source: "api-football",
+      checked_date: params.date || null,
+      results_count: fixtures.length,
+      ...data
+    });
   } catch (error) {
     console.error("API-Football fixtures:", error.message);
     res.status(error.status || 502).json({
@@ -1830,11 +1634,19 @@ app.get("/api/football/live", requireUser, async (req, res) => {
       });
     }
 
+    const liveFilter = String(req.query.league || "all").trim();
     const data = await callApiFootball("fixtures", {
-      live: req.query.league || "all",
-      timezone: "Africa/Abidjan"
+      live: liveFilter || "all",
+      timezone: String(req.query.timezone || "Africa/Abidjan")
     });
-    res.json({ ok: true, source: "api-football", ...data });
+    const fixtures = Array.isArray(data.response) ? data.response : [];
+    res.json({
+      ok: true,
+      source: "api-football",
+      live: liveFilter || "all",
+      results_count: fixtures.length,
+      ...data
+    });
   } catch (error) {
     console.error("API-Football live:", error.message);
     res.status(error.status || 502).json({
