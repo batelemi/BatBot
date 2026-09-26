@@ -904,67 +904,21 @@ function broadcastMemberPredictionEvent(payload) {
   }
 }
 
-function normalizeApiFootballTeamName(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/&/g, ' and ')
-    .toLowerCase()
-    .replace(/\b(fc|cf|sc|afc|ac|bk|fk|sk|nk|ks|kfc|pfc|cd|cs|as|rc|rsc|sv|kv|ka|club|football club)\b/g, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-async function resolveFootballTeamForAI(teamName, teamId = '') {
+async function validateFootballTeamForAI(teamName) {
   const name = String(teamName || '').trim();
-  const id = String(teamId || '').trim();
-  if (!name && !id) return { valid: false, officialName: '' };
-  if (!API_FOOTBALL_KEY) return { valid: null, officialName: name };
-
-  // Pour les matchs provenant directement de /api/football/fixtures, l'ID
-  // API-Football est l'identifiant officiel et stable de l'équipe. On le
-  // résout directement au lieu de refaire une recherche approximative par nom.
-  if (/^\d+$/.test(id)) {
-    const cacheKey = `id:${id}`;
-    const cached = footballTeamCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) return cached;
-    try {
-      const data = await callApiFootball('teams', { id });
-      const team = Array.isArray(data.response) ? data.response[0] : null;
-      const result = team?.team?.id
-        ? { valid: true, officialName: String(team.team.name || name).trim(), teamId: Number(team.team.id) }
-        : { valid: false, officialName: name, teamId: Number(id) };
-      footballTeamCache.set(cacheKey, { ...result, expiresAt: Date.now() + 15 * 60 * 1000 });
-      return result;
-    } catch (error) {
-      console.error('TEAM ID VALIDATION IA:', error.message);
-      return { valid: null, officialName: name, teamId: Number(id) };
-    }
-  }
-
-  const cacheKey = `name:${normalizeApiFootballTeamName(name)}`;
+  if (!name) return false;
+  if (!API_FOOTBALL_KEY) return null;
+  const cacheKey = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
   const cached = footballTeamCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached;
-
+  if (cached && cached.expiresAt > Date.now()) return cached.valid;
   try {
-    // Recherche tolérante : API-Football peut renvoyer plusieurs variantes.
-    // On ne se contente plus de response.length > 0 : on cherche une
-    // correspondance réelle sur le nom normalisé, puis on accepte le premier
-    // résultat si API-Football a clairement identifié une équipe.
     const data = await callApiFootball('teams', { search: name });
-    const candidates = Array.isArray(data.response) ? data.response : [];
-    const normalizedName = normalizeApiFootballTeamName(name);
-    const exact = candidates.find(item => normalizeApiFootballTeamName(item?.team?.name) === normalizedName);
-    const candidate = exact || candidates[0];
-    const result = candidate?.team?.id
-      ? { valid: true, officialName: String(candidate.team.name || name).trim(), teamId: Number(candidate.team.id) }
-      : { valid: false, officialName: name };
-    footballTeamCache.set(cacheKey, { ...result, expiresAt: Date.now() + 15 * 60 * 1000 });
-    return result;
+    const valid = Array.isArray(data.response) && data.response.length > 0;
+    footballTeamCache.set(cacheKey, { valid, expiresAt: Date.now() + 15 * 60 * 1000 });
+    return valid;
   } catch (error) {
     console.error('TEAM VALIDATION IA:', error.message);
-    return { valid: null, officialName: name };
+    return null;
   }
 }
 
@@ -1466,10 +1420,6 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const away = String(req.body.away_team || "").trim();
   const secondHome = String(req.body.second_home_team || "").trim();
   const secondAway = String(req.body.second_away_team || "").trim();
-  const homeId = String(req.body.home_team_id || "").trim();
-  const awayId = String(req.body.away_team_id || "").trim();
-  const secondHomeId = String(req.body.second_home_team_id || "").trim();
-  const secondAwayId = String(req.body.second_away_team_id || "").trim();
 
   if (!home && !away && !secondHome && !secondAway) {
     return res.status(400).json({ error: "Saisissez au moins un match au format : Équipe 1 vs Équipe 2." });
@@ -1478,29 +1428,16 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
     return res.status(400).json({ error: "Chaque match renseigné doit contenir deux équipes : Équipe 1 vs Équipe 2." });
   }
 
-  const rawMatches = [
-    [home, away, homeId, awayId],
-    [secondHome, secondAway, secondHomeId, secondAwayId]
-  ].filter(([h, a]) => h && a);
-
-  const resolvedMatches = await Promise.all(rawMatches.map(async ([h, a, hId, aId]) => {
-    const [homeTeam, awayTeam] = await Promise.all([
-      resolveFootballTeamForAI(h, hId),
-      resolveFootballTeamForAI(a, aId)
-    ]);
-    return { home: homeTeam, away: awayTeam, inputHome: h, inputAway: a };
-  }));
-
-  if (resolvedMatches.some(match => match.home.valid === null || match.away.valid === null)) {
+  const rawMatches = [[home, away], [secondHome, secondAway]].filter(([h, a]) => h && a);
+  const validation = await Promise.all(rawMatches.flatMap(([h, a]) => [validateFootballTeamForAI(h), validateFootballTeamForAI(a)]));
+  if (validation.some(value => value === null)) {
     return res.status(503).json({ error: "La vérification des équipes est temporairement indisponible. Réessayez dans quelques instants." });
   }
-  if (resolvedMatches.some(match => !match.home.valid || !match.away.valid)) {
+  if (validation.some(value => value === false)) {
     return res.status(400).json({ error: "L’analyse accepte uniquement des équipes de football reconnues. Vérifiez les noms saisis." });
   }
 
-  const matches = resolvedMatches.map((match, index) =>
-    `${index + 1}) ${match.home.officialName || match.inputHome} vs ${match.away.officialName || match.inputAway}`
-  );
+  const matches = rawMatches.map(([h, a], index) => `${index + 1}) ${h} vs ${a}`);
   const matchCount = matches.length;
   const combinedInstruction = matchCount > 1
     ? 'Si deux matchs sont fournis, retourne aussi combined avec :\n- selections : les deux choix retenus, très courts ;\n- estimated_odds : une cote combinée estimée, par exemple "2.00 à 3.00".'
