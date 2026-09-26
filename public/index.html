@@ -2221,6 +2221,7 @@ function renderBatBotAIResult(raw,modelData){
     const quality=match.data_quality||((hf.sample>=4&&af.sample>=4)?"bonne":(hf.sample>=2&&af.sample>=2)?"moyenne":"limitée");
     return '<div class="ai-match-result">'+
       '<div class="ai-result-title">⚽ Match '+(index+1)+' — '+escapeHtml(match.name||"")+'</div>'+
+      '<div class="ai-evidence-card"><strong>🏆 '+escapeHtml(evidence.fixture?.competition||"Compétition")+'</strong><br>📅 '+escapeHtml(formatSportScoreDateTime(evidence.fixture?.date))+'<br>📌 Statut : <strong>'+escapeHtml(isLiveFixture(evidence.fixture)?"En direct":isFinishedFixture(evidence.fixture)?"Terminé":"À venir")+'</strong>'+(sportScoreFixtureScore(evidence.fixture)?' • '+escapeHtml(sportScoreFixtureScore(evidence.fixture)):"")+'</div>'+
       '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span>'+(match.data_quality==="limitée"?'<br><span style="color:#FFD166;font-weight:900">⚠️ Scores vérifiables insuffisants : aucune probabilité numérique n’est affichée.</span>':'')+'</div>'+
       (match.probabilities&&match.probabilities.length?'<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+match.probabilities.map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>':'<div class="ai-section-label">Probabilités</div><div class="ai-evidence-card"><strong>Non calculées</strong><br>Données vérifiables insuffisantes pour fournir un pourcentage sérieux.</div>')+
       '<div class="ai-section-label">Options analysées</div><div class="ai-options">'+options.map(function(option){return '<div class="ai-option-card"><div class="ai-option-head"><strong>'+escapeHtml(option.name||"Option")+'</strong><span class="ai-confidence">'+escapeHtml(formatPercent(option.probability))+'</span></div><div class="ai-option-meta">Risque : '+escapeHtml(option.risk||"Modéré")+'</div>'+(option.reason?'<div class="ai-reason">'+escapeHtml(option.reason)+'</div>':"")+'</div>';}).join("")+'</div>'+
@@ -2383,14 +2384,11 @@ async function submitBatBotAI(){
     if(!window.batBotSelectedIds.home||!window.batBotSelectedIds.away||(second.home&&second.away&&(!window.batBotSelectedIds2.home||!window.batBotSelectedIds2.away))){
       throw new Error("Une ou plusieurs équipes n’ont pas pu être reconnues par SportScore.");
     }
-    const fixture1=(Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[]).find(function(item){
-      const h=String(item?.teams?.home?.name||"").toLowerCase(),a=String(item?.teams?.away?.name||"").toLowerCase();
-      return h===first.home.toLowerCase()&&a===first.away.toLowerCase();
-    })||null;
-    const fixture2=(Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[]).find(function(item){
-      const h=String(item?.teams?.home?.name||"").toLowerCase(),a=String(item?.teams?.away?.name||"").toLowerCase();
-      return h===second.home.toLowerCase()&&a===second.away.toLowerCase();
-    })||null;
+    const selectedFixtures=Array.isArray(window.batBotSelectedFixtures)?window.batBotSelectedFixtures:[];
+    const fixture1=selectedFixtures[0]|| (Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[]).find(function(item){const h=String(item?.teams?.home?.name||"").toLowerCase(),a=String(item?.teams?.away?.name||"").toLowerCase();return h===first.home.toLowerCase()&&a===first.away.toLowerCase();})||null;
+    const fixture2=selectedFixtures[1]|| (Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[]).find(function(item){const h=String(item?.teams?.home?.name||"").toLowerCase(),a=String(item?.teams?.away?.name||"").toLowerCase();return h===second.home.toLowerCase()&&a===second.away.toLowerCase();})||null;
+    if(fixture1&&isFinishedFixture(fixture1)){showFinishedSportScoreMatch(fixture1);return;}
+    if(fixture2&&isFinishedFixture(fixture2)){showFinishedSportScoreMatch(fixture2);return;}
     const evidence=await collectSportScoreAnalysisEvidence(first.home,first.away,window.batBotSelectedIds.home,window.batBotSelectedIds.away,fixture1,second.home,second.away,window.batBotSelectedIds2.home,window.batBotSelectedIds2.away,fixture2);
     window.batBotLastEvidence=evidence;
     const insufficient=evidence.models.some(function(model){return model&&model.ready===false;});
@@ -2422,7 +2420,8 @@ async function submitBatBotAI(){
   }
 }
 
-function analyzeSportScoreMatch(home,away,homeId,awayId){
+function analyzeSportScoreMatch(home,away,homeId,awayId,fixture){
+  if(fixture){if(isFinishedFixture(fixture)){showFinishedSportScoreMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}}
   const input1=document.getElementById("aiMatch1");
   const input2=document.getElementById("aiMatch2");
   if(!input1||!input2)return;
@@ -2430,6 +2429,7 @@ function analyzeSportScoreMatch(home,away,homeId,awayId){
   input1.value=homeName+" vs "+awayName;
   input2.value="";
   window.batBotSelectedIds={home:String(homeId||slugifySportScoreTeam(homeName)),away:String(awayId||slugifySportScoreTeam(awayName))};
+  window.batBotSelectedFixtures=fixture?[fixture]:[];
   window.batBotSelectedIds2={home:"",away:""};
   setBatBotAIModalResult("");
   setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">🤖 Match sélectionné</div><div class="professional-status-body">'+escapeHtml(homeName+" — "+awayName)+'. Récupération des données puis analyse en cours…</div></div>');
@@ -2439,20 +2439,13 @@ function analyzeSportScoreMatch(home,away,homeId,awayId){
 
 function analyzeFirstTwoSportScoreMatches(){
   const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
-  const first=fixtures[0],second=fixtures[1];
-  const home1=first?.teams?.home?.name||"",away1=first?.teams?.away?.name||"";
-  const home2=second?.teams?.home?.name||"",away2=second?.teams?.away?.name||"";
-  if(!home1||!away1)return showStatus("sportScoreStatus","⚠️ Aucun match exploitable pour l’analyse.","error");
-  const input1=document.getElementById("aiMatch1"),input2=document.getElementById("aiMatch2");
-  if(!input1||!input2)return;
-  input1.value=home1+" vs "+away1;
-  input2.value=(home2&&away2)?home2+" vs "+away2:"";
-  window.batBotSelectedIds={home:String(first?.teams?.home?.id||""),away:String(first?.teams?.away?.id||"")};
-  window.batBotSelectedIds2={home:String(second?.teams?.home?.id||""),away:String(second?.teams?.away?.id||"")};
-  setBatBotAIModalResult("");
-  setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">🤖 2 matchs sélectionnés</div><div class="professional-status-body">Les données SportScore sont en cours de récupération avant l’analyse.</div></div>');
-  openBatBotAIModal();
-  setTimeout(()=>submitBatBotAI(),120);
+  const candidates=fixtures.filter(isAnalyzableFixture).slice(0,2),first=candidates[0],second=candidates[1];
+  const home1=first?.teams?.home?.name||"",away1=first?.teams?.away?.name||"",home2=second?.teams?.home?.name||"",away2=second?.teams?.away?.name||"";
+  if(!home1||!away1)return showStatus("sportScoreStatus","⚠️ Aucun match à venir ou en direct n’est disponible pour l’analyse.","error");
+  const input1=document.getElementById("aiMatch1"),input2=document.getElementById("aiMatch2");if(!input1||!input2)return;
+  input1.value=home1+" vs "+away1;input2.value=(home2&&away2)?home2+" vs "+away2:"";
+  window.batBotSelectedIds={home:String(first?.teams?.home?.id||""),away:String(first?.teams?.away?.id||"")};window.batBotSelectedIds2={home:String(second?.teams?.home?.id||""),away:String(second?.teams?.away?.id||"")};window.batBotSelectedFixtures=[first,second].filter(Boolean);
+  setBatBotAIModalResult("");setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">🤖 '+(candidates.length>1?"2 matchs sélectionnés":"1 match sélectionné")+'</div><div class="professional-status-body">Seuls les matchs à venir ou en direct sont envoyés au moteur probabiliste.</div></div>');openBatBotAIModal();setTimeout(()=>submitBatBotAI(),120);
 }
 
 function getAbidjanDate(offsetDays){
@@ -2482,41 +2475,30 @@ function changeSportScoreDate(offset){
   loadSportScoreFixtures(value);
 }
 
+
+function getBatBotLocalTimeZone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";}catch(_){return "UTC";}}
+function parseSportScoreDate(value){if(!value)return null;const raw=String(value).trim();if(!raw)return null;const hasZone=/Z$|[+-]\d{2}:?\d{2}$/i.test(raw);const d=new Date(hasZone?raw:raw.replace(" ","T")+"Z");return Number.isNaN(d.getTime())?null:d;}
+function formatSportScoreDateTime(value){const d=parseSportScoreDate(value);if(!d)return "Date/heure indisponible";const tz=getBatBotLocalTimeZone();try{return new Intl.DateTimeFormat(undefined,{timeZone:tz,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"}).format(d)+" • "+tz;}catch(_){return d.toLocaleString();}}
+function fixtureStatusKey(item){const f=item?.fixture||{};return String(f.status?.short||f.status?.long||item?.sportscore?.status||item?.sportscore?.status_text||"").toLowerCase().trim();}
+function isFinishedFixture(item){return /(^|\b)(ft|finished|full time|fulltime|ended|completed|after extra time|tirs au but|termin|apres prolongation)(\b|$)/i.test(fixtureStatusKey(item));}
+function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|first half|second half|half time|mi temps|1re mi temps|2e mi temps)(\b|$)/i.test(fixtureStatusKey(item));}
+function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard/i.test(fixtureStatusKey(item));}
+function isAnalyzableFixture(item){return !isFinishedFixture(item)&&!isNonAnalyzableFixture(item);}
+function sportScoreFixtureScore(item){const h=item?.goals?.home??item?.score?.fulltime?.home,a=item?.goals?.away??item?.score?.fulltime?.away;return Number.isFinite(Number(h))&&Number.isFinite(Number(a))?String(h)+"–"+String(a):"";}
+function showFinishedSportScoreMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=sportScoreFixtureScore(item),when=formatSportScoreDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
 function renderSportScoreFixtures(fixtures,checkedDate){
-  const box=document.getElementById("sportScoreResults");
-  if(!box)return;
-  window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
-  if(!fixtures.length){
-    box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni par SportScore</div><div class="professional-status-body">SportScore a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';
-    return;
-  }
-
-  const topAction=(fixtures.length>=2)
-    ? '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser les 2 premiers matchs avec BatBot IA</button>'
-    : '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser avec BatBot IA</button>';
-
+  const box=document.getElementById("sportScoreResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
+  if(!fixtures.length){box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni par SportScore</div><div class="professional-status-body">SportScore a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';return;}
+  const analyzable=fixtures.filter(isAnalyzableFixture);
+  const topAction=analyzable.length>=2?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser les 2 prochains matchs</button>':analyzable.length===1?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser le prochain match</button>':'';
   box.innerHTML=topAction+fixtures.slice(0,30).map(function(item,index){
-    const f=item.fixture||{},teams=item.teams||{},league=item.league||{};
-    const home=teams.home?.name||"Équipe 1";
-    const away=teams.away?.name||"Équipe 2";
-    const date=f.date?new Date(f.date).toLocaleString("fr-FR",{timeZone:"Africa/Abidjan",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"}):"Date non disponible";
-    const status=f.status?.long||f.status?.short||"Programmé";
-    return '<div class="match-card" style="margin-bottom:10px">'+
-      '<div class="match-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div>'+
-      '<div class="muted">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+' • '+escapeHtml(status)+'</div>'+
-      '<button type="button" class="btn secondary" style="width:100%;margin-top:10px" data-batbot-fixture-index="'+index+'">🤖 Analyser ce match avec BatBot IA</button>'+
-    '</div>';
+    const f=item.fixture||{},teams=item.teams||{},league=item.league||{},home=teams.home?.name||"Équipe 1",away=teams.away?.name||"Équipe 2";
+    const date=formatSportScoreDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateSportScoreStatus(f.status?.long||f.status?.short||"Programmé"),score=sportScoreFixtureScore(item);
+    let action="";if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:10px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';else if(blocked)action='<div class="muted" style="margin-top:10px">⚠️ Match non analysable : '+escapeHtml(status)+'</div>';else action='<button type="button" class="btn secondary" style="width:100%;margin-top:10px" data-batbot-fixture-index="'+index+'">🤖 '+(live?"Analyser le match en direct":"Analyser ce match")+'</button>';
+    return '<div class="match-card" style="margin-bottom:10px"><div class="match-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="muted">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+' • '+escapeHtml(status)+(score?' • <strong>'+escapeHtml(score)+'</strong>':'')+'</div>'+action+'</div>';
   }).join("");
-
-  box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){
-    button.addEventListener("click",function(){
-      const index=Number(button.getAttribute("data-batbot-fixture-index"));
-      const item=fixtures[index];
-      const home=item?.teams?.home?.name||"";
-      const away=item?.teams?.away?.name||"";
-      analyzeSportScoreMatch(home,away,item?.teams?.home?.id,item?.teams?.away?.id);
-    });
-  });
+  box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedSportScoreMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeSportScoreMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
+  box.querySelectorAll("[data-batbot-result-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-result-index"))];if(item)showFinishedSportScoreMatch(item);});});
 }
 
 function sportScorePublicUrl(endpoint, params){
