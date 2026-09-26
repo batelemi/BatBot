@@ -2184,7 +2184,13 @@ function renderBatBotAIResult(raw,modelData){
   const models=Array.isArray(modelData)?modelData:[];
   data.matches=data.matches.map(function(match,index){
     const model=models[index]||{};
-    if(Array.isArray(model.probabilities)&&model.probabilities.length){
+    if(model.ready===false){
+      match.probabilities=[];
+      match.options=[];
+      match.recommendation=model.recommendation||"Analyse insuffisante";
+      match.reason=model.reason||"Données insuffisantes pour produire une estimation numérique fiable.";
+      match.data_quality="limitée";
+    }else if(Array.isArray(model.probabilities)&&model.probabilities.length){
       match.probabilities=model.probabilities.map(function(p){return {label:p.label,value:formatPercent(p.value)};});
     }
     if(Array.isArray(model.options)&&model.options.length){
@@ -2197,7 +2203,7 @@ function renderBatBotAIResult(raw,modelData){
     match.reason=match.reason||"Lecture basée sur les données SportScore disponibles et le modèle statistique BatBot.";
     return match;
   });
-  if(models.length>1){
+  if(models.length>1 && models.every(function(m){return m&&m.ready!==false;})){
     const picks=models.map(m=>m.recommendation).filter(Boolean);
     const probs=models.map(function(m){
       const p=(m.options||[]).find(function(o){return String(o.name||"").toLowerCase()===String(m.recommendation||"").toLowerCase();});
@@ -2217,8 +2223,8 @@ function renderBatBotAIResult(raw,modelData){
     const quality=match.data_quality||((hf.sample>=4&&af.sample>=4)?"bonne":(hf.sample>=2&&af.sample>=2)?"moyenne":"limitée");
     return '<div class="ai-match-result">'+
       '<div class="ai-result-title">⚽ Match '+(index+1)+' — '+escapeHtml(match.name||"")+'</div>'+
-      '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span></div>'+
-      '<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+(match.probabilities||[]).map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>'+
+      '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span>'+(model.ready===false?'<br><span style="color:#FFD166;font-weight:900">⚠️ Pas assez de scores vérifiables pour calculer des probabilités.</span>':'')+'</div>'+
+      '(match.probabilities&&match.probabilities.length?'<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+match.probabilities.map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>':'<div class="ai-section-label">Probabilités</div><div class="ai-evidence-card"><strong>Non calculées</strong><br>Données vérifiables insuffisantes pour fournir un pourcentage sérieux.</div>')+
       '<div class="ai-section-label">Options analysées</div><div class="ai-options">'+options.map(function(option){return '<div class="ai-option-card"><div class="ai-option-head"><strong>'+escapeHtml(option.name||"Option")+'</strong><span class="ai-confidence">'+escapeHtml(formatPercent(option.probability))+'</span></div><div class="ai-option-meta">Risque : '+escapeHtml(option.risk||"Modéré")+'</div>'+(option.reason?'<div class="ai-reason">'+escapeHtml(option.reason)+'</div>':"")+'</div>';}).join("")+'</div>'+
       (match.recommendation?'<div class="ai-recommendation"><strong>🎯 Choix proposé :</strong> '+escapeHtml(match.recommendation)+'</div>':"")+
       (match.reason?'<div class="ai-evidence-card"><strong>Lecture :</strong> '+escapeHtml(match.reason)+'</div>':"")+
@@ -2229,25 +2235,31 @@ function renderBatBotAIResult(raw,modelData){
 }
 
 function sportScoreExtractMatches(data){
-  const candidates=[data?.matches,data?.meetings,data?.fixtures,data?.data?.matches,data?.data?.meetings,data?.data?.fixtures,data?.team?.matches,data?.data?.team?.matches];
+  const candidates=[data?.matches,data?.meetings,data?.fixtures,data?.results,data?.data?.matches,data?.data?.meetings,data?.data?.fixtures,data?.data?.results,data?.team?.matches,data?.data?.team?.matches,data?.team?.fixtures,data?.data?.team?.fixtures];
   return candidates.find(Array.isArray)||[];
 }
 function sportScoreExtractStandings(data){
-  const candidates=[data?.standings,data?.table,data?.rows,data?.data?.standings,data?.data?.table,data?.data?.rows];
+  const candidates=[data?.standings,data?.table,data?.rows,data?.results,data?.data?.standings,data?.data?.table,data?.data?.rows,data?.data?.results];
   return candidates.find(Array.isArray)||[];
 }
 function sportScoreMatchForEvidence(match){
-  const homeObj=match?.teams?.home||match?.home_team_data||{};
-  const awayObj=match?.teams?.away||match?.away_team_data||{};
+  const homeObj=match?.teams?.home||match?.home_team_data||match?.home_team||{};
+  const awayObj=match?.teams?.away||match?.away_team_data||match?.away_team||{};
   const home=String(match?.home||match?.home_team?.name||homeObj?.name||"").trim();
   const away=String(match?.away||match?.away_team?.name||awayObj?.name||"").trim();
-  const hs=Number(match?.home_score),as=Number(match?.away_score);
-  const date=match?.time||match?.date||match?.start_time||null;
-  const status=String(match?.status||match?.status_text||match?.state||"").toLowerCase();
-  return {home,away,homeScore:Number.isFinite(hs)?hs:null,awayScore:Number.isFinite(as)?as:null,date,status,slug:String(match?.slug||"")};
+  const nestedScore=match?.score?.fulltime||match?.score?.full_time||match?.scores?.fulltime||match?.scores?.full_time||match?.result||{};
+  const hsRaw=match?.home_score??match?.homeScore??nestedScore?.home??nestedScore?.home_score??nestedScore?.homeScore;
+  const asRaw=match?.away_score??match?.awayScore??nestedScore?.away??nestedScore?.away_score??nestedScore?.awayScore;
+  const hs=hsRaw!==null&&hsRaw!==undefined&&String(hsRaw).trim()!==""?Number(hsRaw):NaN;
+  const as=asRaw!==null&&asRaw!==undefined&&String(asRaw).trim()!==""?Number(asRaw):NaN;
+  const date=match?.time||match?.date||match?.start_time||match?.startTime||null;
+  const status=String(match?.status||match?.status_text||match?.statusText||match?.state||"").toLowerCase();
+  const hasScore=Number.isFinite(hs)&&Number.isFinite(as)&&hs>=0&&as>=0;
+  return {home,away,homeScore:hasScore?hs:null,awayScore:hasScore?as:null,date,status,hasScore,slug:String(match?.slug||"")};
 }
 function sportScoreFinishedForEvidence(m){
-  return (Number.isFinite(m.homeScore)&&Number.isFinite(m.awayScore)) || /finish|full time|\bft\b|after extra|penalt/i.test(m.status);
+  if(!m||!m.hasScore)return false;
+  return /finish|full time|\bft\b|after extra|penalt/i.test(m.status) || Number.isFinite(m.homeScore)&&Number.isFinite(m.awayScore);
 }
 function sportScoreNameKey(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\b(fc|cf|sc|afc|ac|club|football club)\b/g," ").replace(/[^a-z0-9]+/g," ").trim();}
 function summarizeSportScoreTeam(teamName,matches){
@@ -2267,20 +2279,51 @@ function poissonProbability(k,lambda){return Math.exp(-lambda)*Math.pow(lambda,k
 function factorial(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r;}
 function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
   const hf=homeForm||{},af=awayForm||{};
-  const homeAttack=Number.isFinite(hf?.home?.avgFor)?hf.home.avgFor:(Number.isFinite(hf?.avgGoalsFor)?hf.avgGoalsFor:1.2);
-  const homeDefense=Number.isFinite(hf?.home?.avgAgainst)?hf.home.avgAgainst:(Number.isFinite(hf?.avgGoalsAgainst)?hf.avgGoalsAgainst:1.2);
-  const awayAttack=Number.isFinite(af?.away?.avgFor)?af.away.avgFor:(Number.isFinite(af?.avgGoalsFor)?af.avgGoalsFor:1.0);
-  const awayDefense=Number.isFinite(af?.away?.avgAgainst)?af.away.avgAgainst:(Number.isFinite(af?.avgGoalsAgainst)?af.avgGoalsAgainst:1.2);
-  let lambdaHome=Math.max(.2,Math.min(3.6,(homeAttack+awayDefense)/2+0.12));
-  let lambdaAway=Math.max(.15,Math.min(3.4,(awayAttack+homeDefense)/2));
+  const minSample=3;
+  if((hf.sample||0)<minSample || (af.sample||0)<minSample){
+    return {ready:false,reason:"Données récentes insuffisantes : au moins 3 matchs terminés avec score connu pour chaque équipe sont nécessaires.",probabilities:[],options:[],recommendation:"Analyse insuffisante",data_quality:"limitée"};
+  }
+  const avg=(v,fallback)=>Number.isFinite(v)?v:fallback;
+  const shrink=(value,sample,prior,weight)=>((value*sample)+(prior*weight))/(sample+weight);
+  const homeAttack=shrink(avg(hf.home?.avgFor,hf.avgGoalsFor),Math.max(1,hf.home?.sample||hf.sample),1.20,2);
+  const homeDefense=shrink(avg(hf.home?.avgAgainst,hf.avgGoalsAgainst),Math.max(1,hf.home?.sample||hf.sample),1.10,2);
+  const awayAttack=shrink(avg(af.away?.avgFor,af.avgGoalsFor),Math.max(1,af.away?.sample||af.sample),1.00,2);
+  const awayDefense=shrink(avg(af.away?.avgAgainst,af.avgGoalsAgainst),Math.max(1,af.away?.sample||af.sample),1.20,2);
+  let lambdaHome=Math.max(.25,Math.min(3.5,(homeAttack+awayDefense)/2+0.10));
+  let lambdaAway=Math.max(.20,Math.min(3.2,(awayAttack+homeDefense)/2));
+
+  const h2hMatches=Array.isArray(h2h?.matches)?h2h.matches.map(sportScoreMatchForEvidence).filter(sportScoreFinishedForEvidence).slice(0,10):[];
+  if(h2hMatches.length>=3){
+    let hGF=0,hGA=0,aGF=0,aGA=0,n=0;
+    h2hMatches.forEach(function(m){
+      const homeIsTarget=sportScoreNameKey(m.home)===sportScoreNameKey(hf.teamName||"");
+      const awayIsTarget=sportScoreNameKey(m.away)===sportScoreNameKey(hf.teamName||"");
+      if(homeIsTarget){hGF+=m.homeScore;hGA+=m.awayScore;n++;}
+      else if(awayIsTarget){hGF+=m.awayScore;hGA+=m.homeScore;n++;}
+    });
+    if(n>=3){
+      const h2hFor=hGF/n,h2hAgainst=hGA/n;
+      lambdaHome=(lambdaHome*0.75)+(Math.max(.25,Math.min(3.5,h2hFor+.10))*0.25);
+      lambdaAway=(lambdaAway*0.75)+(Math.max(.20,Math.min(3.2,h2hAgainst))*0.25);
+    }
+  }
+
   const matrix=[];let p1=0,px=0,p2=0,pover=0,pbtts=0,maxP=0,best="1-0";
-  for(let i=0;i<=7;i++){matrix[i]=[];for(let j=0;j<=7;j++){const p=poissonProbability(i,lambdaHome)*poissonProbability(j,lambdaAway);matrix[i][j]=p;if(i>j)p1+=p;else if(i===j)px+=p;else p2+=p;if(i+j>=3)pover+=p;if(i>0&&j>0)pbtts+=p;if(p>maxP){maxP=p;best=i+"-"+j;}}}
-  const h2hMatches=Array.isArray(h2h?.matches)?h2h.matches:[];
-  const h2hFinished=h2hMatches.map(sportScoreMatchForEvidence).filter(sportScoreFinishedForEvidence).slice(0,10);
-  if(h2hFinished.length>=3){let h=0,d=0,a=0;h2hFinished.forEach(m=>{if(m.homeScore>m.awayScore){if(sportScoreNameKey(m.home)===sportScoreNameKey(homeForm?.teamName||""))h++;else a++;}else if(m.homeScore===m.awayScore)d++;else{if(sportScoreNameKey(m.away)===sportScoreNameKey(homeForm?.teamName||""))h++;else a++;}});}
-  const total=p1+px+p2||1;p1/=total;px/=total;p2/=total;pover=Math.max(0,Math.min(1,pover));pbtts=Math.max(0,Math.min(1,pbtts));
-  const round=(n)=>Math.round(n*1000)/10;
-  return {lambdaHome:Math.round(lambdaHome*100)/100,lambdaAway:Math.round(lambdaAway*100)/100,probabilities:[{label:"1",value:round(p1)},{label:"X",value:round(px)},{label:"2",value:round(p2)}],options:[{name:"1X",probability:round(p1+px),risk:(p1+px>=.75?"Faible":p1+px>=.62?"Modéré":"Élevé")},{name:"X2",probability:round(px+p2),risk:(px+p2>=.75?"Faible":px+p2>=.62?"Modéré":"Élevé")},{name:"12",probability:round(p1+p2),risk:(p1+p2>=.75?"Faible":p1+p2>=.62?"Modéré":"Élevé")},{name:"BTTS (les deux équipes marquent)",probability:round(pbtts),risk:(pbtts>=.7?"Faible":pbtts>=.55?"Modéré":"Élevé")},{name:"Plus de 2.5 buts",probability:round(pover),risk:(pover>=.7?"Faible":pover>=.55?"Modéré":"Élevé")},{name:"Handicap -0.5 "+(homeForm?.teamName||"Équipe 1"),probability:round(p1),risk:(p1>=.7?"Faible":p1>=.55?"Modéré":"Élevé")},{name:"Score exact "+best,probability:round(maxP),risk:"Élevé"}],recommendation:(p1+px>=.7?"1X":(p2+px>=.7?"X2":(pover>=.65?"Plus de 2.5 buts":"1"))),bestScore:best,over25:round(pover),btts:round(pbtts)};
+  for(let i=0;i<=8;i++){matrix[i]=[];for(let j=0;j<=8;j++){const p=poissonProbability(i,lambdaHome)*poissonProbability(j,lambdaAway);matrix[i][j]=p;if(i>j)p1+=p;else if(i===j)px+=p;else p2+=p;if(i+j>=3)pover+=p;if(i>0&&j>0)pbtts+=p;if(p>maxP){maxP=p;best=i+"-"+j;}}}
+  const total=p1+px+p2||1;p1/=total;px/=total;p2/=total;
+  const round=n=>Math.round(n*1000)/10;
+  const opt=(name,prob,risk)=>({name,probability:round(prob),risk});
+  const options=[
+    opt("1X",p1+px,p1+px>=.75?"Faible":p1+px>=.62?"Modéré":"Élevé"),
+    opt("X2",px+p2,px+p2>=.75?"Faible":px+p2>=.62?"Modéré":"Élevé"),
+    opt("12",p1+p2,p1+p2>=.75?"Faible":p1+p2>=.62?"Modéré":"Élevé"),
+    opt("BTTS (les deux équipes marquent)",pbtts,pbtts>=.70?"Faible":pbtts>=.55?"Modéré":"Élevé"),
+    opt("Plus de 2.5 buts",pover,pover>=.70?"Faible":pover>=.55?"Modéré":"Élevé"),
+    opt("Handicap -0.5 "+(hf.teamName||"Équipe 1"),p1,p1>=.70?"Faible":p1>=.55?"Modéré":"Élevé"),
+    opt("Score exact "+best,maxP,"Élevé")
+  ];
+  const preferred=options.filter(o=>!/^Score exact/.test(o.name)).sort((a,b)=>b.probability-a.probability)[0];
+  return {ready:true,lambdaHome:Math.round(lambdaHome*100)/100,lambdaAway:Math.round(lambdaAway*100)/100,probabilities:[{label:"1",value:round(p1)},{label:"X",value:round(px)},{label:"2",value:round(p2)}],options, recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:round(pover),btts:round(pbtts),data_quality:(hf.sample>=5&&af.sample>=5)?"bonne":"moyenne"};
 }
 async function fetchSportScoreEvidence(endpoint,params){
   try{return await fetchSportScorePublic(endpoint,params);}catch(_){return null;}
@@ -2289,13 +2332,14 @@ async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fix
   const pairs=[];if(home&&away)pairs.push({home,away,homeSlug,awaySlug,fixture:fixture1});if(secondHome&&secondAway)pairs.push({home:secondHome,away:secondAway,homeSlug:secondHomeSlug,awaySlug:secondAwaySlug,fixture:fixture2});
   const results=await Promise.all(pairs.map(async function(pair){
     const [homeTeam,awayTeam,h2h,standings]=await Promise.all([
-      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.homeSlug,limit:10}),
-      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.awaySlug,limit:10}),
+      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.homeSlug,limit:20}),
+      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.awaySlug,limit:20}),
       fetchSportScoreEvidence("h2h/",{sport:"football",team1:pair.homeSlug,team2:pair.awaySlug,limit:10}),
       pair.fixture?.league?.slug?fetchSportScoreEvidence("standings/",{sport:"football",slug:pair.fixture.league.slug}):Promise.resolve(null)
     ]);
-    const homeForm=summarizeSportScoreTeam(pair.home,sportScoreExtractMatches(homeTeam));homeForm.teamName=pair.home;
-    const awayForm=summarizeSportScoreTeam(pair.away,sportScoreExtractMatches(awayTeam));awayForm.teamName=pair.away;
+    const homeMatches=sportScoreExtractMatches(homeTeam); const awayMatches=sportScoreExtractMatches(awayTeam);
+    const homeForm=summarizeSportScoreTeam(pair.home,homeMatches);homeForm.teamName=pair.home;
+    const awayForm=summarizeSportScoreTeam(pair.away,awayMatches);awayForm.teamName=pair.away;
     const table=sportScoreExtractStandings(standings);
     const findRow=(name)=>table.find(function(row){const rn=row?.team?.name||row?.name||row?.team_name;return sportScoreNameKey(rn)===sportScoreNameKey(name);});
     const hr=findRow(pair.home),ar=findRow(pair.away);
@@ -2304,7 +2348,9 @@ async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fix
   }));
   return {source:"SportScore",generatedAt:new Date().toISOString(),matches:results,models:results.map(function(r){return r.model;})};
 }
-
+async function fetchSportScoreEvidence(endpoint,params){
+  try{return await fetchSportScorePublic(endpoint,params);}catch(_){return null;}
+}
 async function submitBatBotAI(){
   const button=document.getElementById("smartDriveAIButton");
   const match1=document.getElementById("aiMatch1")?.value.trim()||"";
@@ -2341,6 +2387,13 @@ async function submitBatBotAI(){
     })||null;
     const evidence=await collectSportScoreAnalysisEvidence(first.home,first.away,window.batBotSelectedIds.home,window.batBotSelectedIds.away,fixture1,second.home,second.away,window.batBotSelectedIds2.home,window.batBotSelectedIds2.away,fixture2);
     window.batBotLastEvidence=evidence;
+    const insufficient=evidence.models.some(function(model){return model&&model.ready===false;});
+    if(insufficient){
+      const local={matches:evidence.matches.map(function(item){return {name:item.match,probabilities:[],options:[],recommendation:item.model?.recommendation||"Analyse insuffisante",reason:item.model?.reason||"Données vérifiables insuffisantes pour produire une estimation numérique fiable.",data_quality:"limitée"};})};
+      renderBatBotAIResult(JSON.stringify(local),evidence.models);
+      setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse non calculée</strong><br><span>BATBOT ne fabrique pas de pourcentages lorsque les scores SportScore vérifiables sont insuffisants.</span></div>',"error");
+      return;
+    }
     setBatBotAIModalStatus('<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA interprète les données réelles disponibles…</small></div></div>');
     if(button)button.disabled=true;
     const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({
