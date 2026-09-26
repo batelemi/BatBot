@@ -941,7 +941,15 @@ async function validateFootballTeamForAI(teamName, teamId = "") {
     return true;
   }
 
-  // 2) SportScore devient la source officielle de validation des équipes.
+  // 2) Si l'équipe provient directement d'un résultat SportScore côté navigateur,
+  // son slug est déjà un identifiant SportScore exploitable. Cela évite de dépendre
+  // d'un appel serveur-à-serveur qui peut être bloqué par l'hébergeur.
+  if (id && /^[a-z0-9][a-z0-9-]{1,120}$/i.test(id)) {
+    footballTeamCache.set(cacheKey, { valid: true, slug: id, expiresAt: Date.now() + 15 * 60 * 1000 });
+    return true;
+  }
+
+  // 3) Fallback : SportScore devient la source officielle de validation des équipes.
   const searchNames = [];
   if (name) searchNames.push(name);
   const simplified = name
@@ -1706,6 +1714,19 @@ async function getSportScoreFixtures(params = {}) {
   footballFixturesCache.set(cacheKey, { value, expiresAt: Date.now() + FOOTBALL_FIXTURES_CACHE_TTL });
   return { ...value, cached: false };
 }
+
+app.get("/api/football/access", requireUser, (req, res) => {
+  try {
+    const currentUser = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+    const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
+    if (!premiumActive) {
+      return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux données football." });
+    }
+    return res.json({ ok: true, source: "sportscore", access: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "Vérification de l'accès football indisponible." });
+  }
+});
 
 app.get("/api/football/fixtures", requireUser, async (req, res) => {
   try {
