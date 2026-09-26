@@ -904,18 +904,69 @@ function broadcastMemberPredictionEvent(payload) {
   }
 }
 
-async function validateFootballTeamForAI(teamName) {
+async function validateFootballTeamForAI(teamName, teamId = "") {
   const name = String(teamName || '').trim();
-  if (!name) return false;
-  if (!API_FOOTBALL_KEY) return null;
-  const cacheKey = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+  const id = String(teamId || '').trim();
+  if (!name && !id) return false;
+
+  const cacheBase = id ? `id:${id}` : `name:${name}`;
+  const cacheKey = cacheBase.toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9:]+/g,' ')
+    .trim();
+
   const cached = footballTeamCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.valid;
+
+  // 1) Lorsqu'un match vient directement d'API-Football, son team ID est
+  // beaucoup plus fiable que le nom affiché dans le champ texte.
+  if (/^\d+$/.test(id) && API_FOOTBALL_KEY) {
+    try {
+      const data = await callApiFootball('teams', { id });
+      const valid = Array.isArray(data.response) && data.response.length > 0;
+      if (valid) {
+        footballTeamCache.set(cacheKey, { valid: true, expiresAt: Date.now() + 15 * 60 * 1000 });
+        return true;
+      }
+    } catch (error) {
+      console.error('TEAM VALIDATION IA (ID):', error.message);
+      // On continue avec les autres méthodes de validation.
+    }
+  }
+
+  // 2) Le catalogue local permet de valider les noms connus sans consommer
+  // inutilement une requête API.
+  if (name && typeof validateLocalFootballTeam === "function" && validateLocalFootballTeam(name)) {
+    footballTeamCache.set(cacheKey, { valid: true, expiresAt: Date.now() + 15 * 60 * 1000 });
+    return true;
+  }
+
+  if (!API_FOOTBALL_KEY) return null;
+
+  // 3) Recherche API avec le nom saisi, puis avec une variante débarrassée
+  // des préfixes courants ("FC", "CF", etc.).
+  const searchNames = [];
+  if (name) searchNames.push(name);
+  const simplified = name
+    .replace(/\bfootball club\b/gi, " ")
+    .replace(/\b(fc|cf|sc|afc|ac)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (simplified && simplified.toLowerCase() !== name.toLowerCase()) {
+    searchNames.push(simplified);
+  }
+
   try {
-    const data = await callApiFootball('teams', { search: name });
-    const valid = Array.isArray(data.response) && data.response.length > 0;
-    footballTeamCache.set(cacheKey, { valid, expiresAt: Date.now() + 15 * 60 * 1000 });
-    return valid;
+    for (const searchName of searchNames) {
+      const data = await callApiFootball('teams', { search: searchName });
+      if (Array.isArray(data.response) && data.response.length > 0) {
+        footballTeamCache.set(cacheKey, { valid: true, expiresAt: Date.now() + 15 * 60 * 1000 });
+        return true;
+      }
+    }
+
+    footballTeamCache.set(cacheKey, { valid: false, expiresAt: Date.now() + 15 * 60 * 1000 });
+    return false;
   } catch (error) {
     console.error('TEAM VALIDATION IA:', error.message);
     return null;
@@ -1429,7 +1480,16 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   }
 
   const rawMatches = [[home, away], [secondHome, secondAway]].filter(([h, a]) => h && a);
-  const validation = await Promise.all(rawMatches.flatMap(([h, a]) => [validateFootballTeamForAI(h), validateFootballTeamForAI(a)]));
+  const validation = await Promise.all([
+    validateFootballTeamForAI(home, req.body.home_team_id),
+    validateFootballTeamForAI(away, req.body.away_team_id),
+    ...(secondHome && secondAway
+      ? [
+          validateFootballTeamForAI(secondHome, req.body.second_home_team_id),
+          validateFootballTeamForAI(secondAway, req.body.second_away_team_id)
+        ]
+      : [])
+  ]);
   if (validation.some(value => value === null)) {
     return res.status(503).json({ error: "La vérification des équipes est temporairement indisponible. Réessayez dans quelques instants." });
   }
@@ -1538,6 +1598,18 @@ N’invente pas de statistiques, de blessures, de résultats ou de cotes en dire
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY || process.env.APIFOOTBALL_KEY;
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
 
+function formatApiFootballErrors(errors) {
+  if (!errors) return "";
+  if (Array.isArray(errors)) return errors.map(String).join(", ");
+  if (typeof errors === "string") return errors;
+  if (typeof errors === "object") {
+    return Object.entries(errors)
+      .map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`)
+      .join(", ");
+  }
+  return String(errors);
+}
+
 async function callApiFootball(endpoint, params = {}) {
   if (!API_FOOTBALL_KEY) {
     const error = new Error("Variable API_FOOTBALL_KEY absente");
@@ -1554,14 +1626,20 @@ async function callApiFootball(endpoint, params = {}) {
 
   const response = await fetch(url, {
     method: "GET",
-    headers: { "x-apisports-key": API_FOOTBALL_KEY }
+    headers: {
+      "x-apisports-key": API_FOOTBALL_KEY,
+      "Accept": "application/json"
+    }
   });
 
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || (Array.isArray(data.errors) && data.errors.length > 0)) {
-    const message = Array.isArray(data.errors)
-      ? data.errors.join(", ")
-      : `API-Football HTTP ${response.status}`;
+  const apiErrorMessage = formatApiFootballErrors(data?.errors);
+
+  // API-Football peut renvoyer HTTP 200 tout en plaçant l'erreur dans
+  // `errors` sous forme d'objet. Il faut donc contrôler `errors` même
+  // lorsque la réponse HTTP est techniquement réussie.
+  if (!response.ok || apiErrorMessage) {
+    const message = apiErrorMessage || `API-Football HTTP ${response.status}`;
     const error = new Error(message);
     error.status = response.status || 502;
     throw error;
