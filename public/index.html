@@ -913,23 +913,24 @@ PSG vs Marseille"></textarea>
   </div>
 
   <section class="card" id="dailyFixturesSection" aria-label="Matchs du jour">
-    <h2>⚽ Matchs & calendrier API-Football</h2>
-    <p class="muted">Données fournies directement par API-Football. Sélectionnez une date ou consultez les rencontres en direct.</p>
+    <h2>⚽ Matchs & calendrier SportScore</h2>
+    <p class="muted">Données football fournies par SportScore. Sélectionnez une date ou consultez les rencontres en direct.</p>
     <div style="display:grid;grid-template-columns:1fr;gap:10px;margin:12px 0">
       <label style="margin:0">
         <span class="muted">Date des rencontres</span>
-        <input id="apiFootballDate" type="date" style="width:100%">
+        <input id="sportScoreDate" type="date" style="width:100%">
       </label>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
-        <button class="btn secondary" type="button" onclick="changeApiFootballDate(-1)">← Veille</button>
-        <button class="btn secondary" type="button" onclick="loadApiFootballFixtures(getApiFootballSelectedDate())">Aujourd’hui</button>
-        <button class="btn secondary" type="button" onclick="changeApiFootballDate(1)">Lendemain →</button>
+        <button class="btn secondary" type="button" onclick="changeSportScoreDate(-1)">← Veille</button>
+        <button class="btn secondary" type="button" onclick="loadSportScoreFixtures(getSportScoreSelectedDate())">Aujourd’hui</button>
+        <button class="btn secondary" type="button" onclick="changeSportScoreDate(1)">Lendemain →</button>
       </div>
-      <button id="apiFootballLoadButton" class="btn primary" type="button" onclick="loadApiFootballFixtures(getApiFootballSelectedDate())">⚽ Charger les matchs</button>
-      <button id="apiFootballLiveButton" class="btn secondary" type="button" onclick="loadApiFootballLive()">🔴 Voir les matchs en direct</button>
+      <button id="sportScoreLoadButton" class="btn primary" type="button" onclick="loadSportScoreFixtures(getSportScoreSelectedDate())">⚽ Charger les matchs</button>
+      <button id="sportScoreLiveButton" class="btn secondary" type="button" onclick="loadSportScoreLive()">🔴 Voir les matchs en direct</button>
     </div>
-    <div id="apiFootballStatus" class="status"></div>
-    <div id="apiFootballResults" class="ai-result hidden"></div>
+    <div id="sportScoreStatus" class="status"></div>
+    <div id="sportScoreResults" class="ai-result hidden"></div>
+    <div style="margin-top:12px;text-align:center;font-size:12px;opacity:.82">⚽ Données football fournies par <a href="https://sportscore.com/" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">SportScore</a></div>
   </section>
   <section class="partners-space" aria-label="Espace partenaires et bookmakers">
     <div class="section-kicker">Espace partenaires</div>
@@ -2120,7 +2121,7 @@ async function submitBatBotAI(){
   finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
 }
 
-function analyzeApiFootballMatch(home,away,homeId,awayId){
+function analyzeSportScoreMatch(home,away,homeId,awayId){
   const input1=document.getElementById("aiMatch1");
   const input2=document.getElementById("aiMatch2");
   const section=document.getElementById("smartDriveAISection");
@@ -2139,7 +2140,7 @@ function analyzeApiFootballMatch(home,away,homeId,awayId){
   },250);
 }
 
-function analyzeFirstTwoApiFootballMatches(){
+function analyzeFirstTwoSportScoreMatches(){
   const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
   const first=fixtures[0], second=fixtures[1];
   const home1=first?.teams?.home?.name||"";
@@ -2148,7 +2149,7 @@ function analyzeFirstTwoApiFootballMatches(){
   const away2=second?.teams?.away?.name||"";
 
   if(!home1||!away1){
-    return showStatus("apiFootballStatus","⚠️ Aucun match exploitable pour l’analyse.","error");
+    return showStatus("sportScoreStatus","⚠️ Aucun match exploitable pour l’analyse.","error");
   }
 
   const input1=document.getElementById("aiMatch1");
@@ -2170,39 +2171,39 @@ function getAbidjanDate(offsetDays){
   return new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Abidjan",year:"numeric",month:"2-digit",day:"2-digit"}).format(base);
 }
 
-function getApiFootballSelectedDate(){
-  const input=document.getElementById("apiFootballDate");
+function getSportScoreSelectedDate(){
+  const input=document.getElementById("sportScoreDate");
   const value=input?.value||"";
   return /^\d{4}-\d{2}-\d{2}$/.test(value)?value:getAbidjanDate(0);
 }
 
-function setApiFootballDate(value){
-  const input=document.getElementById("apiFootballDate");
+function setSportScoreDate(value){
+  const input=document.getElementById("sportScoreDate");
   if(input)input.value=value;
 }
 
-function changeApiFootballDate(offset){
-  const current=getApiFootballSelectedDate();
+function changeSportScoreDate(offset){
+  const current=getSportScoreSelectedDate();
   const parts=current.split("-").map(Number);
   const date=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]));
   date.setUTCDate(date.getUTCDate()+Number(offset||0));
   const value=date.toISOString().slice(0,10);
-  setApiFootballDate(value);
-  loadApiFootballFixtures(value);
+  setSportScoreDate(value);
+  loadSportScoreFixtures(value);
 }
 
-function renderApiFootballFixtures(fixtures,checkedDate){
-  const box=document.getElementById("apiFootballResults");
+function renderSportScoreFixtures(fixtures,checkedDate){
+  const box=document.getElementById("sportScoreResults");
   if(!box)return;
   window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
   if(!fixtures.length){
-    box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni par API-Football</div><div class="professional-status-body">API-Football a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';
+    box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni par SportScore</div><div class="professional-status-body">SportScore a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';
     return;
   }
 
   const topAction=(fixtures.length>=2)
-    ? '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoApiFootballMatches()">🤖 Analyser les 2 premiers matchs avec BatBot IA</button>'
-    : '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoApiFootballMatches()">🤖 Analyser avec BatBot IA</button>';
+    ? '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser les 2 premiers matchs avec BatBot IA</button>'
+    : '<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser avec BatBot IA</button>';
 
   box.innerHTML=topAction+fixtures.slice(0,30).map(function(item,index){
     const f=item.fixture||{},teams=item.teams||{},league=item.league||{};
@@ -2223,22 +2224,22 @@ function renderApiFootballFixtures(fixtures,checkedDate){
       const item=fixtures[index];
       const home=item?.teams?.home?.name||"";
       const away=item?.teams?.away?.name||"";
-      analyzeApiFootballMatch(home,away,item?.teams?.home?.id,item?.teams?.away?.id);
+      analyzeSportScoreMatch(home,away,item?.teams?.home?.id,item?.teams?.away?.id);
     });
   });
 }
 
-async function loadApiFootballFixtures(selectedDate){
-  const status=document.getElementById("apiFootballStatus");
-  const box=document.getElementById("apiFootballResults");
-  const button=document.getElementById("apiFootballLoadButton");
+async function loadSportScoreFixtures(selectedDate){
+  const status=document.getElementById("sportScoreStatus");
+  const box=document.getElementById("sportScoreResults");
+  const button=document.getElementById("sportScoreLoadButton");
   if(!status||!box)return;
   const date=/^\d{4}-\d{2}-\d{2}$/.test(String(selectedDate||""))?String(selectedDate):getAbidjanDate(0);
-  setApiFootballDate(date);
+  setSportScoreDate(date);
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion à API-Football</strong><small>Récupération des rencontres du '+escapeHtml(date)+'…</small></div></div>';
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion à SportScore</strong><small>Récupération des rencontres du '+escapeHtml(date)+'…</small></div></div>';
   box.classList.remove("hidden");
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les données officielles des rencontres sont en cours de récupération…</small></div></div>';
 
@@ -2247,26 +2248,33 @@ async function loadApiFootballFixtures(selectedDate){
     const d=await readApiResponse(r);
     if(!r.ok)throw new Error(d.error||d.details||"fixtures_unavailable");
     const fixtures=Array.isArray(d.response)?d.response:[];
-    renderApiFootballFixtures(fixtures,d.checked_date||date);
-    status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"✅ Données API-Football reçues":"ℹ️ Réponse API-Football reçue")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(d.checked_date||date)+".":"Aucune rencontre n’a été renvoyée pour le "+escapeHtml(d.checked_date||date)+" par API-Football.")+'</div></div>';
+    renderSportScoreFixtures(fixtures,d.checked_date||date);
+    if(fixtures.length){
+      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données SportScore reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(d.checked_date||date)+".</div></div>";
+    }else{
+      let diagnosticText="SportScore a répondu avec 0 rencontre pour cette date.";
+      const quota=d?.diagnostics?.quota?.dailyRemaining;
+      if(quota) diagnosticText+=" Requêtes restantes aujourd’hui : "+escapeHtml(quota)+".";
+      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ SportScore connecté, mais aucun match reçu</div><div class="professional-status-body">'+escapeHtml(diagnosticText)+"<br><small>La date sélectionnée est interrogée directement par SportScore.</small></div></div>";
+    }
   }catch(e){
     window.batBotDailyFixtures=[];
-    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ API-Football indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
-    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion non disponible</div><div class="professional-status-body">Le service API-Football n’a pas pu fournir les rencontres pour le '+escapeHtml(date)+'.</div></div>';
+    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ SportScore indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
+    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion non disponible</div><div class="professional-status-body">Le service SportScore n’a pas pu fournir les rencontres pour le '+escapeHtml(date)+'.</div></div>';
   }finally{
     if(button)button.disabled=false;
   }
 }
 
-async function loadApiFootballLive(){
-  const status=document.getElementById("apiFootballStatus");
-  const box=document.getElementById("apiFootballResults");
-  const button=document.getElementById("apiFootballLiveButton");
+async function loadSportScoreLive(){
+  const status=document.getElementById("sportScoreStatus");
+  const box=document.getElementById("sportScoreResults");
+  const button=document.getElementById("sportScoreLiveButton");
   if(!status||!box)return;
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion live à API-Football</strong><small>Recherche des rencontres actuellement en cours…</small></div></div>';
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion live à SportScore</strong><small>Recherche des rencontres actuellement en cours…</small></div></div>';
   box.classList.remove("hidden");
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Direct en cours</strong><small>Actualisation automatique toutes les 15 secondes pendant cette vue.</small></div></div>';
 
@@ -2276,12 +2284,12 @@ async function loadApiFootballLive(){
       const d=await readApiResponse(r);
       if(!r.ok)throw new Error(d.error||d.details||"live_unavailable");
       const fixtures=Array.isArray(d.response)?d.response:[];
-      renderApiFootballFixtures(fixtures,"en direct");
-      status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct API-Football":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"API-Football ne signale aucun match en cours actuellement.")+'</div></div>';
+      renderSportScoreFixtures(fixtures,"en direct");
+      status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct SportScore":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"SportScore ne signale aucun match en cours actuellement.")+'</div></div>';
     }catch(e){
       window.batBotLiveRefreshTimer=null;
       box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs en direct.")+'</div></div>';
-      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service live indisponible</div><div class="professional-status-body">La connexion à API-Football n’a pas pu être actualisée.</div></div>';
+      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service live SportScore indisponible</div><div class="professional-status-body">La connexion à SportScore n’a pas pu être actualisée.</div></div>';
     }
   };
   await refresh();
@@ -2290,7 +2298,7 @@ async function loadApiFootballLive(){
 }
 
 document.addEventListener("DOMContentLoaded",function(){
-  setApiFootballDate(getAbidjanDate(0));
+  setSportScoreDate(getAbidjanDate(0));
 });
 
 function openAdmin(){
