@@ -405,6 +405,7 @@ textarea{min-height:120px;resize:vertical}
 .ai-result-title{font-size:16px;font-weight:900;margin-bottom:10px}.ai-section-label{color:#6EE7A0;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;margin:12px 0 7px}
 .ai-prob-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.ai-prob-card{padding:9px 5px;text-align:center;border:1px solid #315D82;border-radius:10px;background:#0C2745}.ai-prob-card strong{display:block;font-size:12px}.ai-prob-card span{display:block;color:#6EE7A0;font-weight:900;margin-top:4px}
 .ai-options{display:grid;grid-template-columns:1fr;gap:7px}.ai-option-card{border:1px solid #315D82;border-radius:11px;background:#0C2745;padding:10px}.ai-option-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-close{border:0;background:#193A5C;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer}.ai-option-meta{color:#AFC1D4;font-size:12px;margin-top:5px}.ai-recommendation,.ai-combined{margin-top:10px;padding:11px;border:1px solid rgba(33,197,93,.4);border-radius:11px;background:rgba(33,197,93,.07);line-height:1.45}
+.batbot-ai-modal{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:18px}.batbot-ai-modal.open{display:flex}.batbot-ai-modal-backdrop{position:absolute;inset:0;background:rgba(2,12,24,.78);backdrop-filter:blur(5px)}.batbot-ai-modal-panel{position:relative;width:min(680px,100%);max-height:88vh;overflow:auto;border:1px solid rgba(0,213,255,.5);border-radius:20px;background:linear-gradient(145deg,#123b5b,#071a2d);box-shadow:0 20px 60px rgba(0,0,0,.5);padding:20px}.batbot-ai-modal-close{position:absolute;right:12px;top:10px;width:42px;height:42px;border:0;border-radius:50%;background:#23486b;color:#fff;font-size:30px;line-height:1;cursor:pointer}.batbot-ai-modal-panel h2{margin-top:4px}.batbot-ai-modal-panel .status{margin-top:14px}.batbot-ai-modal-panel .ai-result{margin-top:14px}.batbot-ai-modal .ai-options{display:grid;gap:8px}.batbot-ai-modal .professional-status{border-radius:14px}
 .ai-card{border:1px solid rgba(0,213,255,.45);background:linear-gradient(145deg,#123b5b,#0a223a)}.ai-result{margin-top:14px;padding:15px;border-radius:14px;background:#071a2d;border:1px solid #315d82;white-space:pre-wrap;line-height:1.55}
 @media(max-width:380px){.profile-status-grid{gap:7px}.status-card{padding:12px}.status-card strong{font-size:14px}}
 
@@ -727,7 +728,18 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     </div>
   </section>
 
-  <section class="card ai-card" id="smartDriveAISection">
+  <div id="batbotAIModal" class="batbot-ai-modal" aria-hidden="true">
+  <div class="batbot-ai-modal-backdrop" data-close-ai-modal="1"></div>
+  <div class="batbot-ai-modal-panel" role="dialog" aria-modal="true" aria-labelledby="batbotAIModalTitle">
+    <button type="button" class="batbot-ai-modal-close" data-close-ai-modal="1" aria-label="Fermer">×</button>
+    <div id="batbotAIModalTitle" class="section-kicker">Assistant intelligent</div>
+    <h2>🤖 Analyse BatBot IA</h2>
+    <div id="batbotAIModalStatus" class="status"></div>
+    <div id="batbotAIModalResult" class="ai-result hidden"></div>
+  </div>
+</div>
+
+<section class="card ai-card" id="smartDriveAISection">
     <div class="section-kicker">Assistant intelligent</div>
     <h2>🤖 BatBot IA</h2>
     <p class="muted">Analysez vos matchs avec BatBot IA. L’accès nécessite un abonnement actif.</p>
@@ -2094,19 +2106,53 @@ function renderBatBotAIResult(raw){
   });
 }
 
+function openBatBotAIModal(){
+  const modal=document.getElementById("batbotAIModal");
+  if(!modal)return;
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden","false");
+}
+function closeBatBotAIModal(){
+  const modal=document.getElementById("batbotAIModal");
+  if(!modal)return;
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden","true");
+}
+function setBatBotAIModalStatus(html,type=""){
+  const status=document.getElementById("batbotAIModalStatus");
+  if(!status)return;
+  status.className="status "+type;
+  status.innerHTML=html||"";
+}
+function setBatBotAIModalResult(html){
+  const result=document.getElementById("batbotAIModalResult");
+  if(!result)return;
+  result.innerHTML=html||"";
+  result.classList.toggle("hidden",!html);
+}
+
 async function submitBatBotAI(){
   const button=document.getElementById("smartDriveAIButton");
   const status=document.getElementById("smartDriveAIStatus");
   const result=document.getElementById("smartDriveAIResult");
-  const match1=document.getElementById("aiMatch1").value.trim();
-  const match2=document.getElementById("aiMatch2").value.trim();
+  const match1=document.getElementById("aiMatch1")?.value.trim()||"";
+  const match2=document.getElementById("aiMatch2")?.value.trim()||"";
   const first=splitMatch(match1),second=splitMatch(match2);
-  if(!match1&&!match2)return showStatus("smartDriveAIStatus","⚠️ Saisissez au moins un match au format : Équipe 1 vs Équipe 2.","error");
-  if((match1&&(!first.home||!first.away))||(match2&&(!second.home||!second.away)))return showStatus("smartDriveAIStatus","⚠️ Chaque match renseigné doit être au format : Équipe 1 vs Équipe 2.","error");
-  if(button?.disabled)return;
+  openBatBotAIModal();
+  setBatBotAIModalResult("");
+  if(!match1&&!match2){
+    const msg="Saisissez au moins un match au format : Équipe 1 vs Équipe 2.";
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse non lancée</strong><br><span>'+escapeHtml(msg)+'</span></div>',"error");
+    return;
+  }
+  if((match1&&(!first.home||!first.away))||(match2&&(!second.home||!second.away))){
+    const msg="Chaque match renseigné doit être au format : Équipe 1 vs Équipe 2.";
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Format incorrect</strong><br><span>'+escapeHtml(msg)+'</span></div>',"error");
+    return;
+  }
   try{
-    status.className="status";
-    status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation de l’analyse</strong><small>Vérification des équipes avec SportScore…</small></div></div>';
+    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation de l’analyse</strong><small>Vérification des équipes avec SportScore…</small></div></div>');
+    if(status)status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation de l’analyse</strong><small>BatBot IA prépare le match…</small></div></div>';
     window.batBotSelectedIds=window.batBotSelectedIds||{home:"",away:""};
     window.batBotSelectedIds2=window.batBotSelectedIds2||{home:"",away:""};
     if(first.home&&!window.batBotSelectedIds.home)window.batBotSelectedIds.home=await resolveSportScoreTeamSlug(first.home);
@@ -2116,23 +2162,36 @@ async function submitBatBotAI(){
     if(!window.batBotSelectedIds.home||!window.batBotSelectedIds.away||(second.home&&second.away&&(!window.batBotSelectedIds2.home||!window.batBotSelectedIds2.away))){
       throw new Error("Une ou plusieurs équipes n’ont pas pu être reconnues par SportScore.");
     }
-  }catch(e){return showStatus("smartDriveAIStatus","⚠️ "+escapeHtml(e?.message||"Impossible de reconnaître les équipes avec SportScore."),"error");}
-
+  }catch(e){
+    const msg=e?.message||"Impossible de reconnaître les équipes avec SportScore.";
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Préparation impossible</strong><br><span>'+escapeHtml(msg)+'</span></div>',"error");
+    if(status)status.innerHTML='<div class="professional-status error">⚠️ '+escapeHtml(msg)+'</div>';
+    return;
+  }
   setLoading("smartDriveAIButton",true,"🤖 Lancer l’analyse");
-  status.className="status";
-  status.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA analyse les matchs sélectionnés…</small></div></div>';
+  setBatBotAIModalStatus('<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA interroge le service d’analyse…</small></div></div>');
   if(result)result.classList.add("hidden");
   try{
     const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:first.home,away_team:first.away,second_home_team:second.home,second_away_team:second.away,home_team_id:window.batBotSelectedIds?.home||"",away_team_id:window.batBotSelectedIds?.away||"",second_home_team_id:window.batBotSelectedIds2?.home||"",second_away_team_id:window.batBotSelectedIds2?.away||""})});
     const d=await readApiResponse(r);
     if(!r.ok){
-      if(r.status===401||r.status===403){status.className="status";status.innerHTML='<div class="professional-status error">🔒 <strong>Accès à BatBot IA limité</strong><br><span>⭐ Cette fonctionnalité nécessite un abonnement Premium actif et une autorisation IA activée.</span><br><small>🔐 Activez votre accès pour utiliser l’analyse intelligente des matchs.</small></div>';}else throw new Error(d.error||"Analyse indisponible.");
+      const msg=d?.error||("Le serveur a répondu avec HTTP "+r.status+".");
+      setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(msg)+'</span></div>',"error");
+      if(status)status.innerHTML='<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(msg)+'</span></div>';
       return;
     }
     renderBatBotAIResult(d.analysis);
-    status.className="status";status.innerHTML='<div class="professional-status success">✅ <strong>Analyse terminée</strong><br><span>Les résultats de BatBot IA sont prêts.</span></div>';
-  }catch(e){status.className="status";status.innerHTML='<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(e&&e.message?e.message:"Une erreur est survenue pendant l’analyse.")+'</span></div>';}
-  finally{setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");}
+    setBatBotAIModalStatus('<div class="professional-status success">✅ <strong>Analyse terminée</strong><br><span>Les résultats de BatBot IA sont prêts.</span></div>',"success");
+    const rendered=document.getElementById("smartDriveAIResult");
+    setBatBotAIModalResult(rendered?.innerHTML||'<div class="professional-status">Analyse reçue.</div>');
+    if(status)status.innerHTML='<div class="professional-status success">✅ <strong>Analyse terminée</strong></div>';
+  }catch(e){
+    const msg=e?.message||"Une erreur est survenue pendant l’analyse.";
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(msg)+'</span></div>',"error");
+    if(status)status.innerHTML='<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(msg)+'</span></div>';
+  }finally{
+    setLoading("smartDriveAIButton",false,"🤖 Lancer l’analyse");
+  }
 }
 
 function analyzeSportScoreMatch(home,away,homeId,awayId){
@@ -2406,6 +2465,7 @@ async function loadSportScoreLive(){
 
 document.addEventListener("DOMContentLoaded",function(){
   setSportScoreDate(getAbidjanDate(0));
+  document.querySelectorAll("[data-close-ai-modal]").forEach(function(el){el.addEventListener("click",closeBatBotAIModal);});
 });
 
 function openAdmin(){
