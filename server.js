@@ -1526,32 +1526,44 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const combinedStructure = matchCount > 1
     ? ',\n  "combined": {\n    "selections":"...",\n    "estimated_odds":"..."\n  }'
     : '';
+  const evidence = req.body.analysis_evidence && typeof req.body.analysis_evidence === "object" ? req.body.analysis_evidence : null;
+  const models = Array.isArray(req.body.analysis_models) ? req.body.analysis_models : [];
+  const compactEvidence = evidence ? JSON.stringify(evidence).slice(0, 42000) : "Aucune donnée statistique SportScore supplémentaire n’a été fournie.";
+  const modelInstruction = models.length ? `\nMODÈLE STATISTIQUE BATBOT (à respecter exactement pour les pourcentages) :\n${JSON.stringify(models)}\nLes valeurs 1/X/2 et les probabilités d’options fournies par ce modèle sont calculées à partir des données SportScore disponibles. Tu ne dois pas les inventer ni les modifier. Tu peux seulement expliquer leur lecture et choisir une recommandation cohérente.` : "";
   const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds uniquement avec un JSON valide, sans introduction, sans Markdown et sans texte supplémentaire.
 
 Matchs à analyser :
 ${matches.join("\n")}
 
-Objectif : fournir une fiche courte, claire et directement lisible sur téléphone.
+DONNÉES SPORTIVES RÉELLES DISPONIBLES (SportScore) :
+${compactEvidence}
+${modelInstruction}
+
+Objectif : fournir une fiche professionnelle, prudente et cohérente. N’invente jamais une statistique, une blessure, une composition, une cote bookmaker, un résultat ou une information absente des données fournies. Si une information manque, dis simplement qu’elle n’est pas disponible.
 Pour chacun des ${matchCount} match${matchCount > 1 ? 's' : ''}, retourne :
 - name : nom du match ;
-- probabilities : 3 à 5 probabilités courtes parmi 1, X, 2, double chance, buts ;
-- options : 4 à 6 options pertinentes parmi 1X, X2, 12, victoire, plus/moins de buts, BTTS, handicap et score exact. Pour chaque option, indique name, probability et risk en quelques mots ;
-- recommendation : une seule option principale.
+- probabilities : exactement 1, X, 2 avec les valeurs du modèle statistique fournies ;
+- options : les options du modèle statistique fournies, avec leurs probabilités inchangées ;
+- recommendation : une seule option parmi les options fournies, cohérente avec les probabilités ;
+- reason : une explication courte fondée uniquement sur forme récente, buts, H2H et classement disponibles ;
+- data_quality : "bonne", "moyenne" ou "limitée" selon la quantité de données réellement disponible.
 
 ${combinedInstruction}
-N’invente pas de statistiques, de blessures, de résultats ou de cotes en direct. Ne donne aucune longue explication. Utilise exactement cette structure :
+Utilise exactement cette structure :
 {
   "matches": [
     {
       "name": "...",
       "probabilities": [{"label":"1","value":"..."},{"label":"X","value":"..."},{"label":"2","value":"..."}],
-      "options": [{"name":"...","probability":"...","risk":"..."}],
-      "recommendation":"..."
+      "options": [{"name":"...","probability":"...","risk":"...","reason":"..."}],
+      "recommendation":"...",
+      "reason":"...",
+      "data_quality":"..."
     }
   ]${combinedStructure}
 }`;
 
-  const systemInstruction = "Retourne uniquement le JSON demandé en français. Sois bref, organisé et ne fabrique aucune donnée précise non fournie.";
+  const systemInstruction = "Retourne uniquement le JSON demandé en français. Utilise exclusivement les données SportScore et le modèle statistique fournis. Ne présente jamais une estimation comme une certitude.";
 
   try {
     let analysis = "";
@@ -1607,7 +1619,7 @@ N’invente pas de statistiques, de blessures, de résultats ou de cotes en dire
     }
 
     if (!analysis) return res.status(502).json({ error: "BatBot IA n’a pas retourné de résultat." });
-    res.json({ analysis, provider: process.env.GROQ_API_KEY ? "groq" : "openai" });
+    res.json({ analysis, provider: process.env.GROQ_API_KEY ? "groq" : "openai", models });
   } catch (error) {
     console.error("AI request error:", error.message);
     res.status(502).json({ error: "BatBot IA est temporairement indisponible." });
