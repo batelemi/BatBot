@@ -2104,6 +2104,18 @@ async function submitBatBotAI(){
   if(!match1&&!match2)return showStatus("smartDriveAIStatus","⚠️ Saisissez au moins un match au format : Équipe 1 vs Équipe 2.","error");
   if((match1&&(!first.home||!first.away))||(match2&&(!second.home||!second.away)))return showStatus("smartDriveAIStatus","⚠️ Chaque match renseigné doit être au format : Équipe 1 vs Équipe 2.","error");
   if(button?.disabled)return;
+  try{
+    window.batBotSelectedIds=window.batBotSelectedIds||{home:"",away:""};
+    window.batBotSelectedIds2=window.batBotSelectedIds2||{home:"",away:""};
+    if(first.home&&!window.batBotSelectedIds.home)window.batBotSelectedIds.home=await resolveSportScoreTeamSlug(first.home);
+    if(first.away&&!window.batBotSelectedIds.away)window.batBotSelectedIds.away=await resolveSportScoreTeamSlug(first.away);
+    if(second.home&&!window.batBotSelectedIds2.home)window.batBotSelectedIds2.home=await resolveSportScoreTeamSlug(second.home);
+    if(second.away&&!window.batBotSelectedIds2.away)window.batBotSelectedIds2.away=await resolveSportScoreTeamSlug(second.away);
+    if(!window.batBotSelectedIds.home||!window.batBotSelectedIds.away||(second.home&&second.away&&(!window.batBotSelectedIds2.home||!window.batBotSelectedIds2.away))){
+      throw new Error("Une ou plusieurs équipes n’ont pas pu être reconnues par SportScore.");
+    }
+  }catch(e){return showStatus("smartDriveAIStatus","⚠️ "+escapeHtml(e?.message||"Impossible de reconnaître les équipes avec SportScore."),"error");}
+
   setLoading("smartDriveAIButton",true,"🤖 Lancer l’analyse");
   status.className="status";
   status.innerHTML='<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA analyse les matchs sélectionnés…</small></div></div>';
@@ -2229,6 +2241,52 @@ function renderSportScoreFixtures(fixtures,checkedDate){
   });
 }
 
+function sportScorePublicUrl(endpoint, params){
+  const url=new URL("https://sportscore.com/api/v1/"+String(endpoint||"").replace(/^\//,""));
+  Object.keys(params||{}).forEach(function(key){
+    const value=params[key];
+    if(value!==undefined&&value!==null&&value!=="")url.searchParams.set(key,String(value));
+  });
+  url.searchParams.set("src","batbot");
+  return url.toString();
+}
+
+async function fetchSportScorePublic(endpoint,params){
+  const r=await fetch(sportScorePublicUrl(endpoint,params),{method:"GET",headers:{Accept:"application/json"},cache:"no-store"});
+  const d=await r.json().catch(function(){return {};});
+  if(!r.ok)throw new Error(d.error||d.message||("SportScore HTTP "+r.status));
+  return d;
+}
+
+function normalizeSportScoreClientMatch(match,index){
+  const homeName=String(match?.home||match?.home_team||"Équipe 1").trim();
+  const awayName=String(match?.away||match?.away_team||"Équipe 2").trim();
+  const homeScore=Number.isFinite(Number(match?.home_score))?Number(match.home_score):null;
+  const awayScore=Number.isFinite(Number(match?.away_score))?Number(match.away_score):null;
+  const date=match?.time||match?.date||null;
+  const competitionName=match?.competition||match?.league||"Compétition";
+  const slug=match?.slug||((homeName+"-vs-"+awayName).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""));
+  return {fixture:{id:String(match?.id||slug||index),date:date,status:{short:String(match?.status||"").toLowerCase()==="live"?"LIVE":String(match?.status||"").toLowerCase()==="finished"?"FT":"NS",long:match?.status_text||match?.status||"Programmé"}},teams:{home:{id:String(match?.home_slug||""),name:homeName,logo:match?.home_logo||null},away:{id:String(match?.away_slug||""),name:awayName,logo:match?.away_logo||null}},league:{id:String(match?.competition_slug||competitionName),name:competitionName,slug:match?.competition_slug||null},goals:{home:homeScore,away:awayScore},score:{fulltime:{home:homeScore,away:awayScore}},sportscore:{slug:slug,uri:match?.uri||null,status:match?.status||null,status_text:match?.status_text||null,raw:match}};
+}
+
+async function ensureSportScoreFootballAccess(){
+  const r=await fetch("/api/football/access",{credentials:"same-origin",cache:"no-store"});
+  const d=await readApiResponse(r);
+  if(!r.ok)throw new Error(d.error||"Accès football indisponible.");
+  return d;
+}
+
+async function resolveSportScoreTeamSlug(name){
+  const q=String(name||"").trim();
+  if(q.length<2)return "";
+  const data=await fetchSportScorePublic("search/",{sport:"football",q:q,limit:10});
+  const teams=Array.isArray(data?.teams)?data.teams:[];
+  const normalize=function(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/\\b(fc|cf|sc|afc|ac|football club)\\b/g," ").replace(/[^a-z0-9]+/g," ").trim();};
+  const target=normalize(q);
+  const match=teams.find(function(team){const candidate=normalize(team?.name);return candidate===target||candidate.includes(target)||target.includes(candidate);})||teams[0];
+  return match?.slug||"";
+}
+
 async function loadSportScoreFixtures(selectedDate){
   const status=document.getElementById("sportScoreStatus");
   const box=document.getElementById("sportScoreResults");
@@ -2244,18 +2302,15 @@ async function loadSportScoreFixtures(selectedDate){
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les données officielles des rencontres sont en cours de récupération…</small></div></div>';
 
   try{
-    const r=await fetch("/api/football/fixtures?date="+encodeURIComponent(date)+"&timezone=Africa%2FAbidjan",{credentials:"same-origin",cache:"no-store"});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||d.details||"fixtures_unavailable");
-    const fixtures=Array.isArray(d.response)?d.response:[];
-    renderSportScoreFixtures(fixtures,d.checked_date||date);
+    await ensureSportScoreFootballAccess();
+    const d=await fetchSportScorePublic("fixtures/",{sport:"football",date:date,limit:200});
+    const rawFixtures=Array.isArray(d?.matches)?d.matches:[];
+    const fixtures=rawFixtures.map(normalizeSportScoreClientMatch);
+    renderSportScoreFixtures(fixtures,date);
     if(fixtures.length){
-      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données SportScore reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(d.checked_date||date)+".</div></div>";
+      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données SportScore reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(date)+".</div></div>";
     }else{
-      let diagnosticText="SportScore a répondu avec 0 rencontre pour cette date.";
-      const quota=d?.diagnostics?.quota?.dailyRemaining;
-      if(quota) diagnosticText+=" Requêtes restantes aujourd’hui : "+escapeHtml(quota)+".";
-      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ SportScore connecté, mais aucun match reçu</div><div class="professional-status-body">'+escapeHtml(diagnosticText)+"<br><small>La date sélectionnée est interrogée directement par SportScore.</small></div></div>";
+      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ SportScore connecté, mais aucun match reçu</div><div class="professional-status-body">SportScore a répondu avec 0 rencontre pour cette date.</div></div>';
     }
   }catch(e){
     window.batBotDailyFixtures=[];
@@ -2280,10 +2335,10 @@ async function loadSportScoreLive(){
 
   const refresh=async function(){
     try{
-      const r=await fetch("/api/football/live?timezone=Africa%2FAbidjan",{credentials:"same-origin",cache:"no-store"});
-      const d=await readApiResponse(r);
-      if(!r.ok)throw new Error(d.error||d.details||"live_unavailable");
-      const fixtures=Array.isArray(d.response)?d.response:[];
+      await ensureSportScoreFootballAccess();
+      const d=await fetchSportScorePublic("matches/",{sport:"football",limit:50});
+      const rawFixtures=Array.isArray(d?.matches)?d.matches:[];
+      const fixtures=rawFixtures.map(normalizeSportScoreClientMatch).filter(function(item){return item?.sportscore?.status==="live"||item?.fixture?.status?.short==="LIVE";});
       renderSportScoreFixtures(fixtures,"en direct");
       status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct SportScore":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"SportScore ne signale aucun match en cours actuellement.")+'</div></div>';
     }catch(e){
