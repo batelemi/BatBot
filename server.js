@@ -944,7 +944,11 @@ async function validateFootballTeamForAI(teamName, teamId = "") {
   // 2) Si l'équipe provient directement d'un résultat SportScore côté navigateur,
   // son slug est déjà un identifiant SportScore exploitable. Cela évite de dépendre
   // d'un appel serveur-à-serveur qui peut être bloqué par l'hébergeur.
-  if (id && /^[a-z0-9][a-z0-9-]{1,120}$/i.test(id)) {
+  // Les identifiants renvoyés par SportScore peuvent être des slugs, des IDs
+  // numériques ou d'autres identifiants courts. Dès lors qu'ils proviennent
+  // directement du résultat SportScore côté navigateur, ils sont considérés
+  // comme fiables et on évite tout nouvel appel serveur-à-serveur.
+  if (id && /^[a-z0-9][a-z0-9_-]{0,199}$/i.test(id)) {
     footballTeamCache.set(cacheKey, { valid: true, slug: id, expiresAt: Date.now() + 15 * 60 * 1000 });
     return true;
   }
