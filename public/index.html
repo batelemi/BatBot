@@ -2146,10 +2146,12 @@ function analyzeSportScoreMatch(home,away,homeId,awayId){
   if(section){
     section.scrollIntoView({behavior:"smooth",block:"start"});
   }
-  setTimeout(()=>{
-    input1.focus();
-    submitBatBotAI();
-  },250);
+  const status=document.getElementById("smartDriveAIStatus");
+  if(status){
+    status.className="status";
+    status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation de l’analyse</strong><small>BatBot IA prépare le match…</small></div></div>';
+  }
+  setTimeout(()=>submitBatBotAI(),350);
 }
 
 function analyzeFirstTwoSportScoreMatches(){
@@ -2258,15 +2260,50 @@ async function fetchSportScorePublic(endpoint,params){
   return d;
 }
 
+function translateSportScoreStatus(value){
+  const raw=String(value||"").trim();
+  const key=raw.toLowerCase().replace(/[._-]+/g," ").replace(/\s+/g," ");
+  const map={
+    "not started":"À venir","scheduled":"Programmé","upcoming":"À venir","pre match":"À venir","prematch":"À venir",
+    "live":"En direct","in progress":"En direct","first half":"1re mi-temps","second half":"2e mi-temps",
+    "half time":"Mi-temps","halftime":"Mi-temps","finished":"Terminé","full time":"Terminé","ft":"Terminé",
+    "after extra time":"Après prolongation","extra time":"Prolongation","penalties":"Tirs au but",
+    "postponed":"Reporté","cancelled":"Annulé","canceled":"Annulé","suspended":"Suspendu",
+    "abandoned":"Abandonné","delayed":"Retardé"
+  };
+  return map[key]||raw||"Programmé";
+}
+
+function translateSportScoreCompetition(value){
+  let text=String(value||"Compétition").trim();
+  const replacements=[
+    [/\bPrimera Division\b/gi,"Première division"],
+    [/\bPrimera División\b/gi,"Première division"],
+    [/\bPrimera Divisi[oó]n\b/gi,"Première division"],
+    [/\bLiga Nacional\b/gi,"Ligue nationale"],
+    [/\bNational League\b/gi,"Ligue nationale"],
+    [/\bPremier League\b/gi,"Premier League"],
+    [/\bChampionship\b/gi,"Championnat"],
+    [/\bLeague One\b/gi,"Ligue 1"],
+    [/\bLeague Two\b/gi,"Ligue 2"],
+    [/\bSuper League\b/gi,"Super Ligue"],
+    [/\bCup\b/gi,"Coupe"],
+    [/\bCopa\b/gi,"Coupe"],
+    [/\bDivision\b/gi,"Division"]
+  ];
+  replacements.forEach(([re,rep])=>{text=text.replace(re,rep);});
+  return text||"Compétition";
+}
+
 function normalizeSportScoreClientMatch(match,index){
   const homeName=String(match?.home||match?.home_team||"Équipe 1").trim();
   const awayName=String(match?.away||match?.away_team||"Équipe 2").trim();
   const homeScore=Number.isFinite(Number(match?.home_score))?Number(match.home_score):null;
   const awayScore=Number.isFinite(Number(match?.away_score))?Number(match.away_score):null;
   const date=match?.time||match?.date||null;
-  const competitionName=match?.competition||match?.league||"Compétition";
+  const competitionName=translateSportScoreCompetition(match?.competition||match?.league||"Compétition");
   const slug=match?.slug||((homeName+"-vs-"+awayName).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""));
-  return {fixture:{id:String(match?.id||slug||index),date:date,status:{short:String(match?.status||"").toLowerCase()==="live"?"LIVE":String(match?.status||"").toLowerCase()==="finished"?"FT":"NS",long:match?.status_text||match?.status||"Programmé"}},teams:{home:{id:String(match?.home_slug||""),name:homeName,logo:match?.home_logo||null},away:{id:String(match?.away_slug||""),name:awayName,logo:match?.away_logo||null}},league:{id:String(match?.competition_slug||competitionName),name:competitionName,slug:match?.competition_slug||null},goals:{home:homeScore,away:awayScore},score:{fulltime:{home:homeScore,away:awayScore}},sportscore:{slug:slug,uri:match?.uri||null,status:match?.status||null,status_text:match?.status_text||null,raw:match}};
+  return {fixture:{id:String(match?.id||slug||index),date:date,status:{short:String(match?.status||"").toLowerCase()==="live"?"LIVE":String(match?.status||"").toLowerCase()==="finished"?"FT":"NS",long:translateSportScoreStatus(match?.status_text||match?.status||"Programmé")}},teams:{home:{id:String(match?.home_slug||""),name:homeName,logo:match?.home_logo||null},away:{id:String(match?.away_slug||""),name:awayName,logo:match?.away_logo||null}},league:{id:String(match?.competition_slug||competitionName),name:competitionName,slug:match?.competition_slug||null},goals:{home:homeScore,away:awayScore},score:{fulltime:{home:homeScore,away:awayScore}},sportscore:{slug:slug,uri:match?.uri||null,status:match?.status||null,status_text:match?.status_text||null,raw:match}};
 }
 
 async function ensureSportScoreFootballAccess(){
