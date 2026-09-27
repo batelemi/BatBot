@@ -2375,7 +2375,7 @@ async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fix
     const findRow=(name)=>table.find(function(row){const rn=row?.team?.name||row?.name||row?.team_name;return sportScoreNameKey(rn)===sportScoreNameKey(name);});
     const hr=findRow(pair.home),ar=findRow(pair.away);
     const model=buildSportScoreProbabilityModel(homeForm,awayForm,h2h||{});
-    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:pair.fixture?{date:pair.fixture.fixture?.date,status:pair.fixture.fixture?.status,competition:pair.fixture.league?.name}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
+    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:pair.fixture?{date:(pair.fixture.fixture?.date||pair.fixture.date||pair.fixture.start_time||pair.fixture.startTime||pair.fixture.kickoff||pair.fixture.datetime||pair.fixture.scheduled_at||pair.fixture.scheduledAt||pair.fixture.time||null),status:(pair.fixture.fixture?.status||pair.fixture.status||null),competition:(pair.fixture.league?.name||pair.fixture.competition?.name||pair.fixture.competition||null)}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
   }));
   return {source:"SportScore",generatedAt:new Date().toISOString(),matches:results,models:results.map(function(r){return r.model;})};
 }
