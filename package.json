@@ -4,7 +4,8 @@
   "description": "S-Drive - Application d'analyse de matchs de football",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test:odds": "node algorithms/test-sportscore-odds.js \"Real Madrid\" \"Barcelona\""
   },
   "dependencies": {
     "express": "^4.21.2",
