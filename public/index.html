@@ -2126,7 +2126,7 @@ function renderBatBotTicket(data){
     const probs=(match.probabilities||[]).map(function(p){return '<span class="ai-ticket-row"><span>'+escapeHtml(p.label||"")+'</span><strong class="ai-ticket-prob">'+escapeHtml(formatPercent(p.value))+'</strong></span>';}).join("");
     html+='<div class="ai-ticket-match">'+
       '<div class="ai-ticket-match-name">⚽ '+escapeHtml(match.name||("Match "+(index+1)))+'</div>'+
-      (pick?'<div class="ai-ticket-row"><span>CHOIX</span><strong class="ai-ticket-pick">'+escapeHtml(pick.name)+'</strong></div><div class="ai-ticket-row"><span>PROBABILITÉ</span><strong class="ai-ticket-prob">'+escapeHtml(formatPercent(pick.probability))+'</strong></div>':'<div class="ai-ticket-row"><span>CHOIX</span><span class="ai-ticket-badge">ANALYSE INSUFFISANTE</span></div>')+
+      (pick?'<div class="ai-ticket-row"><span>CHOIX</span><strong class="ai-ticket-pick">'+escapeHtml(pick.name)+'</strong></div>':'<div class="ai-ticket-row"><span>CHOIX</span><span class="ai-ticket-badge">ANALYSE INSUFFISANTE</span></div>')+
       (probs?'<div style="margin-top:7px">'+probs+'</div>':"")+ '<div class="ai-ticket-row"><span>DONNÉES</span><span class="ai-ticket-badge">'+escapeHtml(match.data_quality||"—")+'</span></div>'+ '</div>';
   });
   const timestamp=data?.generatedAt?new Date(data.generatedAt):new Date();
