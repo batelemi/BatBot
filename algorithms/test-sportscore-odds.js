@@ -1,17 +1,20 @@
 /**
  * BATBOT — TEST DU MOTEUR DE COTES AVEC SPORTScore
  *
- * Ce fichier :
- * 1. recherche deux équipes sur SportScore
- * 2. récupère leur calendrier
- * 3. conserve uniquement les matchs réellement terminés
- * 4. conserve uniquement les matchs avec un score valide
- * 5. sélectionne les derniers matchs exploitables
- * 6. calcule les statistiques offensives et défensives
- * 7. transmet les données à odds-engine.js
- * 8. affiche les probabilités et cotes théoriques
+ * Objectif :
+ * 1. rechercher les équipes sur SportScore
+ * 2. sélectionner une équipe sans ambiguïté
+ * 3. récupérer son calendrier
+ * 4. conserver uniquement les matchs terminés
+ * 5. conserver uniquement les matchs avec score réel
+ * 6. utiliser les derniers matchs exploitables
+ * 7. transmettre les statistiques au moteur odds-engine.js
+ * 8. afficher les probabilités et cotes théoriques
  *
- * Ce fichier est indépendant de server.js.
+ * IMPORTANT :
+ * Aucun résultat ambigu n'est accepté.
+ * Le moteur ne doit jamais calculer une cote
+ * avec une mauvaise équipe.
  */
 
 "use strict";
@@ -33,20 +36,34 @@ const HOME_TEAM_NAME =
   process.argv[2] || "Real Madrid";
 
 const AWAY_TEAM_NAME =
-  process.argv[3] || "Barcelona";
+  process.argv[3] || "FC Barcelona";
 
 const MATCH_LIMIT = 30;
 
 const REQUIRED_MATCHES = 5;
 
 /* ================================================== */
-/* OUTILS GÉNÉRAUX                                   */
+/* OUTILS                                             */
 /* ================================================== */
 
 function cleanText(value) {
   return String(value ?? "")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `SportScore HTTP ${response.status}`
+    );
+  }
+
+  return response.json();
 }
 
 function unwrapResponse(data) {
@@ -78,20 +95,8 @@ function unwrapResponse(data) {
   return data;
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(
-      `SportScore HTTP ${response.status}`
-    );
-  }
-
-  return response.json();
-}
-
 /* ================================================== */
-/* RECHERCHE D'UNE ÉQUIPE                            */
+/* RECHERCHE ÉQUIPE                                   */
 /* ================================================== */
 
 async function searchTeam(teamName) {
@@ -166,9 +171,6 @@ async function searchTeam(teamName) {
 
   collect(root);
 
-  /*
-   * Évite les doublons.
-   */
   const unique =
     Array.from(
       new Map(
@@ -188,48 +190,136 @@ async function searchTeam(teamName) {
   const wanted =
     cleanText(teamName);
 
+  console.log(
+    `\n🔎 Résultats SportScore pour "${teamName}" :`
+  );
+
+  for (const candidate of unique.slice(0, 10)) {
+    console.log(
+      `   • ${candidate.name} → ${candidate.slug}`
+    );
+  }
+
   /*
-   * 1. Correspondance exacte.
+   * 1. Correspondance exacte du nom demandé.
    */
   const exact =
-    unique.find(
+    unique.filter(
       item =>
         cleanText(item.name) === wanted
     );
 
-  if (exact) {
-    return exact;
+  if (exact.length === 1) {
+    return exact[0];
+  }
+
+  if (exact.length > 1) {
+    throw new Error(
+      `Recherche ambiguë pour "${teamName}" : plusieurs équipes portent exactement ce nom.`
+    );
   }
 
   /*
-   * 2. Correspondance contenant le nom.
+   * 2. Correspondance stricte avec le slug.
+   *
+   * Exemple :
+   * FC Barcelona → fc-barcelona
+   * Barcelona → barcelona
    */
-  const partial =
-    unique.find(
-      item => {
-        const candidate =
-          cleanText(item.name);
+  const slugWanted =
+    wanted
+      .replace(/\bfc\b/g, "")
+      .trim()
+      .replace(/\s+/g, "-");
 
-        return (
-          candidate.includes(wanted) ||
-          wanted.includes(candidate)
-        );
+  const slugMatches =
+    unique.filter(item => {
+      const slug =
+        cleanText(item.slug);
+
+      return (
+        slug === wanted.replace(/\s+/g, "-") ||
+        slug === slugWanted ||
+        slug === wanted.replace(/\s+/g, "-") + "-fc"
+      );
+    });
+
+  if (slugMatches.length === 1) {
+    return slugMatches[0];
+  }
+
+  /*
+   * 3. Recherche de correspondance
+   * sur les mots importants du nom.
+   *
+   * On refuse le premier résultat.
+   */
+  const wantedWords =
+    wanted
+      .split(/\s+/)
+      .filter(
+        word =>
+          word.length >= 3 &&
+          word !== "fc" &&
+          word !== "cf"
+      );
+
+  const scored =
+    unique.map(item => {
+      const candidate =
+        cleanText(item.name);
+
+      let score = 0;
+
+      for (const word of wantedWords) {
+        if (candidate.includes(word)) {
+          score += 1;
+        }
       }
+
+      return {
+        item,
+        score
+      };
+    })
+    .filter(item => item.score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score
     );
 
-  if (partial) {
-    return partial;
+  if (!scored.length) {
+    throw new Error(
+      `Impossible d'identifier précisément l'équipe "${teamName}" sur SportScore.`
+    );
   }
 
+  const bestScore =
+    scored[0].score;
+
+  const best =
+    scored.filter(
+      item =>
+        item.score === bestScore
+    );
+
   /*
-   * 3. Premier résultat si aucune
-   * correspondance exacte n'est trouvée.
+   * Si plusieurs équipes ont le même niveau
+   * de correspondance, on refuse.
    */
-  return unique[0];
+  if (best.length !== 1) {
+    throw new Error(
+      `Équipe ambiguë pour "${teamName}". ` +
+      `SportScore retourne plusieurs correspondances possibles. ` +
+      `Utilise le nom complet du club.`
+    );
+  }
+
+  return best[0].item;
 }
 
 /* ================================================== */
-/* EXTRACTION DES MATCHS                             */
+/* EXTRACTION DES MATCHS                              */
 /* ================================================== */
 
 function looksLikeMatch(item) {
@@ -261,7 +351,8 @@ function looksLikeMatch(item) {
       item.status ||
       item.status_key ||
       item.status_text ||
-      item.match_status
+      item.match_status ||
+      item.state
     );
 
   const hasScore =
@@ -312,10 +403,6 @@ function findMatchArray(value) {
     return null;
   }
 
-  /*
-   * Priorité aux noms connus
-   * de l'API SportScore.
-   */
   const preferredKeys = [
     "matches",
     "fixtures",
@@ -368,7 +455,7 @@ function extractMatches(data) {
 }
 
 /* ================================================== */
-/* STATUT DU MATCH                                   */
+/* STATUT                                             */
 /* ================================================== */
 
 function getStatus(match) {
@@ -399,7 +486,7 @@ function isFinished(match) {
 }
 
 /* ================================================== */
-/* SCORE                                             */
+/* SCORE                                              */
 /* ================================================== */
 
 function getScore(match) {
@@ -418,8 +505,8 @@ function getScore(match) {
     match?.scores?.away_score;
 
   /*
-   * Aucun score disponible :
-   * on ne transforme PAS cela en 0-0.
+   * Un score absent n'est jamais transformé
+   * en 0-0.
    */
   if (
     homeValue === null ||
@@ -501,7 +588,7 @@ function getTeamName(
 }
 
 /* ================================================== */
-/* DATE DU MATCH                                     */
+/* DATE                                               */
 /* ================================================== */
 
 function getMatchTime(match) {
@@ -525,7 +612,7 @@ function getMatchTime(match) {
 }
 
 /* ================================================== */
-/* VÉRIFICATION D'UNE ÉQUIPE                        */
+/* APPARTENANCE ÉQUIPE                               */
 /* ================================================== */
 
 function matchBelongsToTeam(
@@ -553,16 +640,12 @@ function matchBelongsToTeam(
 
   return (
     home === wanted ||
-    away === wanted ||
-    home.includes(wanted) ||
-    away.includes(wanted) ||
-    wanted.includes(home) ||
-    wanted.includes(away)
+    away === wanted
   );
 }
 
 /* ================================================== */
-/* STATISTIQUES D'UNE ÉQUIPE                        */
+/* STATISTIQUES                                       */
 /* ================================================== */
 
 function calculateTeamStats(
@@ -574,17 +657,10 @@ function calculateTeamStats(
   for (
     const match of matches
   ) {
-    /*
-     * Seulement les matchs terminés.
-     */
     if (!isFinished(match)) {
       continue;
     }
 
-    /*
-     * Seulement les matchs avec
-     * un score réel.
-     */
     const score =
       getScore(match);
 
@@ -592,10 +668,6 @@ function calculateTeamStats(
       continue;
     }
 
-    /*
-     * Vérifie que le match
-     * concerne bien l'équipe.
-     */
     if (
       !matchBelongsToTeam(
         match,
@@ -617,9 +689,7 @@ function calculateTeamStats(
       cleanText(team.name);
 
     const isHome =
-      homeName === teamName ||
-      homeName.includes(teamName) ||
-      teamName.includes(homeName);
+      homeName === teamName;
 
     const goalsFor =
       isHome
@@ -656,18 +726,11 @@ function calculateTeamStats(
     });
   }
 
-  /*
-   * Les plus récents d'abord.
-   */
   completed.sort(
     (a, b) =>
       b.date - a.date
   );
 
-  /*
-   * On prend les derniers matchs
-   * réellement exploitables.
-   */
   const recent =
     completed.slice(
       0,
@@ -721,7 +784,7 @@ function calculateTeamStats(
 }
 
 /* ================================================== */
-/* CALENDRIER SPORTSCORE                            */
+/* CALENDRIER SPORTSCORE                              */
 /* ================================================== */
 
 async function getTeamFixtures(team) {
@@ -738,30 +801,28 @@ async function getTeamFixtures(team) {
 }
 
 /* ================================================== */
-/* AFFICHAGE DES DERNIERS MATCHS                    */
+/* AFFICHAGE                                          */
 /* ================================================== */
 
 function printRecentMatches(
   stats
 ) {
+  if (!stats.recent.length) {
+    console.log(
+      "   Aucun match exploitable."
+    );
+
+    return;
+  }
+
   for (
     const match of stats.recent
   ) {
-    const home =
-      match.home || "?";
-
-    const away =
-      match.away || "?";
-
     console.log(
-      `   ${home} ${match.score} ${away}`
+      `   ${match.home} ${match.score} ${match.away}`
     );
   }
 }
-
-/* ================================================== */
-/* AFFICHAGE DES STATISTIQUES                       */
-/* ================================================== */
 
 function printTeamStats(
   label,
@@ -813,13 +874,11 @@ function printTeamStats(
     "\nDerniers matchs utilisés :"
   );
 
-  printRecentMatches(
-    stats
-  );
+  printRecentMatches(stats);
 }
 
 /* ================================================== */
-/* PROGRAMME PRINCIPAL                              */
+/* PROGRAMME PRINCIPAL                                */
 /* ================================================== */
 
 async function main() {
@@ -845,7 +904,7 @@ async function main() {
 
   try {
     /* ---------------------------------------- */
-    /* RECHERCHE DES ÉQUIPES                   */
+    /* RECHERCHE                               */
     /* ---------------------------------------- */
 
     console.log(
@@ -863,7 +922,7 @@ async function main() {
       );
 
     console.log(
-      "\n✅ ÉQUIPES TROUVÉES"
+      "\n✅ ÉQUIPES RETENUES"
     );
 
     console.log(
@@ -885,7 +944,7 @@ async function main() {
     );
 
     /* ---------------------------------------- */
-    /* RÉCUPÉRATION DES MATCHS                */
+    /* CALENDRIERS                             */
     /* ---------------------------------------- */
 
     console.log(
@@ -913,7 +972,7 @@ async function main() {
     );
 
     /* ---------------------------------------- */
-    /* CALCUL STATISTIQUES                    */
+    /* STATISTIQUES                            */
     /* ---------------------------------------- */
 
     const homeStats =
@@ -941,7 +1000,7 @@ async function main() {
     );
 
     /* ---------------------------------------- */
-    /* DONNÉES SUFFISANTES ?                  */
+    /* CONTRÔLE DONNÉES                       */
     /* ---------------------------------------- */
 
     if (
@@ -1024,7 +1083,7 @@ async function main() {
     }
 
     /* ---------------------------------------- */
-    /* RÉSULTAT DU MODÈLE                    */
+    /* RÉSULTAT                               */
     /* ---------------------------------------- */
 
     console.log(
@@ -1120,7 +1179,7 @@ async function main() {
     }
 
     /* ---------------------------------------- */
-    /* SCORE LE PLUS PROBABLE                 */
+    /* SCORE PROBABLE                         */
     /* ---------------------------------------- */
 
     console.log(
@@ -1134,12 +1193,11 @@ async function main() {
     console.log(
       result.mostLikelyScore.score,
       "—",
-      result.mostLikelyScore.probability +
-        "%"
+      result.mostLikelyScore.probability + "%"
     );
 
     /* ---------------------------------------- */
-    /* AUTRES MARCHÉS                        */
+    /* AUTRES MARCHÉS                         */
     /* ---------------------------------------- */
 
     console.log(
@@ -1198,10 +1256,6 @@ async function main() {
       "| Cote :",
       result.markets.bttsNo.theoreticalOdds
     );
-
-    /* ---------------------------------------- */
-    /* FIN                                    */
-    /* ---------------------------------------- */
 
     console.log(
       "\n========================================"
