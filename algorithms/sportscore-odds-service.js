@@ -1,10 +1,14 @@
 /**
  * BATBOT — Service SportScore + moteur de probabilités
  *
- * Utilise directement algorithms/odds-engine.js
- * afin que l'analyse de l'application utilise exactement
- * le moteur Poisson v3 home/away qui a été validé par
- * les tests multi-matchs.
+ * Version corrigée :
+ * - utilise /api/v1/team/ pour récupérer directement le calendrier
+ *   récent et historique d'une équipe ;
+ * - garde un fallback par journées afin de ne pas dépendre d'un seul
+ *   format de réponse SportScore ;
+ * - conserve le moteur Poisson v3 existant ;
+ * - ne fabrique aucune probabilité si les données vérifiables sont
+ *   insuffisantes.
  */
 
 "use strict";
@@ -15,21 +19,15 @@ const {
 } = require("./odds-engine");
 
 const SPORT = "football";
-
-const API_BASE =
-  "https://sportscore.com/api/v1";
+const API_BASE = "https://sportscore.com/api/v1";
 
 const TARGET_MATCHES = 10;
-
-const MAX_LOOKBACK_DAYS = 180;
-
+const TEAM_ENDPOINT_LIMIT = 50;
+const MAX_LOOKBACK_DAYS = 365;
 const DATE_CONCURRENCY = 6;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
-const CACHE_TTL_MS =
-  5 * 60 * 1000;
-
-const teamHistoryCache =
-  new Map();
+const teamHistoryCache = new Map();
 
 
 // ============================================================
@@ -45,33 +43,17 @@ function cleanText(value) {
     .replace(/\s+/g, " ");
 }
 
-
 function getSignificantTokens(value) {
-  const ignoredWords =
-    new Set([
-      "fc",
-      "cf",
-      "afc",
-      "ac",
-      "sc",
-      "as",
-      "rc",
-      "fk",
-      "sk",
-      "de",
-      "du",
-      "des",
-      "the"
-    ]);
+  const ignoredWords = new Set([
+    "fc", "cf", "afc", "ac", "sc", "as", "rc",
+    "fk", "sk", "de", "du", "des", "the"
+  ]);
 
   return cleanText(value)
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
     .filter(Boolean)
-    .filter(
-      token =>
-        !ignoredWords.has(token)
-    );
+    .filter(token => !ignoredWords.has(token));
 }
 
 
@@ -79,121 +61,52 @@ function getSignificantTokens(value) {
 // CORRESPONDANCE ÉQUIPE
 // ============================================================
 
-function calculateTeamMatchScore(
-  wantedName,
-  candidateName
-) {
-  const wanted =
-    cleanText(wantedName);
+function calculateTeamMatchScore(wantedName, candidateName) {
+  const wanted = cleanText(wantedName);
+  const candidate = cleanText(candidateName);
 
-  const candidate =
-    cleanText(candidateName);
+  if (candidate === wanted) return 1000;
 
-  if (candidate === wanted) {
-    return 1000;
+  const wantedTokens = getSignificantTokens(wantedName);
+  const candidateTokens = getSignificantTokens(candidateName);
+
+  if (!wantedTokens.length || !candidateTokens.length) return 0;
+
+  const wantedSet = new Set(wantedTokens);
+  const candidateSet = new Set(candidateTokens);
+
+  if (!wantedTokens.every(token => candidateSet.has(token))) {
+    return 0;
   }
 
-  const wantedTokens =
-    getSignificantTokens(
-      wantedName
-    );
+  const forbiddenVariants = new Set([
+    "women", "woman", "ladies", "girls",
+    "youth", "u19", "u20", "u21", "u23",
+    "ii", "iii", "legends", "indoor",
+    "academy", "reserves", "reserve", "b"
+  ]);
 
-  const candidateTokens =
-    getSignificantTokens(
-      candidateName
-    );
+  if (candidateTokens.some(token => forbiddenVariants.has(token))) {
+    return 0;
+  }
+
+  const extraTokens = candidateTokens.filter(
+    token => !wantedSet.has(token)
+  );
+
+  let score = 500 - extraTokens.length * 40;
 
   if (
-    !wantedTokens.length ||
-    !candidateTokens.length
-  ) {
-    return 0;
-  }
-
-  const wantedSet =
-    new Set(wantedTokens);
-
-  const candidateSet =
-    new Set(candidateTokens);
-
-  const containsAllWanted =
-    wantedTokens.every(
-      token =>
-        candidateSet.has(token)
-    );
-
-  if (!containsAllWanted) {
-    return 0;
-  }
-
-  const forbiddenVariants =
-    new Set([
-      "women",
-      "woman",
-      "ladies",
-      "girls",
-      "youth",
-      "u19",
-      "u20",
-      "u21",
-      "u23",
-      "ii",
-      "iii",
-      "legends",
-      "indoor",
-      "academy",
-      "reserves",
-      "reserve",
-      "b"
-    ]);
-
-  const hasForbiddenVariant =
-    candidateTokens.some(
-      token =>
-        forbiddenVariants.has(token)
-    );
-
-  if (hasForbiddenVariant) {
-    return 0;
-  }
-
-  const extraTokens =
-    candidateTokens.filter(
-      token =>
-        !wantedSet.has(token)
-    );
-
-  let score =
-    500 -
-    extraTokens.length * 40;
-
-  const normalizedCandidate =
-    cleanText(candidateName);
-
-  if (
-    normalizedCandidate.startsWith(
-      `${wanted} fc`
-    ) ||
-    normalizedCandidate.endsWith(
-      ` ${wanted} fc`
-    ) ||
-    normalizedCandidate.startsWith(
-      `fc ${wanted}`
-    ) ||
-    normalizedCandidate.startsWith(
-      `cf ${wanted}`
-    ) ||
-    normalizedCandidate.startsWith(
-      `afc ${wanted}`
-    )
+    candidate.startsWith(`${wanted} fc`) ||
+    candidate.endsWith(` ${wanted} fc`) ||
+    candidate.startsWith(`fc ${wanted}`) ||
+    candidate.startsWith(`cf ${wanted}`) ||
+    candidate.startsWith(`afc ${wanted}`)
   ) {
     score += 100;
   }
 
-  return Math.max(
-    score,
-    1
-  );
+  return Math.max(score, 1);
 }
 
 
@@ -202,12 +115,11 @@ function calculateTeamMatchScore(
 // ============================================================
 
 async function fetchJson(url) {
-  const response =
-    await fetch(url, {
-      headers: {
-        Accept: "application/json"
-      }
-    });
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json"
+    }
+  });
 
   if (!response.ok) {
     throw new Error(
@@ -230,8 +142,7 @@ async function searchTeam(teamName) {
     `&sport=${SPORT}` +
     `&limit=20`;
 
-  const data =
-    await fetchJson(url);
+  const data = await fetchJson(url);
 
   const candidates = [
     data?.teams,
@@ -243,94 +154,44 @@ async function searchTeam(teamName) {
   ];
 
   const teams = [];
+  const seen = new Set();
 
-  const seen =
-    new Set();
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue;
 
-  for (
-    const candidate of candidates
-  ) {
-    if (
-      !Array.isArray(candidate)
-    ) {
-      continue;
-    }
+    for (const team of candidate) {
+      const name = team?.name || team?.team?.name || "";
+      const slug = team?.slug || team?.team?.slug || "";
 
-    for (
-      const team of candidate
-    ) {
-      const name =
-        team?.name ||
-        team?.team?.name ||
-        "";
+      if (!name || !slug) continue;
 
-      const slug =
-        team?.slug ||
-        team?.team?.slug ||
-        "";
-
-      if (
-        !name ||
-        !slug
-      ) {
-        continue;
-      }
-
-      const key =
-        `${cleanText(name)}|${cleanText(slug)}`;
-
-      if (seen.has(key)) {
-        continue;
-      }
+      const key = `${cleanText(name)}|${cleanText(slug)}`;
+      if (seen.has(key)) continue;
 
       seen.add(key);
-
-      teams.push({
-        ...team,
-        name,
-        slug
-      });
+      teams.push({ ...team, name, slug });
     }
   }
 
   if (!teams.length) {
-    throw new Error(
-      `Aucune équipe trouvée pour "${teamName}".`
-    );
+    throw new Error(`Aucune équipe trouvée pour "${teamName}".`);
   }
 
-  const wanted =
-    cleanText(teamName);
+  const wanted = cleanText(teamName);
 
-  const exact =
-    teams.filter(
-      team =>
-        cleanText(team.name) ===
-        wanted
-    );
+  const exact = teams.filter(
+    team => cleanText(team.name) === wanted
+  );
 
-  if (exact.length === 1) {
-    return exact[0];
-  }
+  if (exact.length === 1) return exact[0];
 
-  const ranked =
-    teams
-      .map(team => ({
-        team,
-        score:
-          calculateTeamMatchScore(
-            teamName,
-            team.name
-          )
-      }))
-      .filter(
-        item =>
-          item.score > 0
-      )
-      .sort(
-        (a, b) =>
-          b.score - a.score
-      );
+  const ranked = teams
+    .map(team => ({
+      team,
+      score: calculateTeamMatchScore(teamName, team.name)
+    }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score);
 
   if (!ranked.length) {
     throw new Error(
@@ -340,8 +201,7 @@ async function searchTeam(teamName) {
 
   if (
     ranked.length === 1 ||
-    ranked[0].score >
-      ranked[1].score
+    ranked[0].score > ranked[1].score
   ) {
     return ranked[0].team;
   }
@@ -360,31 +220,20 @@ function extractMatches(data) {
   const candidates = [
     data?.matches,
     data?.fixtures,
-
     data?.data?.matches,
     data?.data?.fixtures,
-
     data?.response?.matches,
     data?.response?.fixtures,
-
     data?.team?.matches,
     data?.team?.fixtures,
-
     data?.data?.team?.matches,
     data?.data?.team?.fixtures,
-
     data?.results,
     data?.data
   ];
 
-  for (
-    const candidate of candidates
-  ) {
-    if (
-      Array.isArray(candidate)
-    ) {
-      return candidate;
-    }
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
   }
 
   return [];
@@ -396,23 +245,12 @@ function extractMatches(data) {
 // ============================================================
 
 function formatUtcDate(date) {
-  return date
-    .toISOString()
-    .slice(0, 10);
+  return date.toISOString().slice(0, 10);
 }
 
-
-function subtractUtcDays(
-  date,
-  days
-) {
-  const copy =
-    new Date(date);
-
-  copy.setUTCDate(
-    copy.getUTCDate() - days
-  );
-
+function subtractUtcDays(date, days) {
+  const copy = new Date(date);
+  copy.setUTCDate(copy.getUTCDate() - days);
   return copy;
 }
 
@@ -422,50 +260,69 @@ function subtractUtcDays(
 // ============================================================
 
 function hasRealScore(match) {
-  const homeScore =
-    match?.home_score;
-
-  const awayScore =
-    match?.away_score;
+  const homeScore = match?.home_score;
+  const awayScore = match?.away_score;
 
   return (
     homeScore !== null &&
     homeScore !== undefined &&
     awayScore !== null &&
     awayScore !== undefined &&
-    Number.isFinite(
-      Number(homeScore)
-    ) &&
-    Number.isFinite(
-      Number(awayScore)
-    ) &&
+    Number.isFinite(Number(homeScore)) &&
+    Number.isFinite(Number(awayScore)) &&
     Number(homeScore) >= 0 &&
     Number(awayScore) >= 0
   );
 }
 
-
 function isFinished(match) {
+  const status = cleanText(
+    match?.status ||
+    match?.status_text ||
+    match?.state
+  );
+
   return (
-    cleanText(match?.status) ===
-    "finished"
+    status === "finished" ||
+    status === "ft" ||
+    status.includes("finished")
   );
 }
 
+function matchBelongsToTeam(match, team) {
+  const wanted = cleanText(team.name);
+  const home = cleanText(match?.home);
+  const away = cleanText(match?.away);
 
-function matchBelongsToTeam(
-  match,
-  team
-) {
-  const wanted =
-    cleanText(team.name);
+  if (home === wanted || away === wanted) return true;
 
+  /*
+   * Certains calendriers peuvent présenter une variante légère
+   * du nom. On accepte uniquement une correspondance de tokens
+   * suffisamment forte et on refuse les équipes dérivées.
+   */
   return (
-    cleanText(match?.home) ===
-      wanted ||
-    cleanText(match?.away) ===
-      wanted
+    calculateTeamMatchScore(team.name, match?.home || "") > 0 ||
+    calculateTeamMatchScore(team.name, match?.away || "") > 0
   );
+}
+
+function getMatchTimestamp(match) {
+  const candidates = [
+    match?.time,
+    match?.start_time,
+    match?.datetime,
+    match?.date
+  ];
+
+  for (const value of candidates) {
+    const timestamp = new Date(value || 0).getTime();
+    if (Number.isFinite(timestamp) && timestamp > 0) {
+      return timestamp;
+    }
+  }
+
+  return 0;
 }
 
 
@@ -473,159 +330,146 @@ function matchBelongsToTeam(
 // HISTORIQUE D'ÉQUIPE
 // ============================================================
 
-async function fetchTeamSchedule(
-  team
-) {
-  const cacheKey =
-    team.slug;
+async function fetchTeamScheduleFromEndpoint(team) {
+  const url =
+    `${API_BASE}/team/` +
+    `?sport=${SPORT}` +
+    `&slug=${encodeURIComponent(team.slug)}` +
+    `&limit=${TEAM_ENDPOINT_LIMIT}`;
 
-  const cached =
-    teamHistoryCache.get(
-      cacheKey
-    );
+  const data = await fetchJson(url);
+  const matches = extractMatches(data);
 
-  if (
-    cached &&
-    cached.expiresAt >
-      Date.now()
-  ) {
-    return cached.matches;
-  }
+  return matches
+    .filter(match => hasRealScore(match))
+    .filter(match => isFinished(match))
+    .filter(match => matchBelongsToTeam(match, team));
+}
 
+async function fetchTeamScheduleByDays(team) {
   const collected = [];
+  const seen = new Set();
 
-  const seen =
-    new Set();
-
-  const today =
-    new Date();
-
+  const today = new Date();
   let cursor = 0;
 
   async function worker() {
     while (
-      cursor <
-        MAX_LOOKBACK_DAYS &&
-      collected.length <
-        TARGET_MATCHES
+      cursor < MAX_LOOKBACK_DAYS &&
+      collected.length < TARGET_MATCHES
     ) {
-      const daysAgo =
-        cursor++;
-
-      const date =
-        subtractUtcDays(
-          today,
-          daysAgo
-        );
-
-      const dateText =
-        formatUtcDate(date);
+      const daysAgo = cursor++;
+      const date = subtractUtcDays(today, daysAgo);
+      const dateText = formatUtcDate(date);
 
       const url =
         `${API_BASE}/fixtures/` +
         `?sport=${SPORT}` +
         `&date=${dateText}` +
         `&status=finished` +
-        `&team=${encodeURIComponent(
-          team.slug
-        )}` +
+        `&team=${encodeURIComponent(team.slug)}` +
         `&limit=200`;
 
       try {
-        const data =
-          await fetchJson(url);
+        const data = await fetchJson(url);
+        const matches = extractMatches(data);
 
-        const matches =
-          extractMatches(data);
-
-        for (
-          const match of matches
-        ) {
-          if (
-            !hasRealScore(match) ||
-            !isFinished(match)
-          ) {
-            continue;
-          }
-
-          if (
-            !matchBelongsToTeam(
-              match,
-              team
-            )
-          ) {
-            continue;
-          }
+        for (const match of matches) {
+          if (!hasRealScore(match) || !isFinished(match)) continue;
+          if (!matchBelongsToTeam(match, team)) continue;
 
           const key =
+            match?.slug ||
             match?.url ||
             `${match?.home}|${match?.away}|${match?.time}`;
 
-          if (seen.has(key)) {
-            continue;
-          }
+          if (seen.has(key)) continue;
 
           seen.add(key);
-
-          collected.push(
-            match
-          );
+          collected.push(match);
         }
       } catch (_) {
-        /*
-         * Une journée indisponible ne bloque
-         * pas toute l'analyse.
-         */
+        // Une journée indisponible ne bloque pas toute l'analyse.
       }
     }
   }
 
   await Promise.all(
     Array.from(
-      {
-        length:
-          Math.min(
-            DATE_CONCURRENCY,
-            MAX_LOOKBACK_DAYS
-          )
-      },
+      { length: Math.min(DATE_CONCURRENCY, MAX_LOOKBACK_DAYS) },
       () => worker()
     )
   );
 
-  const result =
-    collected
-      .sort(
-        (a, b) => {
-          const dateA =
-            new Date(
-              a?.time || 0
-            ).getTime();
+  return collected;
+}
 
-          const dateB =
-            new Date(
-              b?.time || 0
-            ).getTime();
+async function fetchTeamSchedule(team) {
+  const cacheKey = cleanText(team.slug);
+  const cached = teamHistoryCache.get(cacheKey);
 
-          return (
-            dateB - dateA
-          );
-        }
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.matches;
+  }
+
+  let matches = [];
+
+  /*
+   * 1. Méthode principale :
+   *    endpoint officiel Team schedule.
+   *
+   * SportScore documente /api/v1/team/ comme l'endpoint
+   * du calendrier passé + à venir d'une équipe, avec un
+   * maximum de 50 éléments.
+   */
+  try {
+    matches = await fetchTeamScheduleFromEndpoint(team);
+  } catch (_) {
+    matches = [];
+  }
+
+  /*
+   * 2. Si l'endpoint ne donne pas assez de matchs terminés,
+   *    on complète avec les journées historiques.
+   */
+  if (matches.length < TARGET_MATCHES) {
+    const fallbackMatches = await fetchTeamScheduleByDays(team);
+
+    const seen = new Set(
+      matches.map(
+        match =>
+          match?.slug ||
+          match?.url ||
+          `${match?.home}|${match?.away}|${match?.time}`
       )
-      .slice(
-        0,
-        TARGET_MATCHES
-      );
+    );
 
-  teamHistoryCache.set(
-    cacheKey,
-    {
-      matches: result,
-      expiresAt:
-        Date.now() +
-        CACHE_TTL_MS
+    for (const match of fallbackMatches) {
+      const key =
+        match?.slug ||
+        match?.url ||
+        `${match?.home}|${match?.away}|${match?.time}`;
+
+      if (seen.has(key)) continue;
+
+      seen.add(key);
+      matches.push(match);
     }
-  );
+  }
+
+  const result = matches
+    .filter(match => hasRealScore(match))
+    .filter(match => isFinished(match))
+    .filter(match => matchBelongsToTeam(match, team))
+    .sort(
+      (a, b) => getMatchTimestamp(b) - getMatchTimestamp(a)
+    )
+    .slice(0, TARGET_MATCHES);
+
+  teamHistoryCache.set(cacheKey, {
+    matches: result,
+    expiresAt: Date.now() + CACHE_TTL_MS
+  });
 
   return result;
 }
@@ -635,42 +479,48 @@ async function fetchTeamSchedule(
 // BUTS
 // ============================================================
 
-function getGoalsForAndAgainst(
-  match,
-  team
-) {
-  const home =
-    cleanText(match?.home);
+function getGoalsForAndAgainst(match, team) {
+  const home = cleanText(match?.home);
+  const away = cleanText(match?.away);
+  const wanted = cleanText(team.name);
 
-  const away =
-    cleanText(match?.away);
+  const homeScore = Number(match?.home_score);
+  const awayScore = Number(match?.away_score);
 
-  const wanted =
-    cleanText(team.name);
-
-  const homeScore =
-    Number(match?.home_score);
-
-  const awayScore =
-    Number(match?.away_score);
-
-  if (
-    home === wanted
-  ) {
+  if (home === wanted) {
     return {
       goalsFor: homeScore,
-      goalsAgainst:
-        awayScore
+      goalsAgainst: awayScore
     };
   }
 
-  if (
-    away === wanted
-  ) {
+  if (away === wanted) {
     return {
       goalsFor: awayScore,
-      goalsAgainst:
-        homeScore
+      goalsAgainst: homeScore
+    };
+  }
+
+  /*
+   * Variante de nom : utiliser la correspondance forte pour
+   * déterminer le côté du match.
+   */
+  const homeScoreMatch =
+    calculateTeamMatchScore(team.name, match?.home || "");
+  const awayScoreMatch =
+    calculateTeamMatchScore(team.name, match?.away || "");
+
+  if (homeScoreMatch > awayScoreMatch && homeScoreMatch > 0) {
+    return {
+      goalsFor: homeScore,
+      goalsAgainst: awayScore
+    };
+  }
+
+  if (awayScoreMatch > 0) {
+    return {
+      goalsFor: awayScore,
+      goalsAgainst: homeScore
     };
   }
 
@@ -682,115 +532,71 @@ function getGoalsForAndAgainst(
 // STATISTIQUES
 // ============================================================
 
-function buildTeamStats(
-  matches,
-  team
-) {
-  const selected =
-    matches
-      .filter(isFinished)
-      .filter(hasRealScore)
-      .filter(
-        match =>
-          matchBelongsToTeam(
-            match,
-            team
-          )
-      )
-      .slice(
-        0,
-        TARGET_MATCHES
-      );
+function buildTeamStats(matches, team) {
+  const selected = matches
+    .filter(isFinished)
+    .filter(hasRealScore)
+    .filter(match => matchBelongsToTeam(match, team))
+    .slice(0, TARGET_MATCHES);
 
   let goalsFor = 0;
-
   let goalsAgainst = 0;
 
   let homeMatches = 0;
-
   let homeGoalsFor = 0;
-
   let homeGoalsAgainst = 0;
 
   let awayMatches = 0;
-
   let awayGoalsFor = 0;
-
   let awayGoalsAgainst = 0;
 
-  const teamName =
-    cleanText(team.name);
+  const teamName = cleanText(team.name);
 
-  for (
-    const match of selected
-  ) {
-    const goals =
-      getGoalsForAndAgainst(
-        match,
-        team
-      );
+  for (const match of selected) {
+    const goals = getGoalsForAndAgainst(match, team);
+    if (!goals) continue;
 
-    if (!goals) {
-      continue;
-    }
+    goalsFor += goals.goalsFor;
+    goalsAgainst += goals.goalsAgainst;
 
-    goalsFor +=
-      goals.goalsFor;
+    const homeName = cleanText(match?.home);
+    const awayName = cleanText(match?.away);
 
-    goalsAgainst +=
-      goals.goalsAgainst;
-
-    const homeName =
-      cleanText(match?.home);
-
-    const awayName =
-      cleanText(match?.away);
-
-    if (
-      homeName ===
-      teamName
-    ) {
+    if (homeName === teamName) {
       homeMatches += 1;
-
-      homeGoalsFor +=
-        goals.goalsFor;
-
-      homeGoalsAgainst +=
-        goals.goalsAgainst;
-    }
-
-    if (
-      awayName ===
-      teamName
-    ) {
+      homeGoalsFor += goals.goalsFor;
+      homeGoalsAgainst += goals.goalsAgainst;
+    } else if (awayName === teamName) {
       awayMatches += 1;
+      awayGoalsFor += goals.goalsFor;
+      awayGoalsAgainst += goals.goalsAgainst;
+    } else {
+      const homeScoreMatch =
+        calculateTeamMatchScore(team.name, match?.home || "");
+      const awayScoreMatch =
+        calculateTeamMatchScore(team.name, match?.away || "");
 
-      awayGoalsFor +=
-        goals.goalsFor;
-
-      awayGoalsAgainst +=
-        goals.goalsAgainst;
+      if (homeScoreMatch > awayScoreMatch && homeScoreMatch > 0) {
+        homeMatches += 1;
+        homeGoalsFor += goals.goalsFor;
+        homeGoalsAgainst += goals.goalsAgainst;
+      } else if (awayScoreMatch > 0) {
+        awayMatches += 1;
+        awayGoalsFor += goals.goalsFor;
+        awayGoalsAgainst += goals.goalsAgainst;
+      }
     }
   }
 
   return {
-    matches:
-      selected.length,
-
+    matches: selected.length,
     goalsFor,
-
     goalsAgainst,
-
     homeMatches,
-
     homeGoalsFor,
-
     homeGoalsAgainst,
-
     awayMatches,
-
     awayGoalsFor,
-
     awayGoalsAgainst
   };
 }
@@ -800,36 +606,17 @@ function buildTeamStats(
 // FORMAT POUR LE MOTEUR POISSON
 // ============================================================
 
-function buildEngineTeam(
-  stats
-) {
+function buildEngineTeam(stats) {
   return {
-    matches:
-      stats.matches,
-
-    goalsFor:
-      stats.goalsFor,
-
-    goalsAgainst:
-      stats.goalsAgainst,
-
-    homeMatches:
-      stats.homeMatches,
-
-    homeGoalsFor:
-      stats.homeGoalsFor,
-
-    homeGoalsAgainst:
-      stats.homeGoalsAgainst,
-
-    awayMatches:
-      stats.awayMatches,
-
-    awayGoalsFor:
-      stats.awayGoalsFor,
-
-    awayGoalsAgainst:
-      stats.awayGoalsAgainst
+    matches: stats.matches,
+    goalsFor: stats.goalsFor,
+    goalsAgainst: stats.goalsAgainst,
+    homeMatches: stats.homeMatches,
+    homeGoalsFor: stats.homeGoalsFor,
+    homeGoalsAgainst: stats.homeGoalsAgainst,
+    awayMatches: stats.awayMatches,
+    awayGoalsFor: stats.awayGoalsFor,
+    awayGoalsAgainst: stats.awayGoalsAgainst
   };
 }
 
@@ -838,20 +625,11 @@ function buildEngineTeam(
 // RISQUE INDICATIF
 // ============================================================
 
-function probabilityRisk(
-  value
-) {
-  const n =
-    Number(value);
+function probabilityRisk(value) {
+  const n = Number(value);
 
-  if (n >= 60) {
-    return "Plus élevée";
-  }
-
-  if (n >= 45) {
-    return "Intermédiaire";
-  }
-
+  if (n >= 60) return "Plus élevée";
+  if (n >= 45) return "Intermédiaire";
   return "Plus incertaine";
 }
 
@@ -860,154 +638,63 @@ function probabilityRisk(
 // CONSTRUCTION DU MODÈLE
 // ============================================================
 
-function buildModel(
-  match,
-  odds
-) {
+function buildModel(match, odds) {
   const probabilities = [
     {
       label: "1",
-      value:
-        odds.oneXTwo.home.probability
+      value: odds.oneXTwo.home.probability
     },
     {
       label: "X",
-      value:
-        odds.oneXTwo.draw.probability
+      value: odds.oneXTwo.draw.probability
     },
     {
       label: "2",
-      value:
-        odds.oneXTwo.away.probability
+      value: odds.oneXTwo.away.probability
     }
   ];
 
-  const best =
-    probabilities.reduce(
-      (
-        current,
-        item
-      ) =>
-        !current ||
-        Number(item.value) >
-          Number(current.value)
-          ? item
-          : current,
-      null
-    );
+  const best = probabilities.reduce(
+    (current, item) =>
+      !current || Number(item.value) > Number(current.value)
+        ? item
+        : current,
+    null
+  );
 
   const options = [
-    {
-      name: "1",
-      probability:
-        odds.oneXTwo.home.probability
-    },
-
-    {
-      name: "X",
-      probability:
-        odds.oneXTwo.draw.probability
-    },
-
-    {
-      name: "2",
-      probability:
-        odds.oneXTwo.away.probability
-    },
-
-    {
-      name: "Over 1.5",
-      probability:
-        odds.markets.over15.probability
-    },
-
-    {
-      name: "Over 2.5",
-      probability:
-        odds.markets.over25.probability
-    },
-
-    {
-      name: "Over 3.5",
-      probability:
-        odds.markets.over35.probability
-    },
-
-    {
-      name: "Under 2.5",
-      probability:
-        odds.markets.under25.probability
-    },
-
-    {
-      name: "Under 3.5",
-      probability:
-        odds.markets.under35.probability
-    },
-
-    {
-      name: "BTTS Oui",
-      probability:
-        odds.markets.bttsYes.probability
-    },
-
-    {
-      name: "BTTS Non",
-      probability:
-        odds.markets.bttsNo.probability
-    }
-  ].map(
-    item => ({
-      name:
-        item.name,
-
-      probability:
-        item.probability,
-
-      risk:
-        probabilityRisk(
-          item.probability
-        ),
-
-      reason:
-        "Probabilité calculée par le moteur Poisson v3 à partir des statistiques SportScore disponibles."
-    })
-  );
+    { name: "1", probability: odds.oneXTwo.home.probability },
+    { name: "X", probability: odds.oneXTwo.draw.probability },
+    { name: "2", probability: odds.oneXTwo.away.probability },
+    { name: "Over 1.5", probability: odds.markets.over15.probability },
+    { name: "Over 2.5", probability: odds.markets.over25.probability },
+    { name: "Over 3.5", probability: odds.markets.over35.probability },
+    { name: "Under 2.5", probability: odds.markets.under25.probability },
+    { name: "Under 3.5", probability: odds.markets.under35.probability },
+    { name: "BTTS Oui", probability: odds.markets.bttsYes.probability },
+    { name: "BTTS Non", probability: odds.markets.bttsNo.probability }
+  ].map(item => ({
+    name: item.name,
+    probability: item.probability,
+    risk: probabilityRisk(item.probability),
+    reason:
+      "Probabilité calculée par le moteur Poisson v3 à partir des statistiques SportScore disponibles."
+  }));
 
   return {
     ready: true,
-
-    sufficientData:
-      true,
-
-    model:
-      odds.model,
-
-    recommendation:
-      best?.label ||
-      "Analyse insuffisante",
-
+    sufficientData: true,
+    model: odds.model,
+    recommendation: best?.label || "Analyse insuffisante",
     reason:
       `Le modèle calcule ${match.home} à domicile contre ${match.away} à partir des statistiques globales et du contexte domicile/extérieur disponibles.`,
-
     probabilities,
-
     options,
-
-    expected_goals:
-      odds.expectedGoals,
-
-    most_likely_score:
-      odds.mostLikelyScore,
-
-    markets:
-      odds.markets,
-
-    context:
-      odds.context,
-
-    data_quality:
-      "bonne"
+    expected_goals: odds.expectedGoals,
+    most_likely_score: odds.mostLikelyScore,
+    markets: odds.markets,
+    context: odds.context,
+    data_quality: "bonne"
   };
 }
 
@@ -1016,214 +703,117 @@ function buildModel(
 // ANALYSE D'UNE AFFICHE
 // ============================================================
 
-async function analyzeOne(
-  homeName,
-  awayName
-) {
-  const [
-    homeTeam,
-    awayTeam
-  ] =
-    await Promise.all([
-      searchTeam(homeName),
-      searchTeam(awayName)
-    ]);
+async function analyzeOne(homeName, awayName) {
+  const [homeTeam, awayTeam] = await Promise.all([
+    searchTeam(homeName),
+    searchTeam(awayName)
+  ]);
 
-  const [
-    homeMatches,
-    awayMatches
-  ] =
-    await Promise.all([
-      fetchTeamSchedule(
-        homeTeam
-      ),
+  const [homeMatches, awayMatches] = await Promise.all([
+    fetchTeamSchedule(homeTeam),
+    fetchTeamSchedule(awayTeam)
+  ]);
 
-      fetchTeamSchedule(
-        awayTeam
-      )
-    ]);
-
-  if (
-    homeMatches.length <
-    MIN_MATCHES
-  ) {
+  if (homeMatches.length < MIN_MATCHES) {
     return {
-      match:
-        `${homeName} vs ${awayName}`,
-
+      match: `${homeName} vs ${awayName}`,
       ready: false,
-
-      recommendation:
-        "Analyse insuffisante",
-
+      recommendation: "Analyse insuffisante",
       reason:
         `${homeTeam.name}: seulement ${homeMatches.length} matchs historiques vérifiables.`,
-
-      data_quality:
-        "limitée",
-
+      data_quality: "limitée",
       homeTeam: {
-        name:
-          homeTeam.name,
-        slug:
-          homeTeam.slug
+        name: homeTeam.name,
+        slug: homeTeam.slug
       },
-
       awayTeam: {
-        name:
-          awayTeam.name,
-        slug:
-          awayTeam.slug
+        name: awayTeam.name,
+        slug: awayTeam.slug
+      },
+      stats: {
+        home: buildTeamStats(homeMatches, homeTeam),
+        away: buildTeamStats(awayMatches, awayTeam)
       }
     };
   }
 
-  if (
-    awayMatches.length <
-    MIN_MATCHES
-  ) {
+  if (awayMatches.length < MIN_MATCHES) {
     return {
-      match:
-        `${homeName} vs ${awayName}`,
-
+      match: `${homeName} vs ${awayName}`,
       ready: false,
-
-      recommendation:
-        "Analyse insuffisante",
-
+      recommendation: "Analyse insuffisante",
       reason:
         `${awayTeam.name}: seulement ${awayMatches.length} matchs historiques vérifiables.`,
-
-      data_quality:
-        "limitée",
-
+      data_quality: "limitée",
       homeTeam: {
-        name:
-          homeTeam.name,
-        slug:
-          homeTeam.slug
+        name: homeTeam.name,
+        slug: homeTeam.slug
       },
-
       awayTeam: {
-        name:
-          awayTeam.name,
-        slug:
-          awayTeam.slug
-      }
-    };
-  }
-
-  const homeStats =
-    buildTeamStats(
-      homeMatches,
-      homeTeam
-    );
-
-  const awayStats =
-    buildTeamStats(
-      awayMatches,
-      awayTeam
-    );
-
-  const odds =
-    calculateOdds({
-      home:
-        buildEngineTeam(
-          homeStats
-        ),
-
-      away:
-        buildEngineTeam(
-          awayStats
-        )
-    });
-
-  if (
-    !odds.sufficientData
-  ) {
-    return {
-      match:
-        `${homeName} vs ${awayName}`,
-
-      ready: false,
-
-      recommendation:
-        "Analyse insuffisante",
-
-      reason:
-        odds.reason ||
-        "Données statistiques insuffisantes.",
-
-      data_quality:
-        "limitée",
-
-      homeTeam: {
-        name:
-          homeTeam.name,
-        slug:
-          homeTeam.slug
+        name: awayTeam.name,
+        slug: awayTeam.slug
       },
-
-      awayTeam: {
-        name:
-          awayTeam.name,
-        slug:
-          awayTeam.slug
-      },
-
       stats: {
-        home:
-          homeStats,
-
-        away:
-          awayStats
+        home: buildTeamStats(homeMatches, homeTeam),
+        away: buildTeamStats(awayMatches, awayTeam)
       }
     };
   }
 
-  const model =
-    buildModel(
-      {
-        home:
-          homeTeam.name,
+  const homeStats = buildTeamStats(homeMatches, homeTeam);
+  const awayStats = buildTeamStats(awayMatches, awayTeam);
 
-        away:
-          awayTeam.name
+  const odds = calculateOdds({
+    home: buildEngineTeam(homeStats),
+    away: buildEngineTeam(awayStats)
+  });
+
+  if (!odds.sufficientData) {
+    return {
+      match: `${homeName} vs ${awayName}`,
+      ready: false,
+      recommendation: "Analyse insuffisante",
+      reason:
+        odds.reason || "Données statistiques insuffisantes.",
+      data_quality: "limitée",
+      homeTeam: {
+        name: homeTeam.name,
+        slug: homeTeam.slug
       },
+      awayTeam: {
+        name: awayTeam.name,
+        slug: awayTeam.slug
+      },
+      stats: {
+        home: homeStats,
+        away: awayStats
+      }
+    };
+  }
 
-      odds
-    );
+  const model = buildModel(
+    {
+      home: homeTeam.name,
+      away: awayTeam.name
+    },
+    odds
+  );
 
   return {
-    match:
-      `${homeTeam.name} vs ${awayTeam.name}`,
-
+    match: `${homeTeam.name} vs ${awayTeam.name}`,
     homeTeam: {
-      name:
-        homeTeam.name,
-
-      slug:
-        homeTeam.slug
+      name: homeTeam.name,
+      slug: homeTeam.slug
     },
-
     awayTeam: {
-      name:
-        awayTeam.name,
-
-      slug:
-        awayTeam.slug
+      name: awayTeam.name,
+      slug: awayTeam.slug
     },
-
     stats: {
-      home:
-        homeStats,
-
-      away:
-        awayStats
+      home: homeStats,
+      away: awayStats
     },
-
     odds,
-
     model
   };
 }
@@ -1233,86 +823,45 @@ async function analyzeOne(
 // ANALYSE DE 1 OU 2 MATCHS
 // ============================================================
 
-async function analyzeSportScoreMatches(
-  matches
-) {
-  if (
-    !Array.isArray(matches) ||
-    !matches.length
-  ) {
-    throw new Error(
-      "Aucun match à analyser."
-    );
+async function analyzeSportScoreMatches(matches) {
+  if (!Array.isArray(matches) || !matches.length) {
+    throw new Error("Aucun match à analyser.");
   }
 
-  const selected =
-    matches
-      .filter(
-        item =>
-          item &&
-          item.home &&
-          item.away
-      )
-      .slice(
-        0,
-        2
-      );
+  const selected = matches
+    .filter(item => item && item.home && item.away)
+    .slice(0, 2);
 
   if (!selected.length) {
-    throw new Error(
-      "Aucun match valide à analyser."
-    );
+    throw new Error("Aucun match valide à analyser.");
   }
 
-  const results =
-    await Promise.all(
-      selected.map(
-        item =>
-          analyzeOne(
-            String(
-              item.home
-            ).trim(),
-
-            String(
-              item.away
-            ).trim()
-          )
+  const results = await Promise.all(
+    selected.map(item =>
+      analyzeOne(
+        String(item.home).trim(),
+        String(item.away).trim()
       )
-    );
+    )
+  );
 
   return {
-    source:
-      "SportScore",
-
-    generatedAt:
-      new Date().toISOString(),
-
-    matches:
-      results,
-
-    models:
-      results.map(
-        result =>
-          result.model || {
-            ready: false,
-
-            recommendation:
-              result.recommendation ||
-              "Analyse insuffisante",
-
-            reason:
-              result.reason ||
-              "Données insuffisantes.",
-
-            probabilities: [],
-
-            options: [],
-
-            data_quality:
-              result.data_quality ||
-              "limitée"
-          }
-      )
+    source: "SportScore",
+    generatedAt: new Date().toISOString(),
+    matches: results,
+    models: results.map(result =>
+      result.model || {
+        ready: false,
+        recommendation:
+          result.recommendation || "Analyse insuffisante",
+        reason:
+          result.reason || "Données insuffisantes.",
+        probabilities: [],
+        options: [],
+        data_quality:
+          result.data_quality || "limitée"
+      }
+    )
   };
 }
 
