@@ -2186,11 +2186,30 @@ function setBatBotAIModalResult(html){
   result.innerHTML=html||"";
   result.classList.toggle("hidden",!html);
 }
-function renderBatBotModelCard(model,fixture){
-  if(isLiveFixture(fixture)){
-    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel SportScore : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(String(model.expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(model.form_index_home??"—"))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(String(model.form_index_away??"—"))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
+function batBotFormatExpectedGoals(value){
+  if(value&&typeof value==="object"){
+    const home=Number(value.home),away=Number(value.away);
+    if(Number.isFinite(home)&&Number.isFinite(away)) return home.toFixed(2)+" • "+away.toFixed(2)+" (total "+(home+away).toFixed(2)+")";
   }
-  return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus : <strong>'+escapeHtml(String(model.expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(model.form_index_home??"—"))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(String(model.form_index_away??"—"))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(model.bestScore||"—")+'</strong><br><span style="opacity:.8">Les probabilités 1X2 sont normalisées pour totaliser 100 %.</span></div>';
+  const n=Number(value);
+  return Number.isFinite(n)?n.toFixed(2):"—";
+}
+function batBotFormIndex(stats){
+  const matches=Number(stats?.matches)||0;
+  if(matches<=0)return null;
+  const wins=Number(stats?.wins)||0,draws=Number(stats?.draws)||0;
+  return Math.max(0,Math.min(100,((3*wins+draws)/(3*matches))*100));
+}
+function renderBatBotModelCard(model,fixture,evidence){
+  const statsHome=evidence?.homeForm||{},statsAway=evidence?.awayForm||{};
+  const formHome=Number.isFinite(Number(model?.form_index_home))?Number(model.form_index_home):batBotFormIndex(statsHome);
+  const formAway=Number.isFinite(Number(model?.form_index_away))?Number(model.form_index_away):batBotFormIndex(statsAway);
+  const expected=batBotFormatExpectedGoals(model?.expected_goals??model?.expectedGoals);
+  const best=model?.bestScore||model?.most_likely_score||"—";
+  if(isLiveFixture(fixture)){
+    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel SportScore : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
+  }
+  return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus (domicile • extérieur) : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(best)+'</strong><br><span style="opacity:.8">Les probabilités 1X2 sont normalisées pour totaliser 100 %.</span></div>';
 }
 
 function renderBatBotAIResult(raw,modelData){
@@ -2252,7 +2271,7 @@ function renderBatBotAIResult(raw,modelData){
       '<div class="ai-result-title">⚽ Match '+(index+1)+' — '+escapeHtml(match.name||"")+'</div>'+
       '<div class="ai-evidence-card"><strong>🏆 '+escapeHtml(evidence.fixture?.competition||"Compétition")+'</strong><br>📅 '+escapeHtml(evidence.fixture?.date?formatSportScoreDateTime(evidence.fixture.date):"Date/heure non fournie")+'<br>📌 Statut : <strong>'+escapeHtml(evidence.fixture?(isLiveFixture(evidence.fixture)?"En direct":isFinishedFixture(evidence.fixture)?"Terminé":"À venir"):"Match saisi manuellement")+'</strong>'+(sportScoreFixtureScore(evidence.fixture)?' • '+escapeHtml(sportScoreFixtureScore(evidence.fixture)):"")+'</div>'+
       '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span>'+(match.data_quality==="limitée"?'<br><span style="color:#FFD166;font-weight:900">⚠️ Scores vérifiables insuffisants : aucune probabilité numérique n’est affichée.</span>':'')+'</div>'+
-      (models[index]&&models[index].ready!==false?renderBatBotModelCard(models[index],evidence.fixture):'')+
+      (models[index]&&models[index].ready!==false?renderBatBotModelCard(models[index],evidence.fixture,evidence):'')+
       (match.probabilities&&match.probabilities.length?'<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+match.probabilities.map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>':'<div class="ai-section-label">Probabilités</div><div class="ai-evidence-card"><strong>Non calculées</strong><br>Données vérifiables insuffisantes pour fournir un pourcentage sérieux.</div>')+
       '<div class="ai-section-label">Options analysées</div><div class="ai-options">'+options.map(function(option){return '<div class="ai-option-card"><div class="ai-option-head"><strong>'+escapeHtml(option.name||"Option")+'</strong><span class="ai-confidence">'+escapeHtml(formatPercent(option.probability))+'</span></div><div class="ai-option-meta">Risque : '+escapeHtml(option.risk||"Modéré")+'</div>'+(option.reason?'<div class="ai-reason">'+escapeHtml(option.reason)+'</div>':"")+'</div>';}).join("")+'</div>'+
       (match.recommendation?'<div class="ai-recommendation"><strong>🎯 Choix proposé :</strong> '+escapeHtml(match.recommendation)+'</div>':"")+
@@ -2501,6 +2520,9 @@ async function submitBatBotAI(){
         data_quality:model.data_quality||item?.data_quality||"limitée",
         expected_goals:model.expected_goals||item?.odds?.expectedGoals||null,
         most_likely_score:model.most_likely_score||item?.odds?.mostLikelyScore||null,
+        bestScore:model.most_likely_score||item?.odds?.mostLikelyScore||null,
+        form_index_home:batBotFormIndex(stats.home||{}),
+        form_index_away:batBotFormIndex(stats.away||{}),
         markets:model.markets||item?.odds?.markets||null,
         context:model.context||item?.odds?.context||null,
         stats:stats
