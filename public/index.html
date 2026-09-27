@@ -2223,6 +2223,7 @@ function renderBatBotAIResult(raw,modelData){
       '<div class="ai-result-title">⚽ Match '+(index+1)+' — '+escapeHtml(match.name||"")+'</div>'+
       '<div class="ai-evidence-card"><strong>🏆 '+escapeHtml(evidence.fixture?.competition||"Compétition")+'</strong><br>📅 '+escapeHtml(formatSportScoreDateTime(evidence.fixture?.date))+'<br>📌 Statut : <strong>'+escapeHtml(isLiveFixture(evidence.fixture)?"En direct":isFinishedFixture(evidence.fixture)?"Terminé":"À venir")+'</strong>'+(sportScoreFixtureScore(evidence.fixture)?' • '+escapeHtml(sportScoreFixtureScore(evidence.fixture)):"")+'</div>'+
       '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span>'+(match.data_quality==="limitée"?'<br><span style="color:#FFD166;font-weight:900">⚠️ Scores vérifiables insuffisants : aucune probabilité numérique n’est affichée.</span>':'')+'</div>'+
+      (models[index]&&models[index].ready!==false?'<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus : <strong>'+escapeHtml(String(models[index].expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(models[index].form_index_home??"—"))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(String(models[index].form_index_away??"—"))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(models[index].bestScore||"—")+'</strong><br><span style="opacity:.8">Les probabilités 1X2 sont normalisées pour totaliser 100 %.</span></div>':'')+
       (match.probabilities&&match.probabilities.length?'<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+match.probabilities.map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>':'<div class="ai-section-label">Probabilités</div><div class="ai-evidence-card"><strong>Non calculées</strong><br>Données vérifiables insuffisantes pour fournir un pourcentage sérieux.</div>')+
       '<div class="ai-section-label">Options analysées</div><div class="ai-options">'+options.map(function(option){return '<div class="ai-option-card"><div class="ai-option-head"><strong>'+escapeHtml(option.name||"Option")+'</strong><span class="ai-confidence">'+escapeHtml(formatPercent(option.probability))+'</span></div><div class="ai-option-meta">Risque : '+escapeHtml(option.risk||"Modéré")+'</div>'+(option.reason?'<div class="ai-reason">'+escapeHtml(option.reason)+'</div>':"")+'</div>';}).join("")+'</div>'+
       (match.recommendation?'<div class="ai-recommendation"><strong>🎯 Choix proposé :</strong> '+escapeHtml(match.recommendation)+'</div>':"")+
@@ -2307,12 +2308,20 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
   }
   const avg=(v,fallback)=>Number.isFinite(v)?v:fallback;
   const shrink=(value,sample,prior,weight)=>((value*sample)+(prior*weight))/(sample+weight);
+  const formPoints=(form,teamName)=>{
+    const target=sportScoreNameKey(teamName),games=(form.recent||[]).slice(0,5);
+    if(!games.length)return null; let points=0,den=0;
+    games.forEach((m,i)=>{const isHome=sportScoreNameKey(m.home)===target,own=isHome?m.homeScore:m.awayScore,opp=isHome?m.awayScore:m.homeScore;if(!Number.isFinite(own)||!Number.isFinite(opp))return;const w=Math.pow(.86,i);points+=(own>opp?3:own===opp?1:0)*w;den+=3*w;});
+    return den?points/den:null;
+  };
+  const homeFormIndex=formPoints(hf,hf.teamName),awayFormIndex=formPoints(af,af.teamName);
+  const formDelta=(Number.isFinite(homeFormIndex)&&Number.isFinite(awayFormIndex))?(homeFormIndex-awayFormIndex):0;
   const homeAttack=shrink(avg(hf.home?.avgFor,hf.avgGoalsFor),Math.max(1,hf.home?.sample||hf.sample),1.35,2);
   const homeDefense=shrink(avg(hf.home?.avgAgainst,hf.avgGoalsAgainst),Math.max(1,hf.home?.sample||hf.sample),1.15,2);
   const awayAttack=shrink(avg(af.away?.avgFor,af.avgGoalsFor),Math.max(1,af.away?.sample||af.sample),1.15,2);
   const awayDefense=shrink(avg(af.away?.avgAgainst,af.avgGoalsAgainst),Math.max(1,af.away?.sample||af.sample),1.25,2);
-  let lambdaHome=Math.max(.20,Math.min(3.80,(homeAttack+awayDefense)/2+0.12));
-  let lambdaAway=Math.max(.15,Math.min(3.40,(awayAttack+homeDefense)/2));
+  let lambdaHome=Math.max(.20,Math.min(3.80,(homeAttack+awayDefense)/2+0.12+(formDelta*0.10)));
+  let lambdaAway=Math.max(.15,Math.min(3.40,(awayAttack+homeDefense)/2-(formDelta*0.08)));
   const h2hMatches=Array.isArray(h2h?.matches)?h2h.matches.map(sportScoreMatchForEvidence).filter(sportScoreFinishedForEvidence).slice(0,8):[];
   if(h2hMatches.length>=3){
     let hGF=0,hGA=0,n=0; const target=sportScoreNameKey(hf.teamName||"");
@@ -2330,7 +2339,7 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
   const risk=p=>p>=78?"Faible":p>=62?"Modéré":"Élevé";
   const options=[{name:"1X",probability:o1x,risk:risk(o1x)},{name:"X2",probability:ox2,risk:risk(ox2)},{name:"12",probability:o12,risk:risk(o12)},{name:"BTTS (les deux équipes marquent)",probability:obtts,risk:risk(obtts)},{name:"Plus de 2.5 buts",probability:oover,risk:risk(oover)},{name:"Victoire "+(hf.teamName||"Équipe 1"),probability:ohand,risk:risk(ohand)},{name:"Score exact "+best,probability:oscore,risk:"Élevé"}];
   const preferred=options.filter(o=>!/^Score exact/.test(o.name)).sort((a,b)=>b.probability-a.probability)[0];
-  return {ready:true,lambdaHome:+lambdaHome.toFixed(2),lambdaAway:+lambdaAway.toFixed(2),probabilities:[{label:"1",value:P1},{label:"X",value:PX},{label:"2",value:P2}],options,recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:oover,btts:obtts,data_quality:(hf.sample>=6&&af.sample>=6)?"bonne":"moyenne"};
+  return {ready:true,lambdaHome:+lambdaHome.toFixed(2),lambdaAway:+lambdaAway.toFixed(2),probabilities:[{label:"1",value:P1},{label:"X",value:PX},{label:"2",value:P2}],options,recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:oover,btts:obtts,form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,expected_goals:+(lambdaHome+lambdaAway).toFixed(2),data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée"};
 }
 async function fetchSportScoreEvidence(endpoint,params){
   try{return await fetchSportScorePublic(endpoint,params);}catch(_){return null;}
