@@ -2512,7 +2512,26 @@ function changeSportScoreDate(offset){
 
 
 function getBatBotLocalTimeZone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";}catch(_){return "UTC";}}
-function parseSportScoreDate(value){if(!value)return null;const raw=String(value).trim();if(!raw)return null;const hasZone=/Z$|[+-]\d{2}:?\d{2}$/i.test(raw);const d=new Date(hasZone?raw:raw.replace(" ","T")+"Z");return Number.isNaN(d.getTime())?null:d;}
+function parseSportScoreDate(value){
+  if(value===null||value===undefined||value==="")return null;
+  if(value instanceof Date){return Number.isNaN(value.getTime())?null:value;}
+  if(typeof value==="number"||(/^\d{10,13}$/.test(String(value).trim()))){
+    const n=Number(value); if(!Number.isFinite(n))return null;
+    const ms=String(Math.trunc(n)).length<=10?n*1000:n;
+    const d=new Date(ms); return Number.isNaN(d.getTime())?null:d;
+  }
+  const raw=String(value).trim(); if(!raw)return null;
+  const normalized=raw.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}(?::\d{2})?)/,"$1T$2");
+  const hasZone=/Z$|[+-]\d{2}:?\d{2}$/i.test(normalized);
+  const d=new Date(hasZone?normalized:normalized+"Z");
+  if(!Number.isNaN(d.getTime()))return d;
+  const fallback=new Date(raw); return Number.isNaN(fallback.getTime())?null:fallback;
+}
+function extractSportScoreDate(match){
+  const direct=[match?.time,match?.date,match?.start_time,match?.startTime,match?.kickoff,match?.kick_off,match?.match_time,match?.datetime,match?.scheduled_at,match?.scheduledAt,match?.start?.time,match?.start?.date,match?.fixture?.date,match?.fixture?.start_time,match?.fixture?.startTime,match?.fixture?.kickoff,match?.event?.date,match?.event?.start_time,match?.event?.startTime,match?.raw?.time,match?.raw?.date];
+  for(const candidate of direct){if(parseSportScoreDate(candidate))return candidate;}
+  return null;
+}
 function formatSportScoreDateTime(value){const d=parseSportScoreDate(value);if(!d)return "Date/heure indisponible";const tz=getBatBotLocalTimeZone();try{return new Intl.DateTimeFormat(undefined,{timeZone:tz,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"}).format(d)+" • "+tz;}catch(_){return d.toLocaleString();}}
 function fixtureStatusKey(item){const f=item?.fixture||{};return String(f.status?.short||f.status?.long||item?.sportscore?.status||item?.sportscore?.status_text||"").toLowerCase().trim();}
 function isFinishedFixture(item){return /(^|\b)(ft|finished|full time|fulltime|ended|completed|after extra time|tirs au but|termin|apres prolongation)(\b|$)/i.test(fixtureStatusKey(item));}
@@ -2599,7 +2618,7 @@ function normalizeSportScoreClientMatch(match,index){
   const awayName=String(match?.away||match?.away_team?.name||awayObj?.name||"Équipe 2").trim();
   const homeScore=Number.isFinite(Number(match?.home_score))?Number(match.home_score):null;
   const awayScore=Number.isFinite(Number(match?.away_score))?Number(match.away_score):null;
-  const date=match?.time||match?.date||match?.start_time||match?.startTime||match?.kickoff||match?.kick_off||match?.match_time||match?.datetime||match?.fixture?.date||match?.fixture?.start_time||null;
+  const date=extractSportScoreDate(match);
   const competitionName=translateSportScoreCompetition(match?.competition?.name||match?.competition||match?.league?.name||match?.league||"Compétition");
   const slug=String(match?.slug||match?.uri?.split?.("/").filter(Boolean).pop?.()||((homeName+"-vs-"+awayName).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")));
   const homeId=String(match?.home_slug||match?.home_team?.slug||match?.home_team?.id||homeObj?.slug||homeObj?.id||slugifySportScoreTeam(homeName));
