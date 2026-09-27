@@ -50,6 +50,171 @@ function cleanText(value) {
 }
 
 
+function getSignificantTokens(value) {
+  const ignoredWords = new Set([
+    "fc",
+    "cf",
+    "afc",
+    "ac",
+    "sc",
+    "as",
+    "rc",
+    "fk",
+    "sk",
+    "de",
+    "du",
+    "des",
+    "the"
+  ]);
+
+  return cleanText(value)
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter(
+      token =>
+        !ignoredWords.has(token)
+    );
+}
+
+
+function calculateTeamMatchScore(
+  wantedName,
+  candidateName
+) {
+  const wanted =
+    cleanText(wantedName);
+
+  const candidate =
+    cleanText(candidateName);
+
+  /*
+   * Correspondance exacte.
+   */
+  if (candidate === wanted) {
+    return 1000;
+  }
+
+  const wantedTokens =
+    getSignificantTokens(
+      wantedName
+    );
+
+  const candidateTokens =
+    getSignificantTokens(
+      candidateName
+    );
+
+  if (
+    wantedTokens.length === 0 ||
+    candidateTokens.length === 0
+  ) {
+    return 0;
+  }
+
+  const wantedSet =
+    new Set(wantedTokens);
+
+  const candidateSet =
+    new Set(candidateTokens);
+
+  /*
+   * Tous les mots importants recherchés
+   * doivent être présents dans le candidat.
+   */
+  const containsAllWanted =
+    wantedTokens.every(
+      token =>
+        candidateSet.has(token)
+    );
+
+  if (!containsAllWanted) {
+    return 0;
+  }
+
+  /*
+   * On évite les équipes dérivées :
+   * Women, II, U19, Legends, etc.
+   */
+  const forbiddenVariants = new Set([
+    "women",
+    "woman",
+    "ladies",
+    "girls",
+    "youth",
+    "u19",
+    "u20",
+    "u21",
+    "u23",
+    "ii",
+    "iii",
+    "legends",
+    "indoor",
+    "academy",
+    "reserves",
+    "reserve",
+    "b"
+  ]);
+
+  const hasForbiddenVariant =
+    candidateTokens.some(
+      token =>
+        forbiddenVariants.has(token)
+    );
+
+  if (hasForbiddenVariant) {
+    return 0;
+  }
+
+  /*
+   * Plus le nombre de mots supplémentaires est faible,
+   * plus le candidat est probablement l'équipe recherchée.
+   */
+  const extraTokens =
+    candidateTokens.filter(
+      token =>
+        !wantedSet.has(token)
+    );
+
+  let score = 500;
+
+  score -=
+    extraTokens.length * 40;
+
+  /*
+   * Bonus lorsque le nom candidat commence
+   * ou finit simplement par FC / CF / AFC.
+   */
+  const normalizedCandidate =
+    cleanText(candidateName);
+
+  if (
+    normalizedCandidate.startsWith(
+      `${wanted} fc`
+    ) ||
+    normalizedCandidate.endsWith(
+      ` ${wanted} fc`
+    ) ||
+    normalizedCandidate.startsWith(
+      `fc ${wanted}`
+    ) ||
+    normalizedCandidate.startsWith(
+      `cf ${wanted}`
+    ) ||
+    normalizedCandidate.startsWith(
+      `afc ${wanted}`
+    )
+  ) {
+    score += 100;
+  }
+
+  return Math.max(
+    score,
+    1
+  );
+}
+
+
 async function fetchJson(url) {
   const response =
     await fetch(url, {
@@ -135,6 +300,15 @@ async function searchTeam(teamName) {
     }
   }
 
+  if (teams.length === 0) {
+    throw new Error(
+      `Aucune équipe trouvée pour "${teamName}".`
+    );
+  }
+
+  /*
+   * 1. On cherche d'abord une correspondance exacte.
+   */
   const wanted =
     cleanText(teamName);
 
@@ -156,9 +330,52 @@ async function searchTeam(teamName) {
   }
 
   /*
-   * Si le nom exact n'est pas trouvé,
-   * on affiche les résultats disponibles
-   * afin de faciliter le diagnostic.
+   * 2. Si aucune correspondance exacte,
+   * on utilise le système de score.
+   */
+  const ranked =
+    teams
+      .map(team => ({
+        team,
+        score:
+          calculateTeamMatchScore(
+            teamName,
+            team.name
+          )
+      }))
+      .filter(
+        item =>
+          item.score > 0
+      )
+      .sort(
+        (a, b) =>
+          b.score - a.score
+      );
+
+  if (ranked.length === 1) {
+    console.log(
+      `\n🔎 Correspondance intelligente : ` +
+      `"${teamName}" → "${ranked[0].team.name}"`
+    );
+
+    return ranked[0].team;
+  }
+
+  if (
+    ranked.length > 1 &&
+    ranked[0].score >
+      ranked[1].score
+  ) {
+    console.log(
+      `\n🔎 Correspondance intelligente : ` +
+      `"${teamName}" → "${ranked[0].team.name}"`
+    );
+
+    return ranked[0].team;
+  }
+
+  /*
+   * Diagnostic si aucune correspondance suffisamment fiable.
    */
   console.log(
     `\n🔎 Résultats disponibles pour "${teamName}" :`
