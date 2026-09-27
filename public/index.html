@@ -2341,7 +2341,24 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
   const o1x=Math.round((P1+PX)*10)/10, ox2=Math.round((PX+P2)*10)/10, o12=Math.round((P1+P2)*10)/10;
   const obtts=Math.round(pbtts*1000)/10, oover=Math.round(pover*1000)/10, ohand=P1, oscore=Math.round(maxP*1000)/10;
   const risk=p=>p>=78?"Faible":p>=62?"Modéré":"Élevé";
-  const options=[{name:"1X",probability:o1x,risk:risk(o1x)},{name:"X2",probability:ox2,risk:risk(ox2)},{name:"12",probability:o12,risk:risk(o12)},{name:"BTTS (les deux équipes marquent)",probability:obtts,risk:risk(obtts)},{name:"Plus de 2.5 buts",probability:oover,risk:risk(oover)},{name:"Victoire "+(hf.teamName||"Équipe 1"),probability:ohand,risk:risk(ohand)},{name:"Score exact "+best,probability:oscore,risk:"Élevé"}];
+  const optionReasons={
+    "1X":"Probabilité combinée calculée à partir de la victoire à domicile et du match nul.",
+    "X2":"Probabilité combinée calculée à partir du match nul et de la victoire extérieure.",
+    "12":"Probabilité combinée calculée à partir des deux issues victorieuses, hors match nul.",
+    "BTTS (les deux équipes marquent)":"Estimation calculée par le modèle à partir de la distribution des buts attendus.",
+    "Plus de 2.5 buts":"Estimation calculée par le modèle à partir de la distribution des buts attendus.",
+    ["Victoire "+(hf.teamName||"Équipe 1")]:"Probabilité estimée par le modèle pour une victoire de l'équipe à domicile.",
+    ["Score exact "+best]:"Probabilité du score exact le plus probable selon la distribution calculée par le modèle."
+  };
+  const options=[
+    {name:"1X",probability:o1x,risk:risk(o1x),reason:optionReasons["1X"]},
+    {name:"X2",probability:ox2,risk:risk(ox2),reason:optionReasons["X2"]},
+    {name:"12",probability:o12,risk:risk(o12),reason:optionReasons["12"]},
+    {name:"BTTS (les deux équipes marquent)",probability:obtts,risk:risk(obtts),reason:optionReasons["BTTS (les deux équipes marquent)"]},
+    {name:"Plus de 2.5 buts",probability:oover,risk:risk(oover),reason:optionReasons["Plus de 2.5 buts"]},
+    {name:"Victoire "+(hf.teamName||"Équipe 1"),probability:ohand,risk:risk(ohand),reason:optionReasons["Victoire "+(hf.teamName||"Équipe 1")]},
+    {name:"Score exact "+best,probability:oscore,risk:"Élevé",reason:optionReasons["Score exact "+best]}
+  ];
   const preferred=options.filter(o=>!/^Score exact/.test(o.name)).sort((a,b)=>b.probability-a.probability)[0];
   return {ready:true,lambdaHome:+lambdaHome.toFixed(2),lambdaAway:+lambdaAway.toFixed(2),probabilities:[{label:"1",value:P1},{label:"X",value:PX},{label:"2",value:P2}],options,recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:oover,btts:obtts,form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,expected_goals:+(lambdaHome+lambdaAway).toFixed(2),data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée"};
 }
@@ -2369,13 +2386,23 @@ async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fix
       pair.fixture?.league?.slug?fetchSportScoreEvidence("standings/",{sport:"football",slug:pair.fixture.league.slug}):Promise.resolve(null)
     ]);
     const homeMatches=sportScoreExtractMatches(homeTeam); const awayMatches=sportScoreExtractMatches(awayTeam);
+    const findUpcomingFixture=(list)=>{
+      const targetHome=sportScoreNameKey(pair.home),targetAway=sportScoreNameKey(pair.away);
+      return (list||[]).map(sportScoreMatchForEvidence).find(function(m){
+        if(!m.home||!m.away)return false;
+        if(sportScoreFinishedForEvidence(m))return false;
+        return sportScoreNameKey(m.home)===targetHome && sportScoreNameKey(m.away)===targetAway;
+      })||null;
+    };
+    const derivedFixture=pair.fixture||findUpcomingFixture(homeMatches)||findUpcomingFixture(awayMatches);
     const homeForm=summarizeSportScoreTeam(pair.home,homeMatches);homeForm.teamName=pair.home;
     const awayForm=summarizeSportScoreTeam(pair.away,awayMatches);awayForm.teamName=pair.away;
     const table=sportScoreExtractStandings(standings);
     const findRow=(name)=>table.find(function(row){const rn=row?.team?.name||row?.name||row?.team_name;return sportScoreNameKey(rn)===sportScoreNameKey(name);});
     const hr=findRow(pair.home),ar=findRow(pair.away);
     const model=buildSportScoreProbabilityModel(homeForm,awayForm,h2h||{});
-    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:pair.fixture?{date:(pair.fixture.fixture?.date||pair.fixture.date||pair.fixture.start_time||pair.fixture.startTime||pair.fixture.kickoff||pair.fixture.datetime||pair.fixture.scheduled_at||pair.fixture.scheduledAt||pair.fixture.time||null),status:(pair.fixture.fixture?.status||pair.fixture.status||null),competition:(pair.fixture.league?.name||pair.fixture.competition?.name||pair.fixture.competition||null)}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
+    const fixtureSource=derivedFixture;
+    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:fixtureSource?{date:(fixtureSource.fixture?.date||fixtureSource.date||fixtureSource.start_time||fixtureSource.startTime||fixtureSource.kickoff||fixtureSource.datetime||fixtureSource.scheduled_at||fixtureSource.scheduledAt||fixtureSource.time||null),status:(fixtureSource.fixture?.status||fixtureSource.status||fixtureSource.status_text||null),competition:(fixtureSource.league?.name||fixtureSource.competition?.name||fixtureSource.competition||null)}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
   }));
   return {source:"SportScore",generatedAt:new Date().toISOString(),matches:results,models:results.map(function(r){return r.model;})};
 }
