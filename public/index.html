@@ -2561,8 +2561,8 @@ function extractSportScoreDate(match){
 }
 function formatSportScoreDateTime(value){const d=parseSportScoreDate(value);if(!d)return "Date/heure indisponible";const tz=getBatBotLocalTimeZone();try{return new Intl.DateTimeFormat(undefined,{timeZone:tz,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"}).format(d)+" • "+tz;}catch(_){return d.toLocaleString();}}
 function fixtureStatusKey(item){const f=item?.fixture||{};return String(f.status?.short||f.status?.long||item?.sportscore?.status||item?.sportscore?.status_text||"").toLowerCase().trim();}
-function isFinishedFixture(item){return /(^|\b)(ft|finished|full time|fulltime|ended|completed|after extra time|tirs au but|termin|apres prolongation)(\b|$)/i.test(fixtureStatusKey(item));}
-function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|first half|second half|half time|mi temps|1re mi temps|2e mi temps)(\b|$)/i.test(fixtureStatusKey(item));}
+function isFinishedFixture(item){return /(^|\b)(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout|termin|apres prolongation)(\b|$)/i.test(fixtureStatusKey(item));}
+function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|first half|second half|half time|halftime|mi temps|1re mi temps|2e mi temps|1h|2h|ht|extra time|et|penalties|penalty|pen)(\b|$)/i.test(fixtureStatusKey(item));}
 function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard/i.test(fixtureStatusKey(item));}
 function isAnalyzableFixture(item){return !isFinishedFixture(item)&&!isNonAnalyzableFixture(item);}
 function sportScoreFixtureScore(item){const h=item?.goals?.home??item?.score?.fulltime?.home,a=item?.goals?.away??item?.score?.fulltime?.away;return Number.isFinite(Number(h))&&Number.isFinite(Number(a))?String(h)+"–"+String(a):"";}
@@ -2643,16 +2643,62 @@ function normalizeSportScoreClientMatch(match,index){
   const awayObj=match?.teams?.away||match?.away_team_data||{};
   const homeName=String(match?.home||match?.home_team?.name||homeObj?.name||"Équipe 1").trim();
   const awayName=String(match?.away||match?.away_team?.name||awayObj?.name||"Équipe 2").trim();
-  const homeScore=Number.isFinite(Number(match?.home_score))?Number(match.home_score):null;
-  const awayScore=Number.isFinite(Number(match?.away_score))?Number(match.away_score):null;
+  const homeScore=Number.isFinite(Number(match?.home_score))?Number(match.home_score):
+    (Number.isFinite(Number(match?.score?.home))?Number(match.score.home):
+    (Number.isFinite(Number(match?.score?.fulltime?.home))?Number(match.score.fulltime.home):null));
+  const awayScore=Number.isFinite(Number(match?.away_score))?Number(match.away_score):
+    (Number.isFinite(Number(match?.score?.away))?Number(match.score.away):
+    (Number.isFinite(Number(match?.score?.fulltime?.away))?Number(match.score.fulltime.away):null));
   const date=extractSportScoreDate(match);
   const competitionName=translateSportScoreCompetition(match?.competition?.name||match?.competition||match?.league?.name||match?.league||"Compétition");
   const slug=String(match?.slug||match?.uri?.split?.("/").filter(Boolean).pop?.()||((homeName+"-vs-"+awayName).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")));
   const homeId=String(match?.home_slug||match?.home_team?.slug||match?.home_team?.id||homeObj?.slug||homeObj?.id||slugifySportScoreTeam(homeName));
   const awayId=String(match?.away_slug||match?.away_team?.slug||match?.away_team?.id||awayObj?.slug||awayObj?.id||slugifySportScoreTeam(awayName));
-  const rawStatus=String(match?.status||match?.status_code||match?.state||match?.fixture?.status?.short||match?.fixture?.status?.long||"").toLowerCase();
-  const short=rawStatus.includes("live")||rawStatus.includes("progress")?"LIVE":(rawStatus.includes("finish")||rawStatus==="ft")?"FT":"NS";
-  return {fixture:{id:String(match?.id||slug||index),date:date,status:{short:short,long:translateSportScoreStatus(match?.status_text||match?.status||match?.state||"Programmé")}},teams:{home:{id:homeId,name:homeName,logo:match?.home_logo||homeObj?.logo||null},away:{id:awayId,name:awayName,logo:match?.away_logo||awayObj?.logo||null}},league:{id:String(match?.competition_slug||match?.competition?.slug||match?.league?.id||competitionName),name:competitionName,slug:match?.competition_slug||match?.competition?.slug||null},goals:{home:homeScore,away:awayScore},score:{fulltime:{home:homeScore,away:awayScore}},sportscore:{slug:slug,uri:match?.uri||null,status:match?.status||match?.status_code||null,status_text:match?.status_text||null,raw:match}};
+
+  // SportScore peut utiliser LIVE, 1H, HT, 2H, ET ou PEN.
+  // Tous ces codes correspondent à une rencontre en cours.
+  const rawStatus=String(
+    match?.status_text||
+    match?.status||
+    match?.status_code||
+    match?.state||
+    match?.fixture?.status?.short||
+    match?.fixture?.status?.long||
+    ""
+  ).toLowerCase().trim();
+  const statusKey=rawStatus.replace(/[._-]+/g," ").replace(/\s+/g," ");
+  const isLiveStatus=/\b(live|in progress|progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalties|penalty|pen)\b/i.test(statusKey);
+  const isFinishedStatus=/\b(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout)\b/i.test(statusKey);
+  const short=isFinishedStatus?"FT":(isLiveStatus?"LIVE":"NS");
+  const displayStatus=translateSportScoreStatus(
+    match?.status_text||match?.status||match?.status_code||match?.state||"Programmé"
+  );
+
+  return {
+    fixture:{
+      id:String(match?.id||slug||index),
+      date:date,
+      status:{short:short,long:displayStatus}
+    },
+    teams:{
+      home:{id:homeId,name:homeName,logo:match?.home_logo||homeObj?.logo||null},
+      away:{id:awayId,name:awayName,logo:match?.away_logo||awayObj?.logo||null}
+    },
+    league:{
+      id:String(match?.competition_slug||match?.competition?.slug||match?.league?.id||competitionName),
+      name:competitionName,
+      slug:match?.competition_slug||match?.competition?.slug||null
+    },
+    goals:{home:homeScore,away:awayScore},
+    score:{fulltime:{home:homeScore,away:awayScore}},
+    sportscore:{
+      slug:slug,
+      uri:match?.uri||null,
+      status:match?.status||match?.status_code||null,
+      status_text:match?.status_text||null,
+      raw:match
+    }
+  };
 }
 
 function slugifySportScoreTeam(name){
@@ -2744,7 +2790,7 @@ async function loadSportScoreLive(){
       const liveDate=getAbidjanDate(0);
       const d=await fetchSportScorePublic("fixtures/",{sport:"football",date:liveDate,status:"live",limit:100});
       const rawFixtures=Array.isArray(d?.matches)?d.matches:[];
-      const fixtures=rawFixtures.map(normalizeSportScoreClientMatch).filter(function(item){const st=String(item?.sportscore?.status||"").toLowerCase();return st==="live"||st.includes("live")||item?.fixture?.status?.short==="LIVE";});
+      const fixtures=rawFixtures.map(normalizeSportScoreClientMatch).filter(function(item){return isLiveFixture(item);});
       renderSportScoreFixtures(fixtures,"en direct");
       status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct SportScore":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"SportScore ne signale aucun match en cours actuellement.")+'</div></div>';
     }catch(e){
