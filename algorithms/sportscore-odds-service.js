@@ -58,80 +58,6 @@ function getSignificantTokens(value) {
 
 
 // ============================================================
-// ALIAS DES NOMS FRANÇAIS → NOMS SPORTScore
-// ============================================================
-
-const TEAM_NAME_ALIASES = {
-  "cote d'ivoire": ["Cote d'Ivoire", "Ivory Coast"],
-  "cote d ivoire": ["Cote d'Ivoire", "Ivory Coast"],
-  "norvege": ["Norway"],
-  "allemagne": ["Germany"],
-  "angleterre": ["England"],
-  "espagne": ["Spain"],
-  "ecosse": ["Scotland"],
-  "pays de galles": ["Wales"],
-  "irlande": ["Ireland"],
-  "irlande du nord": ["Northern Ireland"],
-  "pays bas": ["Netherlands"],
-  "belgique": ["Belgium"],
-  "suisse": ["Switzerland"],
-  "autriche": ["Austria"],
-  "danemark": ["Denmark"],
-  "suede": ["Sweden"],
-  "finlande": ["Finland"],
-  "islande": ["Iceland"],
-  "grece": ["Greece"],
-  "turquie": ["Turkey"],
-  "croatie": ["Croatia"],
-  "serbie": ["Serbia"],
-  "slovenie": ["Slovenia"],
-  "slovaquie": ["Slovakia"],
-  "republique tcheque": ["Czech Republic", "Czechia"],
-  "hongrie": ["Hungary"],
-  "roumanie": ["Romania"],
-  "bulgarie": ["Bulgaria"],
-  "albanie": ["Albania"],
-  "bosnie": ["Bosnia and Herzegovina"],
-  "ukraine": ["Ukraine"],
-  "russie": ["Russia"],
-  "portugal": ["Portugal"],
-  "italie": ["Italy"],
-  "france": ["France"],
-  "bresil": ["Brazil"],
-  "argentine": ["Argentina"],
-  "uruguay": ["Uruguay"],
-  "chili": ["Chile"],
-  "colombie": ["Colombia"],
-  "equateur": ["Ecuador"],
-  "mexique": ["Mexico"],
-  "etats unis": ["United States"],
-  "canada": ["Canada"],
-  "japon": ["Japan"],
-  "coree du sud": ["South Korea"],
-  "australie": ["Australia"],
-  "maroc": ["Morocco"],
-  "algerie": ["Algeria"],
-  "tunisie": ["Tunisia"],
-  "egypte": ["Egypt"],
-  "senegal": ["Senegal"],
-  "cameroun": ["Cameroon"],
-  "ghana": ["Ghana"],
-  "nigeria": ["Nigeria"],
-  "mali": ["Mali"],
-  "burkina faso": ["Burkina Faso"],
-  "guinee": ["Guinea"],
-  "afrique du sud": ["South Africa"]
-};
-
-function getTeamSearchQueries(teamName) {
-  const original = String(teamName || "").trim();
-  const normalized = cleanText(original);
-  const aliases = TEAM_NAME_ALIASES[normalized] || [];
-  return Array.from(new Set([original, ...aliases].filter(Boolean)));
-}
-
-
-// ============================================================
 // CORRESPONDANCE ÉQUIPE
 // ============================================================
 
@@ -210,97 +136,81 @@ async function fetchJson(url) {
 // ============================================================
 
 async function searchTeam(teamName) {
-  const queries = getTeamSearchQueries(teamName);
-  let lastSearchError = null;
+  const url =
+    `${API_BASE}/search/` +
+    `?q=${encodeURIComponent(teamName)}` +
+    `&sport=${SPORT}` +
+    `&limit=20`;
 
-  for (const query of queries) {
-    try {
-      const url =
-        `${API_BASE}/search/` +
-        `?q=${encodeURIComponent(query)}` +
-        `&sport=${SPORT}` +
-        `&limit=20`;
+  const data = await fetchJson(url);
 
-      const data = await fetchJson(url);
+  const candidates = [
+    data?.teams,
+    data?.data?.teams,
+    data?.results?.teams,
+    data?.data?.results?.teams,
+    data?.results,
+    data?.data
+  ];
 
-      const candidates = [
-        data?.teams,
-        data?.data?.teams,
-        data?.results?.teams,
-        data?.data?.results?.teams,
-        data?.results,
-        data?.data
-      ];
+  const teams = [];
+  const seen = new Set();
 
-      const teams = [];
-      const seen = new Set();
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue;
 
-      for (const candidate of candidates) {
-        if (!Array.isArray(candidate)) continue;
+    for (const team of candidate) {
+      const name = team?.name || team?.team?.name || "";
+      const slug = team?.slug || team?.team?.slug || "";
 
-        for (const team of candidate) {
-          const name = team?.name || team?.team?.name || "";
-          const slug = team?.slug || team?.team?.slug || "";
+      if (!name || !slug) continue;
 
-          if (!name || !slug) continue;
+      const key = `${cleanText(name)}|${cleanText(slug)}`;
+      if (seen.has(key)) continue;
 
-          const key = `${cleanText(name)}|${cleanText(slug)}`;
-          if (seen.has(key)) continue;
-
-          seen.add(key);
-          teams.push({ ...team, name, slug });
-        }
-      }
-
-      if (!teams.length) {
-        lastSearchError = new Error(
-          `Aucune équipe trouvée pour "${query}".`
-        );
-        continue;
-      }
-
-      const wanted = cleanText(teamName);
-
-      const exact = teams.filter(
-        team => cleanText(team.name) === wanted
-      );
-
-      if (exact.length === 1) return exact[0];
-
-      const ranked = teams
-        .map(team => ({
-          team,
-          score: calculateTeamMatchScore(teamName, team.name)
-        }))
-        .filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score);
-
-      if (ranked.length) {
-        if (
-          ranked.length === 1 ||
-          ranked[0].score > ranked[1].score
-        ) {
-          return ranked[0].team;
-        }
-      }
-
-      // Quand la requête utilisée est le nom canonique anglais,
-      // une égalité exacte sur ce nom doit être prioritaire.
-      const canonicalExact = teams.filter(
-        team => cleanText(team.name) === cleanText(query)
-      );
-
-      if (canonicalExact.length === 1) return canonicalExact[0];
-    } catch (error) {
-      lastSearchError = error;
+      seen.add(key);
+      teams.push({ ...team, name, slug });
     }
   }
 
+  if (!teams.length) {
+    throw new Error(`Aucune équipe trouvée pour "${teamName}".`);
+  }
+
+  const wanted = cleanText(teamName);
+
+  const exact = teams.filter(
+    team => cleanText(team.name) === wanted
+  );
+
+  if (exact.length === 1) return exact[0];
+
+  const ranked = teams
+    .map(team => ({
+      team,
+      score: calculateTeamMatchScore(teamName, team.name)
+    }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!ranked.length) {
+    throw new Error(
+      `Impossible d'identifier précisément "${teamName}".`
+    );
+  }
+
+  if (
+    ranked.length === 1 ||
+    ranked[0].score > ranked[1].score
+  ) {
+    return ranked[0].team;
+  }
+
   throw new Error(
-    lastSearchError?.message ||
     `Impossible d'identifier précisément "${teamName}".`
   );
 }
+
 
 // ============================================================
 // EXTRACTION DES MATCHS
@@ -876,13 +786,33 @@ function buildModel(match, odds) {
       "Probabilité calculée par le moteur Poisson v3 à partir des statistiques SportScore disponibles."
   }));
 
+  // La recommandation BATBOT reste volontairement le meilleur résultat 1X2.
+  // On expose séparément la meilleure option statistique de tous les marchés
+  // afin de rendre la distinction explicite sans modifier le comportement
+  // existant du ticket ni des probabilités.
+  const bestStatisticalOption = options.reduce(
+    (current, item) =>
+      !current || Number(item.probability) > Number(current.probability)
+        ? item
+        : current,
+    null
+  );
+
   return {
     ready: true,
     sufficientData: true,
     model: odds.model,
     recommendation: best?.label || "Analyse insuffisante",
+    recommendation_scope: "1X2",
+    recommendation_label: "Meilleur résultat 1X2",
+    best_statistical_option: bestStatisticalOption
+      ? {
+          name: bestStatisticalOption.name,
+          probability: bestStatisticalOption.probability
+        }
+      : null,
     reason:
-      `Le modèle calcule ${match.home} à domicile contre ${match.away} à partir des statistiques globales et du contexte domicile/extérieur disponibles.`,
+      `Choix proposé = meilleur résultat 1X2 (${best?.label || "non disponible"}, ${best?.value ?? "non disponible"} %). Les autres marchés statistiques sont présentés séparément et ne remplacent pas ce choix.`,
     probabilities,
     options,
     expected_goals: odds.expectedGoals,
