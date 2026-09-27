@@ -1,24 +1,29 @@
 /**
  * BATBOT — moteur statistique de calcul des cotes
  *
- * Version : poisson-v2
+ * Version : poisson-v3
+ *
+ * Objectif :
+ * Construire des probabilités à partir des statistiques récentes
+ * tout en évitant qu'un petit échantillon domicile/extérieur
+ * domine excessivement le calcul.
  *
  * Fonctionnement :
  *
- * statistiques récentes des équipes
- *          ↓
+ * statistiques globales
+ *        +
  * statistiques domicile / extérieur
- *          ↓
- * attaque + défense adversaire
- *          ↓
+ *        ↓
+ * pondération selon la taille de l'échantillon
+ *        ↓
+ * attaque + défense adverse
+ *        ↓
  * buts attendus
- *          ↓
+ *        ↓
  * modèle de Poisson
- *          ↓
- * matrice des scores
- *          ↓
+ *        ↓
  * probabilités
- *          ↓
+ *        ↓
  * cotes théoriques
  */
 
@@ -28,18 +33,43 @@ const MAX_GOALS = 10;
 const MIN_MATCHES = 5;
 const MIN_SPLIT_MATCHES = 3;
 
-/**
- * Calcule la probabilité d'obtenir exactement
- * "goals" buts avec une loi de Poisson.
+/*
+ * Valeur utilisée pour réduire l'influence d'un petit
+ * échantillon contextuel.
+ *
+ * Plus le nombre de matchs contextuels augmente,
+ * plus la statistique domicile/extérieur prend du poids.
+ *
+ * Exemple :
+ *
+ * 3 matchs  → 37.5 %
+ * 4 matchs  → 44.4 %
+ * 5 matchs  → 50.0 %
+ * 10 matchs → 66.7 %
+ *
+ * Le reste du poids revient aux statistiques globales.
  */
+const CONTEXT_PRIOR_MATCHES = 5;
+
+
+// ============================================================
+// POISSON
+// ============================================================
+
 function poissonProbability(lambda, goals) {
-  if (!Number.isFinite(lambda) || lambda < 0) {
+  if (
+    !Number.isFinite(lambda) ||
+    lambda < 0
+  ) {
     throw new TypeError(
       "lambda doit être positif ou nul."
     );
   }
 
-  if (!Number.isInteger(goals) || goals < 0) {
+  if (
+    !Number.isInteger(goals) ||
+    goals < 0
+  ) {
     throw new TypeError(
       "Le nombre de buts doit être un entier positif ou nul."
     );
@@ -47,7 +77,11 @@ function poissonProbability(lambda, goals) {
 
   let factorial = 1;
 
-  for (let i = 2; i <= goals; i += 1) {
+  for (
+    let i = 2;
+    i <= goals;
+    i += 1
+  ) {
     factorial *= i;
   }
 
@@ -58,9 +92,11 @@ function poissonProbability(lambda, goals) {
   );
 }
 
-/**
- * Transforme une probabilité en cote théorique.
- */
+
+// ============================================================
+// PROBABILITÉ → COTE
+// ============================================================
+
 function probabilityToOdds(probability) {
   if (!(probability > 0)) {
     return null;
@@ -71,10 +107,15 @@ function probabilityToOdds(probability) {
   );
 }
 
-/**
- * Sécurise une moyenne statistique.
- */
-function safeAverage(total, matches) {
+
+// ============================================================
+// MOYENNE SÉCURISÉE
+// ============================================================
+
+function safeAverage(
+  total,
+  matches
+) {
   if (
     !Number.isFinite(total) ||
     !Number.isFinite(matches) ||
@@ -86,19 +127,24 @@ function safeAverage(total, matches) {
   return total / matches;
 }
 
-/**
- * Retourne les statistiques globales
- * d'une équipe.
- */
+
+// ============================================================
+// STATISTIQUES GLOBALES
+// ============================================================
+
 function getGlobalStats(team) {
-  const matches = Number(team?.matches);
+  const matches =
+    Number(team?.matches);
 
   if (!(matches > 0)) {
     return null;
   }
 
-  const goalsFor = Number(team?.goalsFor);
-  const goalsAgainst = Number(team?.goalsAgainst);
+  const goalsFor =
+    Number(team?.goalsFor);
+
+  const goalsAgainst =
+    Number(team?.goalsAgainst);
 
   if (
     !Number.isFinite(goalsFor) ||
@@ -109,21 +155,33 @@ function getGlobalStats(team) {
 
   return {
     matches,
+
     goalsFor,
+
     goalsAgainst,
+
     averageGoalsFor:
-      safeAverage(goalsFor, matches),
+      safeAverage(
+        goalsFor,
+        matches
+      ),
+
     averageGoalsAgainst:
-      safeAverage(goalsAgainst, matches)
+      safeAverage(
+        goalsAgainst,
+        matches
+      )
   };
 }
 
-/**
- * Retourne les statistiques domicile
- * d'une équipe.
- */
+
+// ============================================================
+// STATISTIQUES DOMICILE
+// ============================================================
+
 function getHomeStats(team) {
-  const matches = Number(team?.homeMatches);
+  const matches =
+    Number(team?.homeMatches);
 
   if (!(matches > 0)) {
     return null;
@@ -144,21 +202,33 @@ function getHomeStats(team) {
 
   return {
     matches,
+
     goalsFor,
+
     goalsAgainst,
+
     averageGoalsFor:
-      safeAverage(goalsFor, matches),
+      safeAverage(
+        goalsFor,
+        matches
+      ),
+
     averageGoalsAgainst:
-      safeAverage(goalsAgainst, matches)
+      safeAverage(
+        goalsAgainst,
+        matches
+      )
   };
 }
 
-/**
- * Retourne les statistiques extérieur
- * d'une équipe.
- */
+
+// ============================================================
+// STATISTIQUES EXTÉRIEUR
+// ============================================================
+
 function getAwayStats(team) {
-  const matches = Number(team?.awayMatches);
+  const matches =
+    Number(team?.awayMatches);
 
   if (!(matches > 0)) {
     return null;
@@ -179,109 +249,259 @@ function getAwayStats(team) {
 
   return {
     matches,
+
     goalsFor,
+
     goalsAgainst,
+
     averageGoalsFor:
-      safeAverage(goalsFor, matches),
+      safeAverage(
+        goalsFor,
+        matches
+      ),
+
     averageGoalsAgainst:
-      safeAverage(goalsAgainst, matches)
+      safeAverage(
+        goalsAgainst,
+        matches
+      )
   };
 }
 
-/**
- * Choisit les statistiques adaptées
- * au contexte du match.
- *
- * Équipe à domicile :
- *   attaque domicile
- *   défense domicile
- *
- * Équipe à l'extérieur :
- *   attaque extérieur
- *   défense extérieur
- *
- * Si l'échantillon domicile/extérieur
- * est trop faible, on utilise les statistiques
- * globales de l'équipe.
- */
-function selectContextStats(team, context) {
-  const global = getGlobalStats(team);
+
+// ============================================================
+// POIDS CONTEXTUEL
+// ============================================================
+
+function calculateContextWeight(
+  contextMatches
+) {
+  const matches =
+    Number(contextMatches);
+
+  if (
+    !Number.isFinite(matches) ||
+    matches < MIN_SPLIT_MATCHES
+  ) {
+    return 0;
+  }
+
+  const weight =
+    matches /
+    (
+      matches +
+      CONTEXT_PRIOR_MATCHES
+    );
+
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      weight
+    )
+  );
+}
+
+
+// ============================================================
+// MÉLANGE GLOBAL + CONTEXTUEL
+// ============================================================
+
+function blendValue(
+  globalValue,
+  contextualValue,
+  contextualMatches
+) {
+  if (
+    !Number.isFinite(globalValue)
+  ) {
+    return contextualValue;
+  }
+
+  if (
+    !Number.isFinite(contextualValue)
+  ) {
+    return globalValue;
+  }
+
+  const contextWeight =
+    calculateContextWeight(
+      contextualMatches
+    );
+
+  const globalWeight =
+    1 - contextWeight;
+
+  return (
+    globalValue *
+    globalWeight
+    +
+    contextualValue *
+    contextWeight
+  );
+}
+
+
+// ============================================================
+// SÉLECTION DES STATISTIQUES CONTEXTUELLES
+// ============================================================
+
+function getBlendedContextStats(
+  team,
+  context
+) {
+  const global =
+    getGlobalStats(team);
 
   if (!global) {
     return null;
   }
 
+  let contextual = null;
+
   if (
-    context === "home" &&
-    Number(team?.homeMatches) >= MIN_SPLIT_MATCHES
+    context === "home"
   ) {
-    return getHomeStats(team) || global;
+    contextual =
+      getHomeStats(team);
   }
 
   if (
-    context === "away" &&
-    Number(team?.awayMatches) >= MIN_SPLIT_MATCHES
+    context === "away"
   ) {
-    return getAwayStats(team) || global;
+    contextual =
+      getAwayStats(team);
   }
 
-  return global;
+  /*
+   * Aucun échantillon contextuel suffisant :
+   * on utilise uniquement les statistiques globales.
+   */
+  if (
+    !contextual ||
+    contextual.matches <
+      MIN_SPLIT_MATCHES
+  ) {
+    return {
+      matches:
+        global.matches,
+
+      averageGoalsFor:
+        global.averageGoalsFor,
+
+      averageGoalsAgainst:
+        global.averageGoalsAgainst,
+
+      contextualMatches: 0,
+
+      contextualWeight: 0,
+
+      globalWeight: 1,
+
+      source:
+        "global"
+    };
+  }
+
+  const contextualWeight =
+    calculateContextWeight(
+      contextual.matches
+    );
+
+  const globalWeight =
+    1 -
+    contextualWeight;
+
+  const averageGoalsFor =
+    blendValue(
+      global.averageGoalsFor,
+      contextual.averageGoalsFor,
+      contextual.matches
+    );
+
+  const averageGoalsAgainst =
+    blendValue(
+      global.averageGoalsAgainst,
+      contextual.averageGoalsAgainst,
+      contextual.matches
+    );
+
+  return {
+    matches:
+      global.matches,
+
+    averageGoalsFor,
+
+    averageGoalsAgainst,
+
+    contextualMatches:
+      contextual.matches,
+
+    contextualWeight,
+
+    globalWeight,
+
+    source:
+      "global+context"
+  };
 }
 
-/**
- * Calcule les buts attendus.
- *
- * Pour l'équipe à domicile :
- *
- * attaque domicile de l'équipe
- * +
- * défense extérieur de l'adversaire
- *
- * Pour l'équipe extérieure :
- *
- * attaque extérieur de l'équipe
- * +
- * défense domicile de l'adversaire
- *
- * Le modèle utilise une moyenne des deux
- * composantes afin d'éviter de dépendre
- * d'une seule statistique.
- */
-function calculateExpectedGoals(home, away) {
+
+// ============================================================
+// BUTS ATTENDUS
+// ============================================================
+
+function calculateExpectedGoals(
+  home,
+  away
+) {
   if (
     !home ||
     !away ||
-    Number(home.matches) < MIN_MATCHES ||
-    Number(away.matches) < MIN_MATCHES
+    Number(home.matches) <
+      MIN_MATCHES ||
+    Number(away.matches) <
+      MIN_MATCHES
   ) {
     return {
       sufficientData: false,
+
       reason:
         `Au moins ${MIN_MATCHES} matchs terminés avec score ` +
         `sont nécessaires pour chaque équipe.`
     };
   }
 
+  /*
+   * L'équipe à domicile :
+   *
+   * attaque domicile pondérée
+   * +
+   * défense extérieure de l'adversaire pondérée
+   */
   const homeContext =
-    selectContextStats(home, "home");
+    getBlendedContextStats(
+      home,
+      "home"
+    );
 
   const awayContext =
-    selectContextStats(away, "away");
+    getBlendedContextStats(
+      away,
+      "away"
+    );
 
-  const homeOpponentContext =
-    selectContextStats(away, "away");
-
-  const awayOpponentContext =
-    selectContextStats(home, "home");
-
+  /*
+   * Les deux mêmes statistiques sont également
+   * utilisées pour décrire la défense adverse.
+   */
   if (
     !homeContext ||
-    !awayContext ||
-    !homeOpponentContext ||
-    !awayOpponentContext
+    !awayContext
   ) {
     return {
       sufficientData: false,
+
       reason:
         "Les statistiques nécessaires au calcul sont insuffisantes."
     };
@@ -300,52 +520,113 @@ function calculateExpectedGoals(home, away) {
     awayContext.averageGoalsAgainst;
 
   /*
-   * Attaque de l'équipe à domicile
-   * confrontée à la défense de l'équipe extérieure.
+   * Buts attendus domicile :
+   *
+   * attaque du domicile
+   * +
+   * buts encaissés par l'extérieur
+   * --------------------------------
+   *                  2
    */
   const homeExpected =
-    (homeAttack + awayDefense) / 2;
+    (
+      homeAttack +
+      awayDefense
+    ) / 2;
 
   /*
-   * Attaque de l'équipe extérieure
-   * confrontée à la défense de l'équipe à domicile.
+   * Buts attendus extérieur :
+   *
+   * attaque de l'extérieur
+   * +
+   * buts encaissés par le domicile
+   * --------------------------------
+   *                  2
    */
   const awayExpected =
-    (awayAttack + homeDefense) / 2;
+    (
+      awayAttack +
+      homeDefense
+    ) / 2;
 
   return {
     sufficientData: true,
 
-    homeExpected: Math.max(
-      0.05,
-      Math.min(5, homeExpected)
-    ),
+    homeExpected:
+      Math.max(
+        0.05,
+        Math.min(
+          5,
+          homeExpected
+        )
+      ),
 
-    awayExpected: Math.max(
-      0.05,
-      Math.min(5, awayExpected)
-    ),
+    awayExpected:
+      Math.max(
+        0.05,
+        Math.min(
+          5,
+          awayExpected
+        )
+      ),
 
     context: {
-      homeAttackMatches:
-        homeContext.matches,
+      home: {
+        source:
+          homeContext.source,
 
-      homeDefenseMatches:
-        homeContext.matches,
+        contextualMatches:
+          homeContext.contextualMatches,
 
-      awayAttackMatches:
-        awayContext.matches,
+        contextualWeight:
+          Number(
+            (
+              homeContext.contextualWeight *
+              100
+            ).toFixed(2)
+          ),
 
-      awayDefenseMatches:
-        awayContext.matches
+        globalWeight:
+          Number(
+            (
+              homeContext.globalWeight *
+              100
+            ).toFixed(2)
+          )
+      },
+
+      away: {
+        source:
+          awayContext.source,
+
+        contextualMatches:
+          awayContext.contextualMatches,
+
+        contextualWeight:
+          Number(
+            (
+              awayContext.contextualWeight *
+              100
+            ).toFixed(2)
+          ),
+
+        globalWeight:
+          Number(
+            (
+              awayContext.globalWeight *
+              100
+            ).toFixed(2)
+          )
+      }
     }
   };
 }
 
-/**
- * Construit la matrice complète
- * des probabilités de scores.
- */
+
+// ============================================================
+// MATRICE DES SCORES
+// ============================================================
+
 function buildScoreMatrix(
   homeExpected,
   awayExpected
@@ -376,20 +657,27 @@ function buildScoreMatrix(
           awayGoals
         );
 
-      row.push(probability);
-      totalProbability += probability;
+      row.push(
+        probability
+      );
+
+      totalProbability +=
+        probability;
     }
 
     matrix.push(row);
   }
 
   /*
-   * La matrice est limitée à 0–10 buts.
+   * Les scores sont limités à 0–10 buts.
    *
-   * On renormalise afin que toutes les probabilités
-   * de marché reposent sur une masse totale de 100 %.
+   * On renormalise la matrice pour que
+   * la masse de probabilité soit exactement
+   * exploitée à 100 % dans les marchés.
    */
-  if (totalProbability > 0) {
+  if (
+    totalProbability > 0
+  ) {
     for (
       let h = 0;
       h <= MAX_GOALS;
@@ -410,10 +698,14 @@ function buildScoreMatrix(
   return matrix;
 }
 
-/**
- * Calcule les différents marchés.
- */
-function calculateMarkets(matrix) {
+
+// ============================================================
+// MARCHÉS
+// ============================================================
+
+function calculateMarkets(
+  matrix
+) {
   let home = 0;
   let draw = 0;
   let away = 0;
@@ -443,30 +735,65 @@ function calculateMarkets(matrix) {
       const probability =
         matrix[h][a];
 
-      if (h > a) {
-        home += probability;
-      } else if (h === a) {
-        draw += probability;
+      if (
+        h > a
+      ) {
+        home +=
+          probability;
+      } else if (
+        h === a
+      ) {
+        draw +=
+          probability;
       } else {
-        away += probability;
+        away +=
+          probability;
       }
 
-      if (h + a >= 2) {
-        over15 += probability;
+      /*
+       * Over 1.5
+       */
+      if (
+        h + a >= 2
+      ) {
+        over15 +=
+          probability;
       }
 
-      if (h + a >= 3) {
-        over25 += probability;
+      /*
+       * Over 2.5
+       */
+      if (
+        h + a >= 3
+      ) {
+        over25 +=
+          probability;
       }
 
-      if (h + a >= 4) {
-        over35 += probability;
+      /*
+       * Over 3.5
+       */
+      if (
+        h + a >= 4
+      ) {
+        over35 +=
+          probability;
       }
 
-      if (h > 0 && a > 0) {
-        btts += probability;
+      /*
+       * Both Teams To Score
+       */
+      if (
+        h > 0 &&
+        a > 0
+      ) {
+        btts +=
+          probability;
       }
 
+      /*
+       * Score le plus probable.
+       */
       if (
         probability >
         bestScore.probability
@@ -482,11 +809,15 @@ function calculateMarkets(matrix) {
 
   return {
     home,
+
     draw,
+
     away,
 
     over15,
+
     over25,
+
     over35,
 
     under25:
@@ -505,10 +836,16 @@ function calculateMarkets(matrix) {
   };
 }
 
-/**
- * Normalise les probabilités 1X2.
- */
-function normalize(home, draw, away) {
+
+// ============================================================
+// NORMALISATION 1X2
+// ============================================================
+
+function normalize(
+  home,
+  draw,
+  away
+) {
   const total =
     home +
     draw +
@@ -532,15 +869,21 @@ function normalize(home, draw, away) {
   };
 }
 
-/**
- * Formate un marché.
- */
-function formatMarket(probability) {
+
+// ============================================================
+// FORMATAGE DES MARCHÉS
+// ============================================================
+
+function formatMarket(
+  probability
+) {
   return {
     probability:
       Number(
-        (probability * 100)
-          .toFixed(2)
+        (
+          probability *
+          100
+        ).toFixed(2)
       ),
 
     theoreticalOdds:
@@ -550,17 +893,24 @@ function formatMarket(probability) {
   };
 }
 
-/**
- * Fonction principale du moteur.
- */
-function calculateOdds(input) {
+
+// ============================================================
+// MOTEUR PRINCIPAL
+// ============================================================
+
+function calculateOdds(
+  input
+) {
   const home =
     input?.home;
 
   const away =
     input?.away;
 
-  if (!home || !away) {
+  if (
+    !home ||
+    !away
+  ) {
     throw new TypeError(
       "Les statistiques des deux équipes sont obligatoires."
     );
@@ -597,10 +947,11 @@ function calculateOdds(input) {
     );
 
   return {
-    sufficientData: true,
+    sufficientData:
+      true,
 
     model:
-      "poisson-v2-home-away",
+      "poisson-v3-weighted-home-away",
 
     expectedGoals: {
       home:
@@ -616,7 +967,8 @@ function calculateOdds(input) {
         )
     },
 
-    context: expected.context,
+    context:
+      expected.context,
 
     oneXTwo: {
       home:
@@ -697,8 +1049,7 @@ function calculateOdds(input) {
       probability:
         Number(
           (
-            markets.bestScore
-              .probability *
+            markets.bestScore.probability *
             100
           ).toFixed(2)
         )
@@ -715,11 +1066,25 @@ function calculateOdds(input) {
   };
 }
 
+
+// ============================================================
+// EXPORTS
+// ============================================================
+
 module.exports = {
   calculateOdds,
+
   calculateExpectedGoals,
+
   poissonProbability,
+
   probabilityToOdds,
+
   MIN_MATCHES,
-  MAX_GOALS
+
+  MIN_SPLIT_MATCHES,
+
+  MAX_GOALS,
+
+  CONTEXT_PRIOR_MATCHES
 };
