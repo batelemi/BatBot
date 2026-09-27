@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
 const path = require("path");
 const crypto = require("crypto");
+const { analyzeSportScoreMatches } = require("./algorithms/sportscore-odds-service");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -1477,6 +1478,52 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
   res.json({ message: "Configuration enregistrée.", settings });
 });
 
+
+app.post("/api/football/odds", requireUser, async (req, res) => {
+  try {
+    const currentUser = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+    const premiumActive = !!(
+      currentUser &&
+      currentUser.premium_until &&
+      new Date(currentUser.premium_until) > new Date()
+    );
+
+    if (!premiumActive) {
+      return res.status(403).json({
+        ok: false,
+        error: "Un abonnement Premium actif est nécessaire pour utiliser l'analyse statistique des cotes."
+      });
+    }
+
+    const matches = Array.isArray(req.body.matches)
+      ? req.body.matches
+      : [];
+
+    if (!matches.length) {
+      return res.status(400).json({
+        ok: false,
+        error: "Aucun match à analyser."
+      });
+    }
+
+    const analysis = await analyzeSportScoreMatches(matches);
+
+    return res.json({
+      ok: true,
+      source: "SportScore",
+      ...analysis
+    });
+  } catch (error) {
+    console.error("SportScore odds analysis:", error.message);
+
+    return res.status(502).json({
+      ok: false,
+      source: "SportScore",
+      error: "Impossible de calculer l'analyse statistique des cotes.",
+      details: error.message
+    });
+  }
+});
 
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
