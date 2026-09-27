@@ -520,34 +520,51 @@ function calculateExpectedGoals(
     awayContext.averageGoalsAgainst;
 
   /*
-   * Buts attendus domicile :
+   * Buts attendus :
    *
-   * attaque du domicile
-   * +
-   * buts encaissés par l'extérieur
-   * --------------------------------
-   *                  2
+   * L'ancienne version utilisait une moyenne arithmétique :
+   *
+   *   (attaque + défense adverse) / 2
+   *
+   * Cette formule pouvait gonfler les buts attendus lorsqu'une
+   * équipe avait une moyenne offensive très élevée ou que la
+   * défense adverse avait encaissé beaucoup de buts.
+   *
+   * On utilise désormais une moyenne géométrique. Elle conserve
+   * l'information des deux composantes tout en limitant l'effet
+   * d'une valeur extrême :
+   *
+   *   sqrt(attaque × défense adverse)
+   *
+   * Si l'une des valeurs est nulle ou invalide, on revient à une
+   * moyenne arithmétique sûre.
    */
-  const homeExpected =
-    (
-      homeAttack +
-      awayDefense
-    ) / 2;
+  function combineAttackAndDefense(attack, opponentDefense) {
+    const a = Number(attack);
+    const d = Number(opponentDefense);
 
-  /*
-   * Buts attendus extérieur :
-   *
-   * attaque de l'extérieur
-   * +
-   * buts encaissés par le domicile
-   * --------------------------------
-   *                  2
-   */
+    if (Number.isFinite(a) && Number.isFinite(d) && a > 0 && d > 0) {
+      return Math.sqrt(a * d);
+    }
+
+    if (Number.isFinite(a) && Number.isFinite(d)) {
+      return Math.max(0.05, (a + d) / 2);
+    }
+
+    return 0.05;
+  }
+
+  const homeExpected =
+    combineAttackAndDefense(
+      homeAttack,
+      awayDefense
+    );
+
   const awayExpected =
-    (
-      awayAttack +
+    combineAttackAndDefense(
+      awayAttack,
       homeDefense
-    ) / 2;
+    );
 
   return {
     sufficientData: true,
@@ -951,7 +968,7 @@ function calculateOdds(
       true,
 
     model:
-      "poisson-v3-weighted-home-away",
+      "poisson-v3-weighted-home-away-geometric",
 
     expectedGoals: {
       home:
