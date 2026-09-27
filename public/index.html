@@ -2239,7 +2239,7 @@ function renderBatBotAIResult(raw,modelData){
 }
 
 function sportScoreExtractMatches(data){
-  const candidates=[data?.matches,data?.meetings,data?.fixtures,data?.results,data?.data?.matches,data?.data?.meetings,data?.data?.fixtures,data?.data?.results,data?.team?.matches,data?.data?.team?.matches,data?.team?.fixtures,data?.data?.team?.fixtures];
+  const candidates=[data?.matches,data?.meetings,data?.fixtures,data?.results,data?.team?.matches,data?.team?.fixtures,data?.team?.results,data?.data?.matches,data?.data?.meetings,data?.data?.fixtures,data?.data?.results,data?.data?.team?.matches,data?.data?.team?.fixtures,data?.data?.team?.results,data?.response?.matches,data?.response?.fixtures];
   return candidates.find(Array.isArray)||[];
 }
 function sportScoreExtractStandings(data){
@@ -2346,14 +2346,25 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
   return {ready:true,lambdaHome:+lambdaHome.toFixed(2),lambdaAway:+lambdaAway.toFixed(2),probabilities:[{label:"1",value:P1},{label:"X",value:PX},{label:"2",value:P2}],options,recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:oover,btts:obtts,form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,expected_goals:+(lambdaHome+lambdaAway).toFixed(2),data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée"};
 }
 async function fetchSportScoreEvidence(endpoint,params){
-  try{return await fetchSportScorePublic(endpoint,params);}catch(_){return null;}
+  try{
+    const primary=await fetchSportScorePublic(endpoint,params);
+    return primary;
+  }catch(primaryError){
+    try{
+      const widgetEndpoint=String(endpoint||"").replace(/^api\/v1\//,"").replace(/\/$/,"");
+      if(["team","standings"].includes(widgetEndpoint)){
+        return await fetchSportScorePublic("widget/"+widgetEndpoint+"/",params);
+      }
+    }catch(_){ }
+    return null;
+  }
 }
 async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fixture1,secondHome,secondAway,secondHomeSlug,secondAwaySlug,fixture2){
   const pairs=[];if(home&&away)pairs.push({home,away,homeSlug,awaySlug,fixture:fixture1});if(secondHome&&secondAway)pairs.push({home:secondHome,away:secondAway,homeSlug:secondHomeSlug,awaySlug:secondAwaySlug,fixture:fixture2});
   const results=await Promise.all(pairs.map(async function(pair){
     const [homeTeam,awayTeam,h2h,standings]=await Promise.all([
-      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.homeSlug,limit:20}),
-      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.awaySlug,limit:20}),
+      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.homeSlug,limit:30}),
+      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.awaySlug,limit:30}),
       fetchSportScoreEvidence("h2h/",{sport:"football",team1:pair.homeSlug,team2:pair.awaySlug,limit:10}),
       pair.fixture?.league?.slug?fetchSportScoreEvidence("standings/",{sport:"football",slug:pair.fixture.league.slug}):Promise.resolve(null)
     ]);
@@ -2364,12 +2375,23 @@ async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fix
     const findRow=(name)=>table.find(function(row){const rn=row?.team?.name||row?.name||row?.team_name;return sportScoreNameKey(rn)===sportScoreNameKey(name);});
     const hr=findRow(pair.home),ar=findRow(pair.away);
     const model=buildSportScoreProbabilityModel(homeForm,awayForm,h2h||{});
-    return {match:pair.home+" vs "+pair.away,fixture:pair.fixture?{date:pair.fixture.fixture?.date,status:pair.fixture.fixture?.status,competition:pair.fixture.league?.name}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
+    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:pair.fixture?{date:pair.fixture.fixture?.date,status:pair.fixture.fixture?.status,competition:pair.fixture.league?.name}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
   }));
   return {source:"SportScore",generatedAt:new Date().toISOString(),matches:results,models:results.map(function(r){return r.model;})};
 }
 async function fetchSportScoreEvidence(endpoint,params){
-  try{return await fetchSportScorePublic(endpoint,params);}catch(_){return null;}
+  try{
+    const primary=await fetchSportScorePublic(endpoint,params);
+    return primary;
+  }catch(primaryError){
+    try{
+      const widgetEndpoint=String(endpoint||"").replace(/^api\/v1\//,"").replace(/\/$/,"");
+      if(["team","standings"].includes(widgetEndpoint)){
+        return await fetchSportScorePublic("widget/"+widgetEndpoint+"/",params);
+      }
+    }catch(_){ }
+    return null;
+  }
 }
 async function submitBatBotAI(){
   const button=document.getElementById("smartDriveAIButton");
@@ -2515,7 +2537,10 @@ function renderSportScoreFixtures(fixtures,checkedDate){
 }
 
 function sportScorePublicUrl(endpoint, params){
-  const url=new URL("https://sportscore.com/api/v1/"+String(endpoint||"").replace(/^\//,""));
+  const ep=String(endpoint||"").replace(/^\//,"");
+  const base=ep.startsWith("widget/")?"https://sportscore.com/api/":"https://sportscore.com/api/v1/";
+  const path=ep.startsWith("widget/")?ep:"v1/"+ep;
+  const url=new URL(base+path);
   Object.keys(params||{}).forEach(function(key){
     const value=params[key];
     if(value!==undefined&&value!==null&&value!=="")url.searchParams.set(key,String(value));
@@ -2573,12 +2598,12 @@ function normalizeSportScoreClientMatch(match,index){
   const awayName=String(match?.away||match?.away_team?.name||awayObj?.name||"Équipe 2").trim();
   const homeScore=Number.isFinite(Number(match?.home_score))?Number(match.home_score):null;
   const awayScore=Number.isFinite(Number(match?.away_score))?Number(match.away_score):null;
-  const date=match?.time||match?.date||match?.start_time||null;
+  const date=match?.time||match?.date||match?.start_time||match?.startTime||match?.kickoff||match?.kick_off||match?.match_time||match?.datetime||match?.fixture?.date||match?.fixture?.start_time||null;
   const competitionName=translateSportScoreCompetition(match?.competition?.name||match?.competition||match?.league?.name||match?.league||"Compétition");
   const slug=String(match?.slug||match?.uri?.split?.("/").filter(Boolean).pop?.()||((homeName+"-vs-"+awayName).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")));
   const homeId=String(match?.home_slug||match?.home_team?.slug||match?.home_team?.id||homeObj?.slug||homeObj?.id||slugifySportScoreTeam(homeName));
   const awayId=String(match?.away_slug||match?.away_team?.slug||match?.away_team?.id||awayObj?.slug||awayObj?.id||slugifySportScoreTeam(awayName));
-  const rawStatus=String(match?.status||match?.status_code||match?.state||"").toLowerCase();
+  const rawStatus=String(match?.status||match?.status_code||match?.state||match?.fixture?.status?.short||match?.fixture?.status?.long||"").toLowerCase();
   const short=rawStatus.includes("live")||rawStatus.includes("progress")?"LIVE":(rawStatus.includes("finish")||rawStatus==="ft")?"FT":"NS";
   return {fixture:{id:String(match?.id||slug||index),date:date,status:{short:short,long:translateSportScoreStatus(match?.status_text||match?.status||match?.state||"Programmé")}},teams:{home:{id:homeId,name:homeName,logo:match?.home_logo||homeObj?.logo||null},away:{id:awayId,name:awayName,logo:match?.away_logo||awayObj?.logo||null}},league:{id:String(match?.competition_slug||match?.competition?.slug||match?.league?.id||competitionName),name:competitionName,slug:match?.competition_slug||match?.competition?.slug||null},goals:{home:homeScore,away:awayScore},score:{fulltime:{home:homeScore,away:awayScore}},sportscore:{slug:slug,uri:match?.uri||null,status:match?.status||match?.status_code||null,status_text:match?.status_text||null,raw:match}};
 }
@@ -2597,12 +2622,22 @@ async function ensureSportScoreFootballAccess(){
 async function resolveSportScoreTeamSlug(name){
   const q=String(name||"").trim();
   if(q.length<2)return "";
-  const data=await fetchSportScorePublic("search/",{sport:"football",q:q,limit:10});
-  const teams=Array.isArray(data?.teams)?data.teams:[];
-  const normalize=function(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/\\b(fc|cf|sc|afc|ac|football club)\\b/g," ").replace(/[^a-z0-9]+/g," ").trim();};
+  const queries=[q];
+  const simplified=q.replace(/\b(national team|football club|fc|cf|sc|afc|ac)\b/gi," ").replace(/\s+/g," ").trim();
+  if(simplified&&simplified.toLowerCase()!==q.toLowerCase())queries.push(simplified);
+  const normalize=function(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\b(fc|cf|sc|afc|ac|football club)\b/g," ").replace(/[^a-z0-9]+/g," ").trim();};
   const target=normalize(q);
-  const match=teams.find(function(team){const candidate=normalize(team?.name);return candidate===target||candidate.includes(target)||target.includes(candidate);})||teams[0];
-  return match?.slug||"";
+  let best=null;
+  for(const query of queries){
+    const data=await fetchSportScorePublic("search/",{sport:"football",q:query,limit:20});
+    const teams=Array.isArray(data?.teams)?data.teams:[];
+    const exact=teams.find(function(team){return normalize(team?.name)===target;});
+    const partial=teams.find(function(team){const candidate=normalize(team?.name);return candidate&& (candidate.includes(target)||target.includes(candidate));});
+    best=exact||partial||best;
+    if(exact)break;
+  }
+  if(!best)return "";
+  return String(best?.slug||best?.id||best?.team_slug||best?.team?.slug||"").trim();
 }
 
 async function loadSportScoreFixtures(selectedDate){
