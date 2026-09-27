@@ -298,10 +298,98 @@ function getGoalsForAndAgainst(match, team) {
 // ============================================================
 
 function buildTeamStats(matches, team) {
+  console.log("\n========================================");
+  console.log(`🔬 DIAGNOSTIC SPORTScore — ${team.name}`);
+  console.log("========================================");
+
+  console.log(
+    `Nombre total de matchs reçus : ${matches.length}`
+  );
+
+  console.log("\n📋 STRUCTURE DES MATCHS REÇUS :");
+  console.log("----------------------------------------");
+
+  matches.forEach((match, index) => {
+    console.log(
+      `\n[${index + 1}] ${match?.home || "?"} vs ${match?.away || "?"}`
+    );
+
+    console.log(
+      "   status      :",
+      match?.status
+    );
+
+    console.log(
+      "   status_text :",
+      match?.status_text
+    );
+
+    console.log(
+      "   home_score  :",
+      match?.home_score
+    );
+
+    console.log(
+      "   away_score  :",
+      match?.away_score
+    );
+
+    console.log(
+      "   time        :",
+      match?.time
+    );
+
+    console.log(
+      "   competition :",
+      match?.competition
+    );
+  });
+
+  console.log("\n========================================");
+  console.log("🔎 FILTRAGE DES MATCHS TERMINÉS");
+  console.log("========================================");
+
   const finished =
     matches
-      .filter(isFinished)
-      .filter(hasRealScore)
+      .filter(match => {
+        const result = isFinished(match);
+
+        console.log(
+          `\n${match?.home || "?"} vs ${match?.away || "?"}`
+        );
+
+        console.log(
+          "   status =",
+          match?.status
+        );
+
+        console.log(
+          "   status_text =",
+          match?.status_text
+        );
+
+        console.log(
+          "   isFinished =",
+          result
+        );
+
+        console.log(
+          "   score =",
+          `${match?.home_score} - ${match?.away_score}`
+        );
+
+        return result;
+      })
+      .filter(match => {
+        const result = hasRealScore(match);
+
+        console.log(
+          "   hasRealScore =",
+          result
+        );
+
+        return result;
+      })
       .filter(match =>
         matchBelongsToTeam(match, team)
       )
@@ -314,6 +402,15 @@ function buildTeamStats(matches, team) {
 
         return dateB - dateA;
       });
+
+  console.log("\n========================================");
+  console.log("📊 RÉSULTAT DU FILTRE");
+  console.log("========================================");
+
+  console.log(
+    "Matchs terminés avec score réel :",
+    finished.length
+  );
 
   const selected =
     finished.slice(0, 10);
