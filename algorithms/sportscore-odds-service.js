@@ -23,7 +23,7 @@ const API_BASE = "https://sportscore.com/api/v1";
 
 const TARGET_MATCHES = 10;
 const TEAM_ENDPOINT_LIMIT = 50;
-const MAX_LOOKBACK_DAYS = 365;
+const MAX_LOOKBACK_DAYS = 730;
 const DATE_CONCURRENCY = 6;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -260,50 +260,97 @@ function subtractUtcDays(date, days) {
 // ============================================================
 
 function hasRealScore(match) {
-  const homeScore = match?.home_score;
-  const awayScore = match?.away_score;
+  const homeScore = getMatchScore(match, "home");
+  const awayScore = getMatchScore(match, "away");
 
   return (
-    homeScore !== null &&
-    homeScore !== undefined &&
-    awayScore !== null &&
-    awayScore !== undefined &&
-    Number.isFinite(Number(homeScore)) &&
-    Number.isFinite(Number(awayScore)) &&
-    Number(homeScore) >= 0 &&
-    Number(awayScore) >= 0
+    Number.isFinite(homeScore) &&
+    Number.isFinite(awayScore) &&
+    homeScore >= 0 &&
+    awayScore >= 0
   );
+}
+
+function getMatchTeamName(match, side) {
+  const direct = match?.[side];
+  if (typeof direct === "string") return direct;
+  if (direct && typeof direct === "object") {
+    return direct.name || direct.team_name || direct.title || "";
+  }
+
+  const nested = match?.[`${side}_team`] || match?.[`${side}Team`] || match?.[`${side}_team_data`];
+  if (typeof nested === "string") return nested;
+  if (nested && typeof nested === "object") {
+    return nested.name || nested.team_name || nested.title || "";
+  }
+
+  const teams = match?.teams || match?.team_data || {};
+  const team = teams?.[side];
+  if (typeof team === "string") return team;
+  if (team && typeof team === "object") {
+    return team.name || team.team_name || team.title || "";
+  }
+
+  return "";
+}
+
+function getMatchScore(match, side) {
+  const keys = side === "home"
+    ? ["home_score", "homeScore"]
+    : ["away_score", "awayScore"];
+
+  for (const key of keys) {
+    const value = match?.[key];
+    if (Number.isFinite(Number(value))) return Number(value);
+  }
+
+  const containers = [match?.score, match?.scores, match?.goals, match?.result];
+  for (const container of containers) {
+    if (!container || typeof container !== "object") continue;
+    const value = container?.[side] ?? container?.fulltime?.[side] ?? container?.current?.[side];
+    if (Number.isFinite(Number(value))) return Number(value);
+  }
+
+  return null;
 }
 
 function isFinished(match) {
   const status = cleanText(
     match?.status ||
     match?.status_text ||
-    match?.state
+    match?.statusText ||
+    match?.state ||
+    match?.fixture?.status?.short ||
+    match?.fixture?.status?.long ||
+    match?.event?.status ||
+    ""
   );
 
-  return (
-    status === "finished" ||
-    status === "ft" ||
-    status.includes("finished")
-  );
+  if (/cancel|postpon|scheduled|not started|upcoming|live|in progress|half time|halftime|suspend|abandon/.test(status)) {
+    return false;
+  }
+
+  if (/finished|full time|fulltime|ended|completed|after extra time|aet|ft|final/.test(status)) {
+    return true;
+  }
+
+  // Certains résultats historiques SportScore portent un score réel mais
+  // pas de libellé d'état exploitable. Un score vérifiable + une date passée
+  // est alors traité comme un match terminé.
+  const timestamp = getMatchTimestamp(match);
+  return hasRealScore(match) && timestamp > 0 && timestamp <= Date.now();
 }
 
 function matchBelongsToTeam(match, team) {
   const wanted = cleanText(team.name);
-  const home = cleanText(match?.home);
-  const away = cleanText(match?.away);
+  const home = cleanText(getMatchTeamName(match, "home"));
+  const away = cleanText(getMatchTeamName(match, "away"));
 
   if (home === wanted || away === wanted) return true;
 
-  /*
-   * Certains calendriers peuvent présenter une variante légère
-   * du nom. On accepte uniquement une correspondance de tokens
-   * suffisamment forte et on refuse les équipes dérivées.
-   */
   return (
-    calculateTeamMatchScore(team.name, match?.home || "") > 0 ||
-    calculateTeamMatchScore(team.name, match?.away || "") > 0
+    calculateTeamMatchScore(team.name, getMatchTeamName(match, "home")) > 0 ||
+    calculateTeamMatchScore(team.name, getMatchTeamName(match, "away")) > 0
   );
 }
 
@@ -311,8 +358,14 @@ function getMatchTimestamp(match) {
   const candidates = [
     match?.time,
     match?.start_time,
+    match?.startTime,
     match?.datetime,
-    match?.date
+    match?.date,
+    match?.fixture?.date,
+    match?.fixture?.start_time,
+    match?.fixture?.startTime,
+    match?.event?.date,
+    match?.event?.start_time
   ];
 
   for (const value of candidates) {
@@ -404,6 +457,42 @@ async function fetchTeamScheduleByDays(team) {
   return collected;
 }
 
+async function fetchHeadToHead(homeTeam, awayTeam) {
+  const url =
+    `${API_BASE}/h2h/` +
+    `?sport=${SPORT}` +
+    `&team1=${encodeURIComponent(homeTeam.slug)}` +
+    `&team2=${encodeURIComponent(awayTeam.slug)}` +
+    `&limit=20`;
+
+  try {
+    const data = await fetchJson(url);
+    return extractMatches(data)
+      .filter(hasRealScore)
+      .filter(isFinished);
+  } catch (_) {
+    return [];
+  }
+}
+
+function mergeUniqueMatches(primary, secondary) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const match of [...(primary || []), ...(secondary || [])]) {
+    const key =
+      match?.slug ||
+      match?.url ||
+      `${getMatchTeamName(match, "home")}|${getMatchTeamName(match, "away")}|${getMatchTimestamp(match)}`;
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(match);
+  }
+
+  return merged;
+}
+
 async function fetchTeamSchedule(team) {
   const cacheKey = cleanText(team.slug);
   const cached = teamHistoryCache.get(cacheKey);
@@ -480,48 +569,25 @@ async function fetchTeamSchedule(team) {
 // ============================================================
 
 function getGoalsForAndAgainst(match, team) {
-  const home = cleanText(match?.home);
-  const away = cleanText(match?.away);
+  const home = getMatchTeamName(match, "home");
+  const away = getMatchTeamName(match, "away");
+  const homeScore = getMatchScore(match, "home");
+  const awayScore = getMatchScore(match, "away");
+
+  if (!home || !away || !Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
+    return null;
+  }
+
   const wanted = cleanText(team.name);
+  const homeKey = cleanText(home);
+  const awayKey = cleanText(away);
 
-  const homeScore = Number(match?.home_score);
-  const awayScore = Number(match?.away_score);
-
-  if (home === wanted) {
-    return {
-      goalsFor: homeScore,
-      goalsAgainst: awayScore
-    };
+  if (homeKey === wanted || calculateTeamMatchScore(team.name, home) > 0) {
+    return { goalsFor: homeScore, goalsAgainst: awayScore };
   }
 
-  if (away === wanted) {
-    return {
-      goalsFor: awayScore,
-      goalsAgainst: homeScore
-    };
-  }
-
-  /*
-   * Variante de nom : utiliser la correspondance forte pour
-   * déterminer le côté du match.
-   */
-  const homeScoreMatch =
-    calculateTeamMatchScore(team.name, match?.home || "");
-  const awayScoreMatch =
-    calculateTeamMatchScore(team.name, match?.away || "");
-
-  if (homeScoreMatch > awayScoreMatch && homeScoreMatch > 0) {
-    return {
-      goalsFor: homeScore,
-      goalsAgainst: awayScore
-    };
-  }
-
-  if (awayScoreMatch > 0) {
-    return {
-      goalsFor: awayScore,
-      goalsAgainst: homeScore
-    };
+  if (awayKey === wanted || calculateTeamMatchScore(team.name, away) > 0) {
+    return { goalsFor: awayScore, goalsAgainst: homeScore };
   }
 
   return null;
@@ -748,10 +814,21 @@ async function analyzeOne(homeName, awayName) {
     searchTeam(awayName)
   ]);
 
-  const [homeMatches, awayMatches] = await Promise.all([
+  const [homeMatchesInitial, awayMatchesInitial, h2hMatches] = await Promise.all([
     fetchTeamSchedule(homeTeam),
-    fetchTeamSchedule(awayTeam)
+    fetchTeamSchedule(awayTeam),
+    fetchHeadToHead(homeTeam, awayTeam)
   ]);
+
+  // Le H2H est un complément ciblé : il ne remplace pas l'historique
+  // de chaque équipe, mais permet de récupérer des scores vérifiables
+  // lorsque /team/ ou /fixtures/ ne renvoie pas assez de rencontres.
+  const homeMatches = homeMatchesInitial.length < MIN_MATCHES
+    ? mergeUniqueMatches(homeMatchesInitial, h2hMatches).sort((a,b) => getMatchTimestamp(b) - getMatchTimestamp(a)).slice(0, TARGET_MATCHES)
+    : homeMatchesInitial;
+  const awayMatches = awayMatchesInitial.length < MIN_MATCHES
+    ? mergeUniqueMatches(awayMatchesInitial, h2hMatches).sort((a,b) => getMatchTimestamp(b) - getMatchTimestamp(a)).slice(0, TARGET_MATCHES)
+    : awayMatchesInitial;
 
   if (homeMatches.length < MIN_MATCHES) {
     return {
