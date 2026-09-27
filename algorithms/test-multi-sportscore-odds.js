@@ -30,8 +30,8 @@ const MATCHES = [
     away: "Borussia Dortmund"
   },
   {
-    home: "Paris Saint-Germain",
-    away: "Olympique Marseille"
+    home: "Paris Saint Germain",
+    away: "Marseille"
   }
 ];
 
