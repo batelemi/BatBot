@@ -542,6 +542,10 @@ function buildTeamStats(matches, team) {
   let goalsFor = 0;
   let goalsAgainst = 0;
 
+  let wins = 0;
+  let draws = 0;
+  let losses = 0;
+
   let homeMatches = 0;
   let homeGoalsFor = 0;
   let homeGoalsAgainst = 0;
@@ -558,6 +562,14 @@ function buildTeamStats(matches, team) {
 
     goalsFor += goals.goalsFor;
     goalsAgainst += goals.goalsAgainst;
+
+    if (goals.goalsFor > goals.goalsAgainst) {
+      wins += 1;
+    } else if (goals.goalsFor === goals.goalsAgainst) {
+      draws += 1;
+    } else {
+      losses += 1;
+    }
 
     const homeName = cleanText(match?.home);
     const awayName = cleanText(match?.away);
@@ -590,6 +602,9 @@ function buildTeamStats(matches, team) {
 
   return {
     matches: selected.length,
+    wins,
+    draws,
+    losses,
     goalsFor,
     goalsAgainst,
     homeMatches,
@@ -638,20 +653,44 @@ function probabilityRisk(value) {
 // CONSTRUCTION DU MODÈLE
 // ============================================================
 
+function normalizeOneXTwoPercentages(oneXTwo) {
+  const raw = [
+    Number(oneXTwo?.home?.probability),
+    Number(oneXTwo?.draw?.probability),
+    Number(oneXTwo?.away?.probability)
+  ];
+
+  if (!raw.every(Number.isFinite)) return null;
+
+  const values = raw.map(value => value <= 1 ? value * 100 : value);
+  const total = values.reduce((sum, value) => sum + value, 0);
+
+  if (!(total > 0)) return null;
+
+  return values.map(value =>
+    Number(((value / total) * 100).toFixed(2))
+  );
+}
+
 function buildModel(match, odds) {
+  const normalized = normalizeOneXTwoPercentages(odds.oneXTwo);
+
+  if (!normalized) {
+    return {
+      ready: false,
+      sufficientData: false,
+      recommendation: "Analyse insuffisante",
+      reason: "Les probabilités 1X2 calculées sont invalides.",
+      probabilities: [],
+      options: [],
+      data_quality: "limitée"
+    };
+  }
+
   const probabilities = [
-    {
-      label: "1",
-      value: odds.oneXTwo.home.probability
-    },
-    {
-      label: "X",
-      value: odds.oneXTwo.draw.probability
-    },
-    {
-      label: "2",
-      value: odds.oneXTwo.away.probability
-    }
+    { label: "1", value: normalized[0] },
+    { label: "X", value: normalized[1] },
+    { label: "2", value: normalized[2] }
   ];
 
   const best = probabilities.reduce(
@@ -663,9 +702,9 @@ function buildModel(match, odds) {
   );
 
   const options = [
-    { name: "1", probability: odds.oneXTwo.home.probability },
-    { name: "X", probability: odds.oneXTwo.draw.probability },
-    { name: "2", probability: odds.oneXTwo.away.probability },
+    { name: "1", probability: normalized[0] },
+    { name: "X", probability: normalized[1] },
+    { name: "2", probability: normalized[2] },
     { name: "Over 1.5", probability: odds.markets.over15.probability },
     { name: "Over 2.5", probability: odds.markets.over25.probability },
     { name: "Over 3.5", probability: odds.markets.over35.probability },
