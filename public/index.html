@@ -2374,45 +2374,95 @@ async function submitBatBotAI(){
     return;
   }
   try{
-    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Préparation de l’analyse</strong><small>Vérification des équipes et récupération des données SportScore…</small></div></div>');
-    window.batBotSelectedIds=window.batBotSelectedIds||{home:"",away:""};
-    window.batBotSelectedIds2=window.batBotSelectedIds2||{home:"",away:""};
-    if(first.home&&!window.batBotSelectedIds.home)window.batBotSelectedIds.home=await resolveSportScoreTeamSlug(first.home);
-    if(first.away&&!window.batBotSelectedIds.away)window.batBotSelectedIds.away=await resolveSportScoreTeamSlug(first.away);
-    if(second.home&&!window.batBotSelectedIds2.home)window.batBotSelectedIds2.home=await resolveSportScoreTeamSlug(second.home);
-    if(second.away&&!window.batBotSelectedIds2.away)window.batBotSelectedIds2.away=await resolveSportScoreTeamSlug(second.away);
-    if(!window.batBotSelectedIds.home||!window.batBotSelectedIds.away||(second.home&&second.away&&(!window.batBotSelectedIds2.home||!window.batBotSelectedIds2.away))){
-      throw new Error("Une ou plusieurs équipes n’ont pas pu être reconnues par SportScore.");
-    }
-    const selectedFixtures=Array.isArray(window.batBotSelectedFixtures)?window.batBotSelectedFixtures:[];
-    const fixture1=selectedFixtures[0]|| (Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[]).find(function(item){const h=String(item?.teams?.home?.name||"").toLowerCase(),a=String(item?.teams?.away?.name||"").toLowerCase();return h===first.home.toLowerCase()&&a===first.away.toLowerCase();})||null;
-    const fixture2=selectedFixtures[1]|| (Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[]).find(function(item){const h=String(item?.teams?.home?.name||"").toLowerCase(),a=String(item?.teams?.away?.name||"").toLowerCase();return h===second.home.toLowerCase()&&a===second.away.toLowerCase();})||null;
-    if(fixture1&&isFinishedFixture(fixture1)){showFinishedSportScoreMatch(fixture1);return;}
-    if(fixture2&&isFinishedFixture(fixture2)){showFinishedSportScoreMatch(fixture2);return;}
-    const evidence=await collectSportScoreAnalysisEvidence(first.home,first.away,window.batBotSelectedIds.home,window.batBotSelectedIds.away,fixture1,second.home,second.away,window.batBotSelectedIds2.home,window.batBotSelectedIds2.away,fixture2);
-    window.batBotLastEvidence=evidence;
-    const insufficient=evidence.models.some(function(model){return model&&model.ready===false;});
-    if(insufficient){
-      const local={generatedAt:evidence.generatedAt,matches:evidence.matches.map(function(item){return {name:item.match,probabilities:[],options:[],recommendation:item.model?.recommendation||"Analyse insuffisante",reason:item.model?.reason||"Données vérifiables insuffisantes pour produire une estimation numérique fiable.",data_quality:"limitée"};})};
-      renderBatBotAIResult(JSON.stringify(local),evidence.models);
-      setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse non calculée</strong><br><span>BATBOT ne fabrique pas de pourcentages lorsque les scores SportScore vérifiables sont insuffisants.</span></div>',"error");
-      return;
-    }
-    setBatBotAIModalStatus('<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Analyse en cours</strong><small>BatBot IA interprète les données réelles disponibles…</small></div></div>');
+    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Analyse statistique en cours</strong><small>Recherche des équipes, récupération de l’historique SportScore et calcul des probabilités…</small></div></div>');
     if(button)button.disabled=true;
-    const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({
-      home_team:first.home,away_team:first.away,second_home_team:second.home,second_away_team:second.away,
-      home_team_id:window.batBotSelectedIds?.home||"",away_team_id:window.batBotSelectedIds?.away||"",
-      second_home_team_id:window.batBotSelectedIds2?.home||"",second_away_team_id:window.batBotSelectedIds2?.away||"",
-      analysis_evidence:evidence,analysis_models:evidence.models
-    })});
+
+    const matches=[];
+    if(first.home&&first.away)matches.push({home:first.home,away:first.away});
+    if(second.home&&second.away)matches.push({home:second.home,away:second.away});
+
+    const r=await fetch("/api/football/odds",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({matches})
+    });
     const d=await readApiResponse(r);
+
     if(!r.ok){
       setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(d?.error||("Le serveur a répondu avec HTTP "+r.status+"."))+'</span></div>',"error");
       return;
     }
-    renderBatBotAIResult(d.analysis,d.models||evidence.models);
-    setBatBotAIModalStatus('<div class="professional-status success">✅ <strong>Analyse terminée</strong><br><span>Analyse fondée sur les données SportScore disponibles.</span></div>',"success");
+
+    const serverMatches=Array.isArray(d?.matches)?d.matches:[];
+    const serverModels=Array.isArray(d?.models)?d.models:[];
+    window.batBotLastOddsAnalysis=d;
+
+    const compatibleMatches=serverMatches.map(function(item,index){
+      const model=item?.model||serverModels[index]||{};
+      const stats=item?.stats||{};
+      return {
+        name:item?.match||((item?.homeTeam?.name||first.home)+" vs "+(item?.awayTeam?.name||first.away)),
+        probabilities:Array.isArray(model.probabilities)?model.probabilities:[],
+        options:Array.isArray(model.options)?model.options:[],
+        recommendation:model.recommendation||item?.recommendation||"Analyse insuffisante",
+        reason:model.reason||item?.reason||"Données statistiques insuffisantes.",
+        data_quality:model.data_quality||item?.data_quality||"limitée",
+        expected_goals:model.expected_goals||item?.odds?.expectedGoals||null,
+        most_likely_score:model.most_likely_score||item?.odds?.mostLikelyScore||null,
+        markets:model.markets||item?.odds?.markets||null,
+        context:model.context||item?.odds?.context||null,
+        stats:stats
+      };
+    });
+
+    window.batBotLastEvidence={
+      source:d?.source||"SportScore",
+      generatedAt:d?.generatedAt||new Date().toISOString(),
+      matches:serverMatches.map(function(item,index){
+        const stats=item?.stats||{};
+        const homeStats=stats.home||{};
+        const awayStats=stats.away||{};
+        return {
+          match:item?.match||compatibleMatches[index]?.name||"Match",
+          fixture:null,
+          homeForm:{
+            teamName:item?.homeTeam?.name||first.home,
+            sample:Number(homeStats.matches)||0,
+            wins:0,
+            draws:0,
+            losses:0,
+            goalsFor:Number(homeStats.goalsFor)||0,
+            goalsAgainst:Number(homeStats.goalsAgainst)||0,
+            avgGoalsFor:homeStats.matches?Number(homeStats.goalsFor||0)/Number(homeStats.matches):null,
+            avgGoalsAgainst:homeStats.matches?Number(homeStats.goalsAgainst||0)/Number(homeStats.matches):null,
+            home:{sample:Number(homeStats.homeMatches)||0,avgFor:homeStats.homeMatches?Number(homeStats.homeGoalsFor||0)/Number(homeStats.homeMatches):null,avgAgainst:homeStats.homeMatches?Number(homeStats.homeGoalsAgainst||0)/Number(homeStats.homeMatches):null},
+            away:{sample:Number(homeStats.awayMatches)||0,avgFor:homeStats.awayMatches?Number(homeStats.awayGoalsFor||0)/Number(homeStats.awayMatches):null,avgAgainst:homeStats.awayMatches?Number(homeStats.awayGoalsAgainst||0)/Number(homeStats.awayMatches):null}
+          },
+          awayForm:{
+            teamName:item?.awayTeam?.name||first.away,
+            sample:Number(awayStats.matches)||0,
+            wins:0,
+            draws:0,
+            losses:0,
+            goalsFor:Number(awayStats.goalsFor)||0,
+            goalsAgainst:Number(awayStats.goalsAgainst)||0,
+            avgGoalsFor:awayStats.matches?Number(awayStats.goalsFor||0)/Number(awayStats.matches):null,
+            avgGoalsAgainst:awayStats.matches?Number(awayStats.goalsAgainst||0)/Number(awayStats.matches):null,
+            home:{sample:Number(awayStats.homeMatches)||0,avgFor:awayStats.homeMatches?Number(awayStats.homeGoalsFor||0)/Number(awayStats.homeMatches):null,avgAgainst:awayStats.homeMatches?Number(awayStats.homeGoalsAgainst||0)/Number(awayStats.homeMatches):null},
+            away:{sample:Number(awayStats.awayMatches)||0,avgFor:awayStats.awayMatches?Number(awayStats.awayGoalsFor||0)/Number(awayStats.awayMatches):null,avgAgainst:awayStats.awayMatches?Number(awayStats.awayGoalsAgainst||0)/Number(awayStats.awayMatches):null}
+          }
+        };
+      })
+    };
+
+    if(!compatibleMatches.length){
+      setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>Le serveur n’a retourné aucun résultat exploitable.</span></div>',"error");
+      return;
+    }
+
+    renderBatBotAIResult(JSON.stringify({generatedAt:d?.generatedAt||new Date().toISOString(),matches:compatibleMatches}),serverModels);
+    setBatBotAIModalStatus('<div class="professional-status success">✅ <strong>Analyse statistique terminée</strong><br><span>Probabilités calculées par le moteur SportScore + Poisson à partir de l’historique disponible.</span></div>',"success");
   }catch(e){
     setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(e?.message||"Une erreur est survenue pendant l’analyse.")+'</span></div>',"error");
   }finally{
