@@ -2254,7 +2254,9 @@ function renderBatBotAIResult(raw,modelData){
       const aiOptions=Array.isArray(match.options)?match.options:[];
       match.options=model.options.map(function(p){
         const ai=aiOptions.find(function(o){return String(o.name||"").toLowerCase()===String(p.name||"").toLowerCase();})||{};
-        return {name:p.name,probability:formatPercent(p.probability),risk:ai.risk||p.risk||"Modéré",reason:ai.reason||"Basé sur les données disponibles."};
+        const probability=normalizeAiPercent(p.probability);
+        const probabilityLevel=probability===null?"Non disponible":(probability>=70?"Élevée":probability>=50?"Intermédiaire":"Faible");
+        return {name:p.name,probability:formatPercent(p.probability),risk:probabilityLevel,reason:ai.reason||p.reason||"Basé sur les données disponibles."};
       });
     }
     match.reason=match.reason||"Lecture basée sur les données SportScore disponibles et le modèle statistique BatBot.";
@@ -2285,7 +2287,7 @@ function renderBatBotAIResult(raw,modelData){
       '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span>'+(match.data_quality==="limitée"?'<br><span style="color:#FFD166;font-weight:900">⚠️ Scores vérifiables insuffisants : aucune probabilité numérique n’est affichée.</span>':'')+'</div>'+
       (models[index]&&models[index].ready!==false?renderBatBotModelCard(models[index],evidence.fixture,evidence):'')+
       (match.probabilities&&match.probabilities.length?'<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+match.probabilities.map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>':'<div class="ai-section-label">Probabilités</div><div class="ai-evidence-card"><strong>Non calculées</strong><br>Données vérifiables insuffisantes pour fournir un pourcentage sérieux.</div>')+
-      '<div class="ai-section-label">Options analysées</div><div class="ai-options">'+options.map(function(option){return '<div class="ai-option-card"><div class="ai-option-head"><strong>'+escapeHtml(option.name||"Option")+'</strong><span class="ai-confidence">'+escapeHtml(formatPercent(option.probability))+'</span></div><div class="ai-option-meta">Risque : '+escapeHtml(option.risk||"Modéré")+'</div>'+(option.reason?'<div class="ai-reason">'+escapeHtml(option.reason)+'</div>':"")+'</div>';}).join("")+'</div>'+
+      '<div class="ai-section-label">Options analysées</div><div class="ai-options">'+options.map(function(option){return '<div class="ai-option-card"><div class="ai-option-head"><strong>'+escapeHtml(option.name||"Option")+'</strong><span class="ai-confidence">'+escapeHtml(formatPercent(option.probability))+'</span></div><div class="ai-option-meta">Niveau de probabilité : '+escapeHtml(option.risk||"Non disponible")+'</div>'+(option.reason?'<div class="ai-reason">'+escapeHtml(option.reason)+'</div>':"")+'</div>';}).join("")+'</div>'+
       (match.recommendation?'<div class="ai-recommendation"><strong>🎯 Choix proposé :</strong> '+escapeHtml(match.recommendation)+'</div>':"")+
       (match.reason?'<div class="ai-evidence-card"><strong>Lecture :</strong> '+escapeHtml(match.reason)+'</div>':"")+
       '</div>';
