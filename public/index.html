@@ -2538,8 +2538,9 @@ function renderSportScoreFixtures(fixtures,checkedDate){
 
 function sportScorePublicUrl(endpoint, params){
   const ep=String(endpoint||"").replace(/^\//,"");
+  // Public SportScore paths: /api/v1/... or /api/widget/...
   const base=ep.startsWith("widget/")?"https://sportscore.com/api/":"https://sportscore.com/api/v1/";
-  const path=ep.startsWith("widget/")?ep:"v1/"+ep;
+  const path=ep.startsWith("widget/")?ep:ep.replace(/^v1\//,"");
   const url=new URL(base+path);
   Object.keys(params||{}).forEach(function(key){
     const value=params[key];
@@ -2637,7 +2638,12 @@ async function resolveSportScoreTeamSlug(name){
     if(exact)break;
   }
   if(!best)return "";
-  return String(best?.slug||best?.id||best?.team_slug||best?.team?.slug||"").trim();
+  const direct=String(best?.slug||best?.team_slug||best?.team?.slug||"").trim();
+  if(direct)return direct;
+  const candidateUrl=String(best?.url||best?.site_url||best?.uri||best?.team?.url||"").trim();
+  const m=candidateUrl.match(/\/football\/team\/([^?#]+)\/?$/i);
+  if(m&&m[1])return decodeURIComponent(m[1]);
+  return String(best?.id||"").trim();
 }
 
 async function loadSportScoreFixtures(selectedDate){
