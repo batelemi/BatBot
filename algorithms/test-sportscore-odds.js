@@ -1,24 +1,29 @@
 /**
- * BATBOT — DIAGNOSTIC SPORTScore
+ * BATBOT — SPORTScore → MOTEUR DE COTES
  *
- * Cette version sert uniquement à inspecter la structure
- * réelle des matchs retournés par SportScore.
- *
- * Elle ne calcule pas encore les cotes.
+ * Récupère les derniers matchs terminés de deux équipes
+ * depuis SportScore puis les transmet au moteur statistique.
  */
 
 "use strict";
 
+const {
+  calculateOdds
+} = require("./odds-engine");
+
+
 const SPORT = "football";
+
+const API_BASE =
+  "https://sportscore.com/api/v1";
+
+const MIN_MATCHES = 5;
 
 const HOME_TEAM_NAME =
   process.argv[2] || "Real Madrid";
 
 const AWAY_TEAM_NAME =
   process.argv[3] || "FC Barcelona";
-
-const API_BASE =
-  "https://sportscore.com/api/v1";
 
 
 // ============================================================
@@ -35,16 +40,8 @@ function cleanText(value) {
 }
 
 
-function slugify(value) {
-  return cleanText(value)
-    .replace(/\bfc\b/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
-}
-
-
 // ============================================================
-// APPEL API
+// API SPORTScore
 // ============================================================
 
 async function fetchJson(url) {
@@ -65,7 +62,7 @@ async function fetchJson(url) {
 
 
 // ============================================================
-// RECHERCHE ÉQUIPE
+// RECHERCHE DES ÉQUIPES
 // ============================================================
 
 async function searchTeam(teamName) {
@@ -75,29 +72,24 @@ async function searchTeam(teamName) {
     `&sport=${SPORT}` +
     `&limit=20`;
 
-  const data = await fetchJson(url);
+  const data =
+    await fetchJson(url);
 
-  const groups = [
+  const candidates = [
     data?.teams,
     data?.data?.teams,
     data?.results?.teams,
-    data?.data?.results?.teams
+    data?.data?.results?.teams,
+    data?.results,
+    data?.data
   ];
 
   let teams = [];
 
-  for (const group of groups) {
-    if (Array.isArray(group)) {
-      teams.push(...group);
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      teams.push(...candidate);
     }
-  }
-
-  if (!teams.length && Array.isArray(data?.results)) {
-    teams = data.results;
-  }
-
-  if (!teams.length && Array.isArray(data?.data)) {
-    teams = data.data;
   }
 
   const unique = [];
@@ -145,12 +137,6 @@ async function searchTeam(teamName) {
     );
   }
 
-  if (!unique.length) {
-    throw new Error(
-      `Aucune équipe trouvée pour "${teamName}".`
-    );
-  }
-
   const wanted =
     cleanText(teamName);
 
@@ -170,36 +156,14 @@ async function searchTeam(teamName) {
     );
   }
 
-  /*
-   * Pour éviter les faux positifs :
-   *
-   * FC Barcelona doit rester FC Barcelona.
-   * On ne transforme donc pas "fc-barcelona"
-   * en simple "barcelona" pour sélectionner
-   * une autre équipe.
-   */
-
-  const requestedSlug =
-    cleanText(teamName)
-      .replace(/\s+/g, "-");
-
-  const slugMatches =
-    unique.filter(team => {
-      return cleanText(team.slug) === requestedSlug;
-    });
-
-  if (slugMatches.length === 1) {
-    return slugMatches[0];
-  }
-
   throw new Error(
-    `Équipe "${teamName}" non identifiée de manière suffisamment sûre.`
+    `Impossible d'identifier précisément "${teamName}".`
   );
 }
 
 
 // ============================================================
-// EXTRACTION DU CALENDRIER
+// CALENDRIER D'ÉQUIPE
 // ============================================================
 
 function extractMatches(data) {
@@ -243,100 +207,213 @@ async function fetchTeamSchedule(team) {
   const data =
     await fetchJson(url);
 
-  const matches =
-    extractMatches(data);
+  return extractMatches(data);
+}
+
+
+// ============================================================
+// EXTRACTION DES MATCHS TERMINÉS
+// ============================================================
+
+function isFinished(match) {
+  return (
+    cleanText(match?.status) === "finished"
+  );
+}
+
+
+function hasRealScore(match) {
+  const homeScore =
+    match?.home_score;
+
+  const awayScore =
+    match?.away_score;
+
+  return (
+    homeScore !== null &&
+    homeScore !== undefined &&
+    awayScore !== null &&
+    awayScore !== undefined &&
+    Number.isFinite(Number(homeScore)) &&
+    Number.isFinite(Number(awayScore)) &&
+    Number(homeScore) >= 0 &&
+    Number(awayScore) >= 0
+  );
+}
+
+
+function matchBelongsToTeam(match, team) {
+  const wanted =
+    cleanText(team.name);
+
+  const home =
+    cleanText(match?.home);
+
+  const away =
+    cleanText(match?.away);
+
+  return (
+    home === wanted ||
+    away === wanted
+  );
+}
+
+
+function getGoalsForAndAgainst(match, team) {
+  const home =
+    cleanText(match?.home);
+
+  const away =
+    cleanText(match?.away);
+
+  const homeScore =
+    Number(match.home_score);
+
+  const awayScore =
+    Number(match.away_score);
+
+  const wanted =
+    cleanText(team.name);
+
+  if (home === wanted) {
+    return {
+      goalsFor: homeScore,
+      goalsAgainst: awayScore
+    };
+  }
+
+  if (away === wanted) {
+    return {
+      goalsFor: awayScore,
+      goalsAgainst: homeScore
+    };
+  }
+
+  return null;
+}
+
+
+// ============================================================
+// STATISTIQUES
+// ============================================================
+
+function buildTeamStats(matches, team) {
+  const finished =
+    matches
+      .filter(isFinished)
+      .filter(hasRealScore)
+      .filter(match =>
+        matchBelongsToTeam(match, team)
+      )
+      .sort((a, b) => {
+        const dateA =
+          new Date(a?.time || 0).getTime();
+
+        const dateB =
+          new Date(b?.time || 0).getTime();
+
+        return dateB - dateA;
+      });
+
+  const selected =
+    finished.slice(0, 10);
+
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+
+  for (const match of selected) {
+    const goals =
+      getGoalsForAndAgainst(
+        match,
+        team
+      );
+
+    if (!goals) {
+      continue;
+    }
+
+    goalsFor += goals.goalsFor;
+    goalsAgainst += goals.goalsAgainst;
+  }
 
   return {
-    raw: data,
-    matches
+    matches: selected.length,
+    goalsFor,
+    goalsAgainst,
+    averageGoalsFor:
+      selected.length
+        ? goalsFor / selected.length
+        : 0,
+    averageGoalsAgainst:
+      selected.length
+        ? goalsAgainst / selected.length
+        : 0,
+    recentMatches: selected
   };
 }
 
 
 // ============================================================
-// DIAGNOSTIC STRUCTURE
+// AFFICHAGE
 // ============================================================
 
-function printObjectKeys(object, prefix = "") {
-  if (
-    object === null ||
-    object === undefined ||
-    typeof object !== "object"
-  ) {
-    return;
-  }
-
-  if (Array.isArray(object)) {
-    console.log(
-      `${prefix}[tableau de ${object.length} élément(s)]`
-    );
-
-    if (object.length > 0) {
-      printObjectKeys(
-        object[0],
-        `${prefix}[0].`
-      );
-    }
-
-    return;
-  }
-
-  for (const key of Object.keys(object)) {
-    const value = object[key];
-
-    if (
-      value !== null &&
-      typeof value === "object"
-    ) {
-      console.log(
-        `${prefix}${key}: objet`
-      );
-    } else {
-      console.log(
-        `${prefix}${key}: ${JSON.stringify(value)}`
-      );
-    }
-  }
-}
-
-
-function printRawMatch(label, match) {
-  console.log("\n========================================");
-  console.log(`🔬 MATCH BRUT — ${label}`);
-  console.log("========================================");
-
-  if (!match) {
-    console.log("❌ Aucun match disponible.");
-    return;
-  }
-
-  console.log("\n📌 CLÉS DISPONIBLES");
+function printTeamStats(title, team, stats) {
+  console.log(`\n${title}`);
   console.log("----------------------------------------");
-
-  printObjectKeys(match);
-
-  console.log("\n📦 OBJET JSON COMPLET");
-  console.log("----------------------------------------");
-
-  const json =
-    JSON.stringify(
-      match,
-      null,
-      2
-    );
-
-  /*
-   * Limite volontaire pour éviter de produire
-   * plusieurs dizaines de milliers de lignes
-   * dans GitHub Actions.
-   */
 
   console.log(
-    json.length > 12000
-      ? json.slice(0, 12000) +
-        "\n\n...[JSON tronqué à 12 000 caractères]..."
-      : json
+    "Équipe :",
+    team.name
   );
+
+  console.log(
+    "Slug :",
+    team.slug
+  );
+
+  console.log(
+    "Matchs terminés avec score :",
+    stats.matches
+  );
+
+  console.log(
+    "Buts marqués :",
+    stats.goalsFor
+  );
+
+  console.log(
+    "Buts encaissés :",
+    stats.goalsAgainst
+  );
+
+  console.log(
+    "Moyenne buts marqués :",
+    stats.averageGoalsFor.toFixed(2)
+  );
+
+  console.log(
+    "Moyenne buts encaissés :",
+    stats.averageGoalsAgainst.toFixed(2)
+  );
+
+  console.log(
+    "\nDerniers matchs utilisés :"
+  );
+
+  if (!stats.recentMatches.length) {
+    console.log(
+      "   Aucun match exploitable."
+    );
+
+    return;
+  }
+
+  for (const match of stats.recentMatches) {
+    console.log(
+      `   ${match.home} ${match.home_score}-${match.away_score} ${match.away}` +
+      ` | ${match.time || "date inconnue"}`
+    );
+  }
 }
 
 
@@ -346,7 +423,7 @@ function printRawMatch(label, match) {
 
 async function main() {
   console.log("========================================");
-  console.log(" BATBOT — DIAGNOSTIC SPORTScore");
+  console.log(" BATBOT — SPORTScore → MOTEUR DE COTES");
   console.log("========================================");
 
   console.log("\nMatch testé :");
@@ -354,7 +431,9 @@ async function main() {
     `${HOME_TEAM_NAME} vs ${AWAY_TEAM_NAME}`
   );
 
-  console.log("\n🔎 Recherche des équipes...");
+  console.log(
+    "\n🔎 Recherche des équipes..."
+  );
 
   const homeTeam =
     await searchTeam(
@@ -381,57 +460,304 @@ async function main() {
     "\n⏳ Récupération des calendriers SportScore..."
   );
 
-  const homeSchedule =
+  const homeMatches =
     await fetchTeamSchedule(
       homeTeam
     );
 
-  const awaySchedule =
+  const awayMatches =
     await fetchTeamSchedule(
       awayTeam
     );
 
   console.log(
-    `Matchs récupérés domicile : ${homeSchedule.matches.length}`
+    `Matchs récupérés domicile : ${homeMatches.length}`
   );
 
   console.log(
-    `Matchs récupérés extérieur : ${awaySchedule.matches.length}`
+    `Matchs récupérés extérieur : ${awayMatches.length}`
   );
 
-  /*
-   * Nous affichons maintenant la structure exacte
-   * reçue par SportScore.
-   */
 
-  printRawMatch(
-    "REAL MADRID",
-    homeSchedule.matches[0]
+  // ==========================================================
+  // STATISTIQUES
+  // ==========================================================
+
+  const homeStats =
+    buildTeamStats(
+      homeMatches,
+      homeTeam
+    );
+
+  const awayStats =
+    buildTeamStats(
+      awayMatches,
+      awayTeam
+    );
+
+
+  printTeamStats(
+    "\n🏠 ÉQUIPE À DOMICILE",
+    homeTeam,
+    homeStats
   );
 
-  printRawMatch(
-    "FC BARCELONA",
-    awaySchedule.matches[0]
+  printTeamStats(
+    "\n✈️ ÉQUIPE À L'EXTÉRIEUR",
+    awayTeam,
+    awayStats
   );
 
-  console.log("\n========================================");
-  console.log(" ✅ DIAGNOSTIC TERMINÉ");
-  console.log("========================================");
+
+  // ==========================================================
+  // CONTRÔLE DES DONNÉES
+  // ==========================================================
+
+  if (
+    homeStats.matches < MIN_MATCHES
+  ) {
+    console.log(
+      "\n⚠️ DONNÉES INSUFFISANTES POUR L'ÉQUIPE À DOMICILE"
+    );
+
+    console.log(
+      `Il faut au moins ${MIN_MATCHES} matchs terminés avec score réel.`
+    );
+
+    process.exit(1);
+  }
+
+
+  if (
+    awayStats.matches < MIN_MATCHES
+  ) {
+    console.log(
+      "\n⚠️ DONNÉES INSUFFISANTES POUR L'ÉQUIPE À L'EXTÉRIEUR"
+    );
+
+    console.log(
+      `Il faut au moins ${MIN_MATCHES} matchs terminés avec score réel.`
+    );
+
+    process.exit(1);
+  }
+
+
+  // ==========================================================
+  // MOTEUR DE COTES
+  // ==========================================================
 
   console.log(
-    "\n⚠️ Cette version ne calcule volontairement"
+    "\n========================================"
   );
 
   console.log(
-    "pas encore les probabilités ni les cotes."
+    " 📊 CALCUL DU MOTEUR STATISTIQUE"
   );
 
   console.log(
-    "Elle sert à identifier précisément les champs"
+    "========================================"
+  );
+
+  const result =
+    calculateOdds({
+      home: {
+        matches:
+          homeStats.matches,
+
+        goalsFor:
+          homeStats.goalsFor,
+
+        goalsAgainst:
+          homeStats.goalsAgainst
+      },
+
+      away: {
+        matches:
+          awayStats.matches,
+
+        goalsFor:
+          awayStats.goalsFor,
+
+        goalsAgainst:
+          awayStats.goalsAgainst
+      }
+    });
+
+
+  if (!result.sufficientData) {
+    console.log(
+      "\n❌ Données insuffisantes"
+    );
+
+    console.log(
+      result.reason
+    );
+
+    process.exit(1);
+  }
+
+
+  // ==========================================================
+  // RÉSULTATS
+  // ==========================================================
+
+  console.log(
+    "\n📈 BUTS ATTENDUS"
+  );
+
+  console.log("----------------------------------------");
+
+  console.log(
+    "Real Madrid :",
+    result.expectedGoals.home
   );
 
   console.log(
-    "de statut et de score retournés par SportScore."
+    "FC Barcelona :",
+    result.expectedGoals.away
+  );
+
+
+  console.log(
+    "\n⚽ PROBABILITÉS 1X2"
+  );
+
+  console.log("----------------------------------------");
+
+  console.log(
+    "1 — Victoire domicile :",
+    result.oneXTwo.home.probability + "%",
+    "| Cote :",
+    result.oneXTwo.home.theoreticalOdds
+  );
+
+  console.log(
+    "X — Match nul :",
+    result.oneXTwo.draw.probability + "%",
+    "| Cote :",
+    result.oneXTwo.draw.theoreticalOdds
+  );
+
+  console.log(
+    "2 — Victoire extérieur :",
+    result.oneXTwo.away.probability + "%",
+    "| Cote :",
+    result.oneXTwo.away.theoreticalOdds
+  );
+
+
+  console.log(
+    "\n🔎 CONTRÔLE 1X2"
+  );
+
+  console.log("----------------------------------------");
+
+  const total =
+    result.oneXTwo.home.probability +
+    result.oneXTwo.draw.probability +
+    result.oneXTwo.away.probability;
+
+  console.log(
+    "Total :",
+    total.toFixed(2) + "%"
+  );
+
+
+  if (
+    Math.abs(total - 100) < 0.01
+  ) {
+    console.log(
+      "✅ Les probabilités totalisent 100 %"
+    );
+  } else {
+    console.log(
+      "❌ ERREUR : les probabilités ne totalisent pas 100 %"
+    );
+
+    process.exit(1);
+  }
+
+
+  console.log(
+    "\n🎯 SCORE LE PLUS PROBABLE"
+  );
+
+  console.log("----------------------------------------");
+
+  console.log(
+    result.mostLikelyScore.score,
+    "—",
+    result.mostLikelyScore.probability + "%"
+  );
+
+
+  console.log(
+    "\n📈 AUTRES MARCHÉS"
+  );
+
+  console.log("----------------------------------------");
+
+  console.log(
+    "1X :",
+    result.markets["1X"].probability + "%",
+    "| Cote :",
+    result.markets["1X"].theoreticalOdds
+  );
+
+  console.log(
+    "X2 :",
+    result.markets["X2"].probability + "%",
+    "| Cote :",
+    result.markets["X2"].theoreticalOdds
+  );
+
+  console.log(
+    "12 :",
+    result.markets["12"].probability + "%",
+    "| Cote :",
+    result.markets["12"].theoreticalOdds
+  );
+
+  console.log(
+    "Over 2.5 :",
+    result.markets.over25.probability + "%",
+    "| Cote :",
+    result.markets.over25.theoreticalOdds
+  );
+
+  console.log(
+    "Under 2.5 :",
+    result.markets.under25.probability + "%",
+    "| Cote :",
+    result.markets.under25.theoreticalOdds
+  );
+
+  console.log(
+    "BTTS Oui :",
+    result.markets.bttsYes.probability + "%",
+    "| Cote :",
+    result.markets.bttsYes.theoreticalOdds
+  );
+
+  console.log(
+    "BTTS Non :",
+    result.markets.bttsNo.probability + "%",
+    "| Cote :",
+    result.markets.bttsNo.theoreticalOdds
+  );
+
+
+  console.log(
+    "\n========================================"
+  );
+
+  console.log(
+    " ✅ TEST DU MOTEUR TERMINÉ"
+  );
+
+  console.log(
+    "========================================"
   );
 }
 
