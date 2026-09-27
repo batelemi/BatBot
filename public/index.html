@@ -2063,7 +2063,11 @@ function splitMatch(value){
 }
 
 function normalizeAiPercent(value){
-  const n=Number(String(value||"").replace(/[^0-9.\-]/g,""));
+  if(value===null||value===undefined||value==="")return null;
+  let text=String(value).trim().replace(/%/g,"").replace(/,/g,".");
+  const match=text.match(/-?\d+(?:\.\d+)?/);
+  if(!match)return null;
+  const n=Number(match[0]);
   return Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;
 }
 function formatPercent(value){
