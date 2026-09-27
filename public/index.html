@@ -2195,17 +2195,29 @@ function batBotFormatExpectedGoals(value){
   return Number.isFinite(n)?n.toFixed(2):"—";
 }
 function batBotFormIndex(stats){
-  const matches=Number(stats?.matches)||0;
+  const matches=Number(stats?.matches ?? stats?.sample)||0;
   if(matches<=0)return null;
   const wins=Number(stats?.wins)||0,draws=Number(stats?.draws)||0;
   return Math.max(0,Math.min(100,((3*wins+draws)/(3*matches))*100));
+}
+function batBotFormatMostLikelyScore(value){
+  if(value&&typeof value==='object'){
+    const h=value.home ?? value.home_goals ?? value.homeGoals ?? value.h;
+    const a=value.away ?? value.away_goals ?? value.awayGoals ?? value.a;
+    if(Number.isFinite(Number(h))&&Number.isFinite(Number(a))) return Number(h)+"-"+Number(a);
+    const nested=value.score||value.result||value.goals;
+    if(nested&&nested!==value)return batBotFormatMostLikelyScore(nested);
+  }
+  const text=String(value??'').trim();
+  const m=text.match(/(\d+)\s*[-:]\s*(\d+)/);
+  return m?m[1]+"-"+m[2]:(text&&text!=="[object Object]"?text:"—");
 }
 function renderBatBotModelCard(model,fixture,evidence){
   const statsHome=evidence?.homeForm||{},statsAway=evidence?.awayForm||{};
   const formHome=Number.isFinite(Number(model?.form_index_home))?Number(model.form_index_home):batBotFormIndex(statsHome);
   const formAway=Number.isFinite(Number(model?.form_index_away))?Number(model.form_index_away):batBotFormIndex(statsAway);
   const expected=batBotFormatExpectedGoals(model?.expected_goals??model?.expectedGoals);
-  const best=model?.bestScore||model?.most_likely_score||"—";
+  const best=batBotFormatMostLikelyScore(model?.bestScore??model?.most_likely_score??model?.mostLikelyScore);
   if(isLiveFixture(fixture)){
     return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel SportScore : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
   }
@@ -2571,7 +2583,7 @@ async function submitBatBotAI(){
 
     const resultData={generatedAt:d?.generatedAt||new Date().toISOString(),matches:compatibleMatches};
     window.batBotLastAnalysis=resultData;
-    renderBatBotAIResult(JSON.stringify(resultData),serverModels);
+    renderBatBotAIResult(JSON.stringify(resultData),compatibleMatches);
     setBatBotAIModalStatus('<div class="professional-status success">✅ <strong>Analyse statistique terminée</strong><br><span>Probabilités calculées par SportScore + Poisson à partir de l’historique vérifiable.</span></div>',"success");
   }catch(e){
     setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(e?.message||"Une erreur est survenue pendant l’analyse.")+'</span></div>',"error");
