@@ -35,22 +35,40 @@ const teamHistoryCache = new Map();
 // ============================================================
 
 function cleanText(value) {
+  /*
+   * Normalisation robuste des noms d'équipes.
+   *
+   * Objectif : considérer comme équivalents les écritures suivantes :
+   *   Paris-Saint-Germain
+   *   Paris Saint Germain
+   *   Paris–Saint–Germain
+   *   Paris Saint-Germain
+   * ainsi que les accents, apostrophes typographiques et autres
+   * signes Unicode courants présents dans les noms officiels.
+   */
   return String(value || "")
-    .normalize("NFD")
+    .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’‘ʻʼ`´]/g, "'")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/&/g, " and ")
     .toLowerCase()
-    .trim()
-    .replace(/\s+/g, " ");
+    .replace(/['-]/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getSignificantTokens(value) {
   const ignoredWords = new Set([
     "fc", "cf", "afc", "ac", "sc", "as", "rc",
-    "fk", "sk", "de", "du", "des", "the"
+    "fk", "sk", "nk", "ks", "bk", "kfc", "pfc",
+    "cd", "cs", "rsc", "sv", "kv", "ka",
+    "club", "football", "footballclub",
+    "de", "du", "des", "the"
   ]);
 
   return cleanText(value)
-    .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
     .filter(Boolean)
     .filter(token => !ignoredWords.has(token));
@@ -786,33 +804,13 @@ function buildModel(match, odds) {
       "Probabilité calculée par le moteur Poisson v3 à partir des statistiques SportScore disponibles."
   }));
 
-  // La recommandation BATBOT reste volontairement le meilleur résultat 1X2.
-  // On expose séparément la meilleure option statistique de tous les marchés
-  // afin de rendre la distinction explicite sans modifier le comportement
-  // existant du ticket ni des probabilités.
-  const bestStatisticalOption = options.reduce(
-    (current, item) =>
-      !current || Number(item.probability) > Number(current.probability)
-        ? item
-        : current,
-    null
-  );
-
   return {
     ready: true,
     sufficientData: true,
     model: odds.model,
     recommendation: best?.label || "Analyse insuffisante",
-    recommendation_scope: "1X2",
-    recommendation_label: "Meilleur résultat 1X2",
-    best_statistical_option: bestStatisticalOption
-      ? {
-          name: bestStatisticalOption.name,
-          probability: bestStatisticalOption.probability
-        }
-      : null,
     reason:
-      `Choix proposé = meilleur résultat 1X2 (${best?.label || "non disponible"}, ${best?.value ?? "non disponible"} %). Les autres marchés statistiques sont présentés séparément et ne remplacent pas ce choix.`,
+      `Le modèle calcule ${match.home} à domicile contre ${match.away} à partir des statistiques globales et du contexte domicile/extérieur disponibles.`,
     probabilities,
     options,
     expected_goals: odds.expectedGoals,
