@@ -2171,9 +2171,12 @@ function setBatBotAIModalResult(html){
 }
 function renderBatBotModelCard(model,fixture){
   if(isLiveFixture(fixture)){
-    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel SportScore : <strong>'+escapeHtml(sportScoreFixtureDisplayScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(String(model.expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(model.form_index_home??"—"))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(String(model.form_index_away??"—"))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
+    if(model.live_adjusted){
+      return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel SportScore : <strong>'+escapeHtml(model.live_current_score||sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>⏱️ Minute fiable : <strong>'+escapeHtml(String(model.live_elapsed_minute??"—"))+'’</strong><br>📊 Buts attendus restants : <strong>'+escapeHtml(String(model.remaining_expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(model.form_index_home??"—"))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(String(model.form_index_away??"—"))+'%<br><span style="opacity:.8">Probabilités LIVE conditionnelles au score actuel et au temps restant.</span></div>';
+    }
+    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel SportScore : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(String(model.expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(model.form_index_home??"—"))+'% &nbsp; • &nbsp; '+escapeHtml(String(model.form_index_away??"—"))+'%<br><span style="color:#FFD166;font-weight:900">⚠️ Minute de jeu fiable indisponible : probabilités LIVE non recalculées.</span></div>';
   }
-  return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus : <strong>'+escapeHtml(String(model.expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(model.form_index_home??"—"))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(String(model.form_index_away??"—"))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(model.bestScore||"—")+'</strong><br><span style="opacity:.8">Les probabilités 1X2 sont normalisées pour totaliser 100 %.</span></div>';
+  return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus : <strong>'+escapeHtml(String(model.expected_goals??"—"))+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(String(model.form_index_home??"—"))+'% &nbsp; • &nbsp; '+escapeHtml(String(model.form_index_away??"—"))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(model.bestScore||"—")+'</strong><br><span style="opacity:.8">Les probabilités 1X2 sont normalisées pour totaliser 100 %.</span></div>';
 }
 
 function renderBatBotAIResult(raw,modelData){
@@ -2232,7 +2235,7 @@ function renderBatBotAIResult(raw,modelData){
     const quality=match.data_quality||((hf.sample>=4&&af.sample>=4)?"bonne":(hf.sample>=2&&af.sample>=2)?"moyenne":"limitée");
     return '<div class="ai-match-result">'+
       '<div class="ai-result-title">⚽ Match '+(index+1)+' — '+escapeHtml(match.name||"")+'</div>'+
-      '<div class="ai-evidence-card"><strong>🏆 '+escapeHtml(evidence.fixture?.competition||"Compétition")+'</strong><br>📅 '+escapeHtml(formatSportScoreDateTime(evidence.fixture?.date))+'<br>📌 Statut : <strong>'+escapeHtml(sportScoreFixtureDisplayStatus(evidence.fixture))+'</strong>'+(sportScoreFixtureDisplayScore(evidence.fixture)?' • '+escapeHtml(sportScoreFixtureDisplayScore(evidence.fixture)):"")+'</div>'+
+      '<div class="ai-evidence-card"><strong>🏆 '+escapeHtml(evidence.fixture?.competition||"Compétition")+'</strong><br>📅 '+escapeHtml(formatSportScoreDateTime(evidence.fixture?.date))+'<br>📌 Statut : <strong>'+escapeHtml(isLiveFixture(evidence.fixture)?"En direct":isFinishedFixture(evidence.fixture)?"Terminé":"À venir")+'</strong>'+(sportScoreFixtureScore(evidence.fixture)?' • '+escapeHtml(sportScoreFixtureScore(evidence.fixture)):"")+'</div>'+
       '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span>'+(match.data_quality==="limitée"?'<br><span style="color:#FFD166;font-weight:900">⚠️ Scores vérifiables insuffisants : aucune probabilité numérique n’est affichée.</span>':'')+'</div>'+
       (models[index]&&models[index].ready!==false?renderBatBotModelCard(models[index],evidence.fixture):'')+
       (match.probabilities&&match.probabilities.length?'<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+match.probabilities.map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>':'<div class="ai-section-label">Probabilités</div><div class="ai-evidence-card"><strong>Non calculées</strong><br>Données vérifiables insuffisantes pour fournir un pourcentage sérieux.</div>')+
@@ -2312,8 +2315,8 @@ function normalizePercentages(values){
   for(let k=0;k<remainder;k++)floors[order[k%order.length].i]+=0.1;
   return floors.map(v=>Math.round(v*10)/10);
 }
-function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
-  const hf=homeForm||{},af=awayForm||{}; const minSample=5;
+function buildSportScoreProbabilityModel(homeForm,awayForm,h2h,liveContext){
+  const hf=homeForm||{},af=awayForm||{}; const live=liveContext&&liveContext.available?liveContext:null; const minSample=5;
   if((hf.sample||0)<minSample || (af.sample||0)<minSample){
     return {ready:false,reason:"Données récentes insuffisantes : au moins 5 matchs terminés avec score vérifiable pour chaque équipe sont nécessaires.",probabilities:[],options:[],recommendation:"Analyse insuffisante",data_quality:"limitée"};
   }
@@ -2343,10 +2346,35 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
   for(let i=0;i<=10;i++)for(let j=0;j<=10;j++){const p=poissonProbability(i,lambdaHome)*poissonProbability(j,lambdaAway);matrixTotal+=p;if(i>j)p1+=p;else if(i===j)px+=p;else p2+=p;if(i+j>=3)pover+=p;if(i>0&&j>0)pbtts+=p;if(p>maxP){maxP=p;best=i+"-"+j;}}
   if(!(matrixTotal>0))return {ready:false,reason:"Impossible de calculer une distribution à partir des données disponibles.",probabilities:[],options:[],recommendation:"Analyse insuffisante",data_quality:"limitée"};
   p1/=matrixTotal;px/=matrixTotal;p2/=matrixTotal;pover/=matrixTotal;pbtts/=matrixTotal;maxP/=matrixTotal;
+
+  // En direct : conditionner la distribution sur le score actuel et le temps restant.
+  // On conserve les taux offensifs/défensifs du modèle pré-match, mais on ne
+  // prétend pas connaître les événements futurs. Sans minute fiable, on reste
+  // volontairement sur le modèle de base et on le signale dans l'interface.
+  let liveAdjusted=false,remainingExpected=0,liveBestScore=best;
+  if(live){
+    const minute=Math.max(0,Math.min(90,Number(live.elapsed_minute)));
+    const currentHome=Number(live.home_score)||0,currentAway=Number(live.away_score)||0;
+    const remaining=Math.max(0,90-minute);
+    const baseTotal=Math.max(0.05,lambdaHome+lambdaAway);
+    const scale=remaining/90;
+    const remHome=lambdaHome*scale,remAway=lambdaAway*scale;
+    let lp1=0,lpx=0,lp2=0,lmax=0,lbest=currentHome+"-"+currentAway,ltotal=0,lover=0,lbt=0;
+    for(let i=0;i<=8;i++)for(let j=0;j<=8;j++){
+      const q=poissonProbability(i,remHome)*poissonProbability(j,remAway);ltotal+=q;
+      const fh=currentHome+i,fa=currentAway+j;if(fh>fa)lp1+=q;else if(fh===fa)lpx+=q;else lp2+=q;
+      if(fh+fa>=3)lover+=q;if(fh>0&&fa>0)lbt+=q;
+      if(q>lmax){lmax=q;lbest=fh+"-"+fa;}
+    }
+    if(ltotal>0){
+      p1=lp1/ltotal;px=lpx/ltotal;p2=lp2/ltotal;pover=lover/ltotal;pbtts=lbt/ltotal;maxP=lmax/ltotal;liveBestScore=lbest;remainingExpected=remHome+remAway;liveAdjusted=true;
+    }
+  }
   const probs=normalizePercentages([p1,px,p2]); if(!probs)return {ready:false,reason:"Impossible de normaliser les probabilités à partir des données disponibles.",probabilities:[],options:[],recommendation:"Analyse insuffisante",data_quality:"limitée"};
   const [P1,PX,P2]=probs;
   const o1x=Math.round((P1+PX)*10)/10, ox2=Math.round((PX+P2)*10)/10, o12=Math.round((P1+P2)*10)/10;
   const obtts=Math.round(pbtts*1000)/10, oover=Math.round(pover*1000)/10, ohand=P1, oscore=Math.round(maxP*1000)/10;
+  if(liveAdjusted){best=liveBestScore;}
   const risk=p=>p>=78?"Faible":p>=62?"Modéré":"Élevé";
   const optionReasons={
     "1X":"Probabilité combinée calculée à partir de la victoire à domicile et du match nul.",
@@ -2367,7 +2395,7 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
     {name:"Score exact "+best,probability:oscore,risk:"Élevé",reason:optionReasons["Score exact "+best]}
   ];
   const preferred=options.filter(o=>!/^Score exact/.test(o.name)).sort((a,b)=>b.probability-a.probability)[0];
-  return {ready:true,lambdaHome:+lambdaHome.toFixed(2),lambdaAway:+lambdaAway.toFixed(2),probabilities:[{label:"1",value:P1},{label:"X",value:PX},{label:"2",value:P2}],options,recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:oover,btts:obtts,form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,expected_goals:+(lambdaHome+lambdaAway).toFixed(2),data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée"};
+  return {ready:true,lambdaHome:+lambdaHome.toFixed(2),lambdaAway:+lambdaAway.toFixed(2),probabilities:[{label:"1",value:P1},{label:"X",value:PX},{label:"2",value:P2}],options,recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:oover,btts:obtts,form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,expected_goals:+(lambdaHome+lambdaAway).toFixed(2),data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée",live_adjusted:liveAdjusted,live_elapsed_minute:liveAdjusted?Number(live.elapsed_minute):null,live_current_score:liveAdjusted?(Number(live.home_score)+"–"+Number(live.away_score)):null,remaining_expected_goals:liveAdjusted?+remainingExpected.toFixed(2):null,live_note:liveAdjusted?"Probabilités conditionnelles au score actuel et au temps restant, calculées à partir du modèle statistique BATBOT.":"Minute de jeu fiable indisponible : probabilités pré-match de référence uniquement."};
 }
 async function fetchSportScoreEvidence(endpoint,params){
   try{
@@ -2386,11 +2414,12 @@ async function fetchSportScoreEvidence(endpoint,params){
 async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fixture1,secondHome,secondAway,secondHomeSlug,secondAwaySlug,fixture2){
   const pairs=[];if(home&&away)pairs.push({home,away,homeSlug,awaySlug,fixture:fixture1});if(secondHome&&secondAway)pairs.push({home:secondHome,away:secondAway,homeSlug:secondHomeSlug,awaySlug:secondAwaySlug,fixture:fixture2});
   const results=await Promise.all(pairs.map(async function(pair){
-    const [homeTeam,awayTeam,h2h,standings]=await Promise.all([
+    const [homeTeam,awayTeam,h2h,standings,liveDetail]=await Promise.all([
       fetchSportScoreEvidence("team/",{sport:"football",slug:pair.homeSlug,limit:30}),
       fetchSportScoreEvidence("team/",{sport:"football",slug:pair.awaySlug,limit:30}),
       fetchSportScoreEvidence("h2h/",{sport:"football",team1:pair.homeSlug,team2:pair.awaySlug,limit:10}),
-      pair.fixture?.league?.slug?fetchSportScoreEvidence("standings/",{sport:"football",slug:pair.fixture.league.slug}):Promise.resolve(null)
+      pair.fixture?.league?.slug?fetchSportScoreEvidence("standings/",{sport:"football",slug:pair.fixture.league.slug}):Promise.resolve(null),
+      fetchSportScoreLiveDetail(pair.fixture)
     ]);
     const homeMatches=sportScoreExtractMatches(homeTeam); const awayMatches=sportScoreExtractMatches(awayTeam);
     const findUpcomingFixture=(list)=>{
@@ -2407,9 +2436,13 @@ async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fix
     const table=sportScoreExtractStandings(standings);
     const findRow=(name)=>table.find(function(row){const rn=row?.team?.name||row?.name||row?.team_name;return sportScoreNameKey(rn)===sportScoreNameKey(name);});
     const hr=findRow(pair.home),ar=findRow(pair.away);
-    const model=buildSportScoreProbabilityModel(homeForm,awayForm,h2h||{});
+    const liveContext=sportScoreExtractLiveContext(liveDetail,derivedFixture);
+    const model=buildSportScoreProbabilityModel(homeForm,awayForm,h2h||{},liveContext);
     const fixtureSource=derivedFixture;
-    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:fixtureSource?{date:(fixtureSource.fixture?.date||fixtureSource.date||fixtureSource.start_time||fixtureSource.startTime||fixtureSource.kickoff||fixtureSource.datetime||fixtureSource.scheduled_at||fixtureSource.scheduledAt||fixtureSource.time||null),status:(fixtureSource.fixture?.status||fixtureSource.status||fixtureSource.status_text||null),competition:(fixtureSource.league?.name||fixtureSource.competition?.name||fixtureSource.competition||null),goals:fixtureSource.goals||null,score:fixtureSource.score||null}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
+    const detailMatch=sportScoreUnwrapMatchDetail(liveDetail);
+    const detailSlug=detailMatch?.slug||detailMatch?.fixture?.slug||fixtureSource?.sportscore?.slug||fixtureSource?.slug||null;
+    const detailId=detailMatch?.id||detailMatch?.fixture?.id||fixtureSource?.id||fixtureSource?.fixture?.id||null;
+    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:fixtureSource?{id:detailId,slug:detailSlug,date:(fixtureSource.fixture?.date||fixtureSource.date||fixtureSource.start_time||fixtureSource.startTime||fixtureSource.kickoff||fixtureSource.datetime||fixtureSource.scheduled_at||fixtureSource.scheduledAt||fixtureSource.time||detailMatch?.time||detailMatch?.date||null),status:(detailMatch?.status||detailMatch?.status_text||fixtureSource.fixture?.status||fixtureSource.status||fixtureSource.status_text||null),competition:(fixtureSource.league?.name||fixtureSource.competition?.name||fixtureSource.competition||null),goals:(detailMatch?.goals||fixtureSource.goals)||null,score:(detailMatch?.score||fixtureSource.score)||null,sportscore:{slug:detailSlug,id:detailId,raw:detailMatch||fixtureSource}}:null,live:liveContext,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
   }));
   return {source:"SportScore",generatedAt:new Date().toISOString(),matches:results,models:results.map(function(r){return r.model;})};
 }
@@ -2572,27 +2605,42 @@ function isFinishedFixture(item){return /(^|\b)(ft|finished|full time|fulltime|e
 function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|first half|second half|half time|halftime|mi temps|1re mi temps|2e mi temps|1h|2h|ht|extra time|et|penalties|penalty|pen)(\b|$)/i.test(fixtureStatusKey(item));}
 function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard/i.test(fixtureStatusKey(item));}
 function isAnalyzableFixture(item){return !isFinishedFixture(item)&&!isNonAnalyzableFixture(item);}
-function sportScoreFixtureScore(item){
-  const h=item?.goals?.home??item?.score?.fulltime?.home??item?.fixture?.goals?.home??item?.fixture?.score?.fulltime?.home??item?.homeScore??item?.home_score,
-        a=item?.goals?.away??item?.score?.fulltime?.away??item?.fixture?.goals?.away??item?.fixture?.score?.fulltime?.away??item?.awayScore??item?.away_score;
-  return Number.isFinite(Number(h))&&Number.isFinite(Number(a))&&Number(h)>=0&&Number(a)>=0?String(h)+"–"+String(a):"";
-}
-function sportScoreFixtureDisplayStatus(item){
-  if(isLiveFixture(item))return "En direct";
-  if(isFinishedFixture(item))return "Terminé";
-  if(isNonAnalyzableFixture(item)){
-    const raw=fixtureStatusKey(item);
-    if(/cancel/i.test(raw))return "Annulé";
-    if(/postpon|report|retard/i.test(raw))return "Reporté";
-    if(/suspend/i.test(raw))return "Suspendu";
-    if(/abandon/i.test(raw))return "Abandonné";
-    return "Indisponible";
+function sportScoreFixtureScore(item){const h=item?.goals?.home??item?.score?.fulltime?.home??item?.fixture?.goals?.home??item?.fixture?.score?.fulltime?.home,a=item?.goals?.away??item?.score?.fulltime?.away??item?.fixture?.goals?.away??item?.fixture?.score?.fulltime?.away;return Number.isFinite(Number(h))&&Number.isFinite(Number(a))?String(h)+"–"+String(a):"";}
+function sportScoreUnwrapMatchDetail(data){return data?.match||data?.data?.match||data?.data||data?.response?.match||data?.response||data||null;}
+function sportScoreExtractElapsedMinute(data){
+  const root=sportScoreUnwrapMatchDetail(data)||{};
+  const candidates=[
+    root?.elapsed,root?.minute,root?.minutes,root?.match_minute,root?.matchMinute,root?.clock?.minute,root?.clock?.elapsed,
+    root?.timer?.minute,root?.timer?.elapsed,root?.time?.minute,root?.time?.elapsed,
+    root?.status?.elapsed,root?.status?.minute,root?.status?.minutes,
+    root?.fixture?.status?.elapsed,root?.fixture?.status?.minute,
+    root?.period?.elapsed,root?.period?.minute,root?.live?.minute,root?.live?.elapsed,
+    root?.score?.elapsed,root?.score?.minute
+  ];
+  for(const value of candidates){
+    if(value===null||value===undefined||value==="")continue;
+    const n=Number(value);if(Number.isFinite(n)&&n>=0&&n<=130)return Math.round(n);
+    const m=String(value).match(/(?:^|\b)(\d{1,3})(?:\+\d{1,2})?(?:['’]|\s*(?:min|minute|minutes))?\b/i);
+    if(m){const x=Number(m[1]);if(Number.isFinite(x)&&x>=0&&x<=130)return x;}
   }
-  return "À venir";
+  return null;
 }
-function sportScoreFixtureDisplayScore(item){
-  const status=sportScoreFixtureDisplayStatus(item);
-  return (status==="En direct"||status==="Terminé")?sportScoreFixtureScore(item):"";
+function sportScoreExtractLiveContext(data,fixture){
+  const root=sportScoreUnwrapMatchDetail(data)||{};
+  const score=sportScoreFixtureScore(root)||sportScoreFixtureScore(fixture);
+  const parts=score.match(/^(\d+)–(\d+)$/);if(!parts)return {available:false,elapsed_minute:sportScoreExtractElapsedMinute(root),reason:"Score live indisponible"};
+  const minute=sportScoreExtractElapsedMinute(root);
+  if(!Number.isFinite(minute))return {available:false,home_score:Number(parts[1]),away_score:Number(parts[2]),elapsed_minute:null,reason:"Minute de jeu fiable indisponible"};
+  const status=fixtureStatusKey(root)||fixtureStatusKey(fixture);
+  const standardMatch=/live|1h|2h|half time|halftime|first half|second half|in progress|mi temps|1re mi temps|2e mi temps/i.test(status);
+  if(!standardMatch)return {available:false,home_score:Number(parts[1]),away_score:Number(parts[2]),elapsed_minute:minute,reason:"Phase de match non standard"};
+  return {available:true,home_score:Number(parts[1]),away_score:Number(parts[2]),elapsed_minute:Math.min(90,minute),reason:"Score et minute live SportScore disponibles"};
+}
+async function fetchSportScoreLiveDetail(fixture){
+  if(!fixture||!isLiveFixture(fixture))return null;
+  const slug=fixture?.sportscore?.slug||fixture?.slug||fixture?.fixture?.slug||"";
+  if(!slug)return null;
+  try{return await fetchSportScoreEvidence("match/",{sport:"football",slug});}catch(_){return null;}
 }
 function showFinishedSportScoreMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=sportScoreFixtureScore(item),when=formatSportScoreDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
 function renderSportScoreFixtures(fixtures,checkedDate){
