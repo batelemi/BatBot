@@ -426,10 +426,7 @@ function getGoalsForAndAgainst(
 // STATISTIQUES
 // ============================================================
 
-function buildTeamStats(
-  matches,
-  team
-) {
+function buildTeamStats(matches, team) {
   console.log(
     "\n========================================"
   );
@@ -593,6 +590,14 @@ function buildTeamStats(
   let goalsFor = 0;
   let goalsAgainst = 0;
 
+  let homeMatches = 0;
+  let homeGoalsFor = 0;
+  let homeGoalsAgainst = 0;
+
+  let awayMatches = 0;
+  let awayGoalsFor = 0;
+  let awayGoalsAgainst = 0;
+
   for (const match of selected) {
     const goals =
       getGoalsForAndAgainst(
@@ -609,7 +614,169 @@ function buildTeamStats(
 
     goalsAgainst +=
       goals.goalsAgainst;
+
+    const teamName =
+      cleanText(team.name);
+
+    const homeName =
+      cleanText(match?.home);
+
+    const awayName =
+      cleanText(match?.away);
+
+    if (
+      homeName === teamName
+    ) {
+      homeMatches += 1;
+
+      homeGoalsFor +=
+        goals.goalsFor;
+
+      homeGoalsAgainst +=
+        goals.goalsAgainst;
+    }
+
+    if (
+      awayName === teamName
+    ) {
+      awayMatches += 1;
+
+      awayGoalsFor +=
+        goals.goalsFor;
+
+      awayGoalsAgainst +=
+        goals.goalsAgainst;
+    }
   }
+
+  console.log(
+    "\n📊 STATISTIQUES GLOBALES"
+  );
+
+  console.log(
+    "----------------------------------------"
+  );
+
+  console.log(
+    "Matchs :",
+    selected.length
+  );
+
+  console.log(
+    "Buts marqués :",
+    goalsFor
+  );
+
+  console.log(
+    "Buts encaissés :",
+    goalsAgainst
+  );
+
+  console.log(
+    "Moyenne buts marqués :",
+    selected.length
+      ? (
+          goalsFor /
+          selected.length
+        ).toFixed(2)
+      : "0.00"
+  );
+
+  console.log(
+    "Moyenne buts encaissés :",
+    selected.length
+      ? (
+          goalsAgainst /
+          selected.length
+        ).toFixed(2)
+      : "0.00"
+  );
+
+  console.log(
+    "\n🏠 STATISTIQUES À DOMICILE"
+  );
+
+  console.log(
+    "----------------------------------------"
+  );
+
+  console.log(
+    "Matchs à domicile :",
+    homeMatches
+  );
+
+  console.log(
+    "Buts marqués à domicile :",
+    homeGoalsFor
+  );
+
+  console.log(
+    "Buts encaissés à domicile :",
+    homeGoalsAgainst
+  );
+
+  console.log(
+    "Moyenne buts marqués à domicile :",
+    homeMatches
+      ? (
+          homeGoalsFor /
+          homeMatches
+        ).toFixed(2)
+      : "0.00"
+  );
+
+  console.log(
+    "Moyenne buts encaissés à domicile :",
+    homeMatches
+      ? (
+          homeGoalsAgainst /
+          homeMatches
+        ).toFixed(2)
+      : "0.00"
+  );
+
+  console.log(
+    "\n✈️ STATISTIQUES À L'EXTÉRIEUR"
+  );
+
+  console.log(
+    "----------------------------------------"
+  );
+
+  console.log(
+    "Matchs à l'extérieur :",
+    awayMatches
+  );
+
+  console.log(
+    "Buts marqués à l'extérieur :",
+    awayGoalsFor
+  );
+
+  console.log(
+    "Buts encaissés à l'extérieur :",
+    awayGoalsAgainst
+  );
+
+  console.log(
+    "Moyenne buts marqués à l'extérieur :",
+    awayMatches
+      ? (
+          awayGoalsFor /
+          awayMatches
+        ).toFixed(2)
+      : "0.00"
+  );
+
+  console.log(
+    "Moyenne buts encaissés à l'extérieur :",
+    awayMatches
+      ? (
+          awayGoalsAgainst /
+          awayMatches
+        ).toFixed(2)
+      : "0.00"
+  );
 
   return {
     matches:
@@ -629,6 +796,42 @@ function buildTeamStats(
       selected.length
         ? goalsAgainst /
           selected.length
+        : 0,
+
+    homeMatches,
+
+    homeGoalsFor,
+
+    homeGoalsAgainst,
+
+    homeAverageGoalsFor:
+      homeMatches
+        ? homeGoalsFor /
+          homeMatches
+        : 0,
+
+    homeAverageGoalsAgainst:
+      homeMatches
+        ? homeGoalsAgainst /
+          homeMatches
+        : 0,
+
+    awayMatches,
+
+    awayGoalsFor,
+
+    awayGoalsAgainst,
+
+    awayAverageGoalsFor:
+      awayMatches
+        ? awayGoalsFor /
+          awayMatches
+        : 0,
+
+    awayAverageGoalsAgainst:
+      awayMatches
+        ? awayGoalsAgainst /
+          awayMatches
         : 0,
 
     recentMatches:
@@ -885,7 +1088,25 @@ async function main() {
           homeStats.goalsFor,
 
         goalsAgainst:
-          homeStats.goalsAgainst
+          homeStats.goalsAgainst,
+
+        homeMatches:
+          homeStats.homeMatches,
+
+        homeGoalsFor:
+          homeStats.homeGoalsFor,
+
+        homeGoalsAgainst:
+          homeStats.homeGoalsAgainst,
+
+        awayMatches:
+          homeStats.awayMatches,
+
+        awayGoalsFor:
+          homeStats.awayGoalsFor,
+
+        awayGoalsAgainst:
+          homeStats.awayGoalsAgainst
       },
 
       away: {
@@ -896,7 +1117,25 @@ async function main() {
           awayStats.goalsFor,
 
         goalsAgainst:
-          awayStats.goalsAgainst
+          awayStats.goalsAgainst,
+
+        homeMatches:
+          awayStats.homeMatches,
+
+        homeGoalsFor:
+          awayStats.homeGoalsFor,
+
+        homeGoalsAgainst:
+          awayStats.homeGoalsAgainst,
+
+        awayMatches:
+          awayStats.awayMatches,
+
+        awayGoalsFor:
+          awayStats.awayGoalsFor,
+
+        awayGoalsAgainst:
+          awayStats.awayGoalsAgainst
       }
     });
 
