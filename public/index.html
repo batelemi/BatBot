@@ -4104,7 +4104,7 @@ document.addEventListener("keydown",function(event){
     const children=Array.from(dashboard.children);
     const start=children.indexOf(statusGrid)+1;
     const contentItems=children.slice(start).filter(function(el){
-      return !(el.matches('button[onclick="logout()"]')) && !el.classList.contains('batbot-ai-modal') && !el.classList.contains('ai-ticket-modal') && el.id!=='smartDriveAISection';
+      return !(el.matches('button[onclick="logout()"]')) && !el.classList.contains('batbot-ai-modal') && !el.classList.contains('ai-ticket-modal') && el.id!=='smartDriveAISection' && el.id!=='dailyFixturesSection';
     });
 
     // Ordre fixe demandé pour l’interface client. Le contenu et les identifiants
