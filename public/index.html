@@ -736,8 +736,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <h2>🤖 Analyse BatBot IA</h2>
     <p class="ai-modal-subtitle">Analyse statistique à partir des données SportScore récupérées au moment de la demande : forme récente, buts, confrontations et classement lorsqu’ils sont disponibles.</p>
     <div class="ai-match-fields">
-      <input id="aiMatch1" placeholder="Match 1 — équipe 1 vs équipe 2" autocomplete="off">
-      <input id="aiMatch2" placeholder="Match 2 — équipe 1 vs équipe 2" autocomplete="off">
+      <input id="aiMatch1" placeholder="Match 1 — équipes avec ou sans séparateur" autocomplete="off">
+      <input id="aiMatch2" placeholder="Match 2 — équipes avec ou sans séparateur" autocomplete="off">
     </div>
     <button id="smartDriveAIButton" class="btn primary" type="button" onclick="submitBatBotAI()">🤖 Lancer l’analyse</button>
     <div id="batbotAIModalStatus" class="status"></div>
@@ -2058,8 +2058,21 @@ function updateProfileStatuses(user){
   if(a)a.textContent=aiActive?"🟢 Active":"🔴 Non active";
 }
 function splitMatch(value){
-  const parts=String(value||"").split(/\s+(?:vs|v|contre)\s+/i).map(x=>x.trim()).filter(Boolean);
-  return {home:parts[0]||"",away:parts.slice(1).join(" vs ")||""};
+  const text=String(value||"").trim();
+  if(!text)return {home:"",away:"",raw:""};
+
+  // Les séparateurs explicites restent pris en charge. Un tiret n'est
+  // considéré comme séparateur que lorsqu'il est isolé par des espaces,
+  // afin de préserver les noms comme "Paris-Saint-Germain".
+  const separator=/\s*(?:vs|versus|contre)\s*|\s+v\s+|\s*[\/|]\s*|\s+[-–—−]\s+/i;
+  const parts=text.split(separator).map(x=>x.trim()).filter(Boolean);
+  if(parts.length>=2){
+    return {home:parts[0],away:parts.slice(1).join(" vs "),raw:text};
+  }
+
+  // Sans séparateur, on transmet l'affiche complète au serveur. Le service
+  // SportScore détermine alors intelligemment les deux équipes.
+  return {home:"",away:"",raw:text};
 }
 
 function normalizeAiPercent(value){
@@ -2486,11 +2499,11 @@ async function submitBatBotAI(){
   openBatBotAIModal();
   setBatBotAIModalResult("");
   if(!match1&&!match2){
-    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse non lancée</strong><br><span>Saisissez au moins un match au format : Équipe 1 vs Équipe 2.</span></div>',"error");
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse non lancée</strong><br><span>Saisissez au moins un match, avec ou sans séparateur entre les deux équipes.</span></div>',"error");
     return;
   }
   if((match1&&(!first.home||!first.away))||(match2&&(!second.home||!second.away))){
-    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Format incorrect</strong><br><span>Chaque match doit être au format : Équipe 1 vs Équipe 2.</span></div>',"error");
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Format incorrect</strong><br><span>Chaque match doit contenir deux équipes. Les formats « vs », « contre », « - », « / » ou sans séparateur sont acceptés.</span></div>',"error");
     return;
   }
   try{
@@ -2499,7 +2512,9 @@ async function submitBatBotAI(){
 
     const matches=[];
     if(first.home&&first.away)matches.push({home:first.home,away:first.away});
+    else if(first.raw)matches.push({match:first.raw});
     if(second.home&&second.away)matches.push({home:second.home,away:second.away});
+    else if(second.raw)matches.push({match:second.raw});
 
     const response=await fetch("/api/football/odds",{
       method:"POST",
