@@ -28,6 +28,8 @@ const DATE_CONCURRENCY = 6;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const teamHistoryCache = new Map();
+const fixtureCache = new Map();
+const FIXTURE_CACHE_TTL_MS = 30 * 1000;
 
 
 // ============================================================
@@ -502,6 +504,190 @@ function getMatchTimestamp(match) {
   return 0;
 }
 
+function getMatchSlug(match) {
+  return String(
+    match?.slug ||
+    match?.fixture?.slug ||
+    match?.event?.slug ||
+    match?.url?.split("/match/").pop()?.replace(/\/$/, "") ||
+    ""
+  ).trim();
+}
+
+function getMatchStatusValue(match) {
+  return (
+    match?.status_text ||
+    match?.statusText ||
+    match?.status ||
+    match?.status_code ||
+    match?.state ||
+    match?.fixture?.status?.long ||
+    match?.fixture?.status?.short ||
+    match?.event?.status ||
+    ""
+  );
+}
+
+function isLiveMatch(match) {
+  const status = cleanText(getMatchStatusValue(match));
+  return /live|in progress|progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalty|penalties|shootout/.test(status);
+}
+
+function normalizeFixture(match) {
+  if (!match) return null;
+
+  const home = getMatchTeamName(match, "home");
+  const away = getMatchTeamName(match, "away");
+  const timestamp = getMatchTimestamp(match);
+  const homeScore = getMatchScore(match, "home");
+  const awayScore = getMatchScore(match, "away");
+  const competition =
+    match?.league?.name ||
+    match?.competition?.name ||
+    (typeof match?.competition === "string" ? match.competition : "") ||
+    match?.tournament?.name ||
+    match?.fixture?.league?.name ||
+    "Compétition non fournie";
+
+  return {
+    id: String(match?.id || match?.fixture?.id || match?.event?.id || ""),
+    slug: getMatchSlug(match),
+    home,
+    away,
+    date: timestamp ? new Date(timestamp).toISOString() : null,
+    status: getMatchStatusValue(match) || (timestamp > Date.now() ? "upcoming" : ""),
+    status_text: match?.status_text || match?.statusText || null,
+    competition,
+    goals: {
+      home: Number.isFinite(homeScore) ? homeScore : null,
+      away: Number.isFinite(awayScore) ? awayScore : null
+    },
+    score: match?.score || match?.scores || null,
+    home_logo: match?.home_logo || match?.home?.logo || null,
+    away_logo: match?.away_logo || match?.away?.logo || null
+  };
+}
+
+function fixtureMatchesTeams(match, homeTeam, awayTeam) {
+  const fixture = normalizeFixture(match);
+  if (!fixture?.home || !fixture?.away) return false;
+
+  return (
+    cleanText(fixture.home) === cleanText(homeTeam.name) &&
+    cleanText(fixture.away) === cleanText(awayTeam.name)
+  ) || (
+    calculateTeamMatchScore(homeTeam.name, fixture.home) > 0 &&
+    calculateTeamMatchScore(awayTeam.name, fixture.away) > 0
+  );
+}
+
+async function fetchFixtureDetail(slug) {
+  if (!slug) return null;
+
+  try {
+    const data = await fetchJson(
+      `${API_BASE}/match/?sport=${SPORT}&slug=${encodeURIComponent(slug)}`
+    );
+
+    return (
+      data?.match ||
+      data?.fixture ||
+      data?.event ||
+      data?.data?.match ||
+      data?.data?.fixture ||
+      data?.data?.event ||
+      data?.data ||
+      data
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+async function fetchCurrentFixture(homeTeam, awayTeam) {
+  const cacheKey = `${cleanText(homeTeam.slug)}|${cleanText(awayTeam.slug)}`;
+  const cached = fixtureCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.fixture;
+  }
+
+  const today = formatUtcDate(new Date());
+  const queries = [
+    [homeTeam.slug, "live"],
+    [homeTeam.slug, "upcoming"],
+    [awayTeam.slug, "live"],
+    [awayTeam.slug, "upcoming"]
+  ];
+
+  const responses = await Promise.allSettled(
+    queries.map(([teamSlug, status]) => {
+      const url =
+        `${API_BASE}/fixtures/` +
+        `?sport=${SPORT}` +
+        `&date=${today}` +
+        `&status=${status}` +
+        `&team=${encodeURIComponent(teamSlug)}` +
+        `&limit=200`;
+      return fetchJson(url);
+    })
+  );
+
+  const candidates = [];
+  for (const response of responses) {
+    if (response.status !== "fulfilled") continue;
+    for (const match of extractMatches(response.value)) {
+      if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
+        candidates.push(match);
+      }
+    }
+  }
+
+  // Fallback : le calendrier équipe peut contenir la rencontre même si
+  // /fixtures/ ne la retourne pas avec le filtre de statut attendu.
+  if (!candidates.length) {
+    const teamResponses = await Promise.allSettled([
+      fetchJson(`${API_BASE}/team/?sport=${SPORT}&slug=${encodeURIComponent(homeTeam.slug)}&limit=${TEAM_ENDPOINT_LIMIT}`),
+      fetchJson(`${API_BASE}/team/?sport=${SPORT}&slug=${encodeURIComponent(awayTeam.slug)}&limit=${TEAM_ENDPOINT_LIMIT}`)
+    ]);
+
+    for (const response of teamResponses) {
+      if (response.status !== "fulfilled") continue;
+      for (const match of extractMatches(response.value)) {
+        if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
+          candidates.push(match);
+        }
+      }
+    }
+  }
+
+  if (!candidates.length) {
+    fixtureCache.set(cacheKey, { fixture: null, expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS });
+    return null;
+  }
+
+  const unique = new Map();
+  for (const match of candidates) {
+    const key = getMatchSlug(match) || `${getMatchTeamName(match, "home")}|${getMatchTeamName(match, "away")}|${getMatchTimestamp(match)}`;
+    unique.set(key, match);
+  }
+
+  const ordered = [...unique.values()].sort((a, b) => {
+    const liveDiff = Number(isLiveMatch(b)) - Number(isLiveMatch(a));
+    if (liveDiff) return liveDiff;
+    return Math.abs(getMatchTimestamp(a) - Date.now()) - Math.abs(getMatchTimestamp(b) - Date.now());
+  });
+
+  let fixture = normalizeFixture(ordered[0]);
+  const detail = await fetchFixtureDetail(fixture?.slug);
+  if (detail && fixtureMatchesTeams(detail, homeTeam, awayTeam)) {
+    fixture = normalizeFixture({ ...ordered[0], ...detail });
+  }
+
+  fixtureCache.set(cacheKey, { fixture, expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS });
+  return fixture;
+}
+
 
 // ============================================================
 // HISTORIQUE D'ÉQUIPE
@@ -938,10 +1124,11 @@ async function analyzeOne(homeName, awayName) {
     searchTeam(awayName)
   ]);
 
-  const [homeMatchesInitial, awayMatchesInitial, h2hMatches] = await Promise.all([
+  const [homeMatchesInitial, awayMatchesInitial, h2hMatches, fixture] = await Promise.all([
     fetchTeamSchedule(homeTeam),
     fetchTeamSchedule(awayTeam),
-    fetchHeadToHead(homeTeam, awayTeam)
+    fetchHeadToHead(homeTeam, awayTeam),
+    fetchCurrentFixture(homeTeam, awayTeam)
   ]);
 
   // Le H2H est un complément ciblé : il ne remplace pas l'historique
@@ -957,6 +1144,7 @@ async function analyzeOne(homeName, awayName) {
   if (homeMatches.length < MIN_MATCHES) {
     return {
       match: `${homeName} vs ${awayName}`,
+      fixture,
       ready: false,
       recommendation: "Analyse insuffisante",
       reason:
@@ -980,6 +1168,7 @@ async function analyzeOne(homeName, awayName) {
   if (awayMatches.length < MIN_MATCHES) {
     return {
       match: `${homeName} vs ${awayName}`,
+      fixture,
       ready: false,
       recommendation: "Analyse insuffisante",
       reason:
@@ -1011,6 +1200,7 @@ async function analyzeOne(homeName, awayName) {
   if (!odds.sufficientData) {
     return {
       match: `${homeName} vs ${awayName}`,
+      fixture,
       ready: false,
       recommendation: "Analyse insuffisante",
       reason:
@@ -1041,6 +1231,7 @@ async function analyzeOne(homeName, awayName) {
 
   return {
     match: `${homeTeam.name} vs ${awayTeam.name}`,
+    fixture,
     homeTeam: {
       name: homeTeam.name,
       slug: homeTeam.slug
