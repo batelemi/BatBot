@@ -547,6 +547,80 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .batbot-duration-modal h3{margin:0 0 9px;font-size:21px}.batbot-duration-modal p{margin:0 0 18px;color:#b9cce0;line-height:1.5}.batbot-duration-modal input{width:100%;box-sizing:border-box;padding:13px;border-radius:12px;border:1px solid #37617f;background:#071a2d;color:#fff;font-size:18px;outline:none}.batbot-duration-actions{display:flex;gap:10px;margin-top:18px}.batbot-duration-actions button{flex:1}
 
 </style>
+
+<style id="batbot-admin-navigation-style">
+/* ===== BatBot — navigation administrateur refondue ===== */
+.batbot-admin-bottom-nav{
+  position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:9200;
+  width:min(100%,620px);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
+  background:rgba(5,18,33,.97);border-top:1px solid rgba(83,207,255,.24);
+  box-shadow:0 -12px 35px rgba(0,0,0,.35);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:5px;
+}
+.batbot-admin-bottom-nav.hidden{display:none!important}
+.batbot-admin-nav-item{
+  min-width:0;min-height:58px;border:1px solid transparent;border-radius:15px;background:transparent;
+  color:#8FA9BF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  font:inherit;font-size:10px;font-weight:900;cursor:pointer;
+  transition:background .16s ease,color .16s ease,transform .16s ease,border-color .16s ease;
+}
+.batbot-admin-nav-item i{font-size:20px;line-height:1}
+.batbot-admin-nav-item span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.batbot-admin-nav-item:hover{color:#fff;background:rgba(0,191,255,.08)}
+.batbot-admin-nav-item:active{transform:scale(.96)}
+.batbot-admin-nav-item.active{color:#fff;background:linear-gradient(145deg,rgba(0,191,255,.18),rgba(0,91,145,.18));border-color:rgba(0,191,255,.28);box-shadow:0 5px 18px rgba(0,191,255,.10)}
+.batbot-admin-nav-item.active i{color:#39CFFF;filter:drop-shadow(0 0 7px rgba(0,191,255,.28))}
+.batbot-admin-nav-sheet{
+  position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom,0px));transform:translate(-50%,10px);z-index:9199;
+  width:min(calc(100% - 24px),560px);max-height:min(62vh,520px);overflow:auto;padding:14px;
+  border:1px solid rgba(83,207,255,.28);border-radius:22px;
+  background:linear-gradient(145deg,rgba(15,48,79,.98),rgba(5,23,40,.98));
+  box-shadow:0 20px 65px rgba(0,0,0,.55);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .16s ease,transform .16s ease,visibility .16s ease;
+}
+.batbot-admin-nav-sheet.open{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0)}
+.batbot-admin-nav-sheet-backdrop{
+  position:fixed;inset:0;z-index:9198;background:rgba(1,8,18,.42);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .16s ease,visibility .16s ease;
+}
+.batbot-admin-nav-sheet-backdrop.open{opacity:1;visibility:visible;pointer-events:auto}
+.batbot-admin-nav-sheet-head{display:flex;align-items:center;gap:11px;padding:4px 4px 12px}
+.batbot-admin-nav-sheet-head>i{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:13px;background:rgba(0,191,255,.12);color:#39CFFF;font-size:19px}
+.batbot-admin-nav-sheet-head strong{display:block;font-size:16px;color:#fff}
+.batbot-admin-nav-sheet-head small{display:block;margin-top:3px;color:#AFC1D4;font-size:11px;line-height:1.35}
+.batbot-admin-nav-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.batbot-admin-nav-action{
+  min-height:58px;border:1px solid rgba(83,207,255,.24);border-radius:15px;
+  background:linear-gradient(145deg,#123F63,#0A243D);color:#fff;
+  display:flex;align-items:center;gap:10px;padding:11px 12px;text-align:left;font:inherit;font-size:12px;font-weight:900;cursor:pointer;
+  box-shadow:0 8px 20px rgba(0,0,0,.16);transition:transform .14s ease,border-color .14s ease,background .14s ease;
+}
+.batbot-admin-nav-action:hover{border-color:rgba(0,191,255,.55);background:linear-gradient(145deg,#164b74,#0b2946)}
+.batbot-admin-nav-action:active{transform:scale(.98)}
+.batbot-admin-nav-action i{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(0,191,255,.10);color:#39CFFF;font-size:15px;flex:0 0 30px}
+.batbot-admin-nav-action.danger{border-color:rgba(220,38,38,.35);background:linear-gradient(145deg,#5f2028,#32121a)}
+.batbot-admin-nav-action.danger i{background:rgba(220,38,38,.12);color:#FF8A8A}
+/* L'ancien panneau 2 colonnes reste dans le DOM pour conserver ses actions et scripts, mais n'est plus affiché. */
+#adminPanel .admin-tools{display:none!important}
+#adminPanel .admin-dashboard-card{margin-bottom:14px}
+#admin .admin-modal{z-index:9400}
+#admin .admin-modal-inner{width:min(680px,calc(100% - 24px));max-height:calc(100vh - 120px);overflow:auto}
+@media(max-width:420px){
+  .batbot-admin-bottom-nav{padding-left:6px;padding-right:6px;gap:2px}
+  .batbot-admin-nav-item{min-height:56px;font-size:9px;border-radius:13px}
+  .batbot-admin-nav-item i{font-size:18px}
+  .batbot-admin-nav-actions{grid-template-columns:1fr}
+  .batbot-admin-nav-sheet{width:calc(100% - 16px);bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+}
+@media(min-width:760px){
+  .batbot-admin-bottom-nav{width:min(100%,680px)}
+  .batbot-admin-nav-sheet{width:min(calc(100% - 32px),680px)}
+  .batbot-admin-nav-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){
+  .batbot-admin-nav-item,.batbot-admin-nav-action,.batbot-admin-nav-sheet,.batbot-admin-nav-sheet-backdrop{transition:none!important}
+}
+</style>
 </head>
 
 <body>
@@ -4321,5 +4395,138 @@ document.addEventListener("keydown",function(event){
 })();
 </script>
 
+
+<script id="batbot-admin-navigation-script">
+(function(){
+  function setupBatBotAdminNavigation(){
+    const admin=document.getElementById('admin');
+    const panel=document.getElementById('adminPanel');
+    if(!admin||!panel||panel.dataset.adminNavigationReady==='1')return false;
+    if(!panel.querySelector('.admin-tools'))return false;
+    panel.dataset.adminNavigationReady='1';
+
+    const tools=panel.querySelector('.admin-tools');
+    const toolButtons=Array.from(tools.querySelectorAll('.admin-tool-btn'));
+    const getTool=function(index){return toolButtons[index]||null;};
+
+    const backdrop=document.createElement('div');
+    backdrop.className='batbot-admin-nav-sheet-backdrop';
+    document.body.appendChild(backdrop);
+    const sheet=document.createElement('div');
+    sheet.className='batbot-admin-nav-sheet';
+    sheet.setAttribute('role','dialog');
+    sheet.setAttribute('aria-modal','false');
+    document.body.appendChild(sheet);
+
+    const nav=document.createElement('nav');
+    nav.className='batbot-admin-bottom-nav hidden';
+    nav.setAttribute('aria-label','Navigation principale de l’administration BatBot');
+    nav.innerHTML=''
+      +'<button type="button" class="batbot-admin-nav-item active" data-tab="home" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Accueil</span></button>'
+      +'<button type="button" class="batbot-admin-nav-item" data-tab="members"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Membres</span></button>'
+      +'<button type="button" class="batbot-admin-nav-item" data-tab="community"><i class="fa-solid fa-comments" aria-hidden="true"></i><span>Communauté</span></button>'
+      +'<button type="button" class="batbot-admin-nav-item" data-tab="finance"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Finances</span></button>'
+      +'<button type="button" class="batbot-admin-nav-item" data-tab="more"><i class="fa-solid fa-gear" aria-hidden="true"></i><span>Plus</span></button>';
+    document.body.appendChild(nav);
+
+    function closeSheet(){sheet.classList.remove('open');backdrop.classList.remove('open');}
+    function closeAdminModal(){
+      const modal=document.querySelector('#admin .admin-modal:not(.hidden)');
+      if(modal){
+        const button=modal.querySelector('.admin-modal-close');
+        if(button)button.click();
+      }
+    }
+    function setActive(tab){
+      nav.querySelectorAll('.batbot-admin-nav-item').forEach(function(button){
+        const active=button.dataset.tab===tab;
+        button.classList.toggle('active',active);
+        if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+      });
+    }
+    function runTool(index){
+      const button=getTool(index);
+      if(!button){showToast('Cette rubrique administrative est indisponible.','error');return;}
+      closeSheet();
+      button.click();
+    }
+    function renderSheet(key){
+      const configs={
+        members:{title:'Membres',icon:'fa-solid fa-users',subtitle:'Comptes et accès des membres BatBot',items:[
+          [0,'👥 Membres inscrits','fa-solid fa-users']
+        ]},
+        community:{title:'Communauté',icon:'fa-solid fa-comments',subtitle:'Messages et pronostics de la communauté',items:[
+          [2,'🔔 Gestion des messages','fa-solid fa-bell'],
+          [3,'📢 Gestion des pronostics','fa-solid fa-bullhorn']
+        ]},
+        finance:{title:'Finances',icon:'fa-solid fa-wallet',subtitle:'Demandes de paiement à vérifier',items:[
+          [4,'💳 Demandes de paiement manuel','fa-solid fa-wallet']
+        ]},
+        more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Configuration et outils administrateur',items:[
+          [1,'⚙️ Paramètres modifiables','fa-solid fa-sliders'],
+          [5,'🏆 Gestion des bookmakers','fa-solid fa-chart-column'],
+          [6,'🎁 Gestion des coupons','fa-solid fa-gift'],
+          [7,'🔑 Demandes de mot de passe','fa-solid fa-key'],
+          [8,'📊 Probabilités du jour','fa-solid fa-chart-pie']
+        ]}
+      };
+      const cfg=configs[key];
+      if(!cfg){closeSheet();return;}
+      sheet.innerHTML='<div class="batbot-admin-nav-sheet-head"><i class="'+cfg.icon+'" aria-hidden="true"></i><div><strong>'+cfg.title+'</strong><small>'+cfg.subtitle+'</small></div></div><div class="batbot-admin-nav-actions"></div>';
+      const actions=sheet.querySelector('.batbot-admin-nav-actions');
+      cfg.items.forEach(function(item){
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='batbot-admin-nav-action';
+        button.innerHTML='<i class="'+item[2]+'" aria-hidden="true"></i><span>'+item[1]+'</span>';
+        button.addEventListener('click',function(){runTool(item[0]);});
+        actions.appendChild(button);
+      });
+      if(key==='more'){
+        const logout=document.createElement('button');
+        logout.type='button';
+        logout.className='batbot-admin-nav-action danger';
+        logout.innerHTML='<i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Quitter l’administration</span>';
+        logout.addEventListener('click',function(){closeSheet();if(typeof window.adminLogout==='function')window.adminLogout();});
+        actions.appendChild(logout);
+      }
+      sheet.classList.add('open');backdrop.classList.add('open');
+    }
+
+    backdrop.addEventListener('click',closeSheet);
+    nav.querySelectorAll('.batbot-admin-nav-item').forEach(function(button){
+      button.addEventListener('click',function(){
+        const tab=button.dataset.tab;
+        if(tab==='home'){
+          closeSheet();closeAdminModal();setActive('home');window.scrollTo({top:0,behavior:'smooth'});return;
+        }
+        const wasOpen=sheet.classList.contains('open')&&nav.querySelector('.batbot-admin-nav-item.active')?.dataset.tab===tab;
+        setActive(tab);
+        if(wasOpen)closeSheet();else renderSheet(tab);
+      });
+    });
+
+    function sync(){
+      const visible=!panel.classList.contains('hidden')&&!admin.classList.contains('hidden');
+      nav.classList.toggle('hidden',!visible);
+      if(!visible)closeSheet();
+    }
+    const observer=new MutationObserver(sync);
+    observer.observe(panel,{attributes:true,attributeFilter:['class']});
+    observer.observe(admin,{attributes:true,attributeFilter:['class']});
+    sync();
+    return true;
+  }
+
+  function waitForAdminNavigation(){
+    if(setupBatBotAdminNavigation())return;
+    const observer=new MutationObserver(function(){
+      if(setupBatBotAdminNavigation())observer.disconnect();
+    });
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',waitForAdminNavigation);else waitForAdminNavigation();
+})();
+</script>
 </body>
 </html>
