@@ -678,9 +678,9 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <i class="fa-solid fa-brain" aria-hidden="true"></i>
       <span><strong>Analyse BatBot IA</strong><small>Lancer une analyse intelligente</small></span>
     </button>
-    <button type="button" class="batbot-home-shortcut" id="batbotHomeDailyShortcut">
-      <i class="fa-solid fa-futbol" aria-hidden="true"></i>
-      <span><strong>Probabilités des matchs du jour</strong><small>Consulter les probabilités disponibles</small></span>
+    <button type="button" class="batbot-home-shortcut" id="batbotHomePredictionsShortcut">
+      <i class="fa-solid fa-bullhorn" aria-hidden="true"></i>
+      <span><strong>Pronostics des membres</strong><small>Découvrir les analyses de la communauté</small></span>
     </button>
   </section>
 
@@ -965,11 +965,13 @@ PSG vs Marseille"></textarea>
 
   </section>
 
-  <div class="card">
-    <h2>📊 Probabilités des matchs du jour</h2>
-    <p class="muted">Retrouvez ici les probabilités ajoutées par le service BatBot.</p>
-    <div id="dailyMatches"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des probabilités</strong><small>Récupération des informations BatBot…</small></div></div></div>
-  </div>
+  <section class="card batbot-public-predictions-card" id="publicMemberPredictionsCard">
+    <div class="section-kicker">Communauté BatBot</div>
+    <h2>📢 Pronostics des membres</h2>
+    <p class="muted">Découvrez ici les analyses et pronostics publiés par les membres de BatBot. Les nouvelles publications apparaissent automatiquement pour toute la communauté.</p>
+    <div class="professional-note">🤝 <strong>Partage communautaire</strong><br>Consultez les analyses publiées par les membres et leurs choix 1 / N / 2. Chaque publication est affichée après sa validation par le service BatBot.</div>
+    <div id="publicMemberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications de la communauté…</small></div></div></div>
+  </section>
 
 
 
@@ -1372,7 +1374,6 @@ function showDashboard(user){
   }
 
   loadConfig();
-  loadDailyMatches();
   loadMyTransactions();
   loadMemberPredictions();
   loadAdminMemberPredictions();
@@ -3387,20 +3388,29 @@ function renderMemberPredictionCard(item,adminMode){
 initMemberPredictionPick();
 
 async function loadMemberPredictions(){
-  const container=document.getElementById("memberPredictionsList");
-  if(!container)return;
+  const containers=[
+    document.getElementById("memberPredictionsList"),
+    document.getElementById("publicMemberPredictionsList")
+  ].filter(Boolean);
+  if(!containers.length)return;
+
+  const renderAll=function(html){containers.forEach(function(container){container.innerHTML=html;});};
+
   try{
     const response=await fetch("/api/member-predictions",{credentials:"same-origin",cache:"no-store"});
     const data=await readApiResponse(response);
     if(!response.ok){
-      container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Pronostics indisponibles</div><div class="professional-status-body">Impossible de charger les pronostics de la communauté pour le moment.</div></div>';
+      renderAll('<div class="professional-status error"><div class="professional-status-head">⚠️ Pronostics indisponibles</div><div class="professional-status-body">Impossible de charger les pronostics de la communauté pour le moment. Veuillez réessayer dans quelques instants.</div></div>');
       return;
     }
     const predictions=Array.isArray(data.predictions)?data.predictions:[];
-    container.innerHTML=predictions.length?predictions.map(x=>renderMemberPredictionCard(x,false)).join(""):'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun pronostic publié</div><div class="professional-status-body">Soyez le premier membre à partager un pronostic avec la communauté.</div></div>';
+    const html=predictions.length
+      ?predictions.map(x=>renderMemberPredictionCard(x,false)).join("")
+      :'<div class="professional-status"><div class="professional-status-head">🌱 Aucun pronostic publié pour le moment</div><div class="professional-status-body">Les analyses et pronostics des membres apparaîtront ici dès qu’une publication sera partagée dans la communauté.</div></div>';
+    renderAll(html);
   }catch(error){
     console.error("MEMBER PREDICTIONS:",error);
-    container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion indisponible</div><div class="professional-status-body">Les pronostics ne peuvent pas être chargés actuellement.</div></div>';
+    renderAll('<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion indisponible</div><div class="professional-status-body">Les pronostics ne peuvent pas être chargés actuellement. Veuillez réessayer dans quelques instants.</div></div>');
   }
 }
 
@@ -4184,9 +4194,9 @@ document.addEventListener("keydown",function(event){
     const quick=document.getElementById('batbotHomeShortcuts');
     if(quick){
       const aiShortcut=document.getElementById('batbotHomeAIShortcut');
-      const dailyShortcut=document.getElementById('batbotHomeDailyShortcut');
+      const predictionsShortcut=document.getElementById('batbotHomePredictionsShortcut');
       if(aiShortcut)aiShortcut.addEventListener('click',function(){closeSheet();openBatBotAIFromMenu();});
-      if(dailyShortcut)dailyShortcut.addEventListener('click',function(){closeSheet();openModal(cards.daily(),'Probabilités des matchs du jour');loadDailyMatches();});
+      if(predictionsShortcut)predictionsShortcut.addEventListener('click',function(){closeSheet();openModal(cards.predictions(),'Pronostics des membres');loadMemberPredictions();});
     }
 
     const configs={
@@ -4240,7 +4250,7 @@ document.addEventListener("keydown",function(event){
           }
           const card=cards[item[2]]();
           openModal(card,item[0]);
-          if(item[2]==='daily')loadDailyMatches();
+          if(item[2]==='predictions')loadMemberPredictions();
         });
         actions.appendChild(button);
       });
