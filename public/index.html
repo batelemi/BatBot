@@ -673,6 +673,17 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="status-card ai-status-card"><div class="status-icon"><i class="fa-solid fa-robot" aria-hidden="true"></i></div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
   </div>
 
+  <section class="batbot-home-shortcuts" id="batbotHomeShortcuts" aria-label="Raccourcis rapides">
+    <button type="button" class="batbot-home-shortcut" id="batbotHomeAIShortcut">
+      <i class="fa-solid fa-brain" aria-hidden="true"></i>
+      <span><strong>Analyse BatBot IA</strong><small>Lancer une analyse intelligente</small></span>
+    </button>
+    <button type="button" class="batbot-home-shortcut" id="batbotHomeDailyShortcut">
+      <i class="fa-solid fa-futbol" aria-hidden="true"></i>
+      <span><strong>Probabilités des matchs du jour</strong><small>Consulter les probabilités disponibles</small></span>
+    </button>
+  </section>
+
   <section class="card batbot-messages-card" id="batbotMessagesCard">
     <div class="batbot-messages-head">
       <h2>🔔 Messages</h2>
@@ -1026,7 +1037,7 @@ PSG vs Marseille"></textarea>
     <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
   </div>
 
-  <button class="btn danger" type="button" onclick="logout()">🚪 Se déconnecter</button>
+  <button class="btn danger batbot-nav-only" type="button" onclick="logout()">🚪 Se déconnecter</button>
 </section>
 
 <section id="admin" class="hidden">
@@ -4001,44 +4012,6 @@ document.addEventListener("keydown",function(event){
 
 
 <style id="batbot-public-options-style">
-  /* ===== Fenêtre des options : couche interactive ===== */
-  .public-option-modal{
-    position:fixed;inset:0;z-index:9500;
-    display:flex;align-items:flex-start;justify-content:center;
-    padding:14px;overflow:auto;
-    background:rgba(2,10,20,.90);
-    pointer-events:auto;
-  }
-  .public-option-modal.hidden{display:none!important}
-  .public-option-modal-inner{
-    position:relative;z-index:1;
-    width:min(720px,100%);
-    max-height:calc(100vh - 28px);
-    overflow:auto;
-    margin-top:18px;
-    padding:14px;
-    background:#0b223a;
-    border:1px solid #2f628a;
-    border-radius:20px;
-    box-shadow:0 15px 45px rgba(0,0,0,.5);
-    pointer-events:auto;
-  }
-  .public-option-modal-head{
-    position:sticky;top:0;z-index:2;
-    display:flex;align-items:center;justify-content:space-between;
-    gap:10px;margin-bottom:12px;padding-bottom:8px;
-    background:#0b223a;
-  }
-  .public-option-modal-head strong{font-size:17px}
-  .public-option-modal-close{
-    width:auto!important;min-height:42px!important;
-    margin:0!important;padding:9px 12px!important;
-    white-space:nowrap;
-  }
-  .public-option-modal-body>.card,
-  .public-option-modal-body>section{
-    margin-top:0;
-  }
   /* ===== BatBot — navigation mobile refondue ===== */
   body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px));}
   .batbot-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:9000;width:min(100%,620px);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(5,18,33,.96);border-top:1px solid rgba(83,207,255,.24);box-shadow:0 -12px 35px rgba(0,0,0,.35);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
@@ -4054,6 +4027,12 @@ document.addEventListener("keydown",function(event){
   .batbot-nav-sheet.open{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0)}
   .batbot-nav-sheet-backdrop{position:fixed;inset:0;z-index:8998;background:rgba(1,8,18,.42);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,visibility .16s ease;}
   .batbot-nav-sheet-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;}
+  .batbot-nav-sheet,.batbot-nav-sheet-backdrop{touch-action:auto;}
+  .batbot-ai-modal{z-index:100000!important;pointer-events:auto;}
+  .batbot-ai-modal.open{pointer-events:auto;}
+  .batbot-ai-modal-panel{position:relative;z-index:100001;pointer-events:auto;}
+  .batbot-ai-modal-backdrop{z-index:0;pointer-events:auto;}
+
   .batbot-nav-sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
   .batbot-nav-sheet-head i{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:rgba(0,191,255,.12);color:#39CFFF;}
   .batbot-nav-sheet-head strong{font-size:17px;}
@@ -4157,19 +4136,17 @@ document.addEventListener("keydown",function(event){
     const oldLauncher=dashboard.querySelector('.public-options-launcher-wrap');
     if(oldLauncher)oldLauncher.remove();
 
-    const quick=document.createElement('section');
-    quick.className='batbot-home-shortcuts';
-    quick.setAttribute('aria-label','Raccourcis rapides');
-    quick.innerHTML=''
-      +'<button type="button" class="batbot-home-shortcut"><i class="fa-solid fa-brain" aria-hidden="true"></i><span><strong>Analyse BatBot IA</strong><small>Lancer une analyse intelligente</small></span></button>'
-      +'<button type="button" class="batbot-home-shortcut"><i class="fa-solid fa-futbol" aria-hidden="true"></i><span><strong>Probabilités des matchs du jour</strong><small>Consulter les probabilités disponibles</small></span></button>';
-    statusGrid.insertAdjacentElement('afterend',quick);
-    quick.children[0].addEventListener('click',function(){openBatBotAIFromMenu();});
-    quick.children[1].addEventListener('click',function(){openModal(cards.daily(),'Probabilités des matchs du jour');});
+    const quick=document.getElementById('batbotHomeShortcuts');
+    if(quick){
+      const aiShortcut=document.getElementById('batbotHomeAIShortcut');
+      const dailyShortcut=document.getElementById('batbotHomeDailyShortcut');
+      if(aiShortcut)aiShortcut.addEventListener('click',function(){closeSheet();openBatBotAIFromMenu();});
+      if(dailyShortcut)dailyShortcut.addEventListener('click',function(){closeSheet();openModal(cards.daily(),'Probabilités des matchs du jour');});
+    }
 
     const configs={
       analyses:{title:'Analyses & IA',icon:'fa-solid fa-magnifying-glass-chart',subtitle:'Analyse et pronostics de la communauté',items:[
-        ['Demander une analyse','fa-solid fa-magnifying-glass-chart','analysisRequest'],
+        ['Demander une analyse','fa-solid fa-magnifying-glass-chart','ai'],
         ['Pronostics des membres','fa-solid fa-bullhorn','predictions']
       ]},
       finances:{title:'Finances',icon:'fa-solid fa-wallet',subtitle:'Paiements et historique des transactions',items:[
@@ -4210,8 +4187,12 @@ document.addEventListener("keydown",function(event){
         button.className='batbot-nav-action';
         button.innerHTML='<i class="'+item[1]+'" aria-hidden="true"></i><span>'+item[0]+'</span>';
         button.addEventListener('click',function(){
-          const card=cards[item[2]]();
           closeSheet();
+          if(item[2]==='ai'){
+            openBatBotAIFromMenu();
+            return;
+          }
+          const card=cards[item[2]]();
           openModal(card,item[0]);
         });
         actions.appendChild(button);
