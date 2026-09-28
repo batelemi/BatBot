@@ -18,6 +18,13 @@ app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 
 DB.pragma("journal_mode = WAL");
 DB.pragma("foreign_keys = ON");
+DB.pragma("busy_timeout = 5000");
+
+let settingsCache = null;
+let settingsCacheExpiresAt = 0;
+let dailyMatchesCache = null;
+let dailyMatchesCacheKey = "";
+let dailyMatchesCacheExpiresAt = 0;
 
 DB.exec(`
 CREATE TABLE IF NOT EXISTS users(
@@ -130,6 +137,12 @@ CREATE TABLE IF NOT EXISTS member_predictions(
 DB.exec(`
 CREATE INDEX IF NOT EXISTS idx_member_predictions_user_created ON member_predictions(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_member_predictions_created ON member_predictions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_matches_date_id ON daily_matches(match_date, id DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_expiry_id ON batbot_messages(expires_at, id DESC);
+CREATE INDEX IF NOT EXISTS idx_message_reads_user_message ON batbot_message_reads(user_id, message_id);
+CREATE INDEX IF NOT EXISTS idx_payment_requests_user_created ON payment_requests(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payment_requests_status_created ON payment_requests(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user_status ON password_resets(user_id, status, id DESC);
 `);
 
 // Migrations pour les bases déjà existantes
@@ -166,11 +179,17 @@ const defaults = {
 };
 
 const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
-const setSetting = DB.prepare(
+const setSettingStatement = DB.prepare(
   "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
 );
+function writeSetting(key, value) {
+  const result = setSettingStatement.run(key, String(value));
+  settingsCache = null;
+  settingsCacheExpiresAt = 0;
+  return result;
+}
 for (const [key, value] of Object.entries(defaults)) {
-  if (!getSetting.get(key)) setSetting.run(key, String(value));
+  if (!getSetting.get(key)) writeSetting(key, String(value));
 }
 
 // Correction automatique des anciennes coordonnées WhatsApp/admin enregistrées
@@ -181,24 +200,28 @@ try {
   const currentWhatsapp = getSetting.get("whatsapp");
   const currentAdminPhone = getSetting.get("adminPhone");
   if (currentWhatsapp && String(currentWhatsapp.value) === oldNumber) {
-    setSetting.run("whatsapp", newNumber);
+    writeSetting("whatsapp", newNumber);
   }
   if (currentAdminPhone && String(currentAdminPhone.value) === oldNumber) {
-    setSetting.run("adminPhone", newNumber);
+    writeSetting("adminPhone", newNumber);
   }
 } catch (_) {}
 
 if (!getSetting.get("adminPasswordHash")) {
-  setSetting.run(
+  writeSetting(
     "adminPasswordHash",
     bcrypt.hashSync(process.env.ADMIN_PASSWORD || "ChangeMe123!", 12)
   );
 }
 
 function getSettings() {
-  return Object.fromEntries(
+  const now = Date.now();
+  if (settingsCache && settingsCacheExpiresAt > now) return settingsCache;
+  settingsCache = Object.fromEntries(
     DB.prepare("SELECT key,value FROM settings").all().map(x => [x.key, x.value])
   );
+  settingsCacheExpiresAt = now + 5000;
+  return settingsCache;
 }
 
 function today() {
@@ -475,11 +498,17 @@ app.post("/api/password-change", requireUser, (req, res) => {
 });
 
 app.get("/api/daily-matches", requireUser, (req, res) => {
-  res.json({
-    matches: DB.prepare(
+  const cacheKey = today();
+  const now = Date.now();
+  if (!dailyMatchesCache || dailyMatchesCacheKey !== cacheKey || dailyMatchesCacheExpiresAt <= now) {
+    dailyMatchesCache = DB.prepare(
       "SELECT * FROM daily_matches WHERE match_date=? ORDER BY id DESC"
-    ).all(today())
-  });
+    ).all(cacheKey);
+    dailyMatchesCacheKey = cacheKey;
+    dailyMatchesCacheExpiresAt = now + 10000;
+  }
+  res.set("Cache-Control", "private, max-age=10");
+  res.json({ matches: dailyMatchesCache });
 });
 
 app.post("/api/analysis-requests", requireUser, (req, res) => {
@@ -537,7 +566,6 @@ cleanupExpiredBatBotMessages();
 setInterval(cleanupExpiredBatBotMessages, 5 * 60 * 1000).unref();
 
 app.get("/api/messages/mine", requireUser, (req, res) => {
-  cleanupExpiredBatBotMessages();
   const messages=DB.prepare(`
     SELECT m.id,m.title,m.body,m.created_at,m.expires_at,
            CASE WHEN r.message_id IS NULL THEN 0 ELSE 1 END AS is_read
@@ -550,7 +578,6 @@ app.get("/api/messages/mine", requireUser, (req, res) => {
 });
 
 app.post("/api/messages/:id/read", requireUser, (req, res) => {
-  cleanupExpiredBatBotMessages();
   const id=Number(req.params.id);
   const message=DB.prepare("SELECT id FROM batbot_messages WHERE id=? AND expires_at>CURRENT_TIMESTAMP").get(id);
   if(!message)return res.status(404).json({error:"Message introuvable ou expiré."});
@@ -1313,6 +1340,8 @@ app.post("/api/admin/daily-matches", requireAdmin, (req, res) => {
     ) VALUES(?,?,?,?,?,?,?)
   `).run(name, h, d, a, pick, odds, today());
 
+  dailyMatchesCache = null;
+  dailyMatchesCacheExpiresAt = 0;
   res.status(201).json({ message: "Match ajouté avec succès." });
 });
 
@@ -1328,6 +1357,8 @@ app.delete("/api/admin/daily-matches/:id", requireAdmin, (req, res) => {
   DB.prepare(
     "DELETE FROM daily_matches WHERE id=?"
   ).run(Number(req.params.id));
+  dailyMatchesCache = null;
+  dailyMatchesCacheExpiresAt = 0;
   res.json({ message: "Match supprimé." });
 });
 
@@ -1473,7 +1504,7 @@ app.patch("/api/admin/settings", requireAdmin, (req, res) => {
     "wavePromo", "promoFee", "orangeMoney", "moovMoney", "mtnMoney",
     "adminPhone", "sdriveLink", "sdriveInviteMessage"
   ];
-  for (const key of allowed) if (req.body[key] !== undefined) setSetting.run(key, String(req.body[key]));
+  for (const key of allowed) if (req.body[key] !== undefined) writeSetting(key, String(req.body[key]));
   const settings = getSettings(); delete settings.adminPasswordHash;
   res.json({ message: "Configuration enregistrée.", settings });
 });
@@ -1909,6 +1940,17 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`BatBot démarré sur le port ${PORT}`);
 });
+
+function shutdown(signal) {
+  console.log(`BatBot: arrêt demandé (${signal})`);
+  server.close(() => {
+    try { DB.close(); } catch (_) {}
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.once("SIGTERM", () => shutdown("SIGTERM"));
+process.once("SIGINT", () => shutdown("SIGINT"));
