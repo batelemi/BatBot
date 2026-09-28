@@ -4028,6 +4028,25 @@ document.addEventListener("keydown",function(event){
   .batbot-nav-sheet-backdrop{position:fixed;inset:0;z-index:8998;background:rgba(1,8,18,.42);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,visibility .16s ease;}
   .batbot-nav-sheet-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;}
   .batbot-nav-sheet,.batbot-nav-sheet-backdrop{touch-action:auto;}
+  /* Fenêtre commune des rubriques de la nouvelle navigation :
+     elle affiche les anciennes cartes sans supprimer leur logique existante. */
+  .public-option-modal{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(1,8,18,.90);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:auto;}
+  .public-option-modal.hidden{display:none!important;}
+  .public-option-modal-inner{width:min(760px,100%);max-height:94vh;overflow:auto;border:1px solid rgba(0,213,255,.55);border-radius:24px;background:linear-gradient(145deg,#123f61 0%,#0a2844 48%,#061a2c 100%);box-shadow:0 25px 80px rgba(0,0,0,.62),0 0 35px rgba(0,191,255,.10);padding:16px;}
+  .public-option-modal-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 12px;margin-bottom:12px;background:linear-gradient(180deg,#123f61 0%,rgba(18,63,97,.96) 72%,rgba(18,63,97,0) 100%);}
+  .public-option-modal-head strong{font-size:20px;line-height:1.25;}
+  .public-option-modal-close{width:auto;min-height:42px;margin:0;padding:9px 14px;flex:0 0 auto;}
+  .public-option-modal-body{width:100%;min-width:0;}
+  .public-option-modal-body>.card,.public-option-modal-body>section.card,.public-option-modal-body>.deposit-space,.public-option-modal-body>.partners-space{margin:0;width:100%;min-width:0;}
+  .public-option-modal-body .card{max-width:100%;}
+  .public-option-modal-body .btn{position:relative;z-index:1;pointer-events:auto;}
+  .public-option-modal-body input,.public-option-modal-body textarea,.public-option-modal-body select{pointer-events:auto;}
+  @media(max-width:520px){
+    .public-option-modal{padding:8px;}
+    .public-option-modal-inner{max-height:96vh;padding:13px;border-radius:20px;}
+    .public-option-modal-head strong{font-size:18px;}
+    .public-option-modal-close{min-height:40px;padding:8px 11px;font-size:12px;}
+  }
   .batbot-ai-modal{z-index:100000!important;pointer-events:auto;}
   .batbot-ai-modal.open{pointer-events:auto;}
   .batbot-ai-modal-panel{position:relative;z-index:100001;pointer-events:auto;}
@@ -4074,9 +4093,18 @@ document.addEventListener("keydown",function(event){
 
     const findCard=function(matcher){
       const children=Array.from(dashboard.children);
-      return children.find(function(el){
+      const topLevel=children.find(function(el){
         if(el.tagName==='BUTTON'||el.id==='batbotAIModal'||el.id==='batbotTicketModal')return false;
-        const text=(el.querySelector('h2')||el).textContent.replace(/\s+/g,' ').trim();
+        const heading=el.querySelector('h2');
+        const text=(heading||el).textContent.replace(/\s+/g,' ').trim();
+        return matcher(text,el);
+      });
+      if(topLevel)return topLevel;
+      const candidates=Array.from(dashboard.querySelectorAll('section.card,div.card,section.deposit-space,section.partners-space'));
+      return candidates.find(function(el){
+        if(el.closest('#admin'))return false;
+        const heading=el.querySelector(':scope > h2')||el.querySelector('h2');
+        const text=(heading||el).textContent.replace(/\s+/g,' ').trim();
         return matcher(text,el);
       })||null;
     };
@@ -4117,8 +4145,14 @@ document.addEventListener("keydown",function(event){
       document.body.style.overflow='';
     }
     function openModal(card,label){
-      if(!card)return;
       if(active)closeModal();
+      if(!card){
+        title.textContent=label||'Option';
+        body.innerHTML='<div class=\"professional-status error\"><div class=\"professional-status-head\">⚠️ Contenu indisponible</div><div class=\"professional-status-body\">Cette rubrique existe dans la navigation mais son contenu n’a pas été trouvé dans la page.</div></div>';
+        modal.classList.remove('hidden');
+        document.body.style.overflow='hidden';
+        return;
+      }
       title.textContent=label;
       const placeholder=document.createComment('batbot-public-option-placeholder');
       card.parentNode.insertBefore(placeholder,card);
