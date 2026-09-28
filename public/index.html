@@ -975,11 +975,6 @@ PSG vs Marseille"></textarea>
 
 
 
-  <div id="sdriveReferralCard" class="card hidden">
-    <h2>🚀 Rejoindre BatBot</h2>
-    <p id="sdriveInviteMessage" class="muted"></p>
-    <div id="sdriveReferralActions"></div>
-  </div>
 
 
 
@@ -1828,18 +1823,6 @@ async function copyText(value){
   }
 }
 function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon BatBot",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
-function renderBatBotReferral(data){
-  const card=document.getElementById("sdriveReferralCard");if(!card||!data||!data.sdriveLink)return;
-  const link=String(data.sdriveLink),message=data.sdriveInviteMessage||"Rejoins BatBot et profite de ses avantages.";
-  const messageEl=document.getElementById("sdriveInviteMessage"),actions=document.getElementById("sdriveReferralActions");
-  card.classList.remove("hidden");
-  if(messageEl&&messageEl.textContent!==message)messageEl.textContent=message;
-  if(actions&&actions.dataset.renderedLink!==link){
-    const safe=encodeURIComponent(link);
-    actions.innerHTML=`<button class="btn primary" onclick="copyText(decodeURIComponent('${safe}'))">📋 Copier le lien</button><button class="btn green" onclick="window.open(decodeURIComponent('${safe}'),'_blank','noopener,noreferrer')">🚀 Ouvrir BatBot</button><button class="btn telegram" onclick="shareCoupon('BatBot','',decodeURIComponent('${safe}'))">📤 Partager</button>`;
-    actions.dataset.renderedLink=link;
-  }
-}
 async function toggleUserDisabled(id,disabled){
   try{const r=await fetch("/api/admin/users/"+id+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({disabled})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible");await loadAdmin();}catch(e){alert(e.message);}
 }
@@ -3924,7 +3907,6 @@ async function loadPublicConfig(){
     const tg=document.getElementById("telegramContact");if(tg)tg.href=TELEGRAM_CONTACT;
     const groupWa=document.querySelector('a[href*="chat.whatsapp.com"]');if(groupWa&&data.whatsappGroup)groupWa.href=data.whatsappGroup;
     const groupTg=document.querySelector('a[href="https://t.me/sdrive123"]');if(groupTg&&data.telegramGroup)groupTg.href=data.telegramGroup;
-    renderBatBotReferral(data);
     loadBookmakers();
     loadCoupons();
     const socialMap={"TikTok":data.tiktok,"Facebook":data.facebook,"Instagram":data.instagram};
