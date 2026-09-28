@@ -2061,17 +2061,15 @@ function splitMatch(value){
   const text=String(value||"").trim();
   if(!text)return {home:"",away:"",raw:""};
 
-  // Les séparateurs explicites restent pris en charge. Un tiret n'est
-  // considéré comme séparateur que lorsqu'il est isolé par des espaces,
-  // afin de préserver les noms comme "Paris-Saint-Germain".
-  const separator=/\s*(?:vs|versus|contre)\s*|\s+v\s+|\s*[\/|]\s*|\s+[-–—−]\s+/i;
-  const parts=text.split(separator).map(x=>x.trim()).filter(Boolean);
+  // Séparateurs explicites : vs, versus, contre, slash, barre verticale
+  // et tiret isolé. Les tirets internes de Paris-Saint-Germain sont conservés.
+  const parts=text.split(/\s*(?:versus|vs|contre)\s*|\s+v\s+|\s*[\/|]\s*|\s+[-–—−]\s+/i).map(x=>x.trim()).filter(Boolean);
   if(parts.length>=2){
-    return {home:parts[0],away:parts.slice(1).join(" vs "),raw:text};
+    return {home:parts[0]||"",away:parts.slice(1).join(" vs ")||"",raw:text};
   }
 
-  // Sans séparateur, on transmet l'affiche complète au serveur. Le service
-  // SportScore détermine alors intelligemment les deux équipes.
+  // Sans séparateur, on laisse le service SportScore déterminer la coupure
+  // entre les deux équipes. Cela permet les noms composés.
   return {home:"",away:"",raw:text};
 }
 
@@ -2499,11 +2497,13 @@ async function submitBatBotAI(){
   openBatBotAIModal();
   setBatBotAIModalResult("");
   if(!match1&&!match2){
-    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse non lancée</strong><br><span>Saisissez au moins un match, avec ou sans séparateur entre les deux équipes.</span></div>',"error");
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse non lancée</strong><br><span>Saisissez au moins un match. Vous pouvez utiliser « vs », « contre », un tiret, « / » ou aucun séparateur.</span></div>',"error");
     return;
   }
-  if((match1&&(!first.home||!first.away))||(match2&&(!second.home||!second.away))){
-    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Format incorrect</strong><br><span>Chaque match doit contenir deux équipes. Les formats « vs », « contre », « - », « / » ou sans séparateur sont acceptés.</span></div>',"error");
+  const invalidFirst=match1 && !first.raw;
+  const invalidSecond=match2 && !second.raw;
+  if(invalidFirst||invalidSecond){
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Format incorrect</strong><br><span>Saisissez les deux noms d’équipes, avec ou sans séparateur.</span></div>',"error");
     return;
   }
   try{
