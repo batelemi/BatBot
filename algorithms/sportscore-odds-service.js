@@ -129,6 +129,132 @@ function calculateTeamMatchScore(wantedName, candidateName) {
 
 
 // ============================================================
+// EXTRACTION D'UNE AFFICHE
+// ============================================================
+
+function splitExplicitMatch(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+
+  // Les tirets ne séparent une affiche que lorsqu'ils sont isolés par
+  // des espaces. Cela évite de casser "Paris-Saint-Germain".
+  const separator = /\s*(?:vs|versus|contre)\s*|\s+v\s+|\s*[\/|]\s*|\s+[-–—−]\s+/i;
+  const parts = text.split(separator).map(part => part.trim()).filter(Boolean);
+
+  if (parts.length < 2) return null;
+
+  return {
+    home: parts[0],
+    away: parts.slice(1).join(" ")
+  };
+}
+
+function buildSplitCandidates(value) {
+  const text = String(value || "").trim();
+  const tokens = text.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return [];
+
+  // On teste d'abord les coupures proches du milieu : elles correspondent
+  // aux affiches classiques sans séparateur, tout en conservant toutes les
+  // coupures possibles pour les noms d'équipes composés.
+  const indexes = Array.from(
+    { length: tokens.length - 1 },
+    (_, index) => index + 1
+  ).sort((a, b) => {
+    const middle = tokens.length / 2;
+    return Math.abs(a - middle) - Math.abs(b - middle);
+  });
+
+  return indexes.map(index => ({
+    home: tokens.slice(0, index).join(" "),
+    away: tokens.slice(index).join(" ")
+  }));
+}
+
+async function resolveUnseparatedMatch(value) {
+  const candidates = buildSplitCandidates(value);
+  if (!candidates.length) {
+    throw new Error(`Format de match invalide : "${value}".`);
+  }
+
+  const attempts = [];
+
+  for (const candidate of candidates) {
+    const [homeResult, awayResult] = await Promise.allSettled([
+      searchTeam(candidate.home),
+      searchTeam(candidate.away)
+    ]);
+
+    if (homeResult.status !== "fulfilled" || awayResult.status !== "fulfilled") {
+      continue;
+    }
+
+    const homeTeam = homeResult.value;
+    const awayTeam = awayResult.value;
+    const homeScore = calculateTeamMatchScore(candidate.home, homeTeam.name);
+    const awayScore = calculateTeamMatchScore(candidate.away, awayTeam.name);
+
+    if (homeScore <= 0 || awayScore <= 0) continue;
+
+    attempts.push({
+      ...candidate,
+      homeTeam,
+      awayTeam,
+      score: homeScore + awayScore
+    });
+
+    // Deux correspondances exactes sont suffisamment sûres : inutile de
+    // multiplier les requêtes SportScore pour les coupures restantes.
+    if (homeScore === 1000 && awayScore === 1000) {
+      return {
+        home: candidate.home,
+        away: candidate.away
+      };
+    }
+  }
+
+  if (!attempts.length) {
+    throw new Error(
+      `Impossible d'identifier les deux équipes dans "${value}". Utilisez éventuellement "Équipe 1 vs Équipe 2".`
+    );
+  }
+
+  attempts.sort((a, b) => b.score - a.score);
+
+  return {
+    home: attempts[0].home,
+    away: attempts[0].away
+  };
+}
+
+async function normalizeMatchInput(item) {
+  if (!item || typeof item !== "object") {
+    throw new Error("Match invalide.");
+  }
+
+  if (item.home && item.away) {
+    return {
+      home: String(item.home).trim(),
+      away: String(item.away).trim()
+    };
+  }
+
+  const raw =
+    item.match ||
+    item.text ||
+    item.input ||
+    item.fixture ||
+    item.name ||
+    "";
+
+  const explicit = splitExplicitMatch(raw);
+  if (explicit) return explicit;
+
+  return resolveUnseparatedMatch(raw);
+}
+
+
+// ============================================================
 // API SPORTSCORE
 // ============================================================
 
@@ -963,19 +1089,20 @@ async function analyzeSportScoreMatches(matches) {
   }
 
   const selected = matches
-    .filter(item => item && item.home && item.away)
+    .filter(Boolean)
     .slice(0, 2);
 
   if (!selected.length) {
     throw new Error("Aucun match valide à analyser.");
   }
 
+  const normalizedMatches = await Promise.all(
+    selected.map(item => normalizeMatchInput(item))
+  );
+
   const results = await Promise.all(
-    selected.map(item =>
-      analyzeOne(
-        String(item.home).trim(),
-        String(item.away).trim()
-      )
+    normalizedMatches.map(item =>
+      analyzeOne(item.home, item.away)
     )
   );
 
