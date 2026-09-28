@@ -612,16 +612,19 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
     return cached.fixture;
   }
 
+  const candidates = [];
   const today = formatUtcDate(new Date());
-  const queries = [
+
+  // 1. Priorité aux rencontres du jour : direct et à venir.
+  const todayQueries = [
     [homeTeam.slug, "live"],
     [homeTeam.slug, "upcoming"],
     [awayTeam.slug, "live"],
     [awayTeam.slug, "upcoming"]
   ];
 
-  const responses = await Promise.allSettled(
-    queries.map(([teamSlug, status]) => {
+  const todayResponses = await Promise.allSettled(
+    todayQueries.map(([teamSlug, status]) => {
       const url =
         `${API_BASE}/fixtures/` +
         `?sport=${SPORT}` +
@@ -633,8 +636,7 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
     })
   );
 
-  const candidates = [];
-  for (const response of responses) {
+  for (const response of todayResponses) {
     if (response.status !== "fulfilled") continue;
     for (const match of extractMatches(response.value)) {
       if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
@@ -643,51 +645,100 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
     }
   }
 
-  // Fallback : le calendrier équipe peut contenir la rencontre même si
-  // /fixtures/ ne la retourne pas avec le filtre de statut attendu.
-  if (!candidates.length) {
-    const teamResponses = await Promise.allSettled([
-      fetchJson(`${API_BASE}/team/?sport=${SPORT}&slug=${encodeURIComponent(homeTeam.slug)}&limit=${TEAM_ENDPOINT_LIMIT}`),
-      fetchJson(`${API_BASE}/team/?sport=${SPORT}&slug=${encodeURIComponent(awayTeam.slug)}&limit=${TEAM_ENDPOINT_LIMIT}`)
-    ]);
+  // 2. Le calendrier des deux équipes contient les rencontres passées
+  //    ET à venir. Il sert à vérifier qu'une affiche saisie existe réellement.
+  const teamResponses = await Promise.allSettled([
+    fetchJson(`${API_BASE}/team/?sport=${SPORT}&slug=${encodeURIComponent(homeTeam.slug)}&limit=${TEAM_ENDPOINT_LIMIT}`),
+    fetchJson(`${API_BASE}/team/?sport=${SPORT}&slug=${encodeURIComponent(awayTeam.slug)}&limit=${TEAM_ENDPOINT_LIMIT}`)
+  ]);
 
-    for (const response of teamResponses) {
-      if (response.status !== "fulfilled") continue;
-      for (const match of extractMatches(response.value)) {
-        if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
-          candidates.push(match);
-        }
+  for (const response of teamResponses) {
+    if (response.status !== "fulfilled") continue;
+    for (const match of extractMatches(response.value)) {
+      if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
+        candidates.push(match);
       }
     }
   }
 
+  // 3. Pour les confrontations historiques, le H2H est la dernière
+  //    vérification ciblée. On ne l'utilise jamais pour inventer un match.
+  try {
+    const h2hData = await fetchJson(
+      `${API_BASE}/h2h/?sport=${SPORT}` +
+      `&team1=${encodeURIComponent(homeTeam.slug)}` +
+      `&team2=${encodeURIComponent(awayTeam.slug)}` +
+      `&limit=50`
+    );
+    for (const match of extractMatches(h2hData)) {
+      if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
+        candidates.push(match);
+      }
+    }
+  } catch (_) {
+    // L'absence du H2H ne doit pas empêcher les vérifications
+    // déjà obtenues par /fixtures/ et /team/.
+  }
+
   if (!candidates.length) {
-    fixtureCache.set(cacheKey, { fixture: null, expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS });
+    fixtureCache.set(cacheKey, {
+      fixture: null,
+      expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
+    });
     return null;
   }
 
   const unique = new Map();
   for (const match of candidates) {
-    const key = getMatchSlug(match) || `${getMatchTeamName(match, "home")}|${getMatchTeamName(match, "away")}|${getMatchTimestamp(match)}`;
+    const normalized = normalizeFixture(match);
+    if (!normalized?.home || !normalized?.away) continue;
+
+    const key =
+      normalized.id ||
+      normalized.slug ||
+      `${cleanText(normalized.home)}|${cleanText(normalized.away)}|${normalized.date || ""}`;
+
     unique.set(key, match);
   }
 
+  if (!unique.size) {
+    fixtureCache.set(cacheKey, {
+      fixture: null,
+      expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
+    });
+    return null;
+  }
+
+  // Priorité : direct > à venir > rencontre terminée la plus récente.
   const ordered = [...unique.values()].sort((a, b) => {
     const liveDiff = Number(isLiveMatch(b)) - Number(isLiveMatch(a));
     if (liveDiff) return liveDiff;
-    return Math.abs(getMatchTimestamp(a) - Date.now()) - Math.abs(getMatchTimestamp(b) - Date.now());
+
+    const ta = getMatchTimestamp(a);
+    const tb = getMatchTimestamp(b);
+    const now = Date.now();
+    const aUpcoming = ta > now;
+    const bUpcoming = tb > now;
+
+    if (aUpcoming !== bUpcoming) return Number(bUpcoming) - Number(aUpcoming);
+    if (aUpcoming && bUpcoming) return ta - tb;
+    return tb - ta;
   });
 
   let fixture = normalizeFixture(ordered[0]);
   const detail = await fetchFixtureDetail(fixture?.slug);
+
   if (detail && fixtureMatchesTeams(detail, homeTeam, awayTeam)) {
     fixture = normalizeFixture({ ...ordered[0], ...detail });
   }
 
-  fixtureCache.set(cacheKey, { fixture, expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS });
+  fixtureCache.set(cacheKey, {
+    fixture,
+    expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
+  });
+
   return fixture;
 }
-
 
 // ============================================================
 // HISTORIQUE D'ÉQUIPE
@@ -1130,6 +1181,33 @@ async function analyzeOne(homeName, awayName) {
     fetchHeadToHead(homeTeam, awayTeam),
     fetchCurrentFixture(homeTeam, awayTeam)
   ]);
+
+  // Règle fondamentale : une affiche saisie manuellement doit d'abord
+  // être vérifiée comme rencontre réelle dans SportScore. Sans fixture
+  // correspondante, aucune statistique ni probabilité ne doit être produite.
+  if (!fixture) {
+    return {
+      match: `${homeName} vs ${awayName}`,
+      fixture: null,
+      ready: false,
+      recommendation: "Match non vérifié",
+      reason:
+        "Cette rencontre n’a pas été retrouvée dans les données réelles SportScore. Aucune analyse statistique n’est produite.",
+      data_quality: "non vérifiée",
+      homeTeam: {
+        name: homeTeam.name,
+        slug: homeTeam.slug
+      },
+      awayTeam: {
+        name: awayTeam.name,
+        slug: awayTeam.slug
+      },
+      stats: {
+        home: buildTeamStats(homeMatchesInitial, homeTeam),
+        away: buildTeamStats(awayMatchesInitial, awayTeam)
+      }
+    };
+  }
 
   // Le H2H est un complément ciblé : il ne remplace pas l'historique
   // de chaque équipe, mais permet de récupérer des scores vérifiables
