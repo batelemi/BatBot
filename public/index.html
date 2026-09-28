@@ -3244,7 +3244,7 @@ function startBatBotMessagesPolling(){
   loadBatBotMessages({loading:true});
   batbotMessagesPollTimer=setInterval(function(){
     if(!document.hidden&&!document.getElementById("dashboard")?.classList.contains("hidden"))loadBatBotMessages();
-  },5000);
+  },30000);
 }
 
 async function loadAdminMessages(){
@@ -4053,10 +4053,8 @@ function startBatBotLiveSync(){
     if(document.hidden)return;
     try{
       await Promise.allSettled([
-        loadPublicConfig(),
         loadDailyMatches(),
         loadMyTransactions(),
-        loadBatBotMessages(),
         refreshCurrentUserSilently()
       ]);
       // Ne pas recharger toute l'administration automatiquement : cela
@@ -4065,7 +4063,7 @@ function startBatBotLiveSync(){
         await Promise.allSettled([loadAdminPaymentRequests(),loadAdminMessages()]);
       }
     }catch(error){console.warn("LIVE_SYNC:",error);}
-  },5000);
+  },30000);
 }
 
 document.addEventListener("DOMContentLoaded",function(){
