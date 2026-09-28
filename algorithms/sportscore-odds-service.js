@@ -74,6 +74,96 @@ function getSignificantTokens(value) {
     .filter(token => !ignoredWords.has(token));
 }
 
+// Alias des appellations françaises, anglaises et courantes.
+// Ils servent uniquement à interroger SportScore avec plusieurs écritures
+// possibles ; le nom canonique renvoyé par SportScore reste utilisé ensuite.
+const TEAM_NAME_ALIASES = {
+  "cote d'ivoire": ["Cote d'Ivoire", "Ivory Coast", "Côte d'Ivoire"],
+  "cote d ivoire": ["Cote d'Ivoire", "Ivory Coast", "Côte d'Ivoire"],
+  "ivory coast": ["Ivory Coast", "Cote d'Ivoire", "Côte d'Ivoire"],
+  "allemagne": ["Germany"],
+  "angleterre": ["England"],
+  "espagne": ["Spain"],
+  "ecosse": ["Scotland"],
+  "pays de galles": ["Wales"],
+  "irlande": ["Ireland", "Republic of Ireland"],
+  "irlande du nord": ["Northern Ireland"],
+  "pays bas": ["Netherlands"],
+  "belgique": ["Belgium"],
+  "suisse": ["Switzerland"],
+  "autriche": ["Austria"],
+  "danemark": ["Denmark"],
+  "suede": ["Sweden"],
+  "finlande": ["Finland"],
+  "islande": ["Iceland"],
+  "grece": ["Greece"],
+  "turquie": ["Turkey"],
+  "croatie": ["Croatia"],
+  "serbie": ["Serbia"],
+  "slovenie": ["Slovenia"],
+  "slovaquie": ["Slovakia"],
+  "republique tcheque": ["Czech Republic", "Czechia"],
+  "hongrie": ["Hungary"],
+  "roumanie": ["Romania"],
+  "bulgarie": ["Bulgaria"],
+  "albanie": ["Albania"],
+  "bosnie": ["Bosnia and Herzegovina"],
+  "ukraine": ["Ukraine"],
+  "russie": ["Russia"],
+  "portugal": ["Portugal"],
+  "italie": ["Italy"],
+  "france": ["France"],
+  "bresil": ["Brazil"],
+  "argentine": ["Argentina"],
+  "uruguay": ["Uruguay"],
+  "chili": ["Chile"],
+  "colombie": ["Colombia"],
+  "equateur": ["Ecuador"],
+  "mexique": ["Mexico"],
+  "etats unis": ["United States", "USA"],
+  "etats unis d amerique": ["United States", "USA"],
+  "canada": ["Canada"],
+  "japon": ["Japan"],
+  "coree du sud": ["South Korea"],
+  "australie": ["Australia"],
+  "maroc": ["Morocco"],
+  "algerie": ["Algeria"],
+  "tunisie": ["Tunisia"],
+  "egypte": ["Egypt"],
+  "senegal": ["Senegal"],
+  "cameroun": ["Cameroon"],
+  "ghana": ["Ghana"],
+  "nigeria": ["Nigeria"],
+  "mali": ["Mali"],
+  "burkina faso": ["Burkina Faso"],
+  "guinee": ["Guinea"],
+  "afrique du sud": ["South Africa"],
+
+  // Clubs couramment saisis en français.
+  "barcelone": ["Barcelona"],
+  "fc barcelone": ["Barcelona", "FC Barcelona"],
+  "paris saint germain": ["Paris Saint-Germain", "PSG"],
+  "psg": ["Paris Saint-Germain", "PSG"],
+  "olympique de marseille": ["Marseille", "Olympique de Marseille"],
+  "om": ["Marseille", "Olympique de Marseille"],
+  "olympique lyonnais": ["Lyon", "Olympique Lyonnais"],
+  "lyon": ["Lyon", "Olympique Lyonnais"],
+  "monaco": ["Monaco", "AS Monaco"],
+  "lille": ["Lille", "Lille OSC"],
+  "nice": ["Nice", "OGC Nice"],
+  "rennes": ["Rennes", "Stade Rennais"],
+  "nantes": ["Nantes", "FC Nantes"],
+  "saint etienne": ["Saint-Etienne", "AS Saint-Etienne"]
+};
+
+function getTeamSearchQueries(teamName) {
+  const original = String(teamName || "").trim();
+  const normalized = cleanText(original);
+  const aliases = TEAM_NAME_ALIASES[normalized] || [];
+  return Array.from(new Set([original, ...aliases].filter(Boolean)));
+}
+
+
 
 // ============================================================
 // CORRESPONDANCE ÉQUIPE
@@ -129,132 +219,6 @@ function calculateTeamMatchScore(wantedName, candidateName) {
 
 
 // ============================================================
-// EXTRACTION D'UNE AFFICHE
-// ============================================================
-
-function splitExplicitMatch(value) {
-  const text = String(value || "").trim();
-  if (!text) return null;
-
-  // Les tirets ne séparent une affiche que lorsqu'ils sont isolés par
-  // des espaces. Cela évite de casser "Paris-Saint-Germain".
-  const separator = /\s*(?:vs|versus|contre)\s*|\s+v\s+|\s*[\/|]\s*|\s+[-–—−]\s+/i;
-  const parts = text.split(separator).map(part => part.trim()).filter(Boolean);
-
-  if (parts.length < 2) return null;
-
-  return {
-    home: parts[0],
-    away: parts.slice(1).join(" ")
-  };
-}
-
-function buildSplitCandidates(value) {
-  const text = String(value || "").trim();
-  const tokens = text.split(/\s+/).filter(Boolean);
-  if (tokens.length < 2) return [];
-
-  // On teste d'abord les coupures proches du milieu : elles correspondent
-  // aux affiches classiques sans séparateur, tout en conservant toutes les
-  // coupures possibles pour les noms d'équipes composés.
-  const indexes = Array.from(
-    { length: tokens.length - 1 },
-    (_, index) => index + 1
-  ).sort((a, b) => {
-    const middle = tokens.length / 2;
-    return Math.abs(a - middle) - Math.abs(b - middle);
-  });
-
-  return indexes.map(index => ({
-    home: tokens.slice(0, index).join(" "),
-    away: tokens.slice(index).join(" ")
-  }));
-}
-
-async function resolveUnseparatedMatch(value) {
-  const candidates = buildSplitCandidates(value);
-  if (!candidates.length) {
-    throw new Error(`Format de match invalide : "${value}".`);
-  }
-
-  const attempts = [];
-
-  for (const candidate of candidates) {
-    const [homeResult, awayResult] = await Promise.allSettled([
-      searchTeam(candidate.home),
-      searchTeam(candidate.away)
-    ]);
-
-    if (homeResult.status !== "fulfilled" || awayResult.status !== "fulfilled") {
-      continue;
-    }
-
-    const homeTeam = homeResult.value;
-    const awayTeam = awayResult.value;
-    const homeScore = calculateTeamMatchScore(candidate.home, homeTeam.name);
-    const awayScore = calculateTeamMatchScore(candidate.away, awayTeam.name);
-
-    if (homeScore <= 0 || awayScore <= 0) continue;
-
-    attempts.push({
-      ...candidate,
-      homeTeam,
-      awayTeam,
-      score: homeScore + awayScore
-    });
-
-    // Deux correspondances exactes sont suffisamment sûres : inutile de
-    // multiplier les requêtes SportScore pour les coupures restantes.
-    if (homeScore === 1000 && awayScore === 1000) {
-      return {
-        home: candidate.home,
-        away: candidate.away
-      };
-    }
-  }
-
-  if (!attempts.length) {
-    throw new Error(
-      `Impossible d'identifier les deux équipes dans "${value}". Utilisez éventuellement "Équipe 1 vs Équipe 2".`
-    );
-  }
-
-  attempts.sort((a, b) => b.score - a.score);
-
-  return {
-    home: attempts[0].home,
-    away: attempts[0].away
-  };
-}
-
-async function normalizeMatchInput(item) {
-  if (!item || typeof item !== "object") {
-    throw new Error("Match invalide.");
-  }
-
-  if (item.home && item.away) {
-    return {
-      home: String(item.home).trim(),
-      away: String(item.away).trim()
-    };
-  }
-
-  const raw =
-    item.match ||
-    item.text ||
-    item.input ||
-    item.fixture ||
-    item.name ||
-    "";
-
-  const explicit = splitExplicitMatch(raw);
-  if (explicit) return explicit;
-
-  return resolveUnseparatedMatch(raw);
-}
-
-
-// ============================================================
 // API SPORTSCORE
 // ============================================================
 
@@ -280,80 +244,96 @@ async function fetchJson(url) {
 // ============================================================
 
 async function searchTeam(teamName) {
-  const url =
-    `${API_BASE}/search/` +
-    `?q=${encodeURIComponent(teamName)}` +
-    `&sport=${SPORT}` +
-    `&limit=20`;
+  const queries = getTeamSearchQueries(teamName);
+  let lastSearchError = null;
 
-  const data = await fetchJson(url);
+  for (const query of queries) {
+    try {
+      const url =
+        `${API_BASE}/search/` +
+        `?q=${encodeURIComponent(query)}` +
+        `&sport=${SPORT}` +
+        `&limit=20`;
 
-  const candidates = [
-    data?.teams,
-    data?.data?.teams,
-    data?.results?.teams,
-    data?.data?.results?.teams,
-    data?.results,
-    data?.data
-  ];
+      const data = await fetchJson(url);
 
-  const teams = [];
-  const seen = new Set();
+      const candidates = [
+        data?.teams,
+        data?.data?.teams,
+        data?.results?.teams,
+        data?.data?.results?.teams,
+        data?.results,
+        data?.data
+      ];
 
-  for (const candidate of candidates) {
-    if (!Array.isArray(candidate)) continue;
+      const teams = [];
+      const seen = new Set();
 
-    for (const team of candidate) {
-      const name = team?.name || team?.team?.name || "";
-      const slug = team?.slug || team?.team?.slug || "";
+      for (const candidate of candidates) {
+        if (!Array.isArray(candidate)) continue;
 
-      if (!name || !slug) continue;
+        for (const team of candidate) {
+          const name = team?.name || team?.team?.name || "";
+          const slug = team?.slug || team?.team?.slug || "";
 
-      const key = `${cleanText(name)}|${cleanText(slug)}`;
-      if (seen.has(key)) continue;
+          if (!name || !slug) continue;
 
-      seen.add(key);
-      teams.push({ ...team, name, slug });
+          const key = `${cleanText(name)}|${cleanText(slug)}`;
+          if (seen.has(key)) continue;
+
+          seen.add(key);
+          teams.push({ ...team, name, slug });
+        }
+      }
+
+      if (!teams.length) {
+        lastSearchError = new Error(`Aucune équipe trouvée pour "${query}".`);
+        continue;
+      }
+
+      const wanted = cleanText(teamName);
+
+      const exact = teams.filter(
+        team => cleanText(team.name) === wanted
+      );
+
+      if (exact.length === 1) return exact[0];
+
+      const ranked = teams
+        .map(team => ({
+          team,
+          score: calculateTeamMatchScore(teamName, team.name)
+        }))
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      if (ranked.length) {
+        if (
+          ranked.length === 1 ||
+          ranked[0].score > ranked[1].score
+        ) {
+          return ranked[0].team;
+        }
+      }
+
+      // Si la requête était un alias canonique anglais, une égalité exacte
+      // sur cette requête reste prioritaire.
+      const canonicalExact = teams.filter(
+        team => cleanText(team.name) === cleanText(query)
+      );
+
+      if (canonicalExact.length === 1) return canonicalExact[0];
+    } catch (error) {
+      lastSearchError = error;
     }
   }
 
-  if (!teams.length) {
-    throw new Error(`Aucune équipe trouvée pour "${teamName}".`);
-  }
-
-  const wanted = cleanText(teamName);
-
-  const exact = teams.filter(
-    team => cleanText(team.name) === wanted
-  );
-
-  if (exact.length === 1) return exact[0];
-
-  const ranked = teams
-    .map(team => ({
-      team,
-      score: calculateTeamMatchScore(teamName, team.name)
-    }))
-    .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  if (!ranked.length) {
-    throw new Error(
-      `Impossible d'identifier précisément "${teamName}".`
-    );
-  }
-
-  if (
-    ranked.length === 1 ||
-    ranked[0].score > ranked[1].score
-  ) {
-    return ranked[0].team;
-  }
-
   throw new Error(
+    lastSearchError?.message ||
     `Impossible d'identifier précisément "${teamName}".`
   );
 }
+
 
 
 // ============================================================
@@ -1080,6 +1060,127 @@ async function analyzeOne(homeName, awayName) {
 
 
 // ============================================================
+// EXTRACTION ET RESOLUTION D'UNE AFFICHE
+// ============================================================
+
+function splitExplicitMatch(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+
+  // Séparateurs explicites. Un tiret n'est séparateur que lorsqu'il est
+  // entouré d'espaces afin de ne pas casser Paris-Saint-Germain.
+  const separator = /\s*(?:versus|vs|contre)\s*|\s+v\s+|\s*[\/|]\s*|\s+[-–—−]\s+/i;
+  const parts = text.split(separator).map(part => part.trim()).filter(Boolean);
+
+  if (parts.length < 2) return null;
+
+  return {
+    home: parts[0],
+    away: parts.slice(1).join(" ")
+  };
+}
+
+function buildSplitCandidates(value) {
+  const text = String(value || "").trim();
+  const tokens = text.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return [];
+
+  const indexes = Array.from(
+    { length: tokens.length - 1 },
+    (_, index) => index + 1
+  ).sort((a, b) => {
+    const middle = tokens.length / 2;
+    return Math.abs(a - middle) - Math.abs(b - middle);
+  });
+
+  return indexes.map(index => ({
+    home: tokens.slice(0, index).join(" "),
+    away: tokens.slice(index).join(" ")
+  }));
+}
+
+async function resolveUnseparatedMatch(value) {
+  const candidates = buildSplitCandidates(value);
+  if (!candidates.length) {
+    throw new Error(`Format de match invalide : "${value}".`);
+  }
+
+  const attempts = [];
+
+  for (const candidate of candidates) {
+    const [homeResult, awayResult] = await Promise.allSettled([
+      searchTeam(candidate.home),
+      searchTeam(candidate.away)
+    ]);
+
+    if (homeResult.status !== "fulfilled" || awayResult.status !== "fulfilled") {
+      continue;
+    }
+
+    const homeTeam = homeResult.value;
+    const awayTeam = awayResult.value;
+    const homeScore = calculateTeamMatchScore(candidate.home, homeTeam.name);
+    const awayScore = calculateTeamMatchScore(candidate.away, awayTeam.name);
+
+    if (homeScore <= 0 || awayScore <= 0) continue;
+
+    attempts.push({
+      ...candidate,
+      homeTeam,
+      awayTeam,
+      score: homeScore + awayScore
+    });
+
+    if (homeScore === 1000 && awayScore === 1000) {
+      return {
+        home: candidate.home,
+        away: candidate.away
+      };
+    }
+  }
+
+  if (!attempts.length) {
+    throw new Error(
+      `Impossible d'identifier les deux équipes dans "${value}".`
+    );
+  }
+
+  attempts.sort((a, b) => b.score - a.score);
+
+  return {
+    home: attempts[0].home,
+    away: attempts[0].away
+  };
+}
+
+async function normalizeMatchInput(item) {
+  if (!item || typeof item !== "object") {
+    throw new Error("Match invalide.");
+  }
+
+  if (item.home && item.away) {
+    return {
+      home: String(item.home).trim(),
+      away: String(item.away).trim()
+    };
+  }
+
+  const raw =
+    item.match ||
+    item.text ||
+    item.input ||
+    item.fixture ||
+    item.name ||
+    "";
+
+  const explicit = splitExplicitMatch(raw);
+  if (explicit) return explicit;
+
+  return resolveUnseparatedMatch(raw);
+}
+
+
+// ============================================================
 // ANALYSE DE 1 OU 2 MATCHS
 // ============================================================
 
@@ -1088,21 +1189,19 @@ async function analyzeSportScoreMatches(matches) {
     throw new Error("Aucun match à analyser.");
   }
 
-  const selected = matches
-    .filter(Boolean)
-    .slice(0, 2);
+  const selected = matches.slice(0, 2);
+  const normalized = await Promise.all(selected.map(normalizeMatchInput));
 
-  if (!selected.length) {
+  if (!normalized.length) {
     throw new Error("Aucun match valide à analyser.");
   }
 
-  const normalizedMatches = await Promise.all(
-    selected.map(item => normalizeMatchInput(item))
-  );
-
   const results = await Promise.all(
-    normalizedMatches.map(item =>
-      analyzeOne(item.home, item.away)
+    normalized.map(item =>
+      analyzeOne(
+        String(item.home).trim(),
+        String(item.away).trim()
+      )
     )
   );
 
@@ -1133,5 +1232,7 @@ async function analyzeSportScoreMatches(matches) {
 
 module.exports = {
   analyzeSportScoreMatches,
-  searchTeam
+  searchTeam,
+  cleanText,
+  calculateTeamMatchScore
 };
