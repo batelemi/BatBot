@@ -399,7 +399,12 @@ textarea{min-height:120px;resize:vertical}
 
 .profile-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
 .status-card{display:flex;align-items:center;gap:10px;padding:16px;border-radius:18px;border:1px solid rgba(83,207,255,.35);box-shadow:0 8px 22px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.08);background:linear-gradient(145deg,#12395b,#081e35)}
-.status-card .status-icon{font-size:28px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}.status-card span{display:block;font-size:12px;color:#c4d8e8}.status-card strong{display:block;margin-top:5px;font-size:17px;color:#fff;text-shadow:0 2px 1px rgba(0,0,0,.35)}
+.status-card .status-icon{font-size:28px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}.status-card span{display:block;font-size:12px;color:#c4d8e8}.status-card strong{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:17px;color:#fff;text-shadow:0 2px 1px rgba(0,0,0,.35)}
+.status-card strong.status-value::before{content:"";width:12px;height:12px;flex:0 0 12px;border-radius:50%;background:#DC2626;box-shadow:0 0 0 0 rgba(220,38,38,.55),0 0 7px rgba(220,38,38,.65);animation:batbotStatusPulseRed 1.25s ease-in-out infinite}
+.status-card strong.status-value.status-active::before{background:#21C55D;box-shadow:0 0 0 0 rgba(33,197,93,.55),0 0 7px rgba(33,197,93,.65);animation-name:batbotStatusPulseGreen}
+@keyframes batbotStatusPulseGreen{0%,100%{opacity:.62;box-shadow:0 0 0 0 rgba(33,197,93,.58),0 0 6px rgba(33,197,93,.48)}50%{opacity:1;box-shadow:0 0 0 6px rgba(33,197,93,0),0 0 13px rgba(33,197,93,.9)}}
+@keyframes batbotStatusPulseRed{0%,100%{opacity:.62;box-shadow:0 0 0 0 rgba(220,38,38,.58),0 0 6px rgba(220,38,38,.48)}50%{opacity:1;box-shadow:0 0 0 6px rgba(220,38,38,0),0 0 13px rgba(220,38,38,.9)}}
+@media(prefers-reduced-motion:reduce){.status-card strong.status-value::before{animation:none!important;opacity:1!important}}
 .premium-status-card{border-color:rgba(245,197,66,.5);background:linear-gradient(145deg,#29465c,#10253b)}.ai-status-card{border-color:rgba(0,213,255,.5);background:linear-gradient(145deg,#124c64,#0b263f)}
 .ai-match-fields{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}.ai-match-fields input{margin:0}
 .ai-result{overflow:hidden}.ai-match-result{padding:12px 0;border-bottom:1px solid #315D82}.ai-match-result:last-child{border-bottom:0}
@@ -672,8 +677,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
   <div class="profile-status-grid" aria-label="Statuts du compte">
-    <div class="status-card premium-status-card"><div class="status-icon"><i class="fa-solid fa-gem" aria-hidden="true"></i></div><div><span>Statut Premium</span><strong id="premiumStatusText">Non actif</strong></div></div>
-    <div class="status-card ai-status-card"><div class="status-icon"><i class="fa-solid fa-robot" aria-hidden="true"></i></div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
+    <div class="status-card premium-status-card"><div class="status-icon"><i class="fa-solid fa-gem" aria-hidden="true"></i></div><div><span>Statut Premium</span><strong id="premiumStatusText" class="status-value">Non actif</strong></div></div>
+    <div class="status-card ai-status-card"><div class="status-icon"><i class="fa-solid fa-robot" aria-hidden="true"></i></div><div><span>Statut IA</span><strong id="aiStatusText" class="status-value">Non active</strong></div></div>
   </div>
 
   <section class="batbot-home-shortcuts" id="batbotHomeShortcuts" aria-label="Raccourcis rapides">
@@ -2033,8 +2038,8 @@ function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
   const aiActive=premium && Boolean(user&&user.ai_active);
   const p=document.getElementById("premiumStatusText"); const a=document.getElementById("aiStatusText");
-  if(p)p.textContent=premium?"🟢 Actif":"🔴 Non actif";
-  if(a)a.textContent=aiActive?"🟢 Active":"🔴 Non active";
+  if(p){p.textContent=premium?"Actif":"Non actif";p.classList.toggle("status-active",premium);}
+  if(a){a.textContent=aiActive?"Active":"Non active";a.classList.toggle("status-active",aiActive);}
 }
 function splitMatch(value){
   const text=String(value||"").trim();
