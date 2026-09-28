@@ -3547,19 +3547,24 @@ async function loadAdmin(){
 async function loadDailyMatches(){
   const container=document.getElementById("dailyMatches");
   if(!container)return;
+  if(container.dataset.loading==="true")return;
+  container.dataset.loading="true";
 
   const hasDisplayedResults=container.dataset.loaded==="true";
   if(!hasDisplayedResults && !container.querySelector(".professional-loading"))container.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des probabilités</strong><small>Récupération des informations BatBot…</small></div></div>';
 
+  const controller=new AbortController();
+  const timeoutId=setTimeout(function(){controller.abort();},8000);
+
   try{
     const response=await fetch("/api/daily-matches",{
-      method:"GET",credentials:"same-origin",cache:"no-store"
+      method:"GET",credentials:"same-origin",cache:"no-store",signal:controller.signal
     });
 
     const data=await readApiResponse(response);
 
     if(!response.ok){
-      if(!hasDisplayedResults)container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Probabilités indisponibles</div><div class="professional-status-body">Les probabilités ne peuvent pas être chargées pour le moment. Veuillez réessayer plus tard.</div></div>';
+      if(!hasDisplayedResults)container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Probabilités indisponibles</div><div class="professional-status-body">Les probabilités ne peuvent pas être chargées pour le moment. Veuillez réessayer.</div><button type="button" class="btn secondary" style="margin-top:10px" onclick="loadDailyMatches()">🔄 Réessayer</button></div>';
       return;
     }
 
@@ -3592,7 +3597,13 @@ async function loadDailyMatches(){
 
   }catch(error){
     console.error("DAILY MATCHES:",error);
-    if(!hasDisplayedResults)container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service temporairement indisponible</div><div class="professional-status-body">Impossible de récupérer les informations pour le moment.</div></div>';
+    if(!hasDisplayedResults){
+      const timeoutMessage=error?.name==="AbortError"?"Le service met trop de temps à répondre.":"Impossible de récupérer les informations pour le moment.";
+      container.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Probabilités temporairement indisponibles</div><div class="professional-status-body">'+timeoutMessage+' Vous pouvez réessayer.</div><button type="button" class="btn secondary" style="margin-top:10px" onclick="loadDailyMatches()">🔄 Réessayer</button></div>';
+    }
+  }finally{
+    clearTimeout(timeoutId);
+    container.dataset.loading="false";
   }
 }
 
@@ -4175,12 +4186,13 @@ document.addEventListener("keydown",function(event){
       const aiShortcut=document.getElementById('batbotHomeAIShortcut');
       const dailyShortcut=document.getElementById('batbotHomeDailyShortcut');
       if(aiShortcut)aiShortcut.addEventListener('click',function(){closeSheet();openBatBotAIFromMenu();});
-      if(dailyShortcut)dailyShortcut.addEventListener('click',function(){closeSheet();openModal(cards.daily(),'Probabilités des matchs du jour');});
+      if(dailyShortcut)dailyShortcut.addEventListener('click',function(){closeSheet();openModal(cards.daily(),'Probabilités des matchs du jour');loadDailyMatches();});
     }
 
     const configs={
       analyses:{title:'Analyses & IA',icon:'fa-solid fa-magnifying-glass-chart',subtitle:'Analyse et pronostics de la communauté',items:[
-        ['Demander une analyse','fa-solid fa-magnifying-glass-chart','ai'],
+        ['Demander une analyse','fa-solid fa-paper-plane','analysisRequest'],
+        ['Analyse BatBot IA','fa-solid fa-brain','ai'],
         ['Pronostics des membres','fa-solid fa-bullhorn','predictions']
       ]},
       finances:{title:'Finances',icon:'fa-solid fa-wallet',subtitle:'Paiements et historique des transactions',items:[
@@ -4228,6 +4240,7 @@ document.addEventListener("keydown",function(event){
           }
           const card=cards[item[2]]();
           openModal(card,item[0]);
+          if(item[2]==='daily')loadDailyMatches();
         });
         actions.appendChild(button);
       });
