@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#071A2D">
 <title>BatBot — Analyse de matchs</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 
 <style>
     .inline-logo{
@@ -668,8 +669,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
   <div class="profile-status-grid" aria-label="Statuts du compte">
-    <div class="status-card premium-status-card"><div class="status-icon">💎</div><div><span>Statut Premium</span><strong id="premiumStatusText">Non actif</strong></div></div>
-    <div class="status-card ai-status-card"><div class="status-icon">🤖</div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
+    <div class="status-card premium-status-card"><div class="status-icon"><i class="fa-solid fa-gem" aria-hidden="true"></i></div><div><span>Statut Premium</span><strong id="premiumStatusText">Non actif</strong></div></div>
+    <div class="status-card ai-status-card"><div class="status-icon"><i class="fa-solid fa-robot" aria-hidden="true"></i></div><div><span>Statut IA</span><strong id="aiStatusText">🔴 Non active</strong></div></div>
   </div>
 
   <section class="card batbot-messages-card" id="batbotMessagesCard">
@@ -4000,32 +4001,82 @@ document.addEventListener("keydown",function(event){
 
 
 <style id="batbot-public-options-style">
-  .public-options-launcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
-  .public-option-btn{min-height:66px;border:1px solid rgba(0,213,255,.38);border-radius:16px;background:linear-gradient(145deg,#123b5b,#0b223a);color:#fff;font-weight:800;font-size:14px;padding:10px;box-shadow:0 5px 14px rgba(0,0,0,.16);cursor:pointer}
-  .public-option-btn:active{transform:scale(.98)}
-  .public-options-label{margin:18px 0 8px;color:#6EE7A0;font-weight:900;letter-spacing:1px;text-transform:uppercase;font-size:12px}
-  .public-option-modal{position:fixed;inset:0;background:rgba(2,10,20,.9);z-index:150;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}
-  .public-option-modal.hidden{display:none}
-  .public-option-modal-inner{width:min(720px,100%);margin-top:18px;background:#0b223a;border:1px solid #2f628a;border-radius:20px;padding:14px;box-shadow:0 15px 45px rgba(0,0,0,.5)}
-  .public-option-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;position:sticky;top:0;background:#0b223a;z-index:2;padding-bottom:8px}
-  .public-option-modal-head strong{font-size:17px}
-  .public-option-modal-close{width:auto;margin:0;padding:9px 12px;white-space:nowrap}
-  .public-option-modal-body>.card,.public-option-modal-body>section{margin-top:0}
-  @media(min-width:640px){.public-options-launcher{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  /* ===== BatBot — navigation mobile refondue ===== */
+  body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px));}
+  .batbot-bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:9000;width:min(100%,620px);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(5,18,33,.96);border-top:1px solid rgba(83,207,255,.24);box-shadow:0 -12px 35px rgba(0,0,0,.35);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+  .batbot-bottom-nav.hidden{display:none}
+  .batbot-nav-item{min-width:0;min-height:58px;border:1px solid transparent;border-radius:15px;background:transparent;color:#8FA9BF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font:inherit;font-size:10px;font-weight:900;cursor:pointer;transition:background .16s ease,color .16s ease,transform .16s ease,border-color .16s ease;}
+  .batbot-nav-item i{font-size:20px;line-height:1}
+  .batbot-nav-item span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .batbot-nav-item:hover{color:#fff;background:rgba(0,191,255,.08)}
+  .batbot-nav-item:active{transform:scale(.96)}
+  .batbot-nav-item.active{color:#fff;background:linear-gradient(145deg,rgba(0,191,255,.18),rgba(0,91,145,.18));border-color:rgba(0,191,255,.28);box-shadow:0 5px 18px rgba(0,191,255,.10)}
+  .batbot-nav-item.active i{color:#39CFFF;filter:drop-shadow(0 0 7px rgba(0,191,255,.28))}
+  .batbot-nav-sheet{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom,0px));transform:translate(-50%,10px);z-index:8999;width:min(calc(100% - 24px),560px);max-height:min(62vh,520px);overflow:auto;padding:14px;border:1px solid rgba(83,207,255,.28);border-radius:22px;background:linear-gradient(145deg,rgba(15,48,79,.98),rgba(5,23,40,.98));box-shadow:0 20px 65px rgba(0,0,0,.55);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .16s ease,visibility .16s ease;}
+  .batbot-nav-sheet.open{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0)}
+  .batbot-nav-sheet-backdrop{position:fixed;inset:0;z-index:8998;background:rgba(1,8,18,.42);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,visibility .16s ease;}
+  .batbot-nav-sheet-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;}
+  .batbot-nav-sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .batbot-nav-sheet-head i{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:rgba(0,191,255,.12);color:#39CFFF;}
+  .batbot-nav-sheet-head strong{font-size:17px;}
+  .batbot-nav-sheet-head small{display:block;color:#AFC1D4;font-size:11px;margin-top:2px;}
+  .batbot-nav-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  .batbot-nav-action{min-height:70px;padding:11px;border:1px solid rgba(83,207,255,.22);border-radius:15px;background:linear-gradient(145deg,#12395b,#0a223a);color:#fff;text-align:left;display:flex;align-items:center;gap:11px;font:inherit;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 7px 18px rgba(0,0,0,.14);}
+  .batbot-nav-action i{width:38px;height:38px;flex:0 0 38px;display:flex;align-items:center;justify-content:center;border-radius:11px;background:rgba(0,191,255,.11);color:#39CFFF;font-size:17px;}
+  .batbot-nav-action:active{transform:scale(.98)}
+  .batbot-nav-action.danger{border-color:rgba(220,38,38,.35);background:linear-gradient(145deg,#542329,#2c1720);}
+  .batbot-nav-action.danger i{color:#FF8A8A;background:rgba(220,38,38,.12)}
+  .batbot-home-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 18px;}
+  .batbot-home-shortcut{min-height:92px;padding:14px;border:1px solid rgba(83,207,255,.28);border-radius:18px;background:linear-gradient(145deg,#123F63,#0A243D);color:#fff;text-align:left;display:flex;align-items:center;gap:12px;font:inherit;cursor:pointer;box-shadow:0 9px 24px rgba(0,0,0,.16);}
+  .batbot-home-shortcut i{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:rgba(0,191,255,.12);color:#39CFFF;font-size:20px;flex:0 0 44px;}
+  .batbot-home-shortcut strong{display:block;font-size:13px;line-height:1.25;}
+  .batbot-home-shortcut small{display:block;color:#AFC1D4;font-size:10px;margin-top:4px;line-height:1.35;}
+  .batbot-dashboard-kicker{margin-top:8px;color:#6EE7A0;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;}
+  .batbot-nav-only{display:none!important;}
+  @media(max-width:420px){
+    .batbot-bottom-nav{padding-left:6px;padding-right:6px;gap:2px;}
+    .batbot-nav-item{min-height:56px;font-size:9px;border-radius:13px;}
+    .batbot-nav-item i{font-size:18px;}
+    .batbot-nav-actions,.batbot-home-shortcuts{grid-template-columns:1fr;}
+    .batbot-nav-sheet{width:calc(100% - 16px);bottom:calc(78px + env(safe-area-inset-bottom,0px));}
+  }
+  @media(min-width:760px){
+    .batbot-bottom-nav{width:min(100%,680px);}
+    .batbot-nav-sheet{width:min(100% - 32px,680px);}
+    .batbot-nav-actions{grid-template-columns:repeat(3,1fr);}
+  }
 </style>
+
 <script id="batbot-public-options-script">
 (function(){
-  function setupPublicOptionWindows(){
+  function setupBatBotNavigation(){
     const dashboard=document.getElementById('dashboard');
     const statusGrid=dashboard&&dashboard.querySelector('.profile-status-grid');
-    if(!dashboard||!statusGrid||dashboard.dataset.publicWindowsReady==='1')return;
-    dashboard.dataset.publicWindowsReady='1';
+    if(!dashboard||!statusGrid||dashboard.dataset.batbotNavigationReady==='1')return;
+    dashboard.dataset.batbotNavigationReady='1';
 
-    const launcher=document.createElement('div');
-    launcher.className='public-options-launcher-wrap';
-    launcher.innerHTML='<div class="public-options-label">Menu principal</div><div class="public-options-launcher"></div>';
-    statusGrid.insertAdjacentElement('afterend',launcher);
-    const grid=launcher.querySelector('.public-options-launcher');
+    const findCard=function(matcher){
+      const children=Array.from(dashboard.children);
+      return children.find(function(el){
+        if(el.tagName==='BUTTON'||el.id==='batbotAIModal'||el.id==='batbotTicketModal')return false;
+        const text=(el.querySelector('h2')||el).textContent.replace(/\s+/g,' ').trim();
+        return matcher(text,el);
+      })||null;
+    };
+    const cards={
+      messages:()=>findCard(t=>t.includes('Messages')),
+      predictions:()=>findCard(t=>t.includes('Pronostics des membres')),
+      payments:()=>findCard(t=>t.includes('Dépôts & paiements')),
+      transactions:()=>document.getElementById('myTransactionsCard'),
+      analysisRequest:()=>findCard(t=>t.includes('Demander une analyse')),
+      daily:()=>findCard(t=>t.includes('Probabilités des matchs du jour')),
+      partners:()=>findCard(t=>t.includes('Partenaires authentifiés')),
+      groups:()=>findCard(t=>t.includes('Nos groupes')),
+      contact:()=>findCard(t=>t.includes('Contacter un agent')),
+      social:()=>findCard(t=>t.includes('Nos réseaux sociaux')),
+      terms:()=>findCard(t=>t.includes("Conditions d'utilisation")),
+      how:()=>findCard(t=>t.includes('Comment ça fonctionne'))
+    };
 
     const modal=document.createElement('div');
     modal.className='public-option-modal hidden';
@@ -4049,6 +4100,7 @@ document.addEventListener("keydown",function(event){
       document.body.style.overflow='';
     }
     function openModal(card,label){
+      if(!card)return;
       if(active)closeModal();
       title.textContent=label;
       const placeholder=document.createComment('batbot-public-option-placeholder');
@@ -4064,59 +4116,125 @@ document.addEventListener("keydown",function(event){
     modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
     document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.classList.contains('hidden'))closeModal();});
 
-    const children=Array.from(dashboard.children);
-    const start=children.indexOf(statusGrid)+1;
-    const contentItems=children.slice(start).filter(function(el){
-      return !(el.matches('button[onclick="logout()"]')) && !el.classList.contains('batbot-ai-modal') && !el.classList.contains('ai-ticket-modal') && el.id!=='smartDriveAISection';
-    });
+    const oldLauncher=dashboard.querySelector('.public-options-launcher-wrap');
+    if(oldLauncher)oldLauncher.remove();
 
-    // Ordre fixe demandé pour l’interface client. Le contenu et les identifiants
-    // des cartes restent inchangés afin de préserver les fonctionnalités existantes.
-    const requestedOrder=[
-      'Dépôts & paiements','Mes transactions','🔔 Messages','Pronostics des membres','Demander une analyse',
-      'Probabilités des matchs du jour','Partenaires authentifiés',
-      'Nos groupes','Contacter un agent','Joindre BatBot','Nos réseaux sociaux',
-      'Comment ça fonctionne','Conditions d’utilisation'
-    ];
-    function cardOrder(card){
-      const text=(card.querySelector('h2')||card).textContent.replace(/\s+/g,' ').trim();
-      const index=requestedOrder.findIndex(function(item){return text.includes(item);});
-      return index===-1?999:index;
+    const quick=document.createElement('section');
+    quick.className='batbot-home-shortcuts';
+    quick.setAttribute('aria-label','Raccourcis rapides');
+    quick.innerHTML=''
+      +'<button type="button" class="batbot-home-shortcut"><i class="fa-solid fa-brain" aria-hidden="true"></i><span><strong>Analyse BatBot IA</strong><small>Lancer une analyse intelligente</small></span></button>'
+      +'<button type="button" class="batbot-home-shortcut"><i class="fa-solid fa-futbol" aria-hidden="true"></i><span><strong>Probabilités des matchs du jour</strong><small>Consulter les probabilités disponibles</small></span></button>';
+    statusGrid.insertAdjacentElement('afterend',quick);
+    quick.children[0].addEventListener('click',function(){openBatBotAIFromMenu();});
+    quick.children[1].addEventListener('click',function(){openModal(cards.daily(),'Probabilités des matchs du jour');});
+
+    const configs={
+      analyses:{title:'Analyses & IA',icon:'fa-solid fa-magnifying-glass-chart',subtitle:'Analyse et pronostics de la communauté',items:[
+        ['Demander une analyse','fa-solid fa-magnifying-glass-chart','analysisRequest'],
+        ['Pronostics des membres','fa-solid fa-bullhorn','predictions']
+      ]},
+      finances:{title:'Finances',icon:'fa-solid fa-wallet',subtitle:'Paiements et historique des transactions',items:[
+        ['Dépôts & paiements','fa-solid fa-wallet','payments'],
+        ['Mes transactions','fa-solid fa-file-invoice-dollar','transactions']
+      ]},
+      community:{title:'Communauté',icon:'fa-solid fa-comments',subtitle:'Messages et espaces communautaires',items:[
+        ['Messages','fa-solid fa-comments','messages'],
+        ['Nos groupes','fa-solid fa-users','groups']
+      ]},
+      more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
+        ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
+        ['Contacter un agent','fa-solid fa-headset','contact'],
+        ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
+        ['Nos réseaux sociaux','fa-solid fa-globe','social'],
+        ["Conditions d'utilisation",'fa-solid fa-file-contract','terms']
+      ]}
+    };
+
+    const sheetBackdrop=document.createElement('div');
+    sheetBackdrop.className='batbot-nav-sheet-backdrop';
+    document.body.appendChild(sheetBackdrop);
+    const sheet=document.createElement('div');
+    sheet.className='batbot-nav-sheet';
+    sheet.setAttribute('role','dialog');
+    sheet.setAttribute('aria-modal','false');
+    document.body.appendChild(sheet);
+
+    function closeSheet(){sheet.classList.remove('open');sheetBackdrop.classList.remove('open');}
+    function renderSheet(key){
+      const cfg=configs[key];
+      if(!cfg){closeSheet();return;}
+      sheet.innerHTML='<div class="batbot-nav-sheet-head"><i class="'+cfg.icon+'" aria-hidden="true"></i><div><strong>'+cfg.title+'</strong><small>'+cfg.subtitle+'</small></div></div><div class="batbot-nav-actions"></div>';
+      const actions=sheet.querySelector('.batbot-nav-actions');
+      cfg.items.forEach(function(item){
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='batbot-nav-action';
+        button.innerHTML='<i class="'+item[1]+'" aria-hidden="true"></i><span>'+item[0]+'</span>';
+        button.addEventListener('click',function(){
+          const card=cards[item[2]]();
+          closeSheet();
+          openModal(card,item[0]);
+        });
+        actions.appendChild(button);
+      });
+      const logout=document.createElement('button');
+      logout.type='button';
+      logout.className='batbot-nav-action danger';
+      logout.innerHTML='<i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Se déconnecter</span>';
+      logout.addEventListener('click',function(){closeSheet();if(typeof window.logout==='function')window.logout();});
+      if(key==='more')actions.appendChild(logout);
+      sheet.classList.add('open');
+      sheetBackdrop.classList.add('open');
     }
-    contentItems.sort(function(a,b){return cardOrder(a)-cardOrder(b);});
+    sheetBackdrop.addEventListener('click',closeSheet);
 
-    const aiButton=document.createElement('button');
-    aiButton.type='button';
-    aiButton.className='public-option-btn ai-menu-launch';
-    aiButton.textContent='🤖 Analyse BatBot IA';
-    aiButton.addEventListener('click',function(){openBatBotAIFromMenu();});
-    grid.appendChild(aiButton);
+    const nav=document.createElement('nav');
+    nav.className='batbot-bottom-nav hidden';
+    nav.setAttribute('aria-label','Navigation principale BatBot');
+    nav.innerHTML=''
+      +'<button type="button" class="batbot-nav-item active" data-tab="home" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Accueil</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="analyses"><i class="fa-solid fa-brain" aria-hidden="true"></i><span>Analyses</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="finances"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Finances</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="community"><i class="fa-solid fa-comments" aria-hidden="true"></i><span>Communauté</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="more"><i class="fa-solid fa-gear" aria-hidden="true"></i><span>Plus</span></button>';
+    document.body.appendChild(nav);
 
-    contentItems.forEach(function(card){
-      if(card===launcher||card.classList.contains('public-options-launcher-wrap'))return;
-      const heading=card.querySelector('h2');
-      let label=(heading&&heading.textContent||card.getAttribute('aria-label')||'Option').replace(/\s+/g,' ').trim();
-      if(!label)label='Option';
-      const button=document.createElement('button');
-      button.type='button';
-      button.className='public-option-btn';
-      button.textContent=label;
-      button.addEventListener('click',function(){openModal(card,label);});
-      grid.appendChild(button);
-      card.classList.add('hidden');
+    function setActive(tab){
+      nav.querySelectorAll('.batbot-nav-item').forEach(function(button){
+        const active=button.dataset.tab===tab;
+        button.classList.toggle('active',active);
+        if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+      });
+    }
+    nav.querySelectorAll('.batbot-nav-item').forEach(function(button){
+      button.addEventListener('click',function(){
+        const tab=button.dataset.tab;
+        if(tab==='home'){
+          closeSheet();setActive('home');
+          window.scrollTo({top:0,behavior:'smooth'});
+          return;
+        }
+        const wasOpen=sheet.classList.contains('open') && nav.querySelector('.batbot-nav-item.active')?.dataset.tab===tab;
+        setActive(tab);
+        if(wasOpen)closeSheet();else renderSheet(tab);
+      });
     });
 
-    const logout=document.createElement('button');
-    logout.type='button';
-    logout.className='public-option-btn';
-    logout.textContent='🚪 Se déconnecter';
-    logout.addEventListener('click',function(){if(typeof window.logout==='function')window.logout();});
-    grid.appendChild(logout);
+    // Cache les anciennes cartes dans la page longue : elles restent dans le DOM
+    // et sont réutilisées dans les fenêtres existantes afin de ne pas casser leurs JS.
+    Object.keys(cards).forEach(function(key){const card=cards[key]();if(card)card.classList.add('hidden');});
 
-    const oldLogout=dashboard.querySelector('button[onclick="logout()"]');
-    if(oldLogout)oldLogout.classList.add('hidden');
+    const observer=new MutationObserver(function(){
+      const visible=!dashboard.classList.contains('hidden');
+      nav.classList.toggle('hidden',!visible);
+      if(!visible)closeSheet();
+    });
+    observer.observe(dashboard,{attributes:true,attributeFilter:['class']});
+    nav.classList.toggle('hidden',dashboard.classList.contains('hidden'));
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPublicOptionWindows);else setupPublicOptionWindows();
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupBatBotNavigation);else setupBatBotNavigation();
 })();
 </script>
 
