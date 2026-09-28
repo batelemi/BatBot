@@ -446,6 +446,9 @@ textarea{min-height:120px;resize:vertical}
 .password-reset-modal-password code{flex:1;min-width:0;color:#6EE7A0;font-size:20px;font-weight:900;letter-spacing:1.2px;word-break:normal;white-space:nowrap;overflow-x:auto;overflow-y:hidden}
 .password-reset-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
 .password-reset-modal-actions .btn{margin:0}
+/* Les champs de publication restent accessibles uniquement dans la fenêtre dédiée.
+   Le bloc source est masqué lorsqu'il reste dans le dashboard et devient visible lorsqu'il est déplacé dans la fenêtre. */
+#dashboard > #memberPredictionsSection{display:none!important}
 .hidden{display:none!important}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
 footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:pointer}
@@ -697,7 +700,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   <section class="card" id="memberPredictionsSection">
     <div class="section-kicker">Communauté BatBot</div>
     <h2>📢 Pronostics des membres</h2>
-    <p class="muted">Publiez votre propre pronostic. Une fois publié, il devient visible par les autres membres de BatBot.</p>
+    <p class="muted">Choisissez un match et publiez votre pronostic pour la communauté.</p>
 
     <div class="notice">📊 Les probabilités <strong>1 / N / 2</strong> doivent totaliser exactement <strong>100 %</strong>. Le code coupon est facultatif, mais s’il est renseigné, il doit correspondre à un coupon actif enregistré dans BatBot. La description doit rester strictement liée à l’analyse du match.</div>
 
@@ -968,9 +971,8 @@ PSG vs Marseille"></textarea>
   <section class="card batbot-public-predictions-card" id="publicMemberPredictionsCard">
     <div class="section-kicker">Communauté BatBot</div>
     <h2>📢 Pronostics des membres</h2>
-    <p class="muted">Découvrez ici les analyses et pronostics publiés par les membres de BatBot. Les nouvelles publications apparaissent automatiquement pour toute la communauté.</p>
-    <div class="professional-note">🤝 <strong>Partage communautaire</strong><br>Consultez les analyses publiées par les membres et leurs choix 1 / N / 2. Chaque publication est affichée après sa validation par le service BatBot.</div>
-    <div id="publicMemberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications de la communauté…</small></div></div></div>
+    <p class="muted">Les derniers pronostics publiés par la communauté.</p>
+    <div id="publicMemberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications…</small></div></div></div>
   </section>
 
 
