@@ -1,18 +1,21 @@
 {
-  "name": "s-drive",
+  "name": "batbot",
   "version": "1.0.0",
-  "description": "S-Drive - Application d'analyse de matchs de football",
+  "description": "BatBot - Plateforme d'analyse de matchs de football",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test:odds": "node algorithms/test-multi-sportscore-odds.js"
+    "test:odds": "node algorithms/test-multi-sportscore-odds.js",
+    "db:migrate:postgres": "node scripts/migrate-sqlite-to-postgres.js"
   },
   "dependencies": {
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "connect-sqlite3": "^0.9.16",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.7.0"
+    "better-sqlite3": "^11.7.0",
+    "pg": "^8.16.3",
+    "connect-pg-simple": "^10.0.0"
   },
   "engines": {
     "node": "22.x"
