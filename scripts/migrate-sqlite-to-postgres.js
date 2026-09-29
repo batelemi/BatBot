@@ -120,22 +120,64 @@ async function main() {
     }
 
     await client.query(`
-      DO $$
-      DECLARE r RECORD;
-      BEGIN
-        FOR r IN
-          SELECT table_name, column_name
-          FROM information_schema.columns
-          WHERE table_schema='public'
-            AND column_name='id'
-            AND data_type IN ('bigint','integer')
-            AND table_name IN ('users','daily_matches','password_resets','analysis_requests','payment_requests','bookmakers','coupons','batbot_messages','member_predictions')
-        LOOP
-          EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %I_id_seq', r.table_name);
-          EXECUTE format('SELECT setval(%L, COALESCE((SELECT MAX(id) FROM %I), 1), true)', r.table_name || '_id_seq', r.table_name);
-        END LOOP;
-      END $$;
-    `);
+  DO $$
+  DECLARE r RECORD;
+  DECLARE max_id BIGINT;
+  BEGIN
+    FOR r IN
+      SELECT table_name
+      FROM information_schema.columns
+      WHERE table_schema='public'
+        AND column_name='id'
+        AND data_type IN ('bigint','integer')
+        AND table_name IN (
+          'users',
+          'daily_matches',
+          'password_resets',
+          'analysis_requests',
+          'payment_requests',
+          'bookmakers',
+          'coupons',
+          'batbot_messages',
+          'member_predictions'
+        )
+    LOOP
+      EXECUTE format(
+        'CREATE SEQUENCE IF NOT EXISTS %I_id_seq AS BIGINT',
+        r.table_name
+      );
+
+      EXECUTE format(
+        'ALTER TABLE %I ALTER COLUMN id SET DEFAULT nextval(%L::regclass)',
+        r.table_name,
+        r.table_name || '_id_seq'
+      );
+
+      EXECUTE format(
+        'ALTER SEQUENCE %I_id_seq OWNED BY %I.id',
+        r.table_name,
+        r.table_name
+      );
+
+      EXECUTE format(
+        'SELECT MAX(id) FROM %I',
+        r.table_name
+      ) INTO max_id;
+
+      IF max_id IS NULL THEN
+        EXECUTE format(
+          'SELECT setval(%L, 1, false)',
+          r.table_name || '_id_seq'
+        );
+      ELSE
+        EXECUTE format(
+          'SELECT setval(%L, $1, true)',
+          r.table_name || '_id_seq'
+        ) USING max_id;
+      END IF;
+    END LOOP;
+  END $$;
+`);
 
     await client.query('COMMIT');
     console.log('Migration SQLite → PostgreSQL terminée sans supprimer la base SQLite.');
