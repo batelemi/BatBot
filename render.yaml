@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: S-Drive-12
+    name: BatBot
     runtime: node
     buildCommand: npm install
     startCommand: node server.js
