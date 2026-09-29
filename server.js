@@ -1,6 +1,7 @@
 const express = require("express");
 const session = require("express-session");
 const SQLiteStore = require("connect-sqlite3")(session);
+const { createPostgresSessionStore } = require("./database/postgres-session");
 const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
 const path = require("path");
@@ -298,8 +299,19 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+const postgresSession = createPostgresSessionStore();
+const sessionStore = postgresSession
+  ? postgresSession.store
+  : new SQLiteStore({ db: "sessions.sqlite", dir: __dirname });
+
+if (postgresSession) {
+  console.log("BatBot sessions: PostgreSQL partagé activé.");
+} else {
+  console.log("BatBot sessions: SQLite local (fallback de compatibilité).");
+}
+
 app.use(session({
-  store: new SQLiteStore({ db: "sessions.sqlite", dir: __dirname }),
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || "CHANGE_THIS_SECRET_IN_PRODUCTION",
   resave: false,
   saveUninitialized: false,
@@ -1946,7 +1958,12 @@ const server = app.listen(PORT, "0.0.0.0", () => {
 
 function shutdown(signal) {
   console.log(`BatBot: arrêt demandé (${signal})`);
-  server.close(() => {
+  server.close(async () => {
+    try {
+      if (postgresSession) await postgresSession.pool.end();
+    } catch (error) {
+      console.error("POSTGRES SESSION CLOSE:", error.message);
+    }
     try { DB.close(); } catch (_) {}
     process.exit(0);
   });
