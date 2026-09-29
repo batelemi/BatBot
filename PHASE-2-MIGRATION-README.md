@@ -43,3 +43,5 @@ Le script :
 ## Étape suivante
 
 Après validation de cette phase, la prochaine étape est de migrer progressivement les requêtes métier de `server.js` vers PostgreSQL. Le basculement global ne doit intervenir qu'après tests de comptes, paiements, messages, pronostics, administration et analyses.
+> **Important :** tant que les données métier restent dans SQLite, `DATABASE_URL` ne doit pas être considérée comme un basculement complet de la base de données. Cette phase active uniquement le stockage PostgreSQL des sessions.
+
