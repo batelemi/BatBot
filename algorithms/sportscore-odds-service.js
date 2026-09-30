@@ -675,9 +675,104 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
         candidates.push(match);
       }
     }
+async function fetchCurrentFixture(homeTeam, awayTeam) {
+  const cacheKey = `${cleanText(homeTeam.slug)}|${cleanText(awayTeam.slug)}`;
+  const cached = fixtureCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.fixture;
+  }
+
+  const candidates = [];
+  const today = formatUtcDate(new Date());
+
+  /*
+   * 1. Recherche directe du jour.
+   *
+   * IMPORTANT :
+   * On interroge les trois états afin d'éviter qu'un match
+   * déjà terminé soit encore interprété comme "upcoming".
+   */
+  const todayQueries = [
+    [homeTeam.slug, "live"],
+    [homeTeam.slug, "finished"],
+    [homeTeam.slug, "upcoming"],
+    [awayTeam.slug, "live"],
+    [awayTeam.slug, "finished"],
+    [awayTeam.slug, "upcoming"]
+  ];
+
+  const todayResponses = await Promise.allSettled(
+    todayQueries.map(([teamSlug, status]) => {
+      const url =
+        `${API_BASE}/fixtures/` +
+        `?sport=${SPORT}` +
+        `&date=${today}` +
+        `&status=${status}` +
+        `&team=${encodeURIComponent(teamSlug)}` +
+        `&limit=200`;
+
+      return fetchJson(url);
+    })
+  );
+
+  for (const response of todayResponses) {
+    if (response.status !== "fulfilled") continue;
+
+    for (const match of extractMatches(response.value)) {
+      if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
+        candidates.push(match);
+      }
+    }
+  }
+
+  /*
+   * 2. Le calendrier des équipes reste utilisé comme seconde
+   *    source de vérification.
+   */
+  const teamResponses = await Promise.allSettled([
+    fetchJson(
+      `${API_BASE}/team/` +
+      `?sport=${SPORT}` +
+      `&slug=${encodeURIComponent(homeTeam.slug)}` +
+      `&limit=${TEAM_ENDPOINT_LIMIT}`
+    ),
+    fetchJson(
+      `${API_BASE}/team/` +
+      `?sport=${SPORT}` +
+      `&slug=${encodeURIComponent(awayTeam.slug)}` +
+      `&limit=${TEAM_ENDPOINT_LIMIT}`
+    )
+  ]);
+
+  for (const response of teamResponses) {
+    if (response.status !== "fulfilled") continue;
+
+    for (const match of extractMatches(response.value)) {
+      if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
+        candidates.push(match);
+      }
+    }
+  }
+
+  /*
+   * 3. H2H : dernière vérification ciblée.
+   */
+  try {
+    const h2hData = await fetchJson(
+      `${API_BASE}/h2h/?sport=${SPORT}` +
+      `&team1=${encodeURIComponent(homeTeam.slug)}` +
+      `&team2=${encodeURIComponent(awayTeam.slug)}` +
+      `&limit=50`
+    );
+
+    for (const match of extractMatches(h2hData)) {
+      if (fixtureMatchesTeams(match, homeTeam, awayTeam)) {
+        candidates.push(match);
+      }
+    }
   } catch (_) {
-    // L'absence du H2H ne doit pas empêcher les vérifications
-    // déjà obtenues par /fixtures/ et /team/.
+    // Le H2H reste facultatif.
   }
 
   if (!candidates.length) {
@@ -685,12 +780,18 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
       fixture: null,
       expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
     });
+
     return null;
   }
 
+  /*
+   * 4. Déduplication.
+   */
   const unique = new Map();
+
   for (const match of candidates) {
     const normalized = normalizeFixture(match);
+
     if (!normalized?.home || !normalized?.away) continue;
 
     const key =
@@ -698,7 +799,28 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
       normalized.slug ||
       `${cleanText(normalized.home)}|${cleanText(normalized.away)}|${normalized.date || ""}`;
 
-    unique.set(key, match);
+    /*
+     * Si deux sources donnent le même match, on conserve la version
+     * la plus informative.
+     *
+     * finished avec un score réel > upcoming sans score.
+     */
+    const existing = unique.get(key);
+
+    if (!existing) {
+      unique.set(key, match);
+      continue;
+    }
+
+    const existingFinished =
+      isFinished(existing) && hasRealScore(existing);
+
+    const currentFinished =
+      isFinished(match) && hasRealScore(match);
+
+    if (currentFinished && !existingFinished) {
+      unique.set(key, match);
+    }
   }
 
   if (!unique.size) {
@@ -706,30 +828,100 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
       fixture: null,
       expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
     });
+
     return null;
   }
 
-  // Priorité : direct > à venir > rencontre terminée la plus récente.
+  /*
+   * 5. Priorité du statut.
+   *
+   * LIVE     = priorité maximale
+   * FINISHED = prioritaire sur un éventuel UPCOMING obsolète
+   * UPCOMING = utilisé lorsqu'il s'agit réellement d'un match futur
+   */
+  function fixtureStatusPriority(match) {
+    if (isLiveMatch(match)) return 3;
+
+    if (isFinished(match) && hasRealScore(match)) {
+      return 2;
+    }
+
+    return 1;
+  }
+
+  /*
+   * 6. Sélection du meilleur fixture.
+   *
+   * Pour un match futur :
+   *   le plus proche dans le temps est privilégié.
+   *
+   * Pour un match terminé :
+   *   le plus récent est privilégié.
+   *
+   * Si deux versions concernent exactement le même horaire,
+   * le statut réel prime : LIVE > FINISHED > UPCOMING.
+   */
   const ordered = [...unique.values()].sort((a, b) => {
-    const liveDiff = Number(isLiveMatch(b)) - Number(isLiveMatch(a));
-    if (liveDiff) return liveDiff;
+    const now = Date.now();
 
     const ta = getMatchTimestamp(a);
     const tb = getMatchTimestamp(b);
-    const now = Date.now();
+
     const aUpcoming = ta > now;
     const bUpcoming = tb > now;
 
-    if (aUpcoming !== bUpcoming) return Number(bUpcoming) - Number(aUpcoming);
-    if (aUpcoming && bUpcoming) return ta - tb;
+    const sameTime =
+      ta > 0 &&
+      tb > 0 &&
+      ta === tb;
+
+    if (sameTime) {
+      return (
+        fixtureStatusPriority(b) -
+        fixtureStatusPriority(a)
+      );
+    }
+
+    /*
+     * Un match réellement futur est prioritaire lorsqu'il existe.
+     */
+    if (aUpcoming !== bUpcoming) {
+      return Number(bUpcoming) - Number(aUpcoming);
+    }
+
+    /*
+     * Deux matchs futurs :
+     * choisir le plus proche.
+     */
+    if (aUpcoming && bUpcoming) {
+      return ta - tb;
+    }
+
+    /*
+     * Deux matchs passés :
+     * choisir le plus récent.
+     */
     return tb - ta;
   });
 
   let fixture = normalizeFixture(ordered[0]);
+
+  /*
+   * 7. Le détail /match/ est facultatif.
+   *
+   * SportScore peut parfois fournir un slug dans /fixtures/
+   * sans rendre le même slug disponible via /match/.
+   *
+   * Dans ce cas, on conserve les données fiables du fixture
+   * sans considérer l'erreur /match/ comme un échec.
+   */
   const detail = await fetchFixtureDetail(fixture?.slug);
 
   if (detail && fixtureMatchesTeams(detail, homeTeam, awayTeam)) {
-    fixture = normalizeFixture({ ...ordered[0], ...detail });
+    fixture = normalizeFixture({
+      ...ordered[0],
+      ...detail
+    });
   }
 
   fixtureCache.set(cacheKey, {
