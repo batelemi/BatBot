@@ -4526,5 +4526,221 @@ document.addEventListener("keydown",function(event){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',waitForAdminNavigation);else waitForAdminNavigation();
 })();
 </script>
+<script>
+/* BATBOT_TICKET_UX_PATCH_V2 */
+(function(){
+
+  function getFixture(index){
+    const list = window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
+      ? window.batBotLastEvidence.matches : [];
+    return list[index] && list[index].fixture ? list[index].fixture : null;
+  }
+
+  function cleanupFinishedResults(){
+    const box=document.getElementById('smartDriveAIResult');
+    if(!box)return;
+    const cards=box.querySelectorAll('.ai-match-result');
+    cards.forEach(function(card,index){
+      const fixture=getFixture(index);
+      if(!fixture || !isFinishedFixture(fixture))return;
+
+      card.querySelectorAll('.ai-section-label').forEach(function(el){el.remove();});
+      card.querySelectorAll('.ai-prob-grid').forEach(function(el){el.remove();});
+      card.querySelectorAll('.ai-options').forEach(function(el){el.remove();});
+      card.querySelectorAll('.ai-recommendation').forEach(function(el){el.remove();});
+
+      card.querySelectorAll('.ai-evidence-card').forEach(function(el){
+        const text=String(el.textContent||'');
+        if(/Moteur statistique BATBOT|Non calculées|Lecture\s*:|Scores vérifiables insuffisants/i.test(text)){
+          el.remove();
+        }
+      });
+    });
+  }
+
+  const originalRender=window.renderBatBotAIResult;
+  if(typeof originalRender==='function'){
+    window.renderBatBotAIResult=function(raw,modelData){
+      originalRender(raw,modelData);
+      setTimeout(cleanupFinishedResults,0);
+    };
+  }
+
+  const originalStatus=window.setBatBotAIModalStatus;
+  if(typeof originalStatus==='function'){
+    window.setBatBotAIModalStatus=function(html,type){
+      const list=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
+        ? window.batBotLastEvidence.matches : [];
+      const hasFinished=list.some(function(item){
+        return item && item.fixture && isFinishedFixture(item.fixture);
+      });
+
+      if(hasFinished && /Analyse statistique terminée/i.test(String(html||''))){
+        return originalStatus(
+          '<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">La rencontre est déjà terminée. Le résultat réel est affiché sans calcul de probabilités.</div></div>',
+          'success'
+        );
+      }
+      return originalStatus(html,type);
+    };
+  }
+
+  function simpleTicketText(data){
+    const matches=Array.isArray(data && data.matches)?data.matches:[];
+    const evidence=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
+      ? window.batBotLastEvidence.matches : [];
+    const lines=['BATBOT IA — TICKET D’ANALYSE',''];
+
+    matches.forEach(function(match,index){
+      const fixture=evidence[index] && evidence[index].fixture ? evidence[index].fixture : (match.fixture||{});
+      const home=fixture && fixture.teams && fixture.teams.home ? fixture.teams.home.name : '';
+      const away=fixture && fixture.teams && fixture.teams.away ? fixture.teams.away.name : '';
+      const name=(home && away) ? home+' vs '+away : (match.name||'Match');
+      const date=fixture && fixture.date ? formatSportScoreDateTime(fixture.date) : 'Date non disponible';
+      const score=fixture ? sportScoreFixtureScore(fixture) : '';
+
+      lines.push(name);
+      lines.push('Date : '+date);
+      if(score)lines.push('Score : '+score);
+      lines.push('');
+    });
+
+    return lines.join('\n').trim();
+  }
+
+  window.buildBatBotTicketText=function(data){
+    return simpleTicketText(data||{});
+  };
+
+  window.renderBatBotTicket=function(data){
+    const box=document.getElementById('batbotTicketContent');
+    if(!box)return;
+
+    const matches=Array.isArray(data && data.matches)?data.matches:[];
+    const evidence=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
+      ? window.batBotLastEvidence.matches : [];
+
+    let html='';
+
+    matches.forEach(function(match,index){
+      const fixture=evidence[index] && evidence[index].fixture ? evidence[index].fixture : (match.fixture||{});
+      const teams=fixture && fixture.teams ? fixture.teams : {};
+      const home=teams.home && teams.home.name ? teams.home.name : '';
+      const away=teams.away && teams.away.name ? teams.away.name : '';
+      const name=(home && away) ? home+' vs '+away : (match.name||('Match '+(index+1)));
+      const date=fixture && fixture.date ? formatSportScoreDateTime(fixture.date) : 'Date non disponible';
+      const score=fixture ? sportScoreFixtureScore(fixture) : '';
+
+      html+='<div class="ai-ticket-match">';
+      html+='<div class="ai-ticket-match-name">⚽ '+escapeHtml(name)+'</div>';
+      html+='<div class="ai-ticket-row"><span>DATE</span><strong>'+escapeHtml(date)+'</strong></div>';
+      if(score){
+        html+='<div class="ai-ticket-row"><span>SCORE</span><strong class="ai-ticket-pick">'+escapeHtml(score)+'</strong></div>';
+      }
+      html+='</div>';
+    });
+
+    box.innerHTML=html || '<div class="ai-ticket-empty">Aucun ticket disponible.</div>';
+    window.batBotLastTicketText=simpleTicketText(data||{});
+  };
+
+  window.downloadBatBotTicket=function(){
+    const data=window.batBotLastAnalysis||{};
+    const matches=Array.isArray(data.matches)?data.matches:[];
+    const evidence=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
+      ? window.batBotLastEvidence.matches : [];
+
+    if(!matches.length){
+      showToast('Aucun ticket disponible.','error');
+      return;
+    }
+
+    const width=900;
+    const rowHeight=135;
+    const height=170+(matches.length*rowHeight)+50;
+    const canvas=document.createElement('canvas');
+    canvas.width=width;
+    canvas.height=height;
+    const ctx=canvas.getContext('2d');
+
+    ctx.fillStyle='#eef4f8';
+    ctx.fillRect(0,0,width,height);
+    ctx.fillStyle='rgba(11,44,72,.045)';
+    ctx.font='900 78px Arial';
+    ctx.textAlign='center';
+    ctx.fillText('BATBOT IA',width/2,height/2);
+    ctx.textAlign='left';
+
+    ctx.fillStyle='#0b2c48';
+    ctx.font='900 34px Arial';
+    ctx.fillText('🤖 BATBOT IA',48,58);
+    ctx.font='600 18px Arial';
+    ctx.fillStyle='#52687a';
+    ctx.fillText('TICKET D’ANALYSE • DONNÉES SPORTSCORE',48,92);
+
+    ctx.strokeStyle='#8295a5';
+    ctx.setLineDash([7,7]);
+    ctx.beginPath();
+    ctx.moveTo(48,116);
+    ctx.lineTo(width-48,116);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    let y=165;
+
+    matches.forEach(function(match,index){
+      const fixture=evidence[index] && evidence[index].fixture ? evidence[index].fixture : (match.fixture||{});
+      const teams=fixture && fixture.teams ? fixture.teams : {};
+      const home=teams.home && teams.home.name ? teams.home.name : '';
+      const away=teams.away && teams.away.name ? teams.away.name : '';
+      const name=(home && away) ? home+' vs '+away : (match.name||('Match '+(index+1)));
+      const date=fixture && fixture.date ? formatSportScoreDateTime(fixture.date) : 'Date non disponible';
+      const score=fixture ? sportScoreFixtureScore(fixture) : '';
+
+      ctx.fillStyle='#102235';
+      ctx.font='900 23px Arial';
+      ctx.fillText(name,48,y);
+      y+=40;
+
+      ctx.fillStyle='#52687a';
+      ctx.font='700 18px Arial';
+      ctx.fillText('Date : '+date,48,y);
+
+      if(score){
+        ctx.fillStyle='#087548';
+        ctx.font='900 22px Arial';
+        ctx.fillText('Score : '+score,570,y);
+      }
+
+      y+=45;
+      ctx.strokeStyle='#a5b4bf';
+      ctx.setLineDash([7,7]);
+      ctx.beginPath();
+      ctx.moveTo(48,y);
+      ctx.lineTo(width-48,y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      y+=35;
+    });
+
+    canvas.toBlob(function(blob){
+      if(!blob){
+        showToast('Téléchargement impossible.','error');
+        return;
+      }
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download='batbot-ticket.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url);},1000);
+      showToast('Ticket PNG téléchargé.','success');
+    },'image/png');
+  };
+
+})();
+</script>
 </body>
 </html>
