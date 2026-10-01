@@ -724,7 +724,7 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
   }
 
   // Priorité : direct > à venir > rencontre terminée la plus récente.
-  const ordered = [...unique.values()].filter(match => !isFinished(match)).sort((a, b) => {
+  const ordered = [...unique.values()].sort((a, b) => {
     const liveDiff = Number(isLiveMatch(b)) - Number(isLiveMatch(a));
     if (liveDiff) return liveDiff;
 
@@ -1289,7 +1289,33 @@ async function analyzeOne(homeName, awayName) {
     };
   }
 
-  const homeStats = buildTeamStats(homeMatches, homeTeam);
+  
+const normalizedFixture = normalizeFixture(fixture) || fixture;
+
+if (isFinished(normalizedFixture)) {
+  return {
+    match: `${homeName} vs ${awayName}`,
+    fixture: normalizedFixture,
+    ready: false,
+    recommendation: "Match terminé",
+    reason: "Cette rencontre est déjà terminée. Le résultat réel est affiché sans générer de probabilités ni de choix de pari.",
+    data_quality: "vérifiée",
+    homeTeam: {
+      name: homeTeam.name,
+      slug: homeTeam.slug
+    },
+    awayTeam: {
+      name: awayTeam.name,
+      slug: awayTeam.slug
+    },
+    stats: {
+      home: buildTeamStats(homeMatchesInitial, homeTeam),
+      away: buildTeamStats(awayMatchesInitial, awayTeam)
+    }
+  };
+}
+
+const homeStats = buildTeamStats(homeMatches, homeTeam);
   const awayStats = buildTeamStats(awayMatches, awayTeam);
 
   const odds = calculateOdds({
