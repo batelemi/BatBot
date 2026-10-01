@@ -724,7 +724,7 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
   }
 
   // Priorité : direct > à venir > rencontre terminée la plus récente.
-  const ordered = [...unique.values()].sort((a, b) => {
+  const ordered = [...unique.values()].filter(match => !isFinished(match)).sort((a, b) => {
     const liveDiff = Number(isLiveMatch(b)) - Number(isLiveMatch(a));
     if (liveDiff) return liveDiff;
 
@@ -738,6 +738,14 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
     if (aUpcoming && bUpcoming) return ta - tb;
     return tb - ta;
   });
+
+  if (!ordered.length) {
+    fixtureCache.set(cacheKey, {
+      fixture: null,
+      expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
+    });
+    return null;
+  }
 
   let fixture = normalizeFixture(ordered[0]);
   const detail = await fetchFixtureDetail(fixture?.slug);
