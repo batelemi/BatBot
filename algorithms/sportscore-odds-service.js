@@ -441,6 +441,11 @@ function getMatchScore(match, side) {
 }
 
 function isFinished(match) {
+  // Un statut LIVE explicite est prioritaire : un match en cours peut déjà
+  // avoir un score et une heure de début passée. Il ne doit jamais être
+  // reclassé comme terminé sur la seule base de son horodatage.
+  if (isLiveMatch(match)) return false;
+
   const status = cleanText(
     match?.status ||
     match?.status_text ||
@@ -530,7 +535,7 @@ function getMatchStatusValue(match) {
 
 function isLiveMatch(match) {
   const status = cleanText(getMatchStatusValue(match));
-  return /live|in progress|progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalty|penalties|shootout/.test(status);
+  return /(^|\b)(live|in progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalty|penalties|shootout)(\b|$)/.test(status);
 }
 
 function normalizeFixture(match) {
