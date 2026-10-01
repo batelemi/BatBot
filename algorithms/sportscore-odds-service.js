@@ -616,19 +616,33 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
   const today = formatUtcDate(new Date());
 
   // 1. Priorité aux rencontres du jour : direct et à venir.
-  const todayQueries = [
-    [homeTeam.slug, "live"],
-    [homeTeam.slug, "upcoming"],
-    [awayTeam.slug, "live"],
-    [awayTeam.slug, "upcoming"]
-  ];
+  const fixtureQueries = [];
+
+  // Aujourd'hui : matchs en direct et à venir.
+  fixtureQueries.push(
+    [homeTeam.slug, "live", today],
+    [homeTeam.slug, "upcoming", today],
+    [awayTeam.slug, "live", today],
+    [awayTeam.slug, "upcoming", today]
+  );
+
+  // Prochains 3 jours : uniquement les matchs à venir.
+  for (let daysAhead = 1; daysAhead <= 3; daysAhead++) {
+    const date = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
+    const dateText = formatUtcDate(date);
+
+    fixtureQueries.push(
+      [homeTeam.slug, "upcoming", dateText],
+      [awayTeam.slug, "upcoming", dateText]
+    );
+  }
 
   const todayResponses = await Promise.allSettled(
-    todayQueries.map(([teamSlug, status]) => {
+    fixtureQueries.map(([teamSlug, status, dateText]) => {
       const url =
         `${API_BASE}/fixtures/` +
         `?sport=${SPORT}` +
-        `&date=${today}` +
+        `&date=${dateText}` +
         `&status=${status}` +
         `&team=${encodeURIComponent(teamSlug)}` +
         `&limit=200`;
