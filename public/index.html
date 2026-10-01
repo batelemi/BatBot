@@ -1106,8 +1106,8 @@ PSG vs Marseille"></textarea>
       <summary>🔎 Cliquez ici pour lire les conditions</summary>
     <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
     <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
-    <div class="notice"><strong>3. Analyse</strong><br><br>Les analyses sont proposées selon les informations disponibles et ne garantissent pas le résultat d'un pari.</div>
-    <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
+    <div class="notice"><strong>3. Analyse</strong><br><br>L’analyse utilise les informations disponibles sur le match pour présenter les statistiques et les éléments disponibles.</div>
+      <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
     <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
     </details>
   </div>
@@ -2184,7 +2184,7 @@ function buildBatBotTicketText(data){
     lines.push("Qualité : "+(match.data_quality||"—"));
     lines.push("");
   });
-  lines.push("Estimations statistiques — aucune garantie de résultat.");
+
   return lines.join("\n");
 }
 function renderBatBotTicket(data){
@@ -2199,8 +2199,7 @@ function renderBatBotTicket(data){
       (probs?'<div style="margin-top:7px">'+probs+'</div>':"")+ '<div class="ai-ticket-row"><span>DONNÉES</span><span class="ai-ticket-badge">'+escapeHtml(match.data_quality||"—")+'</span></div>'+ '</div>';
   });
   const timestamp=data?.generatedAt?new Date(data.generatedAt):new Date();
-  html='<div class="ai-ticket-meta">Généré le '+escapeHtml(timestamp.toLocaleString("fr-FR"))+' • estimations statistiques</div>'+html;
-  html+='<div class="ai-ticket-foot">BATBOT IA • Les probabilités sont des estimations calculées à partir des données SportScore disponibles. Elles ne garantissent pas le résultat d’un match et ne sont pas des cotes bookmaker.</div>';
+  html='<div class="ai-ticket-meta">Généré le '+escapeHtml(timestamp.toLocaleString("fr-FR"))+'</div>'+html;
   box.innerHTML=html||'<div class="ai-ticket-empty">Aucun ticket disponible.</div>';
   window.batBotLastTicketText=buildBatBotTicketText(data||{});
 }
@@ -2218,7 +2217,6 @@ function downloadBatBotTicket(){
   ctx.strokeStyle="#8295a5";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,116);ctx.lineTo(width-48,116);ctx.stroke();ctx.setLineDash([]);
   let y=headH;
   matches.forEach((match,index)=>{ctx.fillStyle="#102235";ctx.font="900 23px Arial";ctx.fillText((index+1)+". "+String(match.name||"Match"),48,y);y+=38;const pick=(match.options||[]).find(o=>String(o.name||"").toLowerCase()===String(match.recommendation||"").toLowerCase());ctx.font="700 18px Arial";ctx.fillText("Choix : "+String(pick?.name||"Analyse insuffisante"),48,y);if(pick){ctx.fillStyle="#087548";ctx.fillText("Probabilité : "+formatPercent(pick.probability),520,y);ctx.fillStyle="#102235";}y+=34;const probs=(match.probabilities||[]).map(p=>String(p.label||"")+" "+formatPercent(p.value)).join("   •   ");ctx.font="600 17px Arial";ctx.fillStyle="#52687a";ctx.fillText("1 / X / 2 : "+probs,48,y);y+=28;ctx.fillText("Qualité des données : "+String(match.data_quality||"—"),48,y);y+=35;ctx.strokeStyle="#a5b4bf";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(width-48,y);ctx.stroke();ctx.setLineDash([]);y+=28;});
-  ctx.fillStyle="#52687a";ctx.font="500 15px Arial";ctx.textAlign="center";ctx.fillText("Estimations statistiques • aucune garantie • pas de cote bookmaker en temps réel",width/2,height-42);ctx.textAlign="left";
   c.toBlob(function(blob){if(!blob){showToast("Téléchargement impossible.","error");return;}const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="batbot-ticket.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);showToast("Ticket PNG téléchargé.","success");},"image/png");
 }
 function openBatBotAIModal(){
@@ -2361,7 +2359,6 @@ function renderBatBotAIResult(raw,modelData){
       (match.reason?'<div class="ai-evidence-card"><strong>Lecture :</strong> '+escapeHtml(match.reason)+'</div>':"")+
       '</div>';
   }).join("");
-  html+='<div class="ai-evidence-card">ℹ️ Les pourcentages sont des estimations statistiques basées sur les données SportScore disponibles. Ils ne garantissent pas le résultat du match et les cotes théoriques ne sont pas des cotes bookmaker en temps réel.</div>';
   box.innerHTML=html;
 }
 
