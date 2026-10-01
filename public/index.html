@@ -828,7 +828,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <button type="button" class="batbot-ai-modal-close" data-close-ai-modal="1" aria-label="Fermer">×</button>
     <div id="batbotAIModalTitle" class="section-kicker">Assistant intelligent</div>
     <h2>🤖 Analyse BatBot IA</h2>
-    <p class="ai-modal-subtitle">Analyse statistique à partir des données SportScore récupérées au moment de la demande : forme récente, buts, confrontations et classement lorsqu’ils sont disponibles.</p>
+    <p class="ai-modal-subtitle">Analyse statistique à partir des données du match récupérées au moment de la demande : forme récente, buts, confrontations et classement lorsqu’ils sont disponibles.</p>
     <div class="ai-match-fields">
       <input id="aiMatch1" placeholder="Match 1 — équipes avec ou sans séparateur" autocomplete="off">
       <input id="aiMatch2" placeholder="Match 2 — équipes avec ou sans séparateur" autocomplete="off">
@@ -845,7 +845,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <button type="button" class="ai-ticket-close" onclick="closeBatBotTicketModal()" aria-label="Fermer">×</button>
       <div class="ai-ticket-head">
         <div class="ai-ticket-brand">🤖 BATBOT IA</div>
-        <div class="ai-ticket-sub">TICKET D’ANALYSE • DONNÉES SPORTSCORE</div>
+        <div class="ai-ticket-sub">TICKET D’ANALYSE • BATBOT IA</div>
       </div>
       <div id="batbotTicketContent"></div>
     </div>
@@ -1109,6 +1109,7 @@ PSG vs Marseille"></textarea>
     <div class="notice"><strong>3. Analyse</strong><br><br>L’analyse utilise les informations disponibles sur le match pour présenter les statistiques et les éléments disponibles.</div>
       <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
     <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
+    <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportScore</strong>. BATBOT utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
     </details>
   </div>
 
@@ -2213,7 +2214,7 @@ function downloadBatBotTicket(){
   const c=document.createElement("canvas");c.width=width;c.height=height;const ctx=c.getContext("2d");
   ctx.fillStyle="#eef4f8";ctx.fillRect(0,0,width,height);
   ctx.fillStyle="rgba(11,44,72,.045)";ctx.font="900 78px Arial";ctx.textAlign="center";ctx.fillText("BATBOT IA",width/2,height/2);ctx.textAlign="left";
-  ctx.fillStyle="#0b2c48";ctx.font="900 34px Arial";ctx.fillText("🤖 BATBOT IA",48,58);ctx.font="600 18px Arial";ctx.fillStyle="#52687a";ctx.fillText("TICKET D’ANALYSE • DONNÉES SPORTSCORE",48,92);
+  ctx.fillStyle="#0b2c48";ctx.font="900 34px Arial";ctx.fillText("🤖 BATBOT IA",48,58);ctx.font="600 18px Arial";ctx.fillStyle="#52687a";ctx.fillText("TICKET D’ANALYSE • BATBOT IA",48,92);
   ctx.strokeStyle="#8295a5";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,116);ctx.lineTo(width-48,116);ctx.stroke();ctx.setLineDash([]);
   let y=headH;
   matches.forEach((match,index)=>{ctx.fillStyle="#102235";ctx.font="900 23px Arial";ctx.fillText((index+1)+". "+String(match.name||"Match"),48,y);y+=38;const pick=(match.options||[]).find(o=>String(o.name||"").toLowerCase()===String(match.recommendation||"").toLowerCase());ctx.font="700 18px Arial";ctx.fillText("Choix : "+String(pick?.name||"Analyse insuffisante"),48,y);if(pick){ctx.fillStyle="#087548";ctx.fillText("Probabilité : "+formatPercent(pick.probability),520,y);ctx.fillStyle="#102235";}y+=34;const probs=(match.probabilities||[]).map(p=>String(p.label||"")+" "+formatPercent(p.value)).join("   •   ");ctx.font="600 17px Arial";ctx.fillStyle="#52687a";ctx.fillText("1 / X / 2 : "+probs,48,y);y+=28;ctx.fillText("Qualité des données : "+String(match.data_quality||"—"),48,y);y+=35;ctx.strokeStyle="#a5b4bf";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(width-48,y);ctx.stroke();ctx.setLineDash([]);y+=28;});
@@ -2238,7 +2239,7 @@ function openBatBotAIFromMenu(){
   if(input1)input1.value="";
   if(input2)input2.value="";
   setBatBotAIModalResult("");
-  setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">🤖 Prêt pour l’analyse</div><div class="professional-status-body">Saisissez un ou deux matchs. Pour une analyse plus fiable, utilisez les matchs chargés depuis SportScore.</div></div>');
+  setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">🤖 Prêt pour l’analyse</div><div class="professional-status-body">Saisissez un ou deux matchs. Pour une analyse plus fiable, utilisez les matchs proposés par BATBOT.</div></div>');
   openBatBotAIModal();
 }
 function setBatBotAIModalStatus(html,type=""){
@@ -2286,7 +2287,7 @@ function renderBatBotModelCard(model,fixture,evidence){
   const expected=batBotFormatExpectedGoals(model?.expected_goals??model?.expectedGoals);
   const best=batBotFormatMostLikelyScore(model?.bestScore??model?.most_likely_score??model?.mostLikelyScore);
   if(isLiveFixture(fixture)){
-    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel SportScore : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
+    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
   }
   return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus (domicile • extérieur) : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(best)+'</strong><br><span style="opacity:.8">Les probabilités 1X2 sont normalisées pour totaliser 100 %.</span></div>';
 }
@@ -2326,7 +2327,7 @@ function renderBatBotAIResult(raw,modelData){
         return {name:p.name,probability:formatPercent(p.probability),risk:probabilityLevel,reason:ai.reason||p.reason||"Basé sur les données disponibles."};
       });
     }
-    match.reason=match.reason||"Lecture basée sur les données SportScore disponibles et le modèle statistique BatBot.";
+    match.reason=match.reason||"Lecture basée sur les données disponibles et le modèle statistique BATBOT.";
     return match;
   });
   if(models.length>1 && models.every(function(m){return m&&m.ready!==false;})){
@@ -2562,7 +2563,7 @@ async function submitBatBotAI(){
     return;
   }
   try{
-    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Analyse statistique en cours</strong><small>SportScore récupère l’historique vérifiable et le moteur Poisson calcule les probabilités…</small></div></div>');
+    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Analyse BATBOT en cours</strong><small>Les données vérifiables sont récupérées et le moteur statistique BATBOT calcule les probabilités…</small></div></div>');
     if(button)button.disabled=true;
 
     const matches=[];
@@ -2588,7 +2589,7 @@ async function submitBatBotAI(){
     const serverMatches=Array.isArray(d?.matches)?d.matches:[];
     const serverModels=Array.isArray(d?.models)?d.models:[];
     if(!serverMatches.length){
-      setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Aucun résultat exploitable</strong><br><span>SportScore n’a retourné aucun résultat statistique pour les matchs demandés.</span></div>',"error");
+      setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Aucun résultat exploitable</strong><br><span>Aucune donnée statistique exploitable n’a été retournée pour les matchs demandés.</span></div>',"error");
       return;
     }
 
@@ -2656,7 +2657,11 @@ async function submitBatBotAI(){
     const resultData={generatedAt:d?.generatedAt||new Date().toISOString(),matches:compatibleMatches};
     window.batBotLastAnalysis=resultData;
     renderBatBotAIResult(JSON.stringify(resultData),compatibleMatches);
-    setBatBotAIModalStatus('<div class="professional-status success">✅ <strong>Analyse statistique terminée</strong><br><span>Probabilités calculées par SportScore + Poisson à partir de l’historique vérifiable.</span></div>',"success");
+    const evidenceList=Array.isArray(window.batBotLastEvidence?.matches)?window.batBotLastEvidence.matches:[];
+    const allFinished=evidenceList.length>0&&evidenceList.every(function(item){return item&&item.fixture&&isFinishedFixture(item.fixture);});
+    if(!allFinished){
+      setBatBotAIModalStatus('<div class="professional-status success">✅ <strong>Analyse BATBOT terminée</strong><br><span>Les probabilités et le pronostic ont été générés à partir des données disponibles.</span></div>',"success");
+    }
   }catch(e){
     setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(e?.message||"Une erreur est survenue pendant l’analyse.")+'</span></div>',"error");
   }finally{
@@ -2751,7 +2756,7 @@ function sportScoreFixtureScore(item){const h=item?.goals?.home??item?.score?.fu
 function showFinishedSportScoreMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=sportScoreFixtureScore(item),when=formatSportScoreDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
 function renderSportScoreFixtures(fixtures,checkedDate){
   const box=document.getElementById("sportScoreResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
-  if(!fixtures.length){box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni par SportScore</div><div class="professional-status-body">SportScore a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';return;}
+  if(!fixtures.length){box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni</div><div class="professional-status-body">Le service de données sportives a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';return;}
   const analyzable=fixtures.filter(isAnalyzableFixture);
   const topAction=analyzable.length>=2?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser les 2 prochains matchs</button>':analyzable.length===1?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser le prochain match</button>':'';
   box.innerHTML=topAction+fixtures.slice(0,30).map(function(item,index){
@@ -2781,7 +2786,7 @@ function sportScorePublicUrl(endpoint, params){
 async function fetchSportScorePublic(endpoint,params){
   const r=await fetch(sportScorePublicUrl(endpoint,params),{method:"GET",headers:{Accept:"application/json"},cache:"no-store"});
   const d=await r.json().catch(function(){return {};});
-  if(!r.ok)throw new Error(d.error||d.message||("SportScore HTTP "+r.status));
+  if(!r.ok)throw new Error(d.error||d.message||("Données sportives HTTP "+r.status));
   return d;
 }
 
@@ -2930,7 +2935,7 @@ async function loadSportScoreFixtures(selectedDate){
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion à SportScore</strong><small>Récupération des rencontres du '+escapeHtml(date)+'…</small></div></div>';
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion aux données sportives</strong><small>Récupération des rencontres du '+escapeHtml(date)+'…</small></div></div>';
   box.classList.remove("hidden");
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les données officielles des rencontres sont en cours de récupération…</small></div></div>';
 
@@ -2941,14 +2946,14 @@ async function loadSportScoreFixtures(selectedDate){
     const fixtures=rawFixtures.map(normalizeSportScoreClientMatch);
     renderSportScoreFixtures(fixtures,date);
     if(fixtures.length){
-      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données SportScore reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(date)+".</div></div>";
+      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données du match reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(date)+".</div></div>";
     }else{
-      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ SportScore connecté, mais aucun match reçu</div><div class="professional-status-body">SportScore a répondu avec 0 rencontre pour cette date.</div></div>';
+      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Données sportives connectées, mais aucun match reçu</div><div class="professional-status-body">Le service de données sportives a répondu avec 0 rencontre pour cette date.</div></div>';
     }
   }catch(e){
     window.batBotDailyFixtures=[];
-    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ SportScore indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
-    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion non disponible</div><div class="professional-status-body">Le service SportScore n’a pas pu fournir les rencontres pour le '+escapeHtml(date)+'.</div></div>';
+    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Données sportives indisponibles</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
+    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion non disponible</div><div class="professional-status-body">Le service de données sportives n’a pas pu fournir les rencontres pour le '+escapeHtml(date)+'.</div></div>';
   }finally{
     if(button)button.disabled=false;
   }
@@ -2962,7 +2967,7 @@ async function loadSportScoreLive(){
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion live à SportScore</strong><small>Recherche des rencontres actuellement en cours…</small></div></div>';
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion aux données en direct</strong><small>Recherche des rencontres actuellement en cours…</small></div></div>';
   box.classList.remove("hidden");
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Direct en cours</strong><small>Actualisation automatique toutes les 15 secondes pendant cette vue.</small></div></div>';
 
@@ -2974,11 +2979,11 @@ async function loadSportScoreLive(){
       const rawFixtures=Array.isArray(d?.matches)?d.matches:[];
       const fixtures=rawFixtures.map(normalizeSportScoreClientMatch).filter(function(item){return isLiveFixture(item);});
       renderSportScoreFixtures(fixtures,"en direct");
-      status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct SportScore":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"SportScore ne signale aucun match en cours actuellement.")+'</div></div>';
+      status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"Aucune rencontre en cours n’est actuellement signalée.")+'</div></div>';
     }catch(e){
       window.batBotLiveRefreshTimer=null;
       box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs en direct.")+'</div></div>';
-      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service live SportScore indisponible</div><div class="professional-status-body">La connexion à SportScore n’a pas pu être actualisée.</div></div>';
+      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service de données en direct indisponible</div><div class="professional-status-body">La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
     }
   };
   await refresh();
@@ -4568,13 +4573,13 @@ document.addEventListener("keydown",function(event){
     window.setBatBotAIModalStatus=function(html,type){
       const list=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
         ? window.batBotLastEvidence.matches : [];
-      const hasFinished=list.some(function(item){
+      const allFinished=list.length>0&&list.every(function(item){
         return item && item.fixture && isFinishedFixture(item.fixture);
       });
 
-      if(hasFinished && /Analyse statistique terminée/i.test(String(html||''))){
+      if(allFinished && /Analyse BATBOT terminée/i.test(String(html||''))){
         return originalStatus(
-          '<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">La rencontre est déjà terminée. Le résultat réel est affiché sans calcul de probabilités.</div></div>',
+          '<div class="professional-status"><div class="professional-status-head">📊 Résultats des matchs</div><div class="professional-status-body">Les rencontres sont déjà terminées. BATBOT affiche les résultats réels sans calcul de probabilités.</div></div>',
           'success'
         );
       }
@@ -4673,7 +4678,7 @@ document.addEventListener("keydown",function(event){
     ctx.fillText('🤖 BATBOT IA',48,58);
     ctx.font='600 18px Arial';
     ctx.fillStyle='#52687a';
-    ctx.fillText('TICKET D’ANALYSE • DONNÉES SPORTSCORE',48,92);
+    ctx.fillText('TICKET D’ANALYSE • BATBOT IA',48,92);
 
     ctx.strokeStyle='#8295a5';
     ctx.setLineDash([7,7]);
