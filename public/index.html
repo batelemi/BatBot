@@ -2659,7 +2659,9 @@ async function submitBatBotAI(){
     renderBatBotAIResult(JSON.stringify(resultData),compatibleMatches);
     const evidenceList=Array.isArray(window.batBotLastEvidence?.matches)?window.batBotLastEvidence.matches:[];
     const allFinished=evidenceList.length>0&&evidenceList.every(function(item){return item&&item.fixture&&isFinishedFixture(item.fixture);});
-    if(!allFinished){
+    if(allFinished){
+      setBatBotAIModalStatus('<div class="professional-status success"><div class="professional-status-head">📊 Résultats des matchs</div><div class="professional-status-body">Les rencontres sont déjà terminées. BATBOT affiche les résultats réels sans calcul de probabilités.</div></div>',"success");
+    }else{
       setBatBotAIModalStatus('<div class="professional-status success">✅ <strong>Analyse BATBOT terminée</strong><br><span>Les probabilités et le pronostic ont été générés à partir des données disponibles.</span></div>',"success");
     }
   }catch(e){
