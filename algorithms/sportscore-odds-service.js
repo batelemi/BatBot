@@ -623,8 +623,13 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
   // 1. Priorité aux rencontres du jour : direct et à venir.
   const fixtureQueries = [];
 
-  // Aujourd'hui : matchs en direct et à venir.
+  // Aujourd'hui : on interroge d'abord toute la journée pour ne pas
+  // dépendre d'un libellé de statut précis (LIVE, HT, 1H, etc.).
+  // Les requêtes LIVE/à venir restent présentes pour renforcer la priorité
+  // aux rencontres actuellement en cours ou pas encore commencées.
   fixtureQueries.push(
+    [homeTeam.slug, "", today],
+    [awayTeam.slug, "", today],
     [homeTeam.slug, "live", today],
     [homeTeam.slug, "upcoming", today],
     [awayTeam.slug, "live", today],
@@ -648,7 +653,7 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
         `${API_BASE}/fixtures/` +
         `?sport=${SPORT}` +
         `&date=${dateText}` +
-        `&status=${status}` +
+        (status ? `&status=${status}` : "") +
         `&team=${encodeURIComponent(teamSlug)}` +
         `&limit=200`;
       return fetchJson(url);
