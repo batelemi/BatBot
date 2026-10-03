@@ -2674,7 +2674,7 @@ function renderBatBotAIResult(raw,modelData){
           statusHtml+
         '</div>'+
         '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
-        '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatSimpleDate(fixture):"Date non disponible")+'</div>'+
+        '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatSportScoreDateTime(fixture.date):"Date non disponible")+'</div>'+
         '<div class="batbot-real-score">'+escapeHtml(score)+'</div>'+
       '</div>';
     }
@@ -2702,7 +2702,7 @@ function renderBatBotAIResult(raw,modelData){
       '<div class="batbot-match-meta">📅 '+
         escapeHtml(
           fixture?.date
-            ?formatSimpleDate(fixture)
+            ?formatSportScoreDateTime(fixture.date)
             :"Date non disponible"
         )+
       '</div>'+
