@@ -2537,16 +2537,37 @@ function renderBatBotAIResult(raw,modelData){
       fixture?.teams?.away?.name||
       "Équipe 2";
 
+    function renderBatBotTeamFlag(value){
+      const flag=String(value||"").trim();
+      if(!flag)return "";
+
+      if(
+        /^https?:\/\//i.test(flag)||
+        flag.startsWith("/")||
+        flag.startsWith("data:image/")
+      ){
+        return '<img class="batbot-team-flag" src="'+escapeHtml(flag)+'" alt="">';
+      }
+
+      return '<span class="batbot-team-flag batbot-team-flag-emoji" aria-hidden="true">'+
+        escapeHtml(flag)+
+      '</span>';
+    }
+
     const homeFlag=
       fixture?.teams?.home?.logo||
       fixture?.teams?.home?.flag||
       fixture?.home?.flag||
+      evidence?.homeTeam?.flag||
+      evidence?.homeTeam?.flagEmoji||
       "";
 
     const awayFlag=
       fixture?.teams?.away?.logo||
       fixture?.teams?.away?.flag||
       fixture?.away?.flag||
+      evidence?.awayTeam?.flag||
+      evidence?.awayTeam?.flagEmoji||
       "";
 
     const status=
@@ -2670,7 +2691,7 @@ function renderBatBotAIResult(raw,modelData){
     if(finished){
       return '<div class="ai-match-result batbot-match-card batbot-match-finished">'+
         '<div class="batbot-match-head">'+
-          '<div class="batbot-match-title">⚽ '+escapeHtml(homeName)+' vs '+escapeHtml(awayName)+'</div>'+
+          '<div class="batbot-match-title">⚽ '+renderBatBotTeamFlag(homeFlag)+escapeHtml(homeName)+' <span class="batbot-vs">vs</span> '+renderBatBotTeamFlag(awayFlag)+escapeHtml(awayName)+'</div>'+
           statusHtml+
         '</div>'+
         '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
@@ -2684,14 +2705,10 @@ function renderBatBotAIResult(raw,modelData){
       '<div class="batbot-match-head">'+
         '<div class="batbot-match-title">'+
           '⚽ '+
-          (homeFlag
-            ?'<img class="batbot-team-flag" src="'+escapeHtml(homeFlag)+'" alt="">'
-            :"")+
+          renderBatBotTeamFlag(homeFlag)+
           escapeHtml(homeName)+
           ' <span class="batbot-vs">vs</span> '+
-          (awayFlag
-            ?'<img class="batbot-team-flag" src="'+escapeHtml(awayFlag)+'" alt="">'
-            :"")+
+          renderBatBotTeamFlag(awayFlag)+
           escapeHtml(awayName)+
         '</div>'+
         statusHtml+
@@ -2716,9 +2733,7 @@ function renderBatBotAIResult(raw,modelData){
 
         '<div class="batbot-team-block">'+
           '<div class="batbot-team-name">'+
-            (homeFlag
-              ?'<img class="batbot-team-flag" src="'+escapeHtml(homeFlag)+'" alt="">'
-              :"")+
+            renderBatBotTeamFlag(homeFlag)+
             escapeHtml(homeName)+
           '</div>'+
           '<div class="batbot-form-line">'+
@@ -2731,9 +2746,7 @@ function renderBatBotAIResult(raw,modelData){
 
         '<div class="batbot-team-block">'+
           '<div class="batbot-team-name">'+
-            (awayFlag
-              ?'<img class="batbot-team-flag" src="'+escapeHtml(awayFlag)+'" alt="">'
-              :"")+
+            renderBatBotTeamFlag(awayFlag)+
             escapeHtml(awayName)+
           '</div>'+
           '<div class="batbot-form-line">'+
