@@ -5193,91 +5193,638 @@ document.addEventListener("keydown",function(event){
     const box=document.getElementById("batbotTicketContent");
     if(!box)return;
 
-    const matches=Array.isArray(data && data.matches)
-      ? data.matches : [];
+    if(!document.getElementById("batbotTicketModernStyle")){
+      const style=document.createElement("style");
+      style.id="batbotTicketModernStyle";
+      style.textContent=`
+        .batbot-ticket-modern{
+          display:flex;
+          flex-direction:column;
+          gap:14px;
+        }
+        .batbot-ticket-modern .ai-ticket-match{
+          position:relative;
+          overflow:hidden;
+          border-radius:18px;
+          padding:16px;
+          background:linear-gradient(145deg,#101b16,#16251d);
+          border:1px solid rgba(80,220,130,.22);
+          box-shadow:0 8px 28px rgba(0,0,0,.22);
+          animation:batbotTicketAppear .45s ease both;
+        }
+        .batbot-ticket-modern .ai-ticket-header{
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:10px;
+          margin-bottom:8px;
+        }
+        .batbot-ticket-modern .ai-ticket-name{
+          font-size:17px;
+          font-weight:800;
+          line-height:1.3;
+        }
+        .batbot-ticket-modern .ai-ticket-status{
+          display:inline-flex;
+          align-items:center;
+          gap:6px;
+          padding:5px 9px;
+          border-radius:999px;
+          font-size:12px;
+          font-weight:800;
+          white-space:nowrap;
+        }
+        .batbot-ticket-modern .ai-ticket-status-upcoming{
+          background:rgba(34,197,94,.13);
+          color:#4ade80;
+          animation:batbotTicketPulse 1.8s ease-in-out infinite;
+        }
+        .batbot-ticket-modern .ai-ticket-status-live{
+          background:rgba(239,68,68,.14);
+          color:#f87171;
+          animation:batbotTicketLive 1s ease-in-out infinite;
+        }
+        .batbot-ticket-modern .ai-ticket-status-dot{
+          width:7px;
+          height:7px;
+          border-radius:50%;
+          background:currentColor;
+        }
+        .batbot-ticket-modern .ai-ticket-meta{
+          display:flex;
+          flex-wrap:wrap;
+          gap:7px;
+          color:#b8c7bf;
+          font-size:12px;
+          margin-bottom:13px;
+        }
+        .batbot-ticket-modern .ai-ticket-meta span{
+          padding:5px 8px;
+          border-radius:8px;
+          background:rgba(255,255,255,.045);
+        }
+        .batbot-ticket-modern .ai-ticket-score-current{
+          text-align:center;
+          font-size:25px;
+          font-weight:900;
+          margin:8px 0 13px;
+        }
+        .batbot-ticket-modern .ai-ticket-section-title{
+          font-size:14px;
+          font-weight:900;
+          margin:13px 0 8px;
+          color:#f4fff8;
+        }
+        .batbot-ticket-modern .ai-ticket-teams{
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:9px;
+        }
+        .batbot-ticket-modern .ai-ticket-team{
+          padding:10px;
+          border-radius:12px;
+          background:rgba(255,255,255,.045);
+        }
+        .batbot-ticket-modern .ai-ticket-team-name{
+          font-weight:800;
+          margin-bottom:6px;
+        }
+        .batbot-ticket-modern .ai-ticket-form{
+          font-size:12px;
+          line-height:1.7;
+          color:#d5e2da;
+        }
+        .batbot-ticket-modern .ai-ticket-prediction{
+          margin-top:13px;
+          padding:13px;
+          border-radius:15px;
+          background:linear-gradient(135deg,rgba(0,191,255,.08),rgba(34,197,94,.09));
+          border:1px solid rgba(255,255,255,.08);
+        }
+        .batbot-ticket-modern .ai-ticket-prediction-title{
+          font-weight:900;
+          margin-bottom:9px;
+        }
+        .batbot-ticket-modern .ai-ticket-expected{
+          text-align:center;
+          font-size:18px;
+          font-weight:900;
+          padding:8px 0;
+        }
+        .batbot-ticket-modern .ai-ticket-total{
+          text-align:center;
+          font-size:12px;
+          color:#b8c7bf;
+        }
+        .batbot-ticket-modern .ai-ticket-form-rate{
+          text-align:center;
+          margin-top:9px;
+          font-size:13px;
+        }
+        .batbot-ticket-modern .ai-ticket-predicted-score{
+          margin:12px auto 4px;
+          width:max-content;
+          min-width:90px;
+          text-align:center;
+          padding:9px 18px;
+          border-radius:12px;
+          font-size:23px;
+          font-weight:900;
+          background:rgba(255,255,255,.08);
+          animation:batbotTicketScore 2s ease-in-out infinite;
+        }
+        .batbot-ticket-modern .ai-ticket-probabilities{
+          display:grid;
+          gap:7px;
+          margin-top:10px;
+        }
+        .batbot-ticket-modern .ai-ticket-probability{
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:10px;
+          padding:9px 10px;
+          border-radius:10px;
+          background:rgba(255,255,255,.045);
+          animation:batbotTicketPulse 2.4s ease-in-out infinite;
+        }
+        .batbot-ticket-modern .ai-ticket-probability strong{
+          font-weight:900;
+        }
+        .batbot-ticket-modern .ai-ticket-recommendation{
+          margin-top:13px;
+          padding:13px;
+          border-radius:15px;
+          text-align:center;
+          background:rgba(250,204,21,.08);
+          border:1px solid rgba(250,204,21,.25);
+          animation:batbotTicketPulse 2s ease-in-out infinite;
+        }
+        .batbot-ticket-modern .ai-ticket-recommendation-title{
+          font-size:12px;
+          font-weight:900;
+          color:#facc15;
+          margin-bottom:5px;
+        }
+        .batbot-ticket-modern .ai-ticket-recommendation-name{
+          font-size:16px;
+          font-weight:900;
+        }
+        .batbot-ticket-modern .ai-ticket-options{
+          display:grid;
+          gap:8px;
+          margin-top:9px;
+        }
+        .batbot-ticket-modern .ai-ticket-option{
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:10px;
+          padding:10px 12px;
+          border-radius:11px;
+          background:rgba(255,255,255,.055);
+          border:1px solid rgba(255,255,255,.07);
+          transition:transform .2s ease,box-shadow .2s ease;
+          animation:batbotTicketAppear .45s ease both;
+        }
+        .batbot-ticket-modern .ai-ticket-option:hover{
+          transform:translateY(-1px);
+          box-shadow:0 5px 16px rgba(0,0,0,.18);
+        }
+        .batbot-ticket-modern .ai-ticket-empty{
+          padding:18px;
+          text-align:center;
+          border-radius:14px;
+          background:rgba(255,255,255,.04);
+        }
+        @keyframes batbotTicketAppear{
+          from{opacity:0;transform:translateY(8px)}
+          to{opacity:1;transform:translateY(0)}
+        }
+        @keyframes batbotTicketPulse{
+          0%,100%{box-shadow:0 0 0 rgba(34,197,94,0)}
+          50%{box-shadow:0 0 14px rgba(34,197,94,.16)}
+        }
+        @keyframes batbotTicketLive{
+          0%,100%{opacity:1}
+          50%{opacity:.45}
+        }
+        @keyframes batbotTicketScore{
+          0%,100%{transform:scale(1)}
+          50%{transform:scale(1.035)}
+        }
+        @media(prefers-reduced-motion:reduce){
+          .batbot-ticket-modern *{
+            animation:none!important;
+            transition:none!important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
 
-    const evidence=window.batBotLastEvidence &&
+    const matches=Array.isArray(data&&data.matches)?data.matches:[];
+    const evidence=window.batBotLastEvidence&&
       Array.isArray(window.batBotLastEvidence.matches)
-      ? window.batBotLastEvidence.matches : [];
+      ? window.batBotLastEvidence.matches:[];
 
-    let html="";
+    function num(value){
+      const n=Number(value);
+      return Number.isFinite(n)?n:null;
+    }
+
+    function percent(value){
+      const n=num(value);
+      return n===null?"—":formatPercent(n);
+    }
+
+    function getStats(match,index){
+      const model=match||{};
+      const ev=evidence[index]||{};
+      const stats=model.stats||model.statistics||ev.stats||{};
+      return stats&&typeof stats==="object"?stats:{};
+    }
+
+    function getTeamStats(match,index,side){
+      const stats=getStats(match,index);
+      const direct=stats[side]||{};
+      const form=match&&match.form&&match.form[side]
+        ?match.form[side]:{};
+      return Object.assign({},direct,form);
+    }
+
+    function getFormValues(teamStats){
+      const source=
+        teamStats.form||
+        teamStats.recent_form||
+        teamStats.recentForm||
+        teamStats.results||
+        [];
+
+      let values=[];
+      if(Array.isArray(source)){
+        values=source.map(function(item){
+          const s=String(item||"").trim().toUpperCase();
+          return s==="W"||s==="V"?"W":
+            s==="D"||s==="N"?"D":
+            s==="L"||s==="DÉFAITE"?"L":"";
+        }).filter(Boolean);
+      }
+
+      return {
+        w:values.filter(function(v){return v==="W";}).length,
+        d:values.filter(function(v){return v==="D";}).length,
+        l:values.filter(function(v){return v==="L";}).length
+      };
+    }
+
+    function getGoals(teamStats,kind){
+      const candidates=kind==="for"
+        ?[
+          teamStats.goals_for,
+          teamStats.goalsFor,
+          teamStats.scored,
+          teamStats.goals_scored,
+          teamStats.goalsScored
+        ]
+        :[
+          teamStats.goals_against,
+          teamStats.goalsAgainst,
+          teamStats.conceded,
+          teamStats.goals_conceded,
+          teamStats.goalsConceded
+        ];
+
+      for(let i=0;i<candidates.length;i++){
+        const n=num(candidates[i]);
+        if(n!==null)return n;
+      }
+      return null;
+    }
+
+    function getFormRate(match,side){
+      const candidates=[
+        match&&match.form_indices&&match.form_indices[side],
+        match&&match.formIndices&&match.formIndices[side],
+        match&&match.form_index&&match.form_index[side],
+        match&&match.formIndex&&match.formIndex[side],
+        match&&match.form&&match.form[side]&&match.form[side].percentage
+      ];
+
+      for(let i=0;i<candidates.length;i++){
+        const n=num(candidates[i]);
+        if(n!==null)return n;
+      }
+      return null;
+    }
+
+    function flag(team){
+      if(team&&team.flag)return String(team.flag);
+      return "";
+    }
+
+    let html='<div class="batbot-ticket-modern">';
 
     matches.forEach(function(match,index){
-      const fixture=evidence[index] && evidence[index].fixture
-        ? evidence[index].fixture
-        : (match.fixture||{});
+      const fixture=evidence[index]&&evidence[index].fixture
+        ?evidence[index].fixture
+        :(match.fixture||{});
 
-      const teams=fixture && fixture.teams ? fixture.teams : {};
+      const teams=fixture&&fixture.teams?fixture.teams:{};
+      const homeTeam=teams.home||{};
+      const awayTeam=teams.away||{};
 
-      const home=teams.home && teams.home.name ? teams.home.name : "";
-      const away=teams.away && teams.away.name ? teams.away.name : "";
+      const home=homeTeam.name||"Équipe 1";
+      const away=awayTeam.name||"Équipe 2";
 
-      const name=(home && away)
-        ? home+" vs "+away
-        : (match.name||("Match "+(index+1)));
+      const status=String(
+        fixture.status&&(
+          fixture.status.long||
+          fixture.status.short||
+          fixture.status.label
+        )||""
+      );
+
+      const statusLower=status.toLowerCase();
+      const live=(
+        statusLower.indexOf("live")>=0||
+        statusLower.indexOf("progress")>=0||
+        statusLower==="1h"||
+        statusLower==="2h"||
+        statusLower==="ht"||
+        statusLower==="et"
+      );
+
+      const finished=(
+        statusLower.indexOf("finish")>=0||
+        statusLower.indexOf("termin")>=0||
+        statusLower==="ft"
+      );
+
+      const statusClass=live
+        ?"ai-ticket-status-live"
+        :"ai-ticket-status-upcoming";
+
+      const statusText=live
+        ?"🔴 En direct"
+        :finished
+          ?"⚫ Terminé"
+          :"🟢 À venir";
+
+      const currentHome=
+        fixture.goals&&num(fixture.goals.home)!==null
+          ?num(fixture.goals.home):null;
+
+      const currentAway=
+        fixture.goals&&num(fixture.goals.away)!==null
+          ?num(fixture.goals.away):null;
 
       const selected=getSelectedOption(match);
       const score=getProbableScore(match);
       const complementary=getComplementaryOptions(match);
 
-      html+="<div class=\"ai-ticket-match\">";
+      const homeStats=getTeamStats(match,index,"home");
+      const awayStats=getTeamStats(match,index,"away");
 
-      html+="<div class=\"ai-ticket-match-name\">⚽ "+
-        escapeHtml(name)+
-        "</div>";
+      const homeForm=getFormValues(homeStats);
+      const awayForm=getFormValues(awayStats);
 
-      if(fixture.date){
-        html+="<div class=\"ai-ticket-row\">"+
-          "<span>📅 DATE</span>"+
-          "<strong>"+escapeHtml(formatSimpleDate(fixture))+"</strong>"+
-          "</div>";
+      const homeGF=getGoals(homeStats,"for");
+      const homeGA=getGoals(homeStats,"against");
+      const awayGF=getGoals(awayStats,"for");
+      const awayGA=getGoals(awayStats,"against");
+
+      const expectedRaw=
+        match&&(
+          match.expected_goals||
+          match.expectedGoals
+        );
+
+      let expectedHome="—";
+      let expectedAway="—";
+
+      if(expectedRaw&&typeof expectedRaw==="object"){
+        const eh=num(expectedRaw.home);
+        const ea=num(expectedRaw.away);
+        if(eh!==null)expectedHome=eh.toFixed(2).replace(".",",");
+        if(ea!==null)expectedAway=ea.toFixed(2).replace(".",",");
       }
 
-      if(selected){
-        html+="<div class=\"ai-ticket-main-pick\">"+
-          "<div class=\"ai-ticket-main-label\">🎯 CHOIX BATBOT</div>"+
-          "<div class=\"ai-ticket-main-name\">"+
-            escapeHtml(simpleName(selected.name))+
-          "</div>"+
-          "<div class=\"ai-ticket-main-prob\">"+
-            escapeHtml(formatPercent(selected.probability))+
-          "</div>"+
-          "</div>";
-      }else{
-        html+="<div class=\"ai-ticket-row\">"+
-          "<span>🎯 CHOIX</span>"+
-          "<span class=\"ai-ticket-badge\">Analyse insuffisante</span>"+
-          "</div>";
+      const ehNum=num(expectedRaw&&typeof expectedRaw==="object"
+        ?expectedRaw.home:null);
+      const eaNum=num(expectedRaw&&typeof expectedRaw==="object"
+        ?expectedRaw.away:null);
+
+      const totalExpected=
+        ehNum!==null&&eaNum!==null
+          ?(ehNum+eaNum).toFixed(2).replace(".",",")
+          :"—";
+
+      const homeRate=getFormRate(match,"home");
+      const awayRate=getFormRate(match,"away");
+
+      html+='<div class="ai-ticket-match">';
+
+      html+='<div class="ai-ticket-header">'+
+        '<div class="ai-ticket-name">⚽ '+
+        escapeHtml(flag(homeTeam)+" "+home+" vs "+flag(awayTeam)+" "+away)+
+        '</div>'+
+        '<div class="ai-ticket-status '+statusClass+'">'+
+        '<span class="ai-ticket-status-dot"></span>'+
+        escapeHtml(statusText.replace(/^[^\s]+\s/,""))+
+        '</div>'+
+        '</div>';
+
+      if(fixture.league&&fixture.league.name){
+        html+='<div class="ai-ticket-meta">'+
+          '<span>🏆 '+escapeHtml(fixture.league.name)+'</span>';
+
+        if(fixture.date){
+          html+='<span>📅 '+
+            escapeHtml(formatSimpleDate(fixture))+
+            '</span>';
+        }
+
+        html+='</div>';
+      }else if(fixture.date){
+        html+='<div class="ai-ticket-meta">'+
+          '<span>📅 '+escapeHtml(formatSimpleDate(fixture))+'</span>'+
+          '</div>';
       }
 
-      if(score){
-        html+="<div class=\"ai-ticket-row\">"+
-          "<span>⚽ SCORE PROBABLE</span>"+
-          "<strong class=\"ai-ticket-pick\">"+
+      if(currentHome!==null||currentAway!==null){
+        html+='<div class="ai-ticket-score-current">'+
+          escapeHtml(
+            String(currentHome===null?"—":currentHome)+
+            " — "+
+            String(currentAway===null?"—":currentAway)
+          )+
+          '</div>';
+      }
+
+      html+='<div class="ai-ticket-section-title">📊 Forme des équipes</div>'+
+        '<div class="ai-ticket-teams">';
+
+      html+='<div class="ai-ticket-team">'+
+        '<div class="ai-ticket-team-name">'+
+        escapeHtml(flag(homeTeam)+" "+home)+
+        '</div>'+
+        '<div class="ai-ticket-form">'+
+        '🟢 '+homeForm.w+'V · '+
+        '🟡 '+homeForm.d+'N · '+
+        '🔴 '+homeForm.l+'D';
+
+      if(homeGF!==null||homeGA!==null){
+        html+='<br>⚽ '+
+          (homeGF===null?"—":homeGF)+
+          ' buts marqués · '+
+          (homeGA===null?"—":homeGA)+
+          ' encaissés';
+      }
+
+      html+='</div></div>';
+
+      html+='<div class="ai-ticket-team">'+
+        '<div class="ai-ticket-team-name">'+
+        escapeHtml(flag(awayTeam)+" "+away)+
+        '</div>'+
+        '<div class="ai-ticket-form">'+
+        '🟢 '+awayForm.w+'V · '+
+        '🟡 '+awayForm.d+'N · '+
+        '🔴 '+awayForm.l+'D';
+
+      if(awayGF!==null||awayGA!==null){
+        html+='<br>⚽ '+
+          (awayGF===null?"—":awayGF)+
+          ' buts marqués · '+
+          (awayGA===null?"—":awayGA)+
+          ' encaissés';
+      }
+
+      html+='</div></div></div>';
+
+      if(!finished){
+        html+='<div class="ai-ticket-prediction">'+
+          '<div class="ai-ticket-prediction-title">🎯 Prévision BATBOT</div>';
+
+        if(expectedHome!=="—"||expectedAway!=="—"){
+          html+='<div class="ai-ticket-section-title">🥅 Buts prévus</div>'+
+            '<div class="ai-ticket-expected">'+
+            escapeHtml(
+              flag(homeTeam)+" "+
+              expectedHome+
+              " — "+
+              expectedAway+" "+
+              flag(awayTeam)
+            )+
+            '</div>'+
+            '<div class="ai-ticket-total">Total : '+
+            escapeHtml(totalExpected)+
+            ' buts</div>';
+        }
+
+        if(homeRate!==null||awayRate!==null){
+          html+='<div class="ai-ticket-form-rate">📈 Forme récente : '+
+            escapeHtml(
+              homeRate===null?"—":formatPercent(homeRate)
+            )+
+            ' vs '+
+            escapeHtml(
+              awayRate===null?"—":formatPercent(awayRate)
+            )+
+            '</div>';
+        }
+
+        if(score){
+          html+='<div class="ai-ticket-section-title">🎯 Score prévu</div>'+
+            '<div class="ai-ticket-predicted-score">'+
             escapeHtml(score)+
-          "</strong>"+
-          "</div>";
+            '</div>';
+        }
+
+        const probabilities=match&&match.probabilities
+          ?match.probabilities:{};
+
+        const pHome=num(
+          probabilities.home||
+          probabilities.home_win||
+          probabilities.homeWin
+        );
+
+        const pDraw=num(
+          probabilities.draw||
+          probabilities.x
+        );
+
+        const pAway=num(
+          probabilities.away||
+          probabilities.away_win||
+          probabilities.awayWin
+        );
+
+        if(pHome!==null||pDraw!==null||pAway!==null){
+          html+='<div class="ai-ticket-section-title">🏆 Résultat possible</div>'+
+            '<div class="ai-ticket-probabilities">';
+
+          if(pHome!==null){
+            html+='<div class="ai-ticket-probability">'+
+              '<span>🏠 '+escapeHtml(home)+' gagne</span>'+
+              '<strong>'+escapeHtml(formatPercent(pHome))+'</strong>'+
+              '</div>';
+          }
+
+          if(pDraw!==null){
+            html+='<div class="ai-ticket-probability">'+
+              '<span>🤝 Match nul</span>'+
+              '<strong>'+escapeHtml(formatPercent(pDraw))+'</strong>'+
+              '</div>';
+          }
+
+          if(pAway!==null){
+            html+='<div class="ai-ticket-probability">'+
+              '<span>✈️ '+escapeHtml(away)+' gagne</span>'+
+              '<strong>'+escapeHtml(formatPercent(pAway))+'</strong>'+
+              '</div>';
+          }
+
+          html+='</div>';
+        }
+
+        if(selected){
+          html+='<div class="ai-ticket-recommendation">'+
+            '<div class="ai-ticket-recommendation-title">⭐ CHOIX PROPOSÉ PAR BATBOT</div>'+
+            '<div class="ai-ticket-recommendation-name">'+
+            escapeHtml(simpleName(selected.name))+
+            ' · '+
+            escapeHtml(formatPercent(selected.probability))+
+            '</div>'+
+            '</div>';
+        }
+
+        if(complementary.length){
+          html+='<div class="ai-ticket-section-title">📌 Options proposées par BATBOT</div>'+
+            '<div class="ai-ticket-options">';
+
+          complementary.forEach(function(option){
+            html+='<div class="ai-ticket-option">'+
+              '<span>'+escapeHtml(simpleName(option.name))+'</span>'+
+              '<strong>'+escapeHtml(formatPercent(option.probability))+'</strong>'+
+              '</div>';
+          });
+
+          html+='</div>';
+        }
+
+        html+='</div>';
       }
 
-      if(complementary.length){
-        html+="<div class=\"ai-ticket-options-title\">📌 Options complémentaires</div>"+
-          "<div class=\"ai-ticket-options\">";
-
-        complementary.forEach(function(option){
-          html+="<div class=\"ai-ticket-option\">"+
-            "<span>"+escapeHtml(simpleName(option.name))+"</span>"+
-            "<strong>"+escapeHtml(formatPercent(option.probability))+"</strong>"+
-            "</div>";
-        });
-
-        html+="</div>";
-      }
-
-      html+="</div>";
+      html+='</div>';
     });
 
+    html+='</div>';
+
     box.innerHTML=html||
-      "<div class=\"ai-ticket-empty\">Aucun ticket disponible.</div>";
+      '<div class="ai-ticket-empty">Aucun ticket disponible.</div>';
 
     window.batBotLastTicketText=buildTicketText(data||{});
   };
