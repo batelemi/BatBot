@@ -407,6 +407,110 @@ textarea{min-height:120px;resize:vertical}
 @media(prefers-reduced-motion:reduce){.status-card strong.status-value::before{animation:none!important;opacity:1!important}}
 .premium-status-card{border-color:rgba(245,197,66,.5);background:linear-gradient(145deg,#29465c,#10253b)}.ai-status-card{border-color:rgba(0,213,255,.5);background:linear-gradient(145deg,#124c64,#0b263f)}
 .ai-match-fields{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}.ai-match-fields input{margin:0}
+
+/* ===== BATBOT MATCH RESULT — animations UI ciblées ===== */
+@keyframes batbotPulseUpcoming{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:.58;transform:scale(1.08)}
+}
+
+@keyframes batbotPulseLive{
+  0%,100%{opacity:1;transform:scale(1);filter:brightness(1)}
+  50%{opacity:.35;transform:scale(1.12);filter:brightness(1.35)}
+}
+
+@keyframes batbotPulseImportant{
+  0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(110,231,160,0)}
+  50%{transform:scale(1.025);box-shadow:0 0 16px rgba(110,231,160,.20)}
+}
+
+@keyframes batbotScoreAppear{
+  0%{opacity:0;transform:translateY(5px) scale(.96)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+
+@keyframes batbotProbabilityPulse{
+  0%,100%{opacity:1}
+  50%{opacity:.72}
+}
+
+.ai-match-result{
+  animation:batbotScoreAppear .38s ease-out both;
+}
+
+.ai-prob-card{
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+
+.ai-prob-card span{
+  animation:batbotProbabilityPulse 2.8s ease-in-out infinite;
+}
+
+.ai-recommendation{
+  animation:batbotPulseImportant 2.6s ease-in-out infinite;
+}
+
+.ai-result-title{
+  transition:transform .2s ease;
+}
+
+.ai-evidence-card{
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+
+/* Indicateur de statut ajouté dynamiquement */
+.ai-status-upcoming{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+.ai-status-upcoming .ai-status-dot{
+  display:inline-block;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#22c55e;
+  animation:batbotPulseUpcoming 1.8s ease-in-out infinite;
+}
+
+.ai-status-live{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+.ai-status-live .ai-status-dot{
+  display:inline-block;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#ef4444;
+  animation:batbotPulseLive 1s ease-in-out infinite;
+}
+
+.ai-score-predicted{
+  display:inline-block;
+  animation:batbotScoreAppear .55s ease-out both;
+  font-weight:900;
+}
+
+.ai-important{
+  animation:batbotPulseImportant 2.4s ease-in-out infinite;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .ai-match-result,
+  .ai-prob-card span,
+  .ai-recommendation,
+  .ai-status-upcoming .ai-status-dot,
+  .ai-status-live .ai-status-dot,
+  .ai-score-predicted,
+  .ai-important{
+    animation:none!important;
+  }
+}
+
 .ai-result{overflow:hidden}.ai-match-result{padding:12px 0;border-bottom:1px solid #315D82}.ai-match-result:last-child{border-bottom:0}
 .ai-result-title{font-size:16px;font-weight:900;margin-bottom:10px}.ai-section-label{color:#6EE7A0;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;margin:12px 0 7px}
 .ai-prob-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.ai-prob-card{padding:9px 5px;text-align:center;border:1px solid #315D82;border-radius:10px;background:#0C2745}.ai-prob-card strong{display:block;font-size:12px}.ai-prob-card span{display:block;color:#6EE7A0;font-weight:900;margin-top:4px}
@@ -2289,25 +2393,34 @@ function renderBatBotModelCard(model,fixture,evidence){
   if(isLiveFixture(fixture)){
     return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
   }
-  return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus (domicile • extérieur) : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(best)+'</strong><br><span style="opacity:.8">Les probabilités 1X2 sont normalisées pour totaliser 100 %.</span></div>';
+  return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus (domicile • extérieur) : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(best)+'</strong><br></div>';
 }
 
 function renderBatBotAIResult(raw,modelData){
   const box=document.getElementById("smartDriveAIResult");
   if(!box)return;
+
   box.classList.remove("hidden");
+
   let data=null;
   try{
-    const cleaned=String(raw||"").replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"").trim();
+    const cleaned=String(raw||"")
+      .replace(/^```(?:json)?\s*/i,"")
+      .replace(/\s*```$/i,"")
+      .trim();
     data=JSON.parse(cleaned);
   }catch(_){}
+
   if(!data||!Array.isArray(data.matches)){
     box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Réponse IA non structurée</div><div class="professional-status-body">BatBot a reçu une réponse exploitable mais son format n’est pas conforme.</div></div>';
     return;
   }
+
   const models=Array.isArray(modelData)?modelData:[];
+
   data.matches=data.matches.map(function(match,index){
     const model=models[index]||{};
+
     if(model.ready===false){
       match.probabilities=[];
       match.options=[];
@@ -2315,58 +2428,387 @@ function renderBatBotAIResult(raw,modelData){
       match.reason=model.reason||"Données insuffisantes pour produire une estimation numérique fiable.";
       match.data_quality="limitée";
     }else if(Array.isArray(model.probabilities)&&model.probabilities.length){
-      const repaired=repairBatBotOneXTwo(model.probabilities,model.expected_goals||model.expectedGoals);
-      match.probabilities=repaired.map(function(p){return {label:p.label,value:formatPercent(p.value)};});
-    }
-    if(Array.isArray(model.options)&&model.options.length){
-      const aiOptions=Array.isArray(match.options)?match.options:[];
-      match.options=model.options.map(function(p){
-        const ai=aiOptions.find(function(o){return String(o.name||"").toLowerCase()===String(p.name||"").toLowerCase();})||{};
-        const probability=normalizeAiPercent(p.probability);
-        const probabilityLevel=probability===null?"Non disponible":(probability>=70?"Élevée":probability>=50?"Intermédiaire":"Faible");
-        return {name:p.name,probability:formatPercent(p.probability),risk:probabilityLevel,reason:ai.reason||p.reason||"Basé sur les données disponibles."};
+      const repaired=repairBatBotOneXTwo(
+        model.probabilities,
+        model.expected_goals||model.expectedGoals
+      );
+
+      match.probabilities=repaired.map(function(p){
+        return {
+          label:p.label,
+          value:formatPercent(p.value)
+        };
       });
     }
-    match.reason=match.reason||"Lecture basée sur les données disponibles et le modèle statistique BATBOT.";
+
+    if(Array.isArray(model.options)&&model.options.length){
+      const aiOptions=Array.isArray(match.options)?match.options:[];
+
+      match.options=model.options.map(function(p){
+        const ai=aiOptions.find(function(o){
+          return String(o.name||"").toLowerCase()===
+                 String(p.name||"").toLowerCase();
+        })||{};
+
+        const probability=normalizeAiPercent(p.probability);
+        const probabilityLevel=
+          probability===null
+            ?"Non disponible"
+            :(probability>=70?"Élevée":probability>=50?"Intermédiaire":"Faible");
+
+        return {
+          name:p.name,
+          probability:formatPercent(p.probability),
+          risk:probabilityLevel,
+          reason:ai.reason||p.reason||"Basé sur les données disponibles."
+        };
+      });
+    }
+
+    match.reason=match.reason||
+      "Lecture basée sur les données disponibles et le modèle statistique BATBOT.";
+
     return match;
   });
-  if(models.length>1 && models.every(function(m){return m&&m.ready!==false;})){
-    const picks=models.map(m=>m.recommendation).filter(Boolean);
+
+  if(models.length>1 && models.every(function(m){
+    return m&&m.ready!==false;
+  })){
+    const picks=models.map(function(m){
+      return m.recommendation;
+    }).filter(Boolean);
+
     const probs=models.map(function(m){
-      const p=(m.options||[]).find(function(o){return String(o.name||"").toLowerCase()===String(m.recommendation||"").toLowerCase();});
+      const p=(m.options||[]).find(function(o){
+        return String(o.name||"").toLowerCase()===
+               String(m.recommendation||"").toLowerCase();
+      });
       return normalizeAiPercent(p?.probability);
-    }).filter(function(v){return v!==null&&v>0;});
-    const theoretical=probs.length===models.length?probs.reduce(function(acc,v){return acc*(100/v);},1):null;
-    data.combined={selections:picks.join(" + ")||"Sélections indisponibles",estimated_odds:theoretical?theoretical.toFixed(2):"Non disponible"};
+    }).filter(function(v){
+      return v!==null&&v>0;
+    });
+
+    const theoretical=
+      probs.length===models.length
+        ?probs.reduce(function(acc,v){
+            return acc*(100/v);
+          },1)
+        :null;
+
+    data.combined={
+      selections:picks.join(" + ")||"Sélections indisponibles",
+      estimated_odds:theoretical?theoretical.toFixed(2):"Non disponible"
+    };
   }
-  data.generatedAt=data.generatedAt||window.batBotLastEvidence?.generatedAt||new Date().toISOString();
+
+  data.generatedAt=
+    data.generatedAt||
+    window.batBotLastEvidence?.generatedAt||
+    new Date().toISOString();
+
   window.batBotLastAnalysis=data;
+
+  /* Le ticket existant reste inchangé. */
   renderBatBotTicket(data);
-  let html='<div class="ai-analysis-toolbar"><button type="button" class="btn primary" onclick="openBatBotTicketModal()">🎫 Voir le ticket</button><button type="button" class="btn secondary" onclick="openBatBotAIFromMenu()">🔄 Nouvelle analyse</button></div>';
+
+  let html=
+    '<div class="ai-analysis-toolbar">'+
+      '<button type="button" class="btn primary" onclick="openBatBotTicketModal()">🎫 Voir le ticket</button>'+
+      '<button type="button" class="btn secondary" onclick="openBatBotAIFromMenu()">🔄 Nouvelle analyse</button>'+
+    '</div>';
+
   html+=data.matches.map(function(match,index){
-    const options=match.options||[];
-    const evidence=(window.batBotLastEvidence?.matches||[])[index]||{};
-    const hf=evidence.homeForm||{},af=evidence.awayForm||{};
-    const sr=(f)=>f.sample?(''+f.wins+'V '+f.draws+'N '+f.losses+'D • '+f.goalsFor+' pour / '+f.goalsAgainst+' contre'):"Données insuffisantes";
-    const quality=match.data_quality||((hf.sample>=4&&af.sample>=4)?"bonne":(hf.sample>=2&&af.sample>=2)?"moyenne":"limitée");
-    return '<div class="ai-match-result">'+
-      '<div class="ai-result-title">⚽ Match '+(index+1)+' — '+escapeHtml(match.name||"")+'</div>'+
-      '<div class="ai-evidence-card"><strong>🏆 '+escapeHtml(evidence.fixture?.competition||"Compétition")+'</strong><br>📅 '+escapeHtml(evidence.fixture?.date?formatSportScoreDateTime(evidence.fixture.date):"Date/heure non fournie")+'<br>📌 Statut : <strong>'+escapeHtml(evidence.fixture?(isLiveFixture(evidence.fixture)?"En direct":isFinishedFixture(evidence.fixture)?"Terminé":"À venir"):"Match saisi manuellement")+'</strong>'+(sportScoreFixtureScore(evidence.fixture)?' • '+escapeHtml(sportScoreFixtureScore(evidence.fixture)):"")+'</div>'+
-      '<div class="ai-evidence-card"><strong>📊 Données utilisées</strong><br>'+escapeHtml(evidence.homeForm?.teamName||"")+' : '+escapeHtml(sr(hf))+'<br>'+escapeHtml(evidence.awayForm?.teamName||"")+' : '+escapeHtml(sr(af))+'<br><span class="ai-confidence">Qualité des données : '+escapeHtml(quality)+'</span>'+(match.data_quality==="limitée"?'<br><span style="color:#FFD166;font-weight:900">⚠️ Scores vérifiables insuffisants : aucune probabilité numérique n’est affichée.</span>':'')+'</div>'+
-      (models[index]&&models[index].ready!==false?renderBatBotModelCard(models[index],evidence.fixture,evidence):'')+
-      (match.probabilities&&match.probabilities.length?'<div class="ai-section-label">Probabilités estimées</div><div class="ai-prob-grid">'+match.probabilities.map(function(p){return '<div class="ai-prob-card"><strong>'+escapeHtml(p.label||"")+'</strong><span>'+escapeHtml(formatPercent(p.value))+'</span></div>';}).join("")+'</div>':'<div class="ai-section-label">Probabilités</div><div class="ai-evidence-card"><strong>Non calculées</strong><br>Données vérifiables insuffisantes pour fournir un pourcentage sérieux.</div>')+
-      '<div class="ai-section-label">Options analysées</div><div class="ai-options">'+options.map(function(option){return '<div class="ai-option-card"><div class="ai-option-head"><strong>'+escapeHtml(option.name||"Option")+'</strong><span class="ai-confidence">'+escapeHtml(formatPercent(option.probability))+'</span></div><div class="ai-option-meta">Niveau de probabilité : '+escapeHtml(option.risk||"Non disponible")+'</div>'+(option.reason?'<div class="ai-reason">'+escapeHtml(option.reason)+'</div>':"")+'</div>';}).join("")+'</div>'+
-      (match.recommendation?'<div class="ai-recommendation"><strong>🎯 Choix proposé :</strong> '+escapeHtml(match.recommendation)+'</div>':"")+
-      (match.reason?'<div class="ai-evidence-card"><strong>Lecture :</strong> '+escapeHtml(match.reason)+'</div>':"")+
+
+    const evidence=
+      (window.batBotLastEvidence?.matches||[])[index]||{};
+
+    const fixture=evidence.fixture||{};
+
+    const hf=evidence.homeForm||{};
+    const af=evidence.awayForm||{};
+
+    const homeName=
+      evidence.homeForm?.teamName||
+      fixture?.teams?.home?.name||
+      "Équipe 1";
+
+    const awayName=
+      evidence.awayForm?.teamName||
+      fixture?.teams?.away?.name||
+      "Équipe 2";
+
+    const homeFlag=
+      fixture?.teams?.home?.logo||
+      fixture?.teams?.home?.flag||
+      fixture?.home?.flag||
+      "";
+
+    const awayFlag=
+      fixture?.teams?.away?.logo||
+      fixture?.teams?.away?.flag||
+      fixture?.away?.flag||
+      "";
+
+    const status=
+      fixture&&isLiveFixture(fixture)
+        ?"live"
+        :(fixture&&isFinishedFixture(fixture)?"finished":"upcoming");
+
+    const statusLabel=
+      status==="live"
+        ?"En direct"
+        :(status==="finished"?"Terminé":"À venir");
+
+    const statusHtml=
+      status==="live"
+        ?'<span class="batbot-status batbot-status-live"><span class="ai-status-dot"></span>En direct</span>'
+        :status==="upcoming"
+          ?'<span class="batbot-status batbot-status-upcoming"><span class="ai-status-dot"></span>À venir</span>'
+          :'<span class="batbot-status">Terminé</span>';
+
+    const score=
+      sportScoreFixtureScore(fixture)||
+      "0–0";
+
+    const homeWins=Number.isFinite(Number(hf.wins))?Number(hf.wins):0;
+    const homeDraws=Number.isFinite(Number(hf.draws))?Number(hf.draws):0;
+    const homeLosses=Number.isFinite(Number(hf.losses))?Number(hf.losses):0;
+
+    const awayWins=Number.isFinite(Number(af.wins))?Number(af.wins):0;
+    const awayDraws=Number.isFinite(Number(af.draws))?Number(af.draws):0;
+    const awayLosses=Number.isFinite(Number(af.losses))?Number(af.losses):0;
+
+    const homeGF=Number.isFinite(Number(hf.goalsFor))?Number(hf.goalsFor):0;
+    const homeGA=Number.isFinite(Number(hf.goalsAgainst))?Number(hf.goalsAgainst):0;
+
+    const awayGF=Number.isFinite(Number(af.goalsFor))?Number(af.goalsFor):0;
+    const awayGA=Number.isFinite(Number(af.goalsAgainst))?Number(af.goalsAgainst):0;
+
+    const homeFormIndex=
+      Number.isFinite(Number(models[index]?.form_index_home))
+        ?Number(models[index].form_index_home)
+        :batBotFormIndex(hf);
+
+    const awayFormIndex=
+      Number.isFinite(Number(models[index]?.form_index_away))
+        ?Number(models[index].form_index_away)
+        :batBotFormIndex(af);
+
+    const expectedRaw=
+      models[index]?.expected_goals||
+      models[index]?.expectedGoals;
+
+    const expected=
+      batBotFormatExpectedGoals(expectedRaw);
+
+    let expectedHome="—";
+    let expectedAway="—";
+
+    if(expectedRaw&&typeof expectedRaw==="object"){
+      const rawHome=Number(expectedRaw.home);
+      const rawAway=Number(expectedRaw.away);
+
+      if(Number.isFinite(rawHome))expectedHome=rawHome.toFixed(2).replace(".",",");
+      if(Number.isFinite(rawAway))expectedAway=rawAway.toFixed(2).replace(".",",");
+    }else{
+      const expectedParts=String(expected||"").match(/[0-9]+(?:[.,][0-9]+)?/g)||[];
+
+      if(expectedParts.length>=2){
+        expectedHome=expectedParts[0].replace(".",",");
+        expectedAway=expectedParts[1].replace(".",",");
+      }
+    }
+
+    const predictedScore=
+      batBotFormatMostLikelyScore(
+        models[index]?.bestScore||
+        models[index]?.most_likely_score||
+        models[index]?.mostLikelyScore||
+        match.bestScore||
+        match.most_likely_score||
+        match.mostLikelyScore
+      )||"—";
+
+    const totalExpected=
+      (Number(expectedHome.replace(",","."))||0)+
+      (Number(expectedAway.replace(",","."))||0);
+
+    const probabilities=Array.isArray(match.probabilities)
+      ?match.probabilities:[ ];
+
+    let homeProb="—";
+    let drawProb="—";
+    let awayProb="—";
+
+    probabilities.forEach(function(p){
+      const label=String(p.label||"").toLowerCase();
+      if(label.includes("domicile")||label.includes("home")||label==="1"){
+        homeProb=formatPercent(p.value);
+      }else if(label.includes("nul")||label.includes("draw")||label==="x"){
+        drawProb=formatPercent(p.value);
+      }else if(label.includes("extérieur")||label.includes("away")||label==="2"){
+        awayProb=formatPercent(p.value);
+      }
+    });
+
+    if(homeProb==="—"&&probabilities[0])homeProb=formatPercent(probabilities[0].value);
+    if(drawProb==="—"&&probabilities[1])drawProb=formatPercent(probabilities[1].value);
+    if(awayProb==="—"&&probabilities[2])awayProb=formatPercent(probabilities[2].value);
+
+    const quality=match.data_quality||
+      ((hf.sample>=4&&af.sample>=4)
+        ?"bonne"
+        :(hf.sample>=2&&af.sample>=2?"moyenne":"limitée"));
+
+    const finished=status==="finished";
+
+    /*
+     * Pour un match terminé, le nettoyage existant conserve son comportement.
+     * On garde donc la structure minimale et on ne calcule pas de nouvelle
+     * présentation probabiliste.
+     */
+    if(finished){
+      return '<div class="ai-match-result batbot-match-card batbot-match-finished">'+
+        '<div class="batbot-match-head">'+
+          '<div class="batbot-match-title">⚽ '+escapeHtml(homeName)+' vs '+escapeHtml(awayName)+'</div>'+
+          statusHtml+
+        '</div>'+
+        '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
+        '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatSimpleDate(fixture):"Date non disponible")+'</div>'+
+        '<div class="batbot-real-score">'+escapeHtml(score)+'</div>'+
       '</div>';
+    }
+
+    return '<div class="ai-match-result batbot-match-card">'+
+
+      '<div class="batbot-match-head">'+
+        '<div class="batbot-match-title">'+
+          '⚽ '+
+          (homeFlag
+            ?'<img class="batbot-team-flag" src="'+escapeHtml(homeFlag)+'" alt="">'
+            :"")+
+          escapeHtml(homeName)+
+          ' <span class="batbot-vs">vs</span> '+
+          (awayFlag
+            ?'<img class="batbot-team-flag" src="'+escapeHtml(awayFlag)+'" alt="">'
+            :"")+
+          escapeHtml(awayName)+
+        '</div>'+
+        statusHtml+
+      '</div>'+
+
+      '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
+
+      '<div class="batbot-match-meta">📅 '+
+        escapeHtml(
+          fixture?.date
+            ?formatSimpleDate(fixture)
+            :"Date non disponible"
+        )+
+      '</div>'+
+
+      '<div class="batbot-live-score">'+
+        escapeHtml(status==="live" ? score : "0–0")+
+      '</div>'+
+
+      '<div class="batbot-form-section">'+
+        '<div class="batbot-section-title">📊 Forme des équipes</div>'+
+
+        '<div class="batbot-team-block">'+
+          '<div class="batbot-team-name">'+
+            (homeFlag
+              ?'<img class="batbot-team-flag" src="'+escapeHtml(homeFlag)+'" alt="">'
+              :"")+
+            escapeHtml(homeName)+
+          '</div>'+
+          '<div class="batbot-form-line">'+
+            '<span class="form-win">🟢 '+homeWins+'V</span> · '+
+            '<span class="form-draw">🟡 '+homeDraws+'N</span> · '+
+            '<span class="form-loss">🔴 '+homeLosses+'D</span>'+
+          '</div>'+
+          '<div class="batbot-goals-line">⚽ '+homeGF+' buts marqués · '+homeGA+' encaissés</div>'+
+        '</div>'+
+
+        '<div class="batbot-team-block">'+
+          '<div class="batbot-team-name">'+
+            (awayFlag
+              ?'<img class="batbot-team-flag" src="'+escapeHtml(awayFlag)+'" alt="">'
+              :"")+
+            escapeHtml(awayName)+
+          '</div>'+
+          '<div class="batbot-form-line">'+
+            '<span class="form-win">🟢 '+awayWins+'V</span> · '+
+            '<span class="form-draw">🟡 '+awayDraws+'N</span> · '+
+            '<span class="form-loss">🔴 '+awayLosses+'D</span>'+
+          '</div>'+
+          '<div class="batbot-goals-line">⚽ '+awayGF+' buts marqués · '+awayGA+' encaissés</div>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="batbot-prediction-card">'+
+        '<div class="batbot-section-title batbot-pulse-important">🎯 Prévision BATBOT</div>'+
+
+        '<div class="batbot-prediction-block">'+
+          '<div class="batbot-subtitle">⚽ Buts prévus</div>'+
+          '<div class="batbot-expected-goals">'+
+            '<strong>'+escapeHtml(expectedHome)+'</strong>'+
+            ' — '+
+            '<span>Total : '+escapeHtml(totalExpected.toFixed(2).replace(".",","))+' buts</span>'+
+            ' — '+
+            '<strong>'+escapeHtml(expectedAway)+'</strong>'+
+          '</div>'+
+        '</div>'+
+
+        '<div class="batbot-prediction-block">'+
+          '<div class="batbot-subtitle">📈 Forme récente</div>'+
+          '<div class="batbot-form-index">'+
+            '<strong>'+escapeHtml(homeFormIndex===null?"—":homeFormIndex.toFixed(1).replace(".",","))+' %</strong>'+
+            ' <span>vs</span> '+
+            '<strong>'+escapeHtml(awayFormIndex===null?"—":awayFormIndex.toFixed(1).replace(".",","))+' %</strong>'+
+          '</div>'+
+        '</div>'+
+
+        '<div class="batbot-predicted-score">'+
+          '<div class="batbot-subtitle">🎯 Score prévu</div>'+
+          '<strong class="ai-score-predicted">'+escapeHtml(predictedScore)+'</strong>'+
+        '</div>'+
+
+      '</div>'+
+
+      '<div class="batbot-result-section">'+
+        '<div class="batbot-section-title">🏆 Résultat possible</div>'+
+
+        '<div class="batbot-probability-row">'+
+          '<div class="batbot-prob-item batbot-prob-home">'+
+            '<span>🏠 '+escapeHtml(homeName)+' gagne</span>'+
+            '<strong>'+escapeHtml(homeProb)+'</strong>'+
+          '</div>'+
+
+          '<div class="batbot-prob-item batbot-prob-draw">'+
+            '<span>🤝 Match nul</span>'+
+            '<strong>'+escapeHtml(drawProb)+'</strong>'+
+          '</div>'+
+
+          '<div class="batbot-prob-item batbot-prob-away">'+
+            '<span>✈️ '+escapeHtml(awayName)+' gagne</span>'+
+            '<strong>'+escapeHtml(awayProb)+'</strong>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+
+      (match.recommendation
+        ?'<div class="batbot-recommendation ai-recommendation">'+
+            '<span>⭐ Choix proposé</span> '+
+            '<strong>'+escapeHtml(match.recommendation)+'</strong>'+
+          '</div>'
+        :"")+
+
+    '</div>';
   }).join("");
+
   box.innerHTML=html;
 }
 
-function sportScoreExtractMatches(data){
-  const candidates=[data?.matches,data?.meetings,data?.fixtures,data?.results,data?.team?.matches,data?.team?.fixtures,data?.team?.results,data?.data?.matches,data?.data?.meetings,data?.data?.fixtures,data?.data?.results,data?.data?.team?.matches,data?.data?.team?.fixtures,data?.data?.team?.results,data?.response?.matches,data?.response?.fixtures];
-  return candidates.find(Array.isArray)||[];
-}
 function sportScoreExtractStandings(data){
   const candidates=[data?.standings,data?.table,data?.rows,data?.results,data?.data?.standings,data?.data?.table,data?.data?.rows,data?.data?.results];
   return candidates.find(Array.isArray)||[];
