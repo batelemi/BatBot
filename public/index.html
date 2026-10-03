@@ -4531,7 +4531,7 @@ document.addEventListener("keydown",function(event){
 })();
 </script>
 <script>
-/* BATBOT_TICKET_UX_PATCH_V2 */
+/* BATBOT_TICKET_UX_PATCH_V3 */
 (function(){
 
   function getFixture(index){
@@ -4540,21 +4540,107 @@ document.addEventListener("keydown",function(event){
     return list[index] && list[index].fixture ? list[index].fixture : null;
   }
 
+  function simpleName(name){
+    const n=String(name||"").trim();
+    const map={
+      "1X":"🛡️ Équipe 1 ou nul",
+      "X2":"🛡️ Équipe 2 ou nul",
+      "12":"🛡️ Une des deux équipes gagne",
+      "BTTS (les deux équipes marquent)":"🎯 Les deux équipes marquent",
+      "Plus de 2.5 buts":"⚽ Plus de 2,5 buts"
+    };
+    if(map[n])return map[n];
+    if(/^Victoire\s+/i.test(n))return "🏠 "+n;
+    if(/^Score exact\s+/i.test(n))return "⚽ Score probable : "+n.replace(/^Score exact\s+/i,"");
+    return n;
+  }
+
+  function optionProbability(option){
+    if(!option)return null;
+    const value=Number(option.probability);
+    return Number.isFinite(value)?value:null;
+  }
+
+  function getSelectedOption(match){
+    const recommendation=String(match && match.recommendation || "").trim().toLowerCase();
+    const options=Array.isArray(match && match.options)?match.options:[];
+    return options.find(function(option){
+      return String(option && option.name || "").trim().toLowerCase()===recommendation;
+    }) || null;
+  }
+
+  function getComplementaryOptions(match){
+    const options=Array.isArray(match && match.options)?match.options:[];
+    const recommendation=String(match && match.recommendation || "").trim().toLowerCase();
+
+    return options.filter(function(option){
+      const name=String(option && option.name || "").trim();
+      if(!name)return false;
+      if(name.toLowerCase()===recommendation)return false;
+      if(/^Score exact\s+/i.test(name))return false;
+      return true;
+    }).sort(function(a,b){
+      return (optionProbability(b)||0)-(optionProbability(a)||0);
+    }).slice(0,2);
+  }
+
+  function getProbableScore(match){
+    const raw=match && (
+      match.bestScore ??
+      match.most_likely_score ??
+      match.mostLikelyScore
+    );
+
+    if(raw===null || raw===undefined || raw==="")return "";
+
+    try{
+      if(typeof batBotFormatMostLikelyScore==="function"){
+        return batBotFormatMostLikelyScore(raw);
+      }
+    }catch(_){}
+
+    return String(raw);
+  }
+
+  function formatSimpleDate(fixture){
+    if(!fixture || !fixture.date)return "Date non disponible";
+
+    try{
+      const d=new Date(fixture.date);
+      if(Number.isNaN(d.getTime()))return formatSportScoreDateTime(fixture);
+
+      return d.toLocaleDateString("fr-FR",{
+        day:"2-digit",
+        month:"short",
+        year:"numeric"
+      }).replace(/\./g,"")+" • "+d.toLocaleTimeString("fr-FR",{
+        hour:"2-digit",
+        minute:"2-digit"
+      });
+    }catch(_){
+      return formatSportScoreDateTime(fixture.date);
+    }
+  }
+
   function cleanupFinishedResults(){
-    const box=document.getElementById('smartDriveAIResult');
+    const box=document.getElementById("smartDriveAIResult");
     if(!box)return;
-    const cards=box.querySelectorAll('.ai-match-result');
+
+    const cards=box.querySelectorAll(".ai-match-result");
+
     cards.forEach(function(card,index){
       const fixture=getFixture(index);
+
       if(!fixture || !isFinishedFixture(fixture))return;
 
-      card.querySelectorAll('.ai-section-label').forEach(function(el){el.remove();});
-      card.querySelectorAll('.ai-prob-grid').forEach(function(el){el.remove();});
-      card.querySelectorAll('.ai-options').forEach(function(el){el.remove();});
-      card.querySelectorAll('.ai-recommendation').forEach(function(el){el.remove();});
+      card.querySelectorAll(".ai-section-label").forEach(function(el){el.remove();});
+      card.querySelectorAll(".ai-prob-grid").forEach(function(el){el.remove();});
+      card.querySelectorAll(".ai-options").forEach(function(el){el.remove();});
+      card.querySelectorAll(".ai-recommendation").forEach(function(el){el.remove();});
 
-      card.querySelectorAll('.ai-evidence-card').forEach(function(el){
-        const text=String(el.textContent||'');
+      card.querySelectorAll(".ai-evidence-card").forEach(function(el){
+        const text=String(el.textContent||"");
+
         if(/Moteur statistique BATBOT|Non calculées|Lecture\s*:|Scores vérifiables insuffisants/i.test(text)){
           el.remove();
         }
@@ -4563,7 +4649,8 @@ document.addEventListener("keydown",function(event){
   }
 
   const originalRender=window.renderBatBotAIResult;
-  if(typeof originalRender==='function'){
+
+  if(typeof originalRender==="function"){
     window.renderBatBotAIResult=function(raw,modelData){
       originalRender(raw,modelData);
       setTimeout(cleanupFinishedResults,0);
@@ -4571,178 +4658,404 @@ document.addEventListener("keydown",function(event){
   }
 
   const originalStatus=window.setBatBotAIModalStatus;
-  if(typeof originalStatus==='function'){
+
+  if(typeof originalStatus==="function"){
     window.setBatBotAIModalStatus=function(html,type){
       const list=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
         ? window.batBotLastEvidence.matches : [];
+
       const allFinished=list.length>0&&list.every(function(item){
         return item && item.fixture && isFinishedFixture(item.fixture);
       });
 
-      if(allFinished && /Analyse BATBOT terminée/i.test(String(html||''))){
+      if(allFinished && /Analyse BATBOT terminée/i.test(String(html||""))){
         return originalStatus(
-          '<div class="professional-status"><div class="professional-status-head">📊 Résultats des matchs</div><div class="professional-status-body">Les rencontres sont déjà terminées. BATBOT affiche les résultats réels sans calcul de probabilités.</div></div>',
-          'success'
+          "<div class=\"professional-status\">"+
+            "<div class=\"professional-status-head\">📊 Résultats des matchs</div>"+
+            "<div class=\"professional-status-body\">Les rencontres sont déjà terminées. BATBOT affiche les résultats réels sans calcul de probabilités.</div>"+
+          "</div>",
+          "success"
         );
       }
+
       return originalStatus(html,type);
     };
   }
 
-  function simpleTicketText(data){
+  function buildTicketText(data){
     const matches=Array.isArray(data && data.matches)?data.matches:[];
-    const evidence=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
+
+    const evidence=window.batBotLastEvidence &&
+      Array.isArray(window.batBotLastEvidence.matches)
       ? window.batBotLastEvidence.matches : [];
-    const lines=['BATBOT IA — TICKET D’ANALYSE',''];
+
+    const lines=["🤖 BATBOT IA — TICKET",""];
 
     matches.forEach(function(match,index){
-      const fixture=evidence[index] && evidence[index].fixture ? evidence[index].fixture : (match.fixture||{});
-      const home=fixture && fixture.teams && fixture.teams.home ? fixture.teams.home.name : '';
-      const away=fixture && fixture.teams && fixture.teams.away ? fixture.teams.away.name : '';
-      const name=(home && away) ? home+' vs '+away : (match.name||'Match');
-      const date=fixture && fixture.date ? formatSportScoreDateTime(fixture.date) : 'Date non disponible';
-      const score=fixture ? sportScoreFixtureScore(fixture) : '';
+      const fixture=evidence[index] && evidence[index].fixture
+        ? evidence[index].fixture
+        : (match.fixture||{});
 
-      lines.push(name);
-      lines.push('Date : '+date);
-      if(score)lines.push('Score : '+score);
-      lines.push('');
+      const teams=fixture && fixture.teams ? fixture.teams : {};
+      const home=teams.home && teams.home.name ? teams.home.name : "";
+      const away=teams.away && teams.away.name ? teams.away.name : "";
+
+      const name=(home && away)
+        ? home+" vs "+away
+        : (match.name||("Match "+(index+1)));
+
+      const selected=getSelectedOption(match);
+      const score=getProbableScore(match);
+
+      lines.push("⚽ "+name);
+
+      if(fixture.date){
+        lines.push("📅 "+formatSimpleDate(fixture));
+      }
+
+      if(selected){
+        lines.push(
+          "🎯 Choix : "+simpleName(selected.name)+
+          " — "+formatPercent(selected.probability)
+        );
+      }
+
+      if(score){
+        lines.push("⚽ Score probable : "+score);
+      }
+
+      const complementary=getComplementaryOptions(match);
+
+      if(complementary.length){
+        lines.push("📌 Options complémentaires:");
+
+        complementary.forEach(function(option){
+          lines.push(
+            "• "+simpleName(option.name)+
+            " — "+formatPercent(option.probability)
+          );
+        });
+      }
+
+      lines.push("");
     });
 
-    return lines.join('\n').trim();
+    return lines.join("\n").trim();
   }
 
   window.buildBatBotTicketText=function(data){
-    return simpleTicketText(data||{});
+    return buildTicketText(data||{});
   };
 
   window.renderBatBotTicket=function(data){
-    const box=document.getElementById('batbotTicketContent');
+    const box=document.getElementById("batbotTicketContent");
     if(!box)return;
 
-    const matches=Array.isArray(data && data.matches)?data.matches:[];
-    const evidence=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
+    const matches=Array.isArray(data && data.matches)
+      ? data.matches : [];
+
+    const evidence=window.batBotLastEvidence &&
+      Array.isArray(window.batBotLastEvidence.matches)
       ? window.batBotLastEvidence.matches : [];
 
-    let html='';
+    let html="";
 
     matches.forEach(function(match,index){
-      const fixture=evidence[index] && evidence[index].fixture ? evidence[index].fixture : (match.fixture||{});
-      const teams=fixture && fixture.teams ? fixture.teams : {};
-      const home=teams.home && teams.home.name ? teams.home.name : '';
-      const away=teams.away && teams.away.name ? teams.away.name : '';
-      const name=(home && away) ? home+' vs '+away : (match.name||('Match '+(index+1)));
-      const date=fixture && fixture.date ? formatSportScoreDateTime(fixture.date) : 'Date non disponible';
-      const score=fixture ? sportScoreFixtureScore(fixture) : '';
+      const fixture=evidence[index] && evidence[index].fixture
+        ? evidence[index].fixture
+        : (match.fixture||{});
 
-      html+='<div class="ai-ticket-match">';
-      html+='<div class="ai-ticket-match-name">⚽ '+escapeHtml(name)+'</div>';
-      html+='<div class="ai-ticket-row"><span>DATE</span><strong>'+escapeHtml(date)+'</strong></div>';
-      if(score){
-        html+='<div class="ai-ticket-row"><span>SCORE</span><strong class="ai-ticket-pick">'+escapeHtml(score)+'</strong></div>';
+      const teams=fixture && fixture.teams ? fixture.teams : {};
+
+      const home=teams.home && teams.home.name ? teams.home.name : "";
+      const away=teams.away && teams.away.name ? teams.away.name : "";
+
+      const name=(home && away)
+        ? home+" vs "+away
+        : (match.name||("Match "+(index+1)));
+
+      const selected=getSelectedOption(match);
+      const score=getProbableScore(match);
+      const complementary=getComplementaryOptions(match);
+
+      html+="<div class=\"ai-ticket-match\">";
+
+      html+="<div class=\"ai-ticket-match-name\">⚽ "+
+        escapeHtml(name)+
+        "</div>";
+
+      if(fixture.date){
+        html+="<div class=\"ai-ticket-row\">"+
+          "<span>📅 DATE</span>"+
+          "<strong>"+escapeHtml(formatSimpleDate(fixture))+"</strong>"+
+          "</div>";
       }
-      html+='</div>';
+
+      if(selected){
+        html+="<div class=\"ai-ticket-main-pick\">"+
+          "<div class=\"ai-ticket-main-label\">🎯 CHOIX BATBOT</div>"+
+          "<div class=\"ai-ticket-main-name\">"+
+            escapeHtml(simpleName(selected.name))+
+          "</div>"+
+          "<div class=\"ai-ticket-main-prob\">"+
+            escapeHtml(formatPercent(selected.probability))+
+          "</div>"+
+          "</div>";
+      }else{
+        html+="<div class=\"ai-ticket-row\">"+
+          "<span>🎯 CHOIX</span>"+
+          "<span class=\"ai-ticket-badge\">Analyse insuffisante</span>"+
+          "</div>";
+      }
+
+      if(score){
+        html+="<div class=\"ai-ticket-row\">"+
+          "<span>⚽ SCORE PROBABLE</span>"+
+          "<strong class=\"ai-ticket-pick\">"+
+            escapeHtml(score)+
+          "</strong>"+
+          "</div>";
+      }
+
+      if(complementary.length){
+        html+="<div class=\"ai-ticket-options-title\">📌 Options complémentaires</div>"+
+          "<div class=\"ai-ticket-options\">";
+
+        complementary.forEach(function(option){
+          html+="<div class=\"ai-ticket-option\">"+
+            "<span>"+escapeHtml(simpleName(option.name))+"</span>"+
+            "<strong>"+escapeHtml(formatPercent(option.probability))+"</strong>"+
+            "</div>";
+        });
+
+        html+="</div>";
+      }
+
+      html+="</div>";
     });
 
-    box.innerHTML=html || '<div class="ai-ticket-empty">Aucun ticket disponible.</div>';
-    window.batBotLastTicketText=simpleTicketText(data||{});
+    box.innerHTML=html||
+      "<div class=\"ai-ticket-empty\">Aucun ticket disponible.</div>";
+
+    window.batBotLastTicketText=buildTicketText(data||{});
   };
 
   window.downloadBatBotTicket=function(){
     const data=window.batBotLastAnalysis||{};
     const matches=Array.isArray(data.matches)?data.matches:[];
-    const evidence=window.batBotLastEvidence && Array.isArray(window.batBotLastEvidence.matches)
-      ? window.batBotLastEvidence.matches : [];
 
     if(!matches.length){
-      showToast('Aucun ticket disponible.','error');
+      showToast("Aucun ticket disponible.","error");
       return;
     }
 
-    const width=900;
-    const rowHeight=135;
-    const height=170+(matches.length*rowHeight)+50;
-    const canvas=document.createElement('canvas');
+    const width=1000;
+    const rowHeight=270;
+    const height=190+(matches.length*rowHeight)+70;
+
+    const canvas=document.createElement("canvas");
     canvas.width=width;
     canvas.height=height;
-    const ctx=canvas.getContext('2d');
 
-    ctx.fillStyle='#eef4f8';
+    const ctx=canvas.getContext("2d");
+
+    ctx.fillStyle="#eef4f8";
     ctx.fillRect(0,0,width,height);
-    ctx.fillStyle='rgba(11,44,72,.045)';
-    ctx.font='900 78px Arial';
-    ctx.textAlign='center';
-    ctx.fillText('BATBOT IA',width/2,height/2);
-    ctx.textAlign='left';
 
-    ctx.fillStyle='#0b2c48';
-    ctx.font='900 34px Arial';
-    ctx.fillText('🤖 BATBOT IA',48,58);
-    ctx.font='600 18px Arial';
-    ctx.fillStyle='#52687a';
-    ctx.fillText('TICKET D’ANALYSE • BATBOT IA',48,92);
+    ctx.fillStyle="rgba(11,44,72,.045)";
+    ctx.font="900 82px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("BATBOT IA",width/2,height/2);
+    ctx.textAlign="left";
 
-    ctx.strokeStyle='#8295a5';
+    ctx.fillStyle="#0b2c48";
+    ctx.font="900 36px Arial";
+    ctx.fillText("🤖 BATBOT IA",50,62);
+
+    ctx.font="600 19px Arial";
+    ctx.fillStyle="#52687a";
+    ctx.fillText("TICKET D’ANALYSE",50,98);
+
+    ctx.strokeStyle="#8295a5";
     ctx.setLineDash([7,7]);
     ctx.beginPath();
-    ctx.moveTo(48,116);
-    ctx.lineTo(width-48,116);
+    ctx.moveTo(50,125);
+    ctx.lineTo(width-50,125);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    let y=165;
+    let y=175;
 
     matches.forEach(function(match,index){
-      const fixture=evidence[index] && evidence[index].fixture ? evidence[index].fixture : (match.fixture||{});
-      const teams=fixture && fixture.teams ? fixture.teams : {};
-      const home=teams.home && teams.home.name ? teams.home.name : '';
-      const away=teams.away && teams.away.name ? teams.away.name : '';
-      const name=(home && away) ? home+' vs '+away : (match.name||('Match '+(index+1)));
-      const date=fixture && fixture.date ? formatSportScoreDateTime(fixture.date) : 'Date non disponible';
-      const score=fixture ? sportScoreFixtureScore(fixture) : '';
+      const selected=getSelectedOption(match);
+      const score=getProbableScore(match);
+      const complementary=getComplementaryOptions(match);
 
-      ctx.fillStyle='#102235';
-      ctx.font='900 23px Arial';
-      ctx.fillText(name,48,y);
-      y+=40;
+      ctx.fillStyle="#102235";
+      ctx.font="900 25px Arial";
+      ctx.fillText(
+        (index+1)+". "+String(match.name||"Match"),
+        50,y
+      );
 
-      ctx.fillStyle='#52687a';
-      ctx.font='700 18px Arial';
-      ctx.fillText('Date : '+date,48,y);
+      y+=42;
 
-      if(score){
-        ctx.fillStyle='#087548';
-        ctx.font='900 22px Arial';
-        ctx.fillText('Score : '+score,570,y);
+      if(selected){
+        ctx.fillStyle="#087548";
+        ctx.font="900 21px Arial";
+        ctx.fillText(
+          "🎯 Choix : "+simpleName(selected.name),
+          50,y
+        );
+
+        ctx.fillText(
+          formatPercent(selected.probability),
+          735,y
+        );
       }
 
-      y+=45;
-      ctx.strokeStyle='#a5b4bf';
+      y+=38;
+
+      if(score){
+        ctx.fillStyle="#102235";
+        ctx.font="700 19px Arial";
+        ctx.fillText(
+          "⚽ Score probable : "+score,
+          50,y
+        );
+      }
+
+      y+=35;
+
+      if(complementary.length){
+        ctx.fillStyle="#52687a";
+        ctx.font="700 17px Arial";
+        ctx.fillText(
+          "📌 Options : "+complementary.map(function(option){
+            return simpleName(option.name)+" "+formatPercent(option.probability);
+          }).join(" • "),
+          50,y
+        );
+      }
+
+      y+=50;
+
+      ctx.strokeStyle="#a5b4bf";
       ctx.setLineDash([7,7]);
       ctx.beginPath();
-      ctx.moveTo(48,y);
-      ctx.lineTo(width-48,y);
+      ctx.moveTo(50,y);
+      ctx.lineTo(width-50,y);
       ctx.stroke();
       ctx.setLineDash([]);
-      y+=35;
+
+      y+=40;
     });
 
     canvas.toBlob(function(blob){
       if(!blob){
-        showToast('Téléchargement impossible.','error');
+        showToast("Téléchargement impossible.","error");
         return;
       }
+
       const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
+      const a=document.createElement("a");
+
       a.href=url;
-      a.download='batbot-ticket.png';
+      a.download="batbot-ticket.png";
+
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(function(){URL.revokeObjectURL(url);},1000);
-      showToast('Ticket PNG téléchargé.','success');
-    },'image/png');
+
+      setTimeout(function(){
+        URL.revokeObjectURL(url);
+      },1000);
+
+      showToast("Ticket PNG téléchargé.","success");
+    },"image/png");
   };
+
+  const style=document.createElement("style");
+  style.id="batbot-ticket-ux-v3-style";
+  style.textContent=`
+    .ai-ticket-main-pick{
+      margin:10px 0;
+      padding:12px;
+      border-radius:14px;
+      background:linear-gradient(145deg,#e8fff1,#d9f8e6);
+      border:1px solid #a8dfbf;
+      text-align:center;
+      box-shadow:0 7px 18px rgba(8,117,72,.10);
+    }
+
+    .ai-ticket-main-label{
+      font-size:10px;
+      font-weight:1000;
+      color:#087548;
+      letter-spacing:.6px;
+    }
+
+    .ai-ticket-main-name{
+      margin-top:5px;
+      font-size:17px;
+      font-weight:1000;
+      color:#102235;
+      line-height:1.3;
+    }
+
+    .ai-ticket-main-prob{
+      margin-top:4px;
+      font-size:14px;
+      font-weight:1000;
+      color:#087548;
+    }
+
+    .ai-ticket-options-title{
+      margin-top:11px;
+      margin-bottom:6px;
+      font-size:11px;
+      font-weight:1000;
+      color:#52687a;
+      text-transform:uppercase;
+      letter-spacing:.45px;
+    }
+
+    .ai-ticket-options{
+      display:grid;
+      gap:6px;
+    }
+
+    .ai-ticket-option{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:10px;
+      background:#edf3f7;
+      border:1px solid #d2dde5;
+      color:#102235;
+      font-size:11px;
+      font-weight:800;
+    }
+
+    .ai-ticket-option strong{
+      color:#087548;
+      font-weight:1000;
+      white-space:nowrap;
+    }
+
+    .ai-ticket-main-pick{
+      animation:batbotTicketPulse 2.8s ease-in-out infinite;
+    }
+
+    @keyframes batbotTicketPulse{
+      0%,100%{box-shadow:0 7px 18px rgba(8,117,72,.10)}
+      50%{box-shadow:0 8px 23px rgba(8,117,72,.20)}
+    }
+  `;
+
+  document.head.appendChild(style);
 
 })();
 </script>
