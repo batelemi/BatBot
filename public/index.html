@@ -3079,6 +3079,8 @@ async function submitBatBotAI(){
         return {
           match:item?.match||compatibleMatches[index]?.name||"Match",
           fixture:item?.fixture||null,
+          homeTeam:item?.homeTeam||null,
+          awayTeam:item?.awayTeam||null,
           homeForm:{
             teamName:item?.homeTeam?.name||first.home,
             sample:Number(homeStats.matches)||0,
@@ -5532,7 +5534,10 @@ document.addEventListener("keydown",function(event){
     }
 
     function flag(team){
-      if(team&&team.flag)return String(team.flag);
+      if(!team)return "";
+      if(team.flag)return String(team.flag);
+      if(team.flag_emoji)return String(team.flag_emoji);
+      if(team.flagEmoji)return String(team.flagEmoji);
       return "";
     }
 
@@ -5544,8 +5549,8 @@ document.addEventListener("keydown",function(event){
         :(match.fixture||{});
 
       const teams=fixture&&fixture.teams?fixture.teams:{};
-      const homeTeam=teams.home||{};
-      const awayTeam=teams.away||{};
+      const homeTeam=Object.assign({},teams.home||{},evidence[index]?.homeTeam||{});
+      const awayTeam=Object.assign({},teams.away||{},evidence[index]?.awayTeam||{});
 
       const home=homeTeam.name||"Équipe 1";
       const away=awayTeam.name||"Équipe 2";
