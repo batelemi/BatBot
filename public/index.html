@@ -5201,6 +5201,11 @@ document.addEventListener("keydown",function(event){
     };
   }
 
+  function num(value){
+    const n=Number(value);
+    return Number.isFinite(n)?n:null;
+  }
+
   function buildTicketText(data){
     const matches=Array.isArray(data&&data.matches)?data.matches:[];
     const evidence=window.batBotLastEvidence&&Array.isArray(window.batBotLastEvidence.matches)
