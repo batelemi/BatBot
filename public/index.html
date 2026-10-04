@@ -2518,6 +2518,8 @@ function renderBatBotAIResult(raw,modelData){
       });
     }
 
+    match.bestScore=model.bestScore||"";
+
     match.reason=match.reason||
       "Lecture basée sur les données disponibles et le modèle statistique BATBOT.";
 
