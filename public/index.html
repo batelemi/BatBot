@@ -3345,7 +3345,7 @@ async function submitBatBotAI(){
         data_quality:model.data_quality||item?.data_quality||"limitée",
         expected_goals:model.expected_goals||item?.odds?.expectedGoals||null,
         most_likely_score:model.most_likely_score||item?.odds?.mostLikelyScore||null,
-        bestScore:model.most_likely_score||item?.odds?.mostLikelyScore||null,
+        bestScore:model.bestScore||model.most_likely_score||item?.odds?.mostLikelyScore||null,
         form_index_home:batBotFormIndex(stats.home||{}),
         form_index_away:batBotFormIndex(stats.away||{}),
         markets:model.markets||item?.odds?.markets||null,
