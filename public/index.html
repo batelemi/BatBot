@@ -2946,55 +2946,191 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
     h2hMatches.forEach(function(m){const homeIsTarget=sportScoreNameKey(m.home)===target;const awayIsTarget=sportScoreNameKey(m.away)===target;if(homeIsTarget){hGF+=m.homeScore;hGA+=m.awayScore;n++;}else if(awayIsTarget){hGF+=m.awayScore;hGA+=m.homeScore;n++;}});
     if(n>=3){lambdaHome=(lambdaHome*.85)+(Math.max(.20,Math.min(3.8,hGF/n+.10))*.15);lambdaAway=(lambdaAway*.85)+(Math.max(.15,Math.min(3.4,hGA/n))*.15);}
   }
-  let p1=0,px=0,p2=0,pover=0,pbtts=0,maxP=0,best="1-0",matrixTotal=0;
-  for(let i=0;i<=10;i++)for(let j=0;j<=10;j++){const p=poissonProbability(i,lambdaHome)*poissonProbability(j,lambdaAway);matrixTotal+=p;if(i>j)p1+=p;else if(i===j)px+=p;else p2+=p;if(i+j>=3)pover+=p;if(i>0&&j>0)pbtts+=p;if(p>maxP){maxP=p;best=i+"-"+j;}}
-  if(!(matrixTotal>0))return {ready:false,reason:"Impossible de calculer une distribution à partir des données disponibles.",probabilities:[],options:[],recommendation:"Analyse insuffisante",data_quality:"limitée"};
-  p1/=matrixTotal;px/=matrixTotal;p2/=matrixTotal;pover/=matrixTotal;pbtts/=matrixTotal;maxP/=matrixTotal;
-  const probs=normalizePercentages([p1,px,p2]); if(!probs)return {ready:false,reason:"Impossible de normaliser les probabilités à partir des données disponibles.",probabilities:[],options:[],recommendation:"Analyse insuffisante",data_quality:"limitée"};
+  let p1=0,px=0,p2=0,pover=0,pbtts=0,matrixTotal=0;
+  const scoreMatrix=[];
+
+  for(let i=0;i<=10;i++)for(let j=0;j<=10;j++){
+    const p=poissonProbability(i,lambdaHome)*poissonProbability(j,lambdaAway);
+    matrixTotal+=p;
+
+    if(i>j)p1+=p;
+    else if(i===j)px+=p;
+    else p2+=p;
+
+    if(i+j>=3)pover+=p;
+    if(i>0&&j>0)pbtts+=p;
+
+    scoreMatrix.push({home:i,away:j,probability:p});
+  }
+
+  if(!(matrixTotal>0)){
+    return {
+      ready:false,
+      reason:"Impossible de calculer une distribution à partir des données disponibles.",
+      probabilities:[],
+      options:[],
+      recommendation:"Analyse insuffisante",
+      data_quality:"limitée"
+    };
+  }
+
+  p1/=matrixTotal;
+  px/=matrixTotal;
+  p2/=matrixTotal;
+  pover/=matrixTotal;
+  pbtts/=matrixTotal;
+
+  const probs=normalizePercentages([p1,px,p2]);
+  if(!probs){
+    return {
+      ready:false,
+      reason:"Impossible de normaliser les probabilités à partir des données disponibles.",
+      probabilities:[],
+      options:[],
+      recommendation:"Analyse insuffisante",
+      data_quality:"limitée"
+    };
+  }
+
   const [P1,PX,P2]=probs;
-  const o1x=Math.round((P1+PX)*10)/10, ox2=Math.round((PX+P2)*10)/10, o12=Math.round((P1+P2)*10)/10;
-  const obtts=Math.round(pbtts*1000)/10, oover=Math.round(pover*1000)/10, ohand=P1, oscore=Math.round(maxP*1000)/10;
+  const o1x=Math.round((P1+PX)*10)/10;
+  const ox2=Math.round((PX+P2)*10)/10;
+  const o12=Math.round((P1+P2)*10)/10;
+  const obtts=Math.round(pbtts*1000)/10;
+  const oover=Math.round(pover*1000)/10;
+
   const risk=p=>p>=78?"Faible":p>=62?"Modéré":"Élevé";
 
   /*
-   * Les lignes de buts sont calculées à partir de la même matrice de
-   * Poisson que le reste du modèle. On choisit ensuite une ligne
-   * informative pour CE match, au lieu d'imposer systématiquement
-   * "Plus de 2.5 buts".
+   * La recommandation principale est déterminée uniquement par
+   * les probabilités 1/X/2 calculées par le modèle.
    */
-  const goalLines=[];
-  for(let threshold=1;threshold<=5;threshold++){
-    let probability=0;
-    for(let i=0;i<=10;i++){
-      for(let j=0;j<=10;j++){
-        if(i+j>=threshold+1){
-          probability+=poissonProbability(i,lambdaHome)*poissonProbability(j,lambdaAway);
-        }
-      }
+  const resultCandidates=[
+    {
+      key:"home",
+      probability:P1,
+      name:"Victoire "+(hf.teamName||"Équipe 1")
+    },
+    {
+      key:"draw",
+      probability:PX,
+      name:"Match nul"
+    },
+    {
+      key:"away",
+      probability:P2,
+      name:"Victoire "+(af.teamName||"Équipe 2")
     }
-    probability=(probability/matrixTotal)*100;
-    goalLines.push({
-      threshold:threshold+0.5,
-      probability:Math.round(probability*10)/10
+  ].sort((a,b)=>b.probability-a.probability);
+
+  const preferredResult=resultCandidates[0]||null;
+
+  /*
+   * Le score prévu est recherché dans la même matrice de Poisson,
+   * mais uniquement parmi les scores compatibles avec le résultat
+   * principal : victoire domicile, nul ou victoire extérieure.
+   */
+  function bestCompatibleScore(resultKey){
+    const candidates=scoreMatrix.filter(function(item){
+      if(resultKey==="home")return item.home>item.away;
+      if(resultKey==="away")return item.away>item.home;
+      return item.home===item.away;
+    });
+
+    candidates.sort(function(a,b){
+      return b.probability-a.probability;
+    });
+
+    return candidates[0]||null;
+  }
+
+  const bestScoreItem=preferredResult
+    ?bestCompatibleScore(preferredResult.key)
+    :null;
+
+  const bestScore=bestScoreItem
+    ?bestScoreItem.home+"-"+bestScoreItem.away
+    :"";
+
+  const oscore=bestScoreItem
+    ?Math.round((bestScoreItem.probability/matrixTotal)*1000)/10
+    :null;
+
+  /*
+   * Calcul des marchés de buts depuis la même matrice.
+   * Les lignes Over et Under sont toutes issues des probabilités
+   * réelles du match.
+   */
+  const goalMarkets=[];
+
+  for(let threshold=0.5;threshold<=5.5;threshold+=1){
+    let overProbability=0;
+
+    scoreMatrix.forEach(function(item){
+      if(item.home+item.away>threshold){
+        overProbability+=item.probability;
+      }
+    });
+
+    const over=Math.round((overProbability/matrixTotal)*1000)/10;
+    const under=Math.round((100-over)*10)/10;
+
+    goalMarkets.push({
+      threshold:threshold,
+      over:over,
+      under:under
     });
   }
 
+  /*
+   * Pour éviter une ligne de buts toujours identique, on choisit
+   * la ligne dont la probabilité est la plus informative autour
+   * d'une zone intermédiaire, tout en restant entièrement dérivée
+   * de la distribution du match.
+   */
+  const goalCandidates=[];
+
+  goalMarkets.forEach(function(line){
+    goalCandidates.push({
+      name:"Plus de "+line.threshold.toFixed(1)+" buts",
+      probability:line.over,
+      family:"goals"
+    });
+
+    goalCandidates.push({
+      name:"Moins de "+line.threshold.toFixed(1)+" buts",
+      probability:line.under,
+      family:"goals"
+    });
+  });
+
   const targetGoalProbability=65;
-  const selectedGoalLine=goalLines.reduce(function(bestLine,line){
-    if(!bestLine)return line;
 
-    const bestDistance=Math.abs(bestLine.probability-targetGoalProbability);
-    const lineDistance=Math.abs(line.probability-targetGoalProbability);
+  const selectedGoal=goalCandidates
+    .filter(function(option){
+      return Number.isFinite(option.probability) &&
+             option.probability>=50 &&
+             option.probability<=85;
+    })
+    .sort(function(a,b){
+      const da=Math.abs(a.probability-targetGoalProbability);
+      const db=Math.abs(b.probability-targetGoalProbability);
+      if(da!==db)return da-db;
+      return b.probability-a.probability;
+    })[0] || goalCandidates
+      .filter(function(option){
+        return Number.isFinite(option.probability);
+      })
+      .sort(function(a,b){
+        return b.probability-a.probability;
+      })[0];
 
-    return lineDistance<bestDistance?line:bestLine;
-  },null);
-
-  const selectedGoalName=selectedGoalLine
-    ?"Plus de "+selectedGoalLine.threshold.toFixed(1)+" buts"
+  const selectedGoalName=selectedGoal
+    ?selectedGoal.name
     :"Plus de 2.5 buts";
 
-  const selectedGoalProbability=selectedGoalLine
-    ?selectedGoalLine.probability
+  const selectedGoalProbability=selectedGoal
+    ?selectedGoal.probability
     :oover;
 
   const optionReasons={
@@ -3004,20 +3140,90 @@ function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
     "BTTS (les deux équipes marquent)":"Estimation calculée par le modèle à partir de la distribution des buts attendus.",
     [selectedGoalName]:"Estimation calculée à partir de la distribution des buts attendus propre à ce match.",
     ["Victoire "+(hf.teamName||"Équipe 1")]:"Probabilité estimée par le modèle pour une victoire de l'équipe à domicile.",
-    ["Score exact "+best]:"Probabilité du score exact le plus probable selon la distribution calculée par le modèle."
+    ["Match nul"]:"Probabilité estimée par le modèle pour un match nul.",
+    ["Victoire "+(af.teamName||"Équipe 2")]:"Probabilité estimée par le modèle pour une victoire de l'équipe à l'extérieur.",
+    ["Score exact "+bestScore]:"Probabilité du score exact compatible avec le résultat principal et calculée par la distribution du modèle."
   };
 
   const options=[
-    {name:"1X",probability:o1x,risk:risk(o1x),reason:optionReasons["1X"]},
-    {name:"X2",probability:ox2,risk:risk(ox2),reason:optionReasons["X2"]},
-    {name:"12",probability:o12,risk:risk(o12),reason:optionReasons["12"]},
-    {name:"BTTS (les deux équipes marquent)",probability:obtts,risk:risk(obtts),reason:optionReasons["BTTS (les deux équipes marquent)"]},
-    {name:selectedGoalName,probability:selectedGoalProbability,risk:risk(selectedGoalProbability),reason:optionReasons[selectedGoalName]},
-    {name:"Victoire "+(hf.teamName||"Équipe 1"),probability:ohand,risk:risk(ohand),reason:optionReasons["Victoire "+(hf.teamName||"Équipe 1")]},
-    {name:"Score exact "+best,probability:oscore,risk:"Élevé",reason:optionReasons["Score exact "+best]}
+    {
+      name:"1X",
+      probability:o1x,
+      risk:risk(o1x),
+      reason:optionReasons["1X"]
+    },
+    {
+      name:"X2",
+      probability:ox2,
+      risk:risk(ox2),
+      reason:optionReasons["X2"]
+    },
+    {
+      name:"12",
+      probability:o12,
+      risk:risk(o12),
+      reason:optionReasons["12"]
+    },
+    {
+      name:"BTTS (les deux équipes marquent)",
+      probability:obtts,
+      risk:risk(obtts),
+      reason:optionReasons["BTTS (les deux équipes marquent)"]
+    },
+    {
+      name:selectedGoalName,
+      probability:selectedGoalProbability,
+      risk:risk(selectedGoalProbability),
+      reason:optionReasons[selectedGoalName]
+    },
+    {
+      name:"Victoire "+(hf.teamName||"Équipe 1"),
+      probability:P1,
+      risk:risk(P1),
+      reason:optionReasons["Victoire "+(hf.teamName||"Équipe 1")]
+    },
+    {
+      name:"Match nul",
+      probability:PX,
+      risk:risk(PX),
+      reason:optionReasons["Match nul"]
+    },
+    {
+      name:"Victoire "+(af.teamName||"Équipe 2"),
+      probability:P2,
+      risk:risk(P2),
+      reason:optionReasons["Victoire "+(af.teamName||"Équipe 2")]
+    }
   ];
-  const preferred=options.filter(o=>!/^Score exact/.test(o.name)).sort((a,b)=>b.probability-a.probability)[0];
-  return {ready:true,lambdaHome:+lambdaHome.toFixed(2),lambdaAway:+lambdaAway.toFixed(2),probabilities:[{label:"1",value:P1},{label:"X",value:PX},{label:"2",value:P2}],options,recommendation:preferred?.name||"Analyse insuffisante",bestScore:best,over25:oover,btts:obtts,form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,expected_goals:+(lambdaHome+lambdaAway).toFixed(2),data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée"};
+
+  if(bestScore && Number.isFinite(oscore)){
+    options.push({
+      name:"Score exact "+bestScore,
+      probability:oscore,
+      risk:"Élevé",
+      reason:optionReasons["Score exact "+bestScore]
+    });
+  }
+
+  return {
+    ready:true,
+    lambdaHome:+lambdaHome.toFixed(2),
+    lambdaAway:+lambdaAway.toFixed(2),
+    probabilities:[
+      {label:"1",value:P1},
+      {label:"X",value:PX},
+      {label:"2",value:P2}
+    ],
+    options,
+    recommendation:preferredResult?.name||"Analyse insuffisante",
+    bestScore:bestScore,
+    over25:oover,
+    btts:obtts,
+    form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,
+    form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,
+    expected_goals:+(lambdaHome+lambdaAway).toFixed(2),
+    data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée"
+  };
 }
 async function fetchSportScoreEvidence(endpoint,params){
   try{
