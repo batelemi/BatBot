@@ -5421,7 +5421,7 @@ document.addEventListener("keydown",function(event){
 
       const rawDate=fixture?.date||match?.date||"";
       const rawTime=fixture?.time||match?.time||"";
-      const formattedDate=formatSimpleDate(rawDate);
+      const formattedDate=formatSimpleDate(fixture);
       const formattedTime=rawTime || "";
 
       if(formattedDate || formattedTime){
