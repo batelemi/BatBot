@@ -3605,21 +3605,19 @@ function normalizeSportScoreClientMatch(match,index){
   // SportScore peut utiliser LIVE, 1H, HT, 2H, ET ou PEN.
   // Tous ces codes correspondent à une rencontre en cours.
   const rawStatus=String(
-    match?.status_text||
+    match?.fixture?.status?.short||
+    match?.fixture?.status?.long||
     match?.status||
     match?.status_code||
     match?.state||
-    match?.fixture?.status?.short||
-    match?.fixture?.status?.long||
+    match?.status_text||
     ""
   ).toLowerCase().trim();
   const statusKey=rawStatus.replace(/[._-]+/g," ").replace(/\s+/g," ");
   const isLiveStatus=/\b(live|in progress|progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalties|penalty|pen)\b/i.test(statusKey);
   const isFinishedStatus=/\b(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout)\b/i.test(statusKey);
   const short=isFinishedStatus?"FT":(isLiveStatus?"LIVE":"NS");
-  const displayStatus=translateSportScoreStatus(
-    match?.status_text||match?.status||match?.status_code||match?.state||"Programmé"
-  );
+  const displayStatus=translateSportScoreStatus(rawStatus||"Programmé");
 
   return {
     fixture:{
