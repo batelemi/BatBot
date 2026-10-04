@@ -5419,11 +5419,13 @@ document.addEventListener("keydown",function(event){
         lines.push("⚽ "+[home,away].filter(Boolean).join(" vs "));
       }
 
-      const date=fixture?.date||match?.date||"";
-      const time=fixture?.time||match?.time||"";
+      const rawDate=fixture?.date||match?.date||"";
+      const rawTime=fixture?.time||match?.time||"";
+      const formattedDate=formatSimpleDate(rawDate);
+      const formattedTime=rawTime || "";
 
-      if(date || time){
-        lines.push("📅 "+[date,time].filter(Boolean).join(" • "));
+      if(formattedDate || formattedTime){
+        lines.push("📅 "+[formattedDate,formattedTime].filter(Boolean).join(" • "));
       }
 
       const currentHome=num(fixture?.goals?.home);
