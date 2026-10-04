@@ -733,6 +733,39 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .batbot-admin-nav-item,.batbot-admin-nav-action,.batbot-admin-nav-sheet,.batbot-admin-nav-sheet-backdrop{transition:none!important}
 }
 </style>
+<style id="batbot-professional-analysis-fix">
+.batbot-match-card{width:100%;margin:14px 0;padding:16px;border-radius:18px;background:linear-gradient(145deg,rgba(16,43,76,.98),rgba(8,28,49,.98));border:1px solid rgba(83,207,255,.24);box-shadow:0 10px 28px rgba(0,0,0,.18);color:#F5FAFF}
+.batbot-match-card.batbot-match-finished{border-color:rgba(148,163,184,.30);background:linear-gradient(145deg,rgba(22,42,61,.98),rgba(8,27,46,.98))}
+.batbot-match-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.batbot-match-title{flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:18px;line-height:1.35;font-weight:900;color:#FFF}
+.batbot-vs{color:#AFC1D4;font-weight:800}
+.batbot-match-meta{display:block;margin:7px 0;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.045);color:#D9E7F3;font-size:13px;line-height:1.45}
+.batbot-live-score,.batbot-real-score{margin:13px auto;width:max-content;min-width:86px;padding:9px 18px;border-radius:13px;background:rgba(0,191,255,.10);border:1px solid rgba(0,191,255,.20);color:#FFF;font-size:25px;line-height:1;font-weight:1000;text-align:center}
+.batbot-real-score{background:rgba(148,163,184,.10);border-color:rgba(148,163,184,.22)}
+.batbot-form-section,.batbot-prediction-card,.batbot-result-section{margin-top:14px}
+.batbot-section-title{color:#FFF;font-size:16px;font-weight:900;margin:0 0 10px}
+.batbot-team-block{margin-top:9px;padding:12px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)}
+.batbot-team-name{display:flex;align-items:center;flex-wrap:wrap;gap:6px;color:#FFF;font-size:15px;font-weight:900;line-height:1.4}
+.batbot-form-line{margin-top:7px;color:#E6F1F8;font-size:13px;line-height:1.5}
+.batbot-goals-line{margin-top:5px;color:#BFD0DE;font-size:13px;line-height:1.5}
+.batbot-prediction-card{padding:14px;border-radius:16px;background:linear-gradient(145deg,rgba(0,191,255,.07),rgba(33,197,93,.07));border:1px solid rgba(83,207,255,.18)}
+.batbot-prediction-block{margin-top:10px;padding:11px;border-radius:12px;background:rgba(0,0,0,.12)}
+.batbot-subtitle{color:#DCEAF3;font-size:13px;font-weight:900;margin-bottom:7px}
+.batbot-expected-goals{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;text-align:center;color:#FFF;font-size:14px;line-height:1.35}
+.batbot-expected-goals strong{font-size:19px;color:#FFF}.batbot-expected-team{display:block;color:#BFD0DE;font-size:11px;font-weight:800;margin-bottom:3px}
+.batbot-form-index{display:flex;justify-content:center;align-items:center;gap:8px;color:#FFF;font-size:14px}.batbot-form-index strong{font-size:17px}
+.batbot-predicted-score{margin-top:10px;text-align:center}.ai-score-predicted{display:inline-flex;min-width:86px;min-height:48px;align-items:center;justify-content:center;padding:8px 16px;border-radius:13px;background:rgba(255,255,255,.08);color:#FFF;font-size:24px;font-weight:1000}
+.batbot-probability-row{display:grid;gap:8px}.batbot-prob-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.045);color:#F5FAFF;font-size:13px}.batbot-prob-item strong{font-size:15px;color:#FFF}
+.batbot-recommendation{margin-top:12px;padding:12px 14px;border-radius:13px;text-align:center;background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.24);color:#FFF;line-height:1.4}.batbot-recommendation strong{color:#FACC15}
+.batbot-team-flag-emoji{margin-right:2px}.batbot-team-flag{width:24px!important;height:24px!important;object-fit:contain!important;vertical-align:middle;flex:0 0 auto}
+.batbot-ticket-modern .ai-ticket-match{color:#F4FFF8!important}
+.batbot-ticket-modern .ai-ticket-name,.batbot-ticket-modern .ai-ticket-team-name,.batbot-ticket-modern .ai-ticket-prediction-title,.batbot-ticket-modern .ai-ticket-prediction,.batbot-ticket-modern .ai-ticket-recommendation-name,.batbot-ticket-modern .ai-ticket-probability,.batbot-ticket-modern .ai-ticket-option{color:#F4FFF8}
+.batbot-ticket-modern .ai-ticket-score-current,.batbot-ticket-modern .ai-ticket-predicted-score{color:#FFF!important}
+.batbot-ticket-modern .ai-ticket-status-finished{background:rgba(148,163,184,.15);color:#E2E8F0}
+.batbot-ticket-modern .ai-ticket-expected{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;line-height:1.35}
+.batbot-ticket-modern .ai-ticket-expected-team{display:block;color:#D9E7F3;font-size:11px;font-weight:800;margin-bottom:3px}.batbot-ticket-modern .ai-ticket-expected strong{color:#FFF;font-size:19px}
+@media(max-width:430px){.batbot-match-card{padding:13px}.batbot-match-title{font-size:16px}.batbot-match-meta{font-size:12px}.batbot-team-name{font-size:14px}.batbot-expected-goals strong{font-size:17px}}
+</style>
 </head>
 
 <body>
@@ -2731,9 +2764,7 @@ function renderBatBotAIResult(raw,modelData){
 
         '<div class="batbot-team-block">'+
           '<div class="batbot-team-name">'+
-            (homeFlag
-              ?'<img class="batbot-team-flag" src="'+escapeHtml(homeFlag)+'" alt="">'
-              :"")+
+            renderBatBotTeamFlag(homeFlag)+
             escapeHtml(homeName)+
           '</div>'+
           '<div class="batbot-form-line">'+
@@ -2746,9 +2777,7 @@ function renderBatBotAIResult(raw,modelData){
 
         '<div class="batbot-team-block">'+
           '<div class="batbot-team-name">'+
-            (awayFlag
-              ?'<img class="batbot-team-flag" src="'+escapeHtml(awayFlag)+'" alt="">'
-              :"")+
+            renderBatBotTeamFlag(awayFlag)+
             escapeHtml(awayName)+
           '</div>'+
           '<div class="batbot-form-line">'+
@@ -2766,11 +2795,11 @@ function renderBatBotAIResult(raw,modelData){
         '<div class="batbot-prediction-block">'+
           '<div class="batbot-subtitle">⚽ Buts prévus</div>'+
           '<div class="batbot-expected-goals">'+
-            '<strong>'+escapeHtml(expectedHome)+'</strong>'+
-            ' — '+
-            '<span>Total : '+escapeHtml(totalExpected.toFixed(2).replace(".",","))+' buts</span>'+
-            ' — '+
-            '<strong>'+escapeHtml(expectedAway)+'</strong>'+
+            '<div><span class="batbot-expected-team">'+escapeHtml(homeName)+'</span>'+
+            '<strong>'+escapeHtml(expectedHome)+'</strong> but(s)</div>'+
+            '<span aria-hidden="true">vs</span>'+
+            '<div><span class="batbot-expected-team">'+escapeHtml(awayName)+'</span>'+
+            '<strong>'+escapeHtml(expectedAway)+'</strong> but(s)</div>'+
           '</div>'+
         '</div>'+
 
@@ -3217,7 +3246,15 @@ function extractSportScoreDate(match){
 }
 function formatSportScoreDateTime(value){const d=parseSportScoreDate(value);if(!d)return "Date/heure indisponible";const tz=getBatBotLocalTimeZone();try{return new Intl.DateTimeFormat(undefined,{timeZone:tz,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"}).format(d)+" • "+tz;}catch(_){return d.toLocaleString();}}
 function fixtureStatusKey(item){const f=item?.fixture||{};const status=f.status||item?.status||item?.status_code||item?.state||item?.sportscore?.status||item?.sportscore?.status_text||"";return String(status?.short||status?.long||status||"").toLowerCase().trim();}
-function isFinishedFixture(item){return /(^|\b)(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout|termin|apres prolongation)(\b|$)/i.test(fixtureStatusKey(item));}
+function isFinishedFixture(item){
+  const key=fixtureStatusKey(item);
+  if(/(^|\b)(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout|termin|apres prolongation)(\b|$)/i.test(key))return true;
+  if(isLiveFixture(item))return false;
+  const score=sportScoreFixtureScore(item);
+  const date=item?.fixture?.date||item?.date||item?.time||item?.start_time||item?.startTime||"";
+  const timestamp=date?new Date(date).getTime():NaN;
+  return Boolean(score)&&Number.isFinite(timestamp)&&timestamp<(Date.now()-2*60*1000);
+}
 function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|first half|second half|half time|halftime|mi temps|1re mi temps|2e mi temps|1h|2h|ht|extra time|et|penalties|penalty|pen)(\b|$)/i.test(fixtureStatusKey(item));}
 function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard/i.test(fixtureStatusKey(item));}
 function isAnalyzableFixture(item){return !isFinishedFixture(item)&&!isNonAnalyzableFixture(item);}
@@ -5573,25 +5610,14 @@ document.addEventListener("keydown",function(event){
         )||""
       );
 
-      const statusLower=status.toLowerCase();
-      const live=(
-        statusLower.indexOf("live")>=0||
-        statusLower.indexOf("progress")>=0||
-        statusLower==="1h"||
-        statusLower==="2h"||
-        statusLower==="ht"||
-        statusLower==="et"
-      );
+      const live=isLiveFixture(fixture);
+      const finished=!live&&isFinishedFixture(fixture);
 
-      const finished=(
-        statusLower.indexOf("finish")>=0||
-        statusLower.indexOf("termin")>=0||
-        statusLower==="ft"
-      );
-
-      const statusClass=live
-        ?"ai-ticket-status-live"
-        :"ai-ticket-status-upcoming";
+      const statusClass=finished
+        ?"ai-ticket-status-finished"
+        :(live
+          ?"ai-ticket-status-live"
+          :"ai-ticket-status-upcoming");
 
       const statusText=live
         ?"🔴 En direct"
@@ -5738,17 +5764,12 @@ document.addEventListener("keydown",function(event){
         if(expectedHome!=="—"||expectedAway!=="—"){
           html+='<div class="ai-ticket-section-title">🥅 Buts prévus</div>'+
             '<div class="ai-ticket-expected">'+
-            escapeHtml(
-              flag(homeTeam)+" "+
-              expectedHome+
-              " — "+
-              expectedAway+" "+
-              flag(awayTeam)
-            )+
-            '</div>'+
-            '<div class="ai-ticket-total">Total : '+
-            escapeHtml(totalExpected)+
-            ' buts</div>';
+            '<div><span class="ai-ticket-expected-team">'+escapeHtml(home)+'</span>'+
+            flag(homeTeam)+' <strong>'+escapeHtml(expectedHome)+'</strong> but(s)</div>'+
+            '<span aria-hidden="true">vs</span>'+
+            '<div><span class="ai-ticket-expected-team">'+escapeHtml(away)+'</span>'+
+            flag(awayTeam)+' <strong>'+escapeHtml(expectedAway)+'</strong> but(s)</div>'+
+          '</div>';
         }
 
         if(homeRate!==null||awayRate!==null){
