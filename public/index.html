@@ -5113,6 +5113,10 @@ document.addEventListener("keydown",function(event){
       if(lower===recommendation)return false;
 
       if(/^score exact\s+/i.test(name))return false;
+      // Les autres issues du marché 1X2 ne sont pas des options complémentaires.
+      if(lower==="1" || lower==="x" || lower==="2")return false;
+      if(/^victoire\s+/i.test(name))return false;
+      if(lower==="match nul")return false;
 
       return true;
     }).sort(function(a,b){
