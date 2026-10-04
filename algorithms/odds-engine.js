@@ -720,6 +720,18 @@ function buildScoreMatrix(
 // MARCHÉS
 // ============================================================
 
+function getCompatibleBestScore(matrix, preferredResult) {
+  let best = { homeGoals: 0, awayGoals: 0, probability: 0 };
+  for (let h = 0; h <= MAX_GOALS; h += 1) {
+    for (let a = 0; a <= MAX_GOALS; a += 1) {
+      const probability = matrix[h][a];
+      const compatible = preferredResult === "home" ? h > a : preferredResult === "away" ? a > h : h === a;
+      if (compatible && probability > best.probability) best = { homeGoals: h, awayGoals: a, probability };
+    }
+  }
+  return best;
+}
+
 function calculateMarkets(
   matrix
 ) {
@@ -808,21 +820,20 @@ function calculateMarkets(
           probability;
       }
 
-      /*
-       * Score le plus probable.
-       */
-      if (
-        probability >
-        bestScore.probability
-      ) {
-        bestScore = {
-          homeGoals: h,
-          awayGoals: a,
-          probability
-        };
-      }
     }
   }
+
+  const preferredResult =
+    home >= draw && home >= away
+      ? "home"
+      : away >= home && away >= draw
+        ? "away"
+        : "draw";
+
+  bestScore = getCompatibleBestScore(
+    matrix,
+    preferredResult
+  );
 
   return {
     home,
