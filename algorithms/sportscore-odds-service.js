@@ -61,6 +61,57 @@ function cleanText(value) {
     .trim();
 }
 
+
+// ============================================================
+// DRAPEAUX DES ÉQUIPES
+// ============================================================
+
+function countryCodeToFlag(code) {
+  const value = String(code || "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(value)) return "";
+  return value.split("").map(letter =>
+    String.fromCodePoint(127397 + letter.charCodeAt(0))
+  ).join("");
+}
+
+const NATIONAL_TEAM_COUNTRY_CODES = {
+  "cote d ivoire": "CI", "ivory coast": "CI", "ghana": "GH",
+  "nigeria": "NG", "senegal": "SN", "cameroun": "CM", "mali": "ML",
+  "burkina faso": "BF", "guinee": "GN", "afrique du sud": "ZA",
+  "maroc": "MA", "algerie": "DZ", "tunisie": "TN", "egypte": "EG",
+  "etats unis": "US", "usa": "US", "canada": "CA", "mexique": "MX",
+  "bresil": "BR", "argentine": "AR", "chili": "CL", "colombie": "CO",
+  "equateur": "EC", "uruguay": "UY", "paraguay": "PY", "bolivie": "BO",
+  "perou": "PE", "espagne": "ES", "france": "FR", "angleterre": "GB",
+  "ecosse": "GB", "pays de galles": "GB", "irlande": "IE",
+  "irlande du nord": "GB", "allemagne": "DE", "italie": "IT",
+  "portugal": "PT", "belgique": "BE", "pays bas": "NL", "suisse": "CH",
+  "autriche": "AT", "danemark": "DK", "suede": "SE", "finlande": "FI",
+  "norvege": "NO", "islande": "IS", "grece": "GR", "turquie": "TR",
+  "croatie": "HR", "serbie": "RS", "slovenie": "SI", "slovaquie": "SK",
+  "hongrie": "HU", "roumanie": "RO", "bulgarie": "BG", "albanie": "AL",
+  "ukraine": "UA", "russie": "RU", "republique tcheque": "CZ",
+  "pologne": "PL", "israel": "IL", "arabie saoudite": "SA", "qatar": "QA",
+  "japon": "JP", "coree du sud": "KR", "chine": "CN", "australie": "AU",
+  "nouvelle zelande": "NZ"
+};
+
+function getTeamFlag(team) {
+  if (!team || typeof team !== "object") return "";
+  const direct = team.flag || team.flag_emoji || team.flagEmoji;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  const countryCode =
+    team.country_code || team.countryCode ||
+    team.country?.code || team.country?.country_code ||
+    team.country?.countryCode;
+
+  const fromCode = countryCodeToFlag(countryCode);
+  if (fromCode) return fromCode;
+
+  return countryCodeToFlag(NATIONAL_TEAM_COUNTRY_CODES[cleanText(team.name)]);
+}
+
 function getSignificantTokens(value) {
   const ignoredWords = new Set([
     "fc", "cf", "afc", "ac", "sc", "as", "rc",
@@ -157,141 +208,6 @@ const TEAM_NAME_ALIASES = {
   "nantes": ["Nantes", "FC Nantes"],
   "saint etienne": ["Saint-Etienne", "AS Saint-Etienne"]
 };
-
-
-// ============================================================
-// DRAPEAUX DES ÉQUIPES
-// ============================================================
-
-// Conversion d'un code pays ISO 3166-1 alpha-2 en emoji drapeau.
-function countryCodeToFlag(code) {
-  const value = String(code || "").trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(value)) return "";
-
-  return value
-    .split("")
-    .map(letter => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join("");
-}
-
-// Pays dont le nom peut être fourni directement comme équipe nationale.
-const NATIONAL_TEAM_COUNTRY_CODES = {
-  "cote d'ivoire": "CI",
-  "côte d'ivoire": "CI",
-  "ivory coast": "CI",
-  "ghana": "GH",
-  "nigeria": "NG",
-  "senegal": "SN",
-  "cameroun": "CM",
-  "mali": "ML",
-  "burkina faso": "BF",
-  "guinee": "GN",
-  "guinée": "GN",
-  "afrique du sud": "ZA",
-  "maroc": "MA",
-  "algerie": "DZ",
-  "algérie": "DZ",
-  "tunisie": "TN",
-  "egypte": "EG",
-  "etats unis": "US",
-  "usa": "US",
-  "canada": "CA",
-  "mexique": "MX",
-  "bresil": "BR",
-  "brésil": "BR",
-  "argentine": "AR",
-  "chili": "CL",
-  "colombie": "CO",
-  "equateur": "EC",
-  "uruguay": "UY",
-  "paraguay": "PY",
-  "bolivie": "BO",
-  "perou": "PE",
-  "pérou": "PE",
-  "espagne": "ES",
-  "france": "FR",
-  "angleterre": "GB",
-  "ecosse": "GB",
-  "écosse": "GB",
-  "pays de galles": "GB",
-  "irlande": "IE",
-  "irlande du nord": "GB",
-  "allemagne": "DE",
-  "italie": "IT",
-  "portugal": "PT",
-  "belgique": "BE",
-  "pays bas": "NL",
-  "pays-bas": "NL",
-  "suisse": "CH",
-  "autriche": "AT",
-  "danemark": "DK",
-  "suede": "SE",
-  "suède": "SE",
-  "finlande": "FI",
-  "norvege": "NO",
-  "norvège": "NO",
-  "islande": "IS",
-  "irlande": "IE",
-  "grece": "GR",
-  "grèce": "GR",
-  "turquie": "TR",
-  "croatie": "HR",
-  "serbie": "RS",
-  "slovenie": "SI",
-  "slovénie": "SI",
-  "slovaquie": "SK",
-  "hongrie": "HU",
-  "roumanie": "RO",
-  "bulgarie": "BG",
-  "albanie": "AL",
-  "ukraine": "UA",
-  "russie": "RU",
-  "republique tcheque": "CZ",
-  "république tchèque": "CZ",
-  "bosnie": "BA",
-  "bosnie herzegovine": "BA",
-  "bosnie-herzegovine": "BA",
-  "pologne": "PL",
-  "japon": "JP",
-  "coree du sud": "KR",
-  "corée du sud": "KR",
-  "chine": "CN",
-  "australie": "AU",
-  "nouvelle zelande": "NZ",
-  "nouvelle-zélande": "NZ"
-};
-
-function getNationalTeamFlag(teamName) {
-  const normalized = cleanText(teamName);
-  const code = NATIONAL_TEAM_COUNTRY_CODES[normalized];
-  return countryCodeToFlag(code);
-}
-
-// Retourne le drapeau disponible pour une équipe sans inventer son pays.
-function getTeamFlag(team) {
-  if (!team || typeof team !== "object") return "";
-
-  const directFlag =
-    team.flag ||
-    team.flag_emoji ||
-    team.flagEmoji;
-
-  if (typeof directFlag === "string" && directFlag.trim()) {
-    return directFlag.trim();
-  }
-
-  const countryCode =
-    team.country_code ||
-    team.countryCode ||
-    team.country?.code ||
-    team.country?.country_code ||
-    team.country?.countryCode;
-
-  const countryFlag = countryCodeToFlag(countryCode);
-  if (countryFlag) return countryFlag;
-
-  return getNationalTeamFlag(team.name);
-}
 
 function getTeamSearchQueries(teamName) {
   const original = String(teamName || "").trim();
@@ -1365,22 +1281,14 @@ async function analyzeOne(homeName, awayName) {
         "Cette rencontre n’a pas été retrouvée dans les données réelles SportScore. Aucune analyse statistique n’est produite.",
       data_quality: "non vérifiée",
       homeTeam: {
-
         name: homeTeam.name,
-
         slug: homeTeam.slug,
-
         flag: homeTeamFlag
-
       },
       awayTeam: {
-
         name: awayTeam.name,
-
         slug: awayTeam.slug,
-
         flag: awayTeamFlag
-
       },
       stats: {
         home: buildTeamStats(homeMatchesInitial, homeTeam),
@@ -1409,22 +1317,14 @@ async function analyzeOne(homeName, awayName) {
         `${homeTeam.name}: seulement ${homeMatches.length} matchs historiques vérifiables.`,
       data_quality: "limitée",
       homeTeam: {
-
         name: homeTeam.name,
-
         slug: homeTeam.slug,
-
         flag: homeTeamFlag
-
       },
       awayTeam: {
-
         name: awayTeam.name,
-
         slug: awayTeam.slug,
-
         flag: awayTeamFlag
-
       },
       stats: {
         home: buildTeamStats(homeMatches, homeTeam),
@@ -1443,22 +1343,14 @@ async function analyzeOne(homeName, awayName) {
         `${awayTeam.name}: seulement ${awayMatches.length} matchs historiques vérifiables.`,
       data_quality: "limitée",
       homeTeam: {
-
         name: homeTeam.name,
-
         slug: homeTeam.slug,
-
         flag: homeTeamFlag
-
       },
       awayTeam: {
-
         name: awayTeam.name,
-
         slug: awayTeam.slug,
-
         flag: awayTeamFlag
-
       },
       stats: {
         home: buildTeamStats(homeMatches, homeTeam),
@@ -1479,22 +1371,14 @@ if (isFinished(normalizedFixture)) {
     reason: "Cette rencontre est déjà terminée. Le résultat réel est affiché sans générer de probabilités ni de choix de pari.",
     data_quality: "vérifiée",
     homeTeam: {
-
       name: homeTeam.name,
-
       slug: homeTeam.slug,
-
       flag: homeTeamFlag
-
     },
     awayTeam: {
-
       name: awayTeam.name,
-
       slug: awayTeam.slug,
-
       flag: awayTeamFlag
-
     },
     stats: {
       home: buildTeamStats(homeMatchesInitial, homeTeam),
@@ -1521,22 +1405,14 @@ const homeStats = buildTeamStats(homeMatches, homeTeam);
         odds.reason || "Données statistiques insuffisantes.",
       data_quality: "limitée",
       homeTeam: {
-
         name: homeTeam.name,
-
         slug: homeTeam.slug,
-
         flag: homeTeamFlag
-
       },
       awayTeam: {
-
         name: awayTeam.name,
-
         slug: awayTeam.slug,
-
         flag: awayTeamFlag
-
       },
       stats: {
         home: homeStats,
@@ -1557,22 +1433,14 @@ const homeStats = buildTeamStats(homeMatches, homeTeam);
     match: `${homeTeam.name} vs ${awayTeam.name}`,
     fixture,
     homeTeam: {
-
       name: homeTeam.name,
-
       slug: homeTeam.slug,
-
       flag: homeTeamFlag
-
     },
     awayTeam: {
-
       name: awayTeam.name,
-
       slug: awayTeam.slug,
-
       flag: awayTeamFlag
-
     },
     stats: {
       home: homeStats,
