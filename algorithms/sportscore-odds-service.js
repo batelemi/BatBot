@@ -121,7 +121,17 @@ const NATIONAL_TEAM_COUNTRY_CODES = {
   "ukraine": "UA", "russie": "RU", "republique tcheque": "CZ",
   "pologne": "PL", "israel": "IL", "arabie saoudite": "SA", "qatar": "QA",
   "japon": "JP", "coree du sud": "KR", "chine": "CN", "australie": "AU",
-  "nouvelle zelande": "NZ"
+  "nouvelle zelande": "NZ",
+  "germany": "DE", "netherlands": "NL", "switzerland": "CH", "austria": "AT",
+  "denmark": "DK", "sweden": "SE", "finland": "FI", "norway": "NO", "iceland": "IS",
+  "greece": "GR", "turkey": "TR", "croatia": "HR", "serbia": "RS", "slovenia": "SI",
+  "slovakia": "SK", "hungary": "HU", "romania": "RO", "bulgaria": "BG", "albania": "AL",
+  "ukraine": "UA", "russia": "RU", "czech republic": "CZ", "czechia": "CZ", "poland": "PL",
+  "bosnia and herzegovina": "BA", "bosnia": "BA", "montenegro": "ME", "north macedonia": "MK",
+  "macedonia": "MK", "moldova": "MD", "cyprus": "CY", "georgia": "GE", "armenia": "AM",
+  "azerbaijan": "AZ", "kosovo": "XK", "malta": "MT", "luxembourg": "LU", "liechtenstein": "LI",
+  "belarus": "BY", "lithuania": "LT", "latvia": "LV", "estonia": "EE", "faroe islands": "FO",
+  "israel": "IL", "northern ireland": "GB", "republic of ireland": "IE"
 };
 
 function getTeamFlag(team) {
@@ -625,6 +635,20 @@ function normalizeFixture(match) {
   const timestamp = getMatchTimestamp(match);
   const homeScore = getMatchScore(match, "home");
   const awayScore = getMatchScore(match, "away");
+  const rawVenue =
+    match?.venue ||
+    match?.fixture?.venue ||
+    match?.stadium ||
+    match?.fixture?.stadium ||
+    match?.location ||
+    match?.fixture?.location ||
+    null;
+  const venue = typeof rawVenue === "string"
+    ? rawVenue.trim()
+    : (rawVenue?.name || rawVenue?.stadium || rawVenue?.title || "");
+  const venueCity = typeof rawVenue === "object"
+    ? (rawVenue?.city || rawVenue?.town || rawVenue?.location || "")
+    : (match?.venue_city || match?.stadium_city || "");
   const competition =
     match?.league?.name ||
     match?.competition?.name ||
@@ -642,6 +666,8 @@ function normalizeFixture(match) {
     status: getMatchStatusValue(match) || (timestamp > Date.now() ? "upcoming" : ""),
     status_text: match?.status_text || match?.statusText || null,
     competition,
+    venue: venue || null,
+    venue_city: venueCity || null,
     goals: {
       home: Number.isFinite(homeScore) ? homeScore : null,
       away: Number.isFinite(awayScore) ? awayScore : null
