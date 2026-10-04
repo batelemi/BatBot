@@ -5048,18 +5048,39 @@ document.addEventListener("keydown",function(event){
   }
 
   function simpleName(name){
-    const n=String(name||"").trim();
+    const raw=String(name||"").trim();
+    if(!raw)return "";
+
+    const key=raw.toUpperCase();
+
     const map={
-      "1X":"🛡️ Équipe 1 ou nul",
-      "X2":"🛡️ Équipe 2 ou nul",
+      "1":"🏠 Victoire de l'équipe 1",
+      "X":"🤝 Match nul",
+      "2":"✈️ Victoire de l'équipe 2",
+      "1X":"🛡️ Équipe 1 ou match nul",
+      "X2":"🛡️ Équipe 2 ou match nul",
       "12":"🛡️ Une des deux équipes gagne",
-      "BTTS (les deux équipes marquent)":"🎯 Les deux équipes marquent",
-      "Plus de 2.5 buts":"⚽ Plus de 2,5 buts"
+      "BTTS":"🎯 Les deux équipes marquent",
+      "BTTS (LES DEUX ÉQUIPES MARQUENT)":"🎯 Les deux équipes marquent",
+      "O2.5":"⚽ Plus de 2,5 buts",
+      "OVER 2.5":"⚽ Plus de 2,5 buts",
+      "PLUS DE 2.5 BUTS":"⚽ Plus de 2,5 buts",
+      "U2.5":"⚽ Moins de 2,5 buts",
+      "UNDER 2.5":"⚽ Moins de 2,5 buts",
+      "MOINS DE 2.5 BUTS":"⚽ Moins de 2,5 buts"
     };
-    if(map[n])return map[n];
-    if(/^Victoire\s+/i.test(n))return "🏠 "+n;
-    if(/^Score exact\s+/i.test(n))return "⚽ Score probable : "+n.replace(/^Score exact\s+/i,"");
-    return n;
+
+    if(map[key])return map[key];
+
+    if(/^Victoire\s+/i.test(raw)){
+      return "🏆 "+raw;
+    }
+
+    if(/^Score exact\s+/i.test(raw)){
+      return "⚽ "+raw;
+    }
+
+    return raw;
   }
 
   function optionProbability(option){
@@ -5071,6 +5092,9 @@ document.addEventListener("keydown",function(event){
   function getSelectedOption(match){
     const recommendation=String(match && match.recommendation || "").trim().toLowerCase();
     const options=Array.isArray(match && match.options)?match.options:[];
+
+    if(!recommendation)return null;
+
     return options.find(function(option){
       return String(option && option.name || "").trim().toLowerCase()===recommendation;
     }) || null;
@@ -5083,12 +5107,49 @@ document.addEventListener("keydown",function(event){
     return options.filter(function(option){
       const name=String(option && option.name || "").trim();
       if(!name)return false;
-      if(name.toLowerCase()===recommendation)return false;
-      if(/^Score exact\s+/i.test(name))return false;
+
+      const lower=name.toLowerCase();
+
+      if(lower===recommendation)return false;
+
+      if(/^score exact\s+/i.test(name))return false;
+
       return true;
     }).sort(function(a,b){
-      return (optionProbability(b)||0)-(optionProbability(a)||0);
-    }).slice(0,2);
+      const pa=optionProbability(a);
+      const pb=optionProbability(b);
+      return (pb===null? -1:pb)-(pa===null? -1:pa);
+    }).slice(0,3);
+  }
+
+  function getConfidenceLabel(probability){
+    const value=Number(probability);
+
+    if(!Number.isFinite(value))return "";
+
+    if(value>=70)return "Chance élevée";
+    if(value>=50)return "Chance intermédiaire";
+    return "Chance faible";
+  }
+
+  function findOptionByType(match, pattern){
+    const options=Array.isArray(match && match.options)?match.options:[];
+
+    return options.find(function(option){
+      const name=String(option && option.name || "").trim();
+
+      if(!name)return false;
+
+      if(pattern instanceof RegExp){
+        return pattern.test(name);
+      }
+
+      return name.toLowerCase().includes(String(pattern).toLowerCase());
+    }) || null;
+  }
+
+  function getExactScoreOption(match){
+    return findOptionByType(match,/^Score exact\s+/i);
   }
 
   function getProbableScore(match){
@@ -5210,38 +5271,105 @@ document.addEventListener("keydown",function(event){
     const matches=Array.isArray(data&&data.matches)?data.matches:[];
     const evidence=window.batBotLastEvidence&&Array.isArray(window.batBotLastEvidence.matches)
       ?window.batBotLastEvidence.matches:[];
-    const lines=["🤖 BATBOT IA — TICKET",""];
+
+    const lines=["🤖 BATBOT IA — CONSEIL DU MATCH",""];
 
     matches.forEach(function(match,index){
-      const fixture=evidence[index]?.fixture||match.fixture||{};
-      const home=fixture?.teams?.home?.name||fixture?.home||"Équipe 1";
-      const away=fixture?.teams?.away?.name||fixture?.away||"Équipe 2";
-      const verified=Boolean(fixture&&home&&away&&fixture.date);
+      const ev=evidence[index]||{};
+      const fixture=ev.fixture||match.fixture||{};
+
+      const home=fixture?.teams?.home?.name||fixture?.home||"";
+      const away=fixture?.teams?.away?.name||fixture?.away||"";
+
+      const verified=Boolean(
+        fixture &&
+        home &&
+        away &&
+        fixture.date
+      );
+
       const live=verified&&isLiveFixture(fixture);
       const finished=verified&&!live&&isFinishedFixture(fixture);
-      lines.push("⚽ "+home+" vs "+away);
-      lines.push("Statut : "+(finished?"Terminé":live?"En direct":verified?"À venir":"Informations insuffisantes"));
-      if(fixture.date)lines.push("📅 "+formatSimpleDate(fixture));
-      const venue=typeof fixture.venue==="string"?fixture.venue:(fixture.venue?.name||fixture.stadium?.name||fixture.location?.name||"");
-      if(venue)lines.push("📍 "+venue);
-      const ch=num(fixture?.goals?.home),ca=num(fixture?.goals?.away);
-      if(ch!==null||ca!==null)lines.push("⚽ Score : "+(ch===null?"—":ch)+" — "+(ca===null?"—":ca));
 
-      if(!finished&&!live&&verified||live&&verified){
-        const selected=getSelectedOption(match);
-        const score=getProbableScore(match);
-        const options=getComplementaryOptions(match).slice(0,3);
-        if(selected)lines.push("🎯 Pronostic : "+simpleName(selected.name)+" — "+formatPercent(selected.probability));
-        if(score)lines.push("⚽ Score prévu : "+score);
-        if(options.length){
-          lines.push("📌 Options :");
-          options.forEach(function(option){lines.push("• "+simpleName(option.name)+" — "+formatPercent(option.probability));});
-        }
+      if(home&&away){
+        lines.push("⚽ "+home+" vs "+away);
       }
-      if(finished)lines.push("✓ Match terminé — aucun pronostic.");
-      if(!verified)lines.push("⚠️ Rencontre non confirmée par SportScore — aucun pronostic.");
+
+      if(fixture.date){
+        lines.push("📅 "+formatSimpleDate(fixture));
+      }
+
+      if(finished){
+        const ch=num(fixture?.goals?.home);
+        const ca=num(fixture?.goals?.away);
+
+        if(ch!==null||ca!==null){
+          lines.push("⚽ Score final : "+
+            (ch===null?"—":ch)+" — "+(ca===null?"—":ca)
+          );
+        }
+
+        lines.push("✓ Match terminé — aucun pronostic.");
+
+        lines.push("");
+        return;
+      }
+
+      if(!verified){
+        lines.push("⚠️ Rencontre non confirmée par SportScore — aucun pronostic.");
+
+        lines.push("");
+        return;
+      }
+
+      if(live){
+        lines.push("🔴 En direct");
+      }else{
+        lines.push("🟢 À venir");
+      }
+
+      const selected=getSelectedOption(match);
+      const predictedScore=getProbableScore(match);
+      const exactScore=getExactScoreOption(match);
+      const complementary=getComplementaryOptions(match);
+
       lines.push("");
+
+      if(selected){
+        const confidence=getConfidenceLabel(selected.probability);
+
+        lines.push("⭐ LE CHOIX PRINCIPAL DE L’IA");
+        lines.push("👉 "+simpleName(selected.name));
+
+        if(confidence){
+          lines.push("("+confidence+")");
+        }
+
+        lines.push("");
+      }
+
+      if(predictedScore){
+        lines.push("📊 PRÉVISIONS DU MATCH");
+        lines.push("• Score prévu (tendance) : "+predictedScore);
+        lines.push("");
+      }
+
+      if(exactScore){
+        lines.push("• Pari score exact : "+simpleName(exactScore.name)+" (Option recommandée)");
+        lines.push("");
+      }
+
+      if(complementary.length){
+        lines.push("💡 LES AUTRES OPTIONS POSSIBLES");
+
+        complementary.forEach(function(option){
+          lines.push("• "+simpleName(option.name));
+        });
+
+        lines.push("");
+      }
     });
+
     return lines.join("\n").trim();
   }
 
@@ -5258,15 +5386,26 @@ document.addEventListener("keydown",function(event){
       ?window.batBotLastEvidence.matches:[];
 
     function teamName(fixture,side,fallback){
-      return fixture?.teams?.[side]?.name||fixture?.[side]||fallback||"Équipe";
+      return fixture?.teams?.[side]?.name||fixture?.[side]||fallback||"";
     }
+
     function teamFlag(team){
       if(!team)return "";
-      return String(team.flag||team.flag_emoji||team.flagEmoji||"").trim();
+      return String(
+        team.flag||
+        team.flag_emoji||
+        team.flagEmoji||
+        ""
+      ).trim();
     }
+
     function venueName(fixture){
       const venue=fixture?.venue;
-      if(typeof venue==="string"&&venue.trim())return venue.trim();
+
+      if(typeof venue==="string"&&venue.trim()){
+        return venue.trim();
+      }
+
       return String(
         venue?.name||
         fixture?.stadium?.name||
@@ -5276,11 +5415,12 @@ document.addEventListener("keydown",function(event){
         ""
       ).trim();
     }
+
     function hasVerifiedFixture(fixture){
       return Boolean(
-        fixture&&
-        teamName(fixture,"home","")&&
-        teamName(fixture,"away","")&&
+        fixture &&
+        teamName(fixture,"home","") &&
+        teamName(fixture,"away","") &&
         fixture.date
       );
     }
@@ -5290,80 +5430,216 @@ document.addEventListener("keydown",function(event){
     matches.forEach(function(match,index){
       const ev=evidence[index]||{};
       const fixture=ev.fixture||match.fixture||{};
-      const homeTeam=Object.assign({},fixture?.teams?.home||{},ev.homeTeam||{});
-      const awayTeam=Object.assign({},fixture?.teams?.away||{},ev.awayTeam||{});
-      const home=teamName(fixture,"home",homeTeam.name||match.name?.split(/\s+vs\s+/i)[0]);
-      const away=teamName(fixture,"away",awayTeam.name||"");
+
+      const homeTeam=Object.assign(
+        {},
+        fixture?.teams?.home||{},
+        ev.homeTeam||{}
+      );
+
+      const awayTeam=Object.assign(
+        {},
+        fixture?.teams?.away||{},
+        ev.awayTeam||{}
+      );
+
+      const home=teamName(
+        fixture,
+        "home",
+        homeTeam.name||""
+      );
+
+      const away=teamName(
+        fixture,
+        "away",
+        awayTeam.name||""
+      );
+
       const verified=hasVerifiedFixture(fixture);
       const live=verified&&isLiveFixture(fixture);
       const finished=verified&&!live&&isFinishedFixture(fixture);
-      const statusClass=finished?"ai-ticket-status-finished":(live?"ai-ticket-status-live":(verified?"ai-ticket-status-upcoming":"ai-ticket-status-insufficient"));
-      const statusText=finished?"Terminé":(live?"En direct":(verified?"À venir":"Informations insuffisantes"));
+
+      const statusClass=
+        finished
+          ?"ai-ticket-status-finished"
+          :(live
+            ?"ai-ticket-status-live"
+            :(verified
+              ?"ai-ticket-status-upcoming"
+              :"ai-ticket-status-insufficient"));
+
+      const statusText=
+        finished
+          ?"Terminé"
+          :(live
+            ?"En direct"
+            :(verified
+              ?"À venir"
+              :"Informations insuffisantes"));
+
       const selected=getSelectedOption(match);
       const predictedScore=getProbableScore(match);
-      const options=getComplementaryOptions(match).slice(0,3);
+      const exactScore=getExactScoreOption(match);
+      const complementary=getComplementaryOptions(match);
+
       const currentHome=num(fixture?.goals?.home);
       const currentAway=num(fixture?.goals?.away);
+
       const venue=venueName(fixture);
       const competition=fixture?.league?.name||fixture?.competition||"";
+
       const flagHome=teamFlag(homeTeam);
       const flagAway=teamFlag(awayTeam);
 
       html+='<div class="ai-ticket-match">';
+
       html+='<div class="ai-ticket-header">'+
         '<div class="ai-ticket-name">'+
-          escapeHtml((flagHome?flagHome+' ':'')+home+(away?'  vs  ':'')+(flagAway?flagAway+' ':'')+away)+
+          escapeHtml(
+            (flagHome?flagHome+" ":"")+
+            home+
+            (away?"  vs  ":"")+
+            (flagAway?flagAway+" ":"")+
+            away
+          )+
         '</div>'+
         '<div class="ai-ticket-status '+statusClass+'">'+
-          '<span class="ai-ticket-status-dot"></span>'+escapeHtml(statusText)+
+          '<span class="ai-ticket-status-dot"></span>'+
+          escapeHtml(statusText)+
         '</div>'+
       '</div>';
 
       const meta=[];
-      if(competition)meta.push('🏆 '+escapeHtml(competition));
-      if(fixture.date)meta.push('📅 '+escapeHtml(formatSimpleDate(fixture)));
-      if(venue)meta.push('📍 '+escapeHtml(venue));
-      if(meta.length)html+='<div class="ai-ticket-meta">'+meta.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>';
+
+      if(competition){
+        meta.push("🏆 "+escapeHtml(competition));
+      }
+
+      if(fixture.date){
+        meta.push("📅 "+escapeHtml(formatSimpleDate(fixture)));
+      }
+
+      if(venue){
+        meta.push("📍 "+escapeHtml(venue));
+      }
+
+      if(meta.length){
+        html+='<div class="ai-ticket-meta">'+
+          meta.map(function(item){
+            return "<span>"+item+"</span>";
+          }).join("")+
+        '</div>';
+      }
 
       if(currentHome!==null||currentAway!==null){
         html+='<div class="ai-ticket-score-current">'+
-          escapeHtml(String(currentHome===null?'—':currentHome)+' — '+String(currentAway===null?'—':currentAway))+
-          '</div>';
+          escapeHtml(
+            String(currentHome===null?"—":currentHome)+
+            " — "+
+            String(currentAway===null?"—":currentAway)
+          )+
+        '</div>';
       }
 
       if(finished){
-        html+='<div class="batbot-ticket-finished-note">✓ Match terminé — aucun pronostic n’est généré.</div>';
+
+        html+='<div class="batbot-ticket-finished-note">'+
+          '✓ Match terminé — aucun pronostic n’est généré.'+
+        '</div>';
+
       }else if(!verified){
-        html+='<div class="batbot-ticket-insufficient-note">⚠️ Cette rencontre n’a pas été confirmée par SportScore. Aucun pronostic n’est généré.</div>';
+
+        html+='<div class="batbot-ticket-insufficient-note">'+
+          '⚠️ Cette rencontre n’a pas été confirmée par SportScore. Aucun pronostic n’est généré.'+
+        '</div>';
+
       }else{
+
         html+='<div class="ai-ticket-prediction">';
+
         if(selected){
-          html+='<div class="ai-ticket-main-label">🎯 PRONOSTIC BATBOT</div>'+
-            '<div class="ai-ticket-main-name">'+escapeHtml(simpleName(selected.name))+'</div>';
-          if(selected.probability!==undefined&&selected.probability!==null){
-            html+='<div class="ai-ticket-main-prob">'+escapeHtml(formatPercent(selected.probability))+'</div>';
+
+          const confidence=getConfidenceLabel(selected.probability);
+
+          html+='<div class="ai-ticket-main-label">'+
+            '⭐ LE CHOIX PRINCIPAL DE L’IA'+
+          '</div>';
+
+          html+='<div class="ai-ticket-main-name">'+
+            '👉 '+escapeHtml(simpleName(selected.name))+
+          '</div>';
+
+          if(confidence){
+            html+='<div class="ai-ticket-main-prob">'+
+              escapeHtml(confidence)+
+            '</div>';
           }
-        }else{
-          html+='<div class="ai-ticket-main-label">🎯 PRONOSTIC BATBOT</div>'+
-            '<div class="batbot-ticket-muted">Analyse insuffisante</div>';
+
         }
 
         if(predictedScore){
-          html+='<div class="ai-ticket-section-title">⚽ Score prévu</div>'+
-            '<div class="ai-ticket-predicted-score">'+escapeHtml(predictedScore)+'</div>';
+
+          html+='<div class="ai-ticket-section-title">'+
+            '📊 PRÉVISIONS DU MATCH'+
+          '</div>';
+
+          html+='<div class="ai-ticket-predicted-score">'+
+            escapeHtml(predictedScore)+
+          '</div>';
+
         }
 
-        if(options.length){
-          html+='<div class="ai-ticket-options-title">📌 Options à prendre</div>'+
-            '<div class="ai-ticket-options">';
-          options.forEach(function(option){
+        if(exactScore){
+
+          html+='<div class="ai-ticket-section-title">'+
+            '🎯 PARI SCORE EXACT'+
+          '</div>';
+
+          html+='<div class="ai-ticket-predicted-score">'+
+            escapeHtml(simpleName(exactScore.name))+
+            ' <span>(Option recommandée)</span>'+
+          '</div>';
+
+        }
+
+        if(complementary.length){
+
+          html+='<div class="ai-ticket-options-title">'+
+            '💡 LES AUTRES OPTIONS POSSIBLES'+
+          '</div>';
+
+          html+='<div class="ai-ticket-options">';
+
+          complementary.forEach(function(option){
+
             html+='<div class="ai-ticket-option">'+
-              '<span>'+escapeHtml(simpleName(option.name))+'</span>'+
-              '<strong>'+escapeHtml(formatPercent(option.probability))+'</strong>'+
-              '</div>';
+              '<span>'+
+                escapeHtml(simpleName(option.name))+
+              '</span>';
+
+            const confidence=getConfidenceLabel(option.probability);
+
+            if(confidence){
+              html+='<strong>'+
+                escapeHtml(confidence)+
+              '</strong>';
+            }
+
+            html+='</div>';
+
           });
+
           html+='</div>';
         }
+
+        if(!selected&&!predictedScore&&!exactScore&&!complementary.length){
+
+          html+='<div class="batbot-ticket-muted">'+
+            'Analyse insuffisante'+
+          '</div>';
+
+        }
+
         html+='</div>';
       }
 
@@ -5371,8 +5647,13 @@ document.addEventListener("keydown",function(event){
     });
 
     html+='</div>';
-    box.innerHTML=html||'<div class="ai-ticket-empty">Aucun ticket disponible.</div>';
-    window.batBotLastTicketText=buildTicketText(data||{});
+
+    box.innerHTML=
+      html||
+      '<div class="ai-ticket-empty">Aucun ticket disponible.</div>';
+
+    window.batBotLastTicketText=
+      buildTicketText(data||{});
   };
 
   window.downloadBatBotTicket=function(){
