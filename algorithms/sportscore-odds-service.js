@@ -1306,7 +1306,7 @@ function buildModel(match, odds) {
 // ANALYSE D'UNE AFFICHE
 // ============================================================
 
-async function analyzeOne(homeName, awayName) {
+async function analyzeOne(homeName, awayName, providedFixture = null) {
   const [homeTeam, awayTeam] = await Promise.all([
     searchTeam(homeName),
     searchTeam(awayName)
@@ -1315,12 +1315,14 @@ async function analyzeOne(homeName, awayName) {
   const homeTeamFlag = getTeamFlag(homeTeam);
   const awayTeamFlag = getTeamFlag(awayTeam);
 
-  const [homeMatchesInitial, awayMatchesInitial, h2hMatches, fixture] = await Promise.all([
+  const [homeMatchesInitial, awayMatchesInitial, h2hMatches, fetchedFixture] = await Promise.all([
     fetchTeamSchedule(homeTeam),
     fetchTeamSchedule(awayTeam),
     fetchHeadToHead(homeTeam, awayTeam),
-    fetchCurrentFixture(homeTeam, awayTeam)
+    providedFixture ? Promise.resolve(null) : fetchCurrentFixture(homeTeam, awayTeam)
   ]);
+
+  const fixture = providedFixture || fetchedFixture;
 
   // Règle fondamentale : une affiche saisie manuellement doit d'abord
   // être vérifiée comme rencontre réelle dans SportScore. Sans fixture
@@ -1608,7 +1610,8 @@ async function normalizeMatchInput(item) {
   if (item.home && item.away) {
     return {
       home: String(item.home).trim(),
-      away: String(item.away).trim()
+      away: String(item.away).trim(),
+      fixture: item.fixture || null
     };
   }
 
@@ -1647,7 +1650,8 @@ async function analyzeSportScoreMatches(matches) {
     normalized.map(item =>
       analyzeOne(
         String(item.home).trim(),
-        String(item.away).trim()
+        String(item.away).trim(),
+        item.fixture || null
       )
     )
   );
