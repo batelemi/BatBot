@@ -213,6 +213,7 @@ const TEAM_NAME_ALIASES = {
   "mexique": ["Mexico"],
   "etats unis": ["United States", "USA"],
   "etats unis d amerique": ["United States", "USA"],
+  "norvege": ["Norway"],
   "canada": ["Canada"],
   "japon": ["Japan"],
   "coree du sud": ["South Korea"],
@@ -246,6 +247,12 @@ const TEAM_NAME_ALIASES = {
   "nantes": ["Nantes", "FC Nantes"],
   "saint etienne": ["Saint-Etienne", "AS Saint-Etienne"]
 };
+
+function extractTeamCategory(value) {
+  const text = cleanText(value);
+  const match = text.match(/\b(u(?:17|18|19|20|21|23))\b/);
+  return match ? match[1].toUpperCase() : "";
+}
 
 function getTeamSearchQueries(teamName) {
   const original = String(teamName || "").trim();
@@ -454,6 +461,135 @@ function extractMatches(data) {
   return [];
 }
 
+
+async function findFixtureByInputNames(homeName, awayName) {
+  const homeCategory = extractTeamCategory(homeName);
+  const awayCategory = extractTeamCategory(awayName);
+
+  // Une catégorie doit être demandée des deux côtés.
+  if (Boolean(homeCategory) !== Boolean(awayCategory)) return null;
+  if (homeCategory && homeCategory !== awayCategory) return null;
+
+  function buildNameVariants(value, category) {
+    const baseName = cleanText(value)
+      .replace(/\bu(?:17|18|19|20|21|23)\b/g, "")
+      .trim();
+
+    const variants = new Set([baseName]);
+
+    // Les alias doivent fonctionner dans les deux sens.
+    // Exemple : "États-Unis", "United States" et "USA"
+    // doivent tous pouvoir retrouver la même équipe SportScore.
+    const directAliases = TEAM_NAME_ALIASES[baseName] || [];
+
+    for (const alias of directAliases) {
+      const cleanAlias = cleanText(alias);
+      if (cleanAlias) variants.add(cleanAlias);
+    }
+
+    for (const [aliasKey, aliasValues] of Object.entries(TEAM_NAME_ALIASES)) {
+      const cleanKey = cleanText(aliasKey);
+      if (!cleanKey) continue;
+
+      const cleanValues = Array.isArray(aliasValues)
+        ? aliasValues.map(cleanText).filter(Boolean)
+        : [];
+
+      if (
+        cleanValues.includes(baseName) ||
+        cleanKey === baseName
+      ) {
+        variants.add(cleanKey);
+
+        for (const aliasValue of cleanValues) {
+          variants.add(aliasValue);
+        }
+      }
+    }
+
+    const result = new Set();
+
+    for (const variant of variants) {
+      result.add(variant);
+
+      if (category) {
+        result.add(`${variant} ${category.toLowerCase()}`);
+      }
+    }
+
+    return result;
+  }
+
+  function namesMatch(variants, fixtureName, category) {
+    const normalizedFixtureName = cleanText(fixtureName);
+    if (!normalizedFixtureName) return false;
+
+    const fixtureCategory = extractTeamCategory(fixtureName);
+
+    // Une saisie avec catégorie doit correspondre exactement à la même catégorie.
+    if (category) {
+      if (fixtureCategory !== category) return false;
+    } else {
+      // Une saisie senior ne doit jamais sélectionner une équipe jeune.
+      if (fixtureCategory) return false;
+    }
+
+    if (variants.has(normalizedFixtureName)) return true;
+
+    // Comparaison supplémentaire sur le nom sans catégorie.
+    const fixtureBaseName = normalizedFixtureName
+      .replace(/\bu(?:17|18|19|20|21|23)\b/g, "")
+      .trim();
+
+    for (const variant of variants) {
+      const variantBaseName = cleanText(variant)
+        .replace(/\bu(?:17|18|19|20|21|23)\b/g, "")
+        .trim();
+
+      if (
+        variantBaseName &&
+        fixtureBaseName === variantBaseName
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  const homeVariants = buildNameVariants(homeName, homeCategory);
+  const awayVariants = buildNameVariants(awayName, awayCategory);
+
+  const today = formatUtcDate(new Date());
+
+  const url =
+    `${API_BASE}/fixtures/` +
+    `?sport=${SPORT}` +
+    `&date=${today}` +
+    `&limit=200`;
+
+  let data;
+
+  try {
+    data = await fetchJson(url);
+  } catch (_) {
+    return null;
+  }
+
+  for (const rawMatch of extractMatches(data)) {
+    const fixture = normalizeFixture(rawMatch);
+    if (!fixture?.home || !fixture?.away) continue;
+
+    if (
+      namesMatch(homeVariants, fixture.home, homeCategory) &&
+      namesMatch(awayVariants, fixture.away, awayCategory)
+    ) {
+      return fixture;
+    }
+  }
+
+  return null;
+}
 
 // ============================================================
 // DATES
@@ -1307,9 +1443,20 @@ function buildModel(match, odds) {
 // ============================================================
 
 async function analyzeOne(homeName, awayName, providedFixture = null) {
+  // Lorsqu'une fixture SportScore a déjà été résolue, utiliser ses
+  // noms canoniques pour éviter de refaire une recherche avec une
+  // saisie française ou un alias que /search/ ne reconnaît pas.
+  const resolvedHomeName =
+    providedFixture?.home ||
+    homeName;
+
+  const resolvedAwayName =
+    providedFixture?.away ||
+    awayName;
+
   const [homeTeam, awayTeam] = await Promise.all([
-    searchTeam(homeName),
-    searchTeam(awayName)
+    searchTeam(resolvedHomeName),
+    searchTeam(resolvedAwayName)
   ]);
 
   const homeTeamFlag = getTeamFlag(homeTeam);
@@ -1685,5 +1832,6 @@ module.exports = {
   analyzeSportScoreMatches,
   searchTeam,
   cleanText,
-  calculateTeamMatchScore
+  calculateTeamMatchScore,
+  findFixtureByInputNames
 };
