@@ -3510,7 +3510,7 @@ function isFinishedFixture(item){
   const timestamp=date?new Date(date).getTime():NaN;
   return Boolean(score)&&Number.isFinite(timestamp)&&timestamp<(Date.now()-2*60*1000);
 }
-function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|first half|second half|half time|halftime|mi temps|1re mi temps|2e mi temps|1h|2h|ht|extra time|et|penalties|penalty|pen)(\b|$)/i.test(fixtureStatusKey(item));}
+function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|1st half|2nd half|first half|second half|half time|halftime|mi temps|1re mi temps|2e mi temps|1h|2h|ht|extra time|et|penalties|penalty|pen)(\b|$)/i.test(fixtureStatusKey(item));}
 function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard/i.test(fixtureStatusKey(item));}
 function isAnalyzableFixture(item){return !isFinishedFixture(item)&&!isNonAnalyzableFixture(item);}
 function sportScoreFixtureScore(item){const h=item?.goals?.home??item?.score?.fulltime?.home??item?.fixture?.goals?.home??item?.fixture?.score?.fulltime?.home,a=item?.goals?.away??item?.score?.fulltime?.away??item?.fixture?.goals?.away??item?.fixture?.score?.fulltime?.away;return Number.isFinite(Number(h))&&Number.isFinite(Number(a))?String(h)+"–"+String(a):"";}
@@ -5682,27 +5682,8 @@ document.addEventListener("keydown",function(event){
       const currentHome=num(fixture?.goals?.home);
       const currentAway=num(fixture?.goals?.away);
 
-      const status=String(
-        fixture?.status?.short||
-        fixture?.status||
-        match?.status||
-        ""
-      ).toUpperCase();
-
-      const isFinished=
-        status==="FT"||
-        status==="AET"||
-        status==="PEN"||
-        status==="FINISHED";
-
-      const isLive=
-        status==="LIVE"||
-        status==="1H"||
-        status==="2H"||
-        status==="HT"||
-        status==="ET"||
-        status==="P"||
-        status==="BT";
+      const isFinished=isFinishedFixture(fixture);
+      const isLive=isLiveFixture(fixture);
 
       if(isFinished){
         if(currentHome!==null && currentAway!==null){
