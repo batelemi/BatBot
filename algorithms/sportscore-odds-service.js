@@ -248,6 +248,129 @@ const TEAM_NAME_ALIASES = {
   "saint etienne": ["Saint-Etienne", "AS Saint-Etienne"]
 };
 
+/* BATBOT_DYNAMIC_FRENCH_TEAM_BRIDGE */
+/*
+ * Reconnaissance élargie des noms français.
+ *
+ * Le nom canonique SportScore reste toujours la référence finale.
+ * Cette couche ne modifie ni les statistiques, ni les probabilités,
+ * ni les règles de sélection des catégories U17/U18/U19/U20/U21/U23.
+ */
+
+function addDynamicFrenchTeamAliases() {
+  try {
+    const frenchRegions = new Intl.DisplayNames(["fr"], {
+      type: "region",
+      fallback: "none"
+    });
+
+    const englishRegions = new Intl.DisplayNames(["en"], {
+      type: "region",
+      fallback: "none"
+    });
+
+    for (const [frenchKey, countryCode] of Object.entries(
+      NATIONAL_TEAM_COUNTRY_CODES
+    )) {
+      const code = String(countryCode || "").trim().toUpperCase();
+
+      if (!/^[A-Z]{2}$/.test(code)) continue;
+
+      const frenchName = frenchRegions.of(code);
+      const englishName = englishRegions.of(code);
+
+      const key = cleanText(frenchKey);
+
+      if (!key) continue;
+
+      const current = Array.isArray(TEAM_NAME_ALIASES[key])
+        ? TEAM_NAME_ALIASES[key]
+        : [];
+
+      const variants = new Set(current);
+
+      if (frenchName && frenchName !== code) {
+        variants.add(frenchName);
+      }
+
+      if (englishName && englishName !== code) {
+        variants.add(englishName);
+      }
+
+      TEAM_NAME_ALIASES[key] = Array.from(variants);
+    }
+  } catch (_) {
+    // Intl.DisplayNames n'est qu'un complément.
+    // Les alias statiques existants continuent de fonctionner.
+  }
+
+  /*
+   * Appellations françaises particulières que les noms de pays
+   * standards ne couvrent pas toujours directement.
+   */
+  const specialAliases = {
+    "turquie": ["Turkey", "Turkiye", "Türkiye"],
+    "etats unis": ["United States", "USA", "United States of America"],
+    "etats unis d amerique": ["United States", "USA", "United States of America"],
+    "coree du sud": ["South Korea", "Korea Republic", "Republic of Korea"],
+    "coree du nord": ["North Korea", "Korea DPR", "DPR Korea"],
+    "pays bas": ["Netherlands", "Holland"],
+    "republique tcheque": ["Czech Republic", "Czechia"],
+    "bosnie herzegovine": ["Bosnia and Herzegovina", "Bosnia-Herzegovina"],
+    "cote d ivoire": ["Cote d'Ivoire", "Ivory Coast", "Côte d'Ivoire"],
+    "cap vert": ["Cape Verde", "Cabo Verde"],
+    "guinee bissau": ["Guinea Bissau", "Guinea-Bissau"],
+    "republique democratique du congo": [
+      "Democratic Republic of the Congo",
+      "DR Congo",
+      "Congo DR"
+    ],
+    "emirats arabes unis": ["United Arab Emirates", "UAE"],
+    "sao tome et principe": ["Sao Tome and Principe"],
+    "timor oriental": ["Timor-Leste", "East Timor"],
+    "trinite et tobago": ["Trinidad and Tobago"],
+
+    /*
+     * Quelques appellations de clubs courantes en français.
+     * Les clubs dont le nom propre est identique passent naturellement
+     * par cleanText() sans avoir besoin d'un alias.
+     */
+    "as rome": ["Roma", "AS Roma"],
+    "rome": ["Roma", "AS Roma"],
+    "naples": ["Napoli"],
+    "inter de milan": ["Inter Milan", "Inter"],
+    "milan": ["AC Milan", "Milan", "AC Milan"],
+    "bayern munich": ["Bayern Munich", "Bayern München"],
+    "munich": ["Bayern Munich", "Bayern München"],
+    "atletico madrid": ["Atletico Madrid", "Atlético de Madrid"],
+    "athletico madrid": ["Atletico Madrid", "Atlético de Madrid"],
+    "seville": ["Sevilla"],
+    "valence": ["Valencia"],
+    "sporting lisbonne": ["Sporting CP", "Sporting Lisbon"],
+    "benfica lisbonne": ["Benfica"],
+    "ajax amsterdam": ["Ajax"],
+    "paris saint germain": ["Paris Saint-Germain", "PSG"],
+    "olympique marseille": ["Marseille", "Olympique de Marseille"],
+    "olympique lyonnais": ["Lyon", "Olympique Lyonnais"]
+  };
+
+  for (const [key, values] of Object.entries(specialAliases)) {
+    const normalizedKey = cleanText(key);
+    if (!normalizedKey) continue;
+
+    const current = Array.isArray(TEAM_NAME_ALIASES[normalizedKey])
+      ? TEAM_NAME_ALIASES[normalizedKey]
+      : [];
+
+    TEAM_NAME_ALIASES[normalizedKey] = Array.from(
+      new Set([...current, ...values])
+    );
+  }
+}
+
+addDynamicFrenchTeamAliases();
+
+
 function extractTeamCategory(value) {
   const text = cleanText(value);
   const match = text.match(/\b(u(?:17|18|19|20|21|23))\b/);
@@ -526,7 +649,7 @@ async function findFixtureByInputNames(homeName, awayName) {
 
     const fixtureCategory = extractTeamCategory(fixtureName);
 
-    // Une saisie avec catégorie doit correspondre exactement à la même catégorie.
+    // Une catégorie demandée doit correspondre exactement à la même catégorie.
     if (category) {
       if (fixtureCategory !== category) return false;
     } else {
@@ -534,13 +657,14 @@ async function findFixtureByInputNames(homeName, awayName) {
       if (fixtureCategory) return false;
     }
 
+    // 1. Correspondance exacte avec les variantes déjà construites.
     if (variants.has(normalizedFixtureName)) return true;
 
-    // Comparaison supplémentaire sur le nom sans catégorie.
     const fixtureBaseName = normalizedFixtureName
       .replace(/\bu(?:17|18|19|20|21|23)\b/g, "")
       .trim();
 
+    // 2. Correspondance exacte après suppression de la catégorie.
     for (const variant of variants) {
       const variantBaseName = cleanText(variant)
         .replace(/\bu(?:17|18|19|20|21|23)\b/g, "")
@@ -549,6 +673,87 @@ async function findFixtureByInputNames(homeName, awayName) {
       if (
         variantBaseName &&
         fixtureBaseName === variantBaseName
+      ) {
+        return true;
+      }
+    }
+
+    // 3. Comparaison bidirectionnelle des alias.
+    // Exemple : une saisie française peut pointer vers "Italy",
+    // tandis que la fixture peut utiliser une autre variante canonique.
+    const fixtureAliases = new Set([fixtureBaseName]);
+
+    for (const [aliasKey, aliasValues] of Object.entries(TEAM_NAME_ALIASES)) {
+      const key = cleanText(aliasKey);
+      const values = Array.isArray(aliasValues)
+        ? aliasValues.map(cleanText).filter(Boolean)
+        : [];
+
+      if (
+        key === fixtureBaseName ||
+        values.includes(fixtureBaseName)
+      ) {
+        fixtureAliases.add(key);
+        for (const value of values) fixtureAliases.add(value);
+      }
+    }
+
+    for (const variant of variants) {
+      const variantBaseName = cleanText(variant)
+        .replace(/\bu(?:17|18|19|20|21|23)\b/g, "")
+        .trim();
+
+      if (!variantBaseName) continue;
+
+      if (fixtureAliases.has(variantBaseName)) {
+        return true;
+      }
+
+      for (const [aliasKey, aliasValues] of Object.entries(TEAM_NAME_ALIASES)) {
+        const key = cleanText(aliasKey);
+        const values = Array.isArray(aliasValues)
+          ? aliasValues.map(cleanText).filter(Boolean)
+          : [];
+
+        if (
+          key === variantBaseName &&
+          (fixtureAliases.has(key) || values.some(value => fixtureAliases.has(value)))
+        ) {
+          return true;
+        }
+
+        if (
+          values.includes(variantBaseName) &&
+          (fixtureAliases.has(key) || values.some(value => fixtureAliases.has(value)))
+        ) {
+          return true;
+        }
+      }
+    }
+
+    // 4. Dernier secours : mêmes tokens significatifs.
+    // On conserve ici les protections de catégorie ci-dessus.
+    const fixtureTokens = getSignificantTokens(fixtureBaseName);
+
+    if (!fixtureTokens.length) return false;
+
+    const fixtureTokenSet = new Set(fixtureTokens);
+
+    for (const variant of variants) {
+      const variantBaseName = cleanText(variant)
+        .replace(/\bu(?:17|18|19|20|21|23)\b/g, "")
+        .trim();
+
+      const variantTokens = getSignificantTokens(variantBaseName);
+
+      if (!variantTokens.length) continue;
+
+      const variantTokenSet = new Set(variantTokens);
+
+      if (
+        variantTokens.length === fixtureTokens.length &&
+        variantTokens.every(token => fixtureTokenSet.has(token)) &&
+        fixtureTokens.every(token => variantTokenSet.has(token))
       ) {
         return true;
       }
@@ -760,7 +965,7 @@ function getMatchStatusValue(match) {
 
 function isLiveMatch(match) {
   const status = cleanText(getMatchStatusValue(match));
-  return /(^|\b)(live|in progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalty|penalties|shootout)(\b|$)/.test(status);
+  return /(^|\b)(live|in progress|1h|2h|ht|half time|halftime|1st half|2nd half|first half|second half|extra time|et|penalty|penalties|shootout)(\b|$)/.test(status);
 }
 
 function normalizeFixture(match) {
