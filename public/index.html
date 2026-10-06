@@ -2563,8 +2563,8 @@ function renderBatBotAIResult(raw,modelData){
 
   window.batBotLastAnalysis=data;
 
-  /* Le ticket existant reste inchangé. */
-  renderBatBotTicket(data);
+  /* Utiliser le ticket moderne centralisé. */
+  window.renderBatBotTicket(data);
 
   let html=
     '<div class="ai-analysis-toolbar">'+
