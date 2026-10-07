@@ -1569,6 +1569,14 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
 });
 
 app.post("/api/ai/analyze", requireUser, async (req, res) => {
+  // BATBOT IA externe est volontairement détachée du circuit d'analyse football.
+  // Le code Groq/OpenAI reste conservé et peut être réactivé ultérieurement
+  // en définissant BATBOT_EXTERNAL_AI_ENABLED=true.
+  if (process.env.BATBOT_EXTERNAL_AI_ENABLED !== "true") {
+    return res.status(503).json({
+      error: "Le service IA externe est actuellement désactivé. L'analyse football BATBOT fonctionne avec son moteur statistique dédié."
+    });
+  }
   const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
   const premiumActive = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
   const aiActive = !!(user && user.ai_until && new Date(user.ai_until) > new Date());
