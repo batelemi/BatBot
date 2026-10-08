@@ -1465,9 +1465,17 @@ function setBatBotButtonLoading(id,loading,text){
 
 function formatPaymentDateTime(value){
   if(!value)return "Date non disponible";
-  const date=new Date(String(value).replace(" ","T")+"Z");
+  const date=new Date(value);
   if(Number.isNaN(date.getTime()))return String(value);
-  return date.toLocaleString("fr-FR",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  return new Intl.DateTimeFormat("fr-FR",{
+    day:"2-digit",
+    month:"long",
+    year:"numeric",
+    hour:"2-digit",
+    minute:"2-digit",
+    hour12:false,
+    timeZone:"Africa/Abidjan"
+  }).format(date).replace(" à ", " à ");
 }
 
 async function copyPaymentDetails(value){
