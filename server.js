@@ -1559,13 +1559,6 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
     return res.status(400).json({ error: "Un ou plusieurs champs sont trop longs." });
   }
 
-  const coupon = await findActiveCoupon(couponCode, bookmaker);
-
-  if (!coupon) {
-    return res.status(400).json({
-      error: "Le code coupon indiqué n'est pas un coupon actif enregistré dans BatBot pour ce bookmaker."
-    });
-  }
 
   const result = await pgQuery(
     `

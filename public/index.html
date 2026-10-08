@@ -4144,13 +4144,60 @@ async function resolvePaymentRequest(id,status,button){
 
 
 async function copyMemberCoupon(value,button){
-  const copied=await copyText(value);
-  if(!copied){showToast("Impossible de copier le code. Réessayez.","error");return;}
-  if(!button)return;
-  const original=button.innerHTML;
-  button.innerHTML="✅ Code copié avec succès";
-  button.disabled=true;
-  setTimeout(()=>{button.innerHTML=original;button.disabled=false;},1800);
+  const text=String(value??"").trim();
+  if(!text){
+    showToast("Aucun code coupon à copier.","error");
+    return;
+  }
+
+  let copied=false;
+
+  try{
+    if(navigator.clipboard && typeof navigator.clipboard.writeText==="function"){
+      await navigator.clipboard.writeText(text);
+      copied=true;
+    }
+  }catch(e){}
+
+  if(!copied){
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=text;
+      ta.setAttribute("readonly","");
+      ta.style.position="fixed";
+      ta.style.left="0";
+      ta.style.top="0";
+      ta.style.width="1px";
+      ta.style.height="1px";
+      ta.style.opacity="0";
+      ta.style.pointerEvents="none";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0,text.length);
+      copied=document.execCommand("copy");
+      ta.remove();
+    }catch(e){
+      copied=false;
+    }
+  }
+
+  if(!copied){
+    showToast("Impossible de copier le code automatiquement. Maintenez le code pour le copier.","error");
+    return;
+  }
+
+  showToast("Code coupon copié avec succès.","success");
+
+  if(button){
+    const original=button.innerHTML;
+    button.innerHTML="✅ Code copié avec succès";
+    button.disabled=true;
+    setTimeout(()=>{
+      button.innerHTML=original;
+      button.disabled=false;
+    },1800);
+  }
 }
 
 let memberPredictionsStream=null;
@@ -4267,13 +4314,10 @@ function renderMemberPredictionCard(item,adminMode){
 initMemberPredictionPick();
 
 async function loadMemberPredictions(){
-  const containers=[
-    document.getElementById("memberPredictionsList"),
-    document.getElementById("publicMemberPredictionsList")
-  ].filter(Boolean);
-  if(!containers.length)return;
+  const container=document.getElementById("publicMemberPredictionsList");
+  if(!container)return;
 
-  const renderAll=function(html){containers.forEach(function(container){container.innerHTML=html;});};
+  const renderAll=function(html){container.innerHTML=html;};
 
   try{
     const response=await fetch("/api/member-predictions",{credentials:"same-origin",cache:"no-store"});
