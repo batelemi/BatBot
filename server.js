@@ -3,7 +3,7 @@ const session = require("express-session");
 const SQLiteStore = require("connect-sqlite3")(session);
 const { createPostgresSessionStore } = require("./database/postgres-session");
 const bcrypt = require("bcryptjs");
-const Database = require("better-sqlite3");
+const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
 const path = require("path");
 const crypto = require("crypto");
 const { analyzeSportScoreMatches } = require("./algorithms/sportscore-odds-service");
@@ -11,15 +11,11 @@ const { analyzeSportScoreMatches } = require("./algorithms/sportscore-odds-servi
 const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
-const DB = new Database(path.join(__dirname, "sdrive.db"));
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "8mb" }));
 app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 
-DB.pragma("journal_mode = WAL");
-DB.pragma("foreign_keys = ON");
-DB.pragma("busy_timeout = 5000");
 
 let settingsCache = null;
 let settingsCacheExpiresAt = 0;
@@ -27,137 +23,9 @@ let dailyMatchesCache = null;
 let dailyMatchesCacheKey = "";
 let dailyMatchesCacheExpiresAt = 0;
 
-DB.exec(`
-CREATE TABLE IF NOT EXISTS users(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT NOT NULL UNIQUE,
-  phone TEXT DEFAULT "",
-  password_hash TEXT NOT NULL,
-  premium_until TEXT,
-  premium_started_at TEXT,
-  ai_until TEXT,
-  ai_started_at TEXT,
-  disabled INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS daily_matches(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  match_name TEXT NOT NULL,
-  home_probability REAL NOT NULL,
-  draw_probability REAL NOT NULL,
-  away_probability REAL NOT NULL,
-  recommended_pick TEXT NOT NULL,
-  odds REAL,
-  match_date TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS password_resets(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  delivery_token TEXT,
-  temporary_password_encrypted TEXT,
-  temporary_password_expires_at TEXT,
-  resolved_at TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS analysis_requests(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER,
-  type TEXT NOT NULL,
-  content TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
-);
-CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS payment_requests(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  offer TEXT NOT NULL,
-  operator TEXT NOT NULL,
-  amount INTEGER NOT NULL,
-  reference TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  admin_note TEXT DEFAULT '',
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  resolved_at TEXT,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS bookmakers(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  bonus TEXT DEFAULT "",
-  url TEXT NOT NULL,
-  active INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS coupons(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  platform_name TEXT NOT NULL,
-  code TEXT NOT NULL,
-  platform_url TEXT NOT NULL,
-  description TEXT DEFAULT "",
-  active INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS batbot_messages(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  expires_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS batbot_message_reads(
-  message_id INTEGER NOT NULL,
-  user_id INTEGER NOT NULL,
-  read_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY(message_id,user_id),
-  FOREIGN KEY(message_id) REFERENCES batbot_messages(id) ON DELETE CASCADE,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE TABLE IF NOT EXISTS member_predictions(
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  home_team TEXT NOT NULL,
-  away_team TEXT NOT NULL,
-  home_probability REAL NOT NULL,
-  draw_probability REAL NOT NULL,
-  away_probability REAL NOT NULL,
-  prediction TEXT NOT NULL,
-  coupon_code TEXT DEFAULT "",
-  bookmaker TEXT DEFAULT "",
-  comment TEXT DEFAULT "",
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-`);
 
-DB.exec(`
-CREATE INDEX IF NOT EXISTS idx_member_predictions_user_created ON member_predictions(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_member_predictions_created ON member_predictions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_daily_matches_date_id ON daily_matches(match_date, id DESC);
-CREATE INDEX IF NOT EXISTS idx_messages_expiry_id ON batbot_messages(expires_at, id DESC);
-CREATE INDEX IF NOT EXISTS idx_message_reads_user_message ON batbot_message_reads(user_id, message_id);
-CREATE INDEX IF NOT EXISTS idx_payment_requests_user_created ON payment_requests(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_payment_requests_status_created ON payment_requests(status, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_password_resets_user_status ON password_resets(user_id, status, id DESC);
-`);
 
-// Migrations pour les bases déjà existantes
-try { DB.prepare("ALTER TABLE users ADD COLUMN premium_started_at TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN ai_until TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN ai_started_at TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN temporary_password_hash TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE users ADD COLUMN temporary_password_expires_at TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE password_resets ADD COLUMN delivery_token TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE password_resets ADD COLUMN temporary_password_encrypted TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE password_resets ADD COLUMN temporary_password_expires_at TEXT").run(); } catch (_) {}
-try { DB.prepare("ALTER TABLE password_resets ADD COLUMN resolved_at TEXT").run(); } catch (_) {}
+
 
 const defaults = {
   whatsapp: "2250152171974",
@@ -179,51 +47,61 @@ const defaults = {
   adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
-const getSetting = DB.prepare("SELECT value FROM settings WHERE key=?");
-const setSettingStatement = DB.prepare(
-  "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
-);
-function writeSetting(key, value) {
-  const result = setSettingStatement.run(key, String(value));
+async function getSetting(key) {
+  return await pgGet("SELECT value FROM settings WHERE key=$1", [key]);
+}
+
+async function writeSetting(key, value) {
+  const result = await pgQuery(
+    "INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    [key, String(value)]
+  );
   settingsCache = null;
   settingsCacheExpiresAt = 0;
   return result;
 }
-for (const [key, value] of Object.entries(defaults)) {
-  if (!getSetting.get(key)) writeSetting(key, String(value));
+
+async function initializeSettings() {
+  for (const [key, value] of Object.entries(defaults)) {
+    if (!(await getSetting(key))) {
+      await writeSetting(key, String(value));
+    }
+  }
+
+  try {
+    const oldNumber = "2250152171974";
+    const newNumber = "2250152171974";
+
+    const currentWhatsapp = await getSetting("whatsapp");
+    const currentAdminPhone = await getSetting("adminPhone");
+
+    if (currentWhatsapp && String(currentWhatsapp.value) === oldNumber) {
+      await writeSetting("whatsapp", newNumber);
+    }
+
+    if (currentAdminPhone && String(currentAdminPhone.value) === oldNumber) {
+      await writeSetting("adminPhone", newNumber);
+    }
+  } catch (_) {}
+
+  if (!(await getSetting("adminPasswordHash"))) {
+    await writeSetting(
+      "adminPasswordHash",
+      bcrypt.hashSync(process.env.ADMIN_PASSWORD || "ChangeMe123!", 12)
+    );
+  }
 }
 
-// Correction automatique des anciennes coordonnées WhatsApp/admin enregistrées
-// dans la base de données lors d'une précédente version.
-try {
-  const oldNumber = "2250152171974";
-  const newNumber = "2250152171974";
-  const currentWhatsapp = getSetting.get("whatsapp");
-  const currentAdminPhone = getSetting.get("adminPhone");
-  if (currentWhatsapp && String(currentWhatsapp.value) === oldNumber) {
-    writeSetting("whatsapp", newNumber);
-  }
-  if (currentAdminPhone && String(currentAdminPhone.value) === oldNumber) {
-    writeSetting("adminPhone", newNumber);
-  }
-} catch (_) {}
-
-if (!getSetting.get("adminPasswordHash")) {
-  writeSetting(
-    "adminPasswordHash",
-    bcrypt.hashSync(process.env.ADMIN_PASSWORD || "ChangeMe123!", 12)
-  );
-}
-
-function getSettings() {
+async function getSettings() {
   const now = Date.now();
   if (settingsCache && settingsCacheExpiresAt > now) return settingsCache;
-  settingsCache = Object.fromEntries(
-    DB.prepare("SELECT key,value FROM settings").all().map(x => [x.key, x.value])
-  );
+
+  const rows = await pgAll("SELECT key,value FROM settings");
+  settingsCache = Object.fromEntries(rows.map(x => [x.key, x.value]));
   settingsCacheExpiresAt = now + 5000;
   return settingsCache;
 }
+
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -280,16 +158,27 @@ function userView(user) {
   };
 }
 
-function requireUser(req, res, next) {
+async function requireUser(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Connexion requise." });
   }
-  const user = DB.prepare("SELECT id, disabled FROM users WHERE id=?").get(req.session.userId);
-  if (!user || user.disabled) {
-    req.session.destroy(() => {});
-    return res.status(403).json({ error: "Ce compte est désactivé ou introuvable." });
+
+  try {
+    const user = await pgGet(
+      "SELECT id, disabled FROM users WHERE id=$1",
+      [req.session.userId]
+    );
+
+    if (!user || user.disabled) {
+      req.session.destroy(() => {});
+      return res.status(403).json({ error: "Ce compte est désactivé ou introuvable." });
+    }
+
+    next();
+  } catch (error) {
+    console.error("requireUser PostgreSQL:", error);
+    return res.status(500).json({ error: "Erreur de vérification du compte." });
   }
-  next();
 }
 
 function requireAdmin(req, res, next) {
@@ -327,7 +216,7 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, service: "BatBot", time: new Date().toISOString() });
 });
 
-app.post("/api/register", (req, res) => {
+app.post("/api/register", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
 
@@ -338,193 +227,363 @@ app.post("/api/register", (req, res) => {
   }
 
   try {
-    const result = DB.prepare(
-      "INSERT INTO users(username,phone,password_hash) VALUES(?,?,?)"
-    ).run(username, "", bcrypt.hashSync(password, 12));
+    const result = await pgQuery(
+      "INSERT INTO users(username,phone,password_hash) VALUES($1,$2,$3) RETURNING id",
+      [username, "", bcrypt.hashSync(password, 12)]
+    );
 
-    req.session.userId = Number(result.lastInsertRowid);
-    const user = DB.prepare("SELECT * FROM users WHERE id=?").get(result.lastInsertRowid);
-    res.status(201).json({ message: "Compte créé avec succès.", user: userView(user) });
+    const user = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [result.rows[0].id]
+    );
+
+    req.session.userId = Number(user.id);
+
+    res.status(201).json({
+      message: "Compte créé avec succès.",
+      user: userView(user)
+    });
   } catch (error) {
-    res.status(409).json({ error: "Ce nom d'utilisateur existe déjà." });
+    if (error && error.code === "23505") {
+      return res.status(409).json({ error: "Ce nom d'utilisateur existe déjà." });
+    }
+
+    console.error("register PostgreSQL:", error);
+    res.status(500).json({ error: "Impossible de créer le compte." });
   }
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
-  const user = DB.prepare("SELECT * FROM users WHERE username=?").get(username);
 
-  if (!user || user.disabled) {
-    return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
-  }
+  try {
+    const user = await pgGet(
+      "SELECT * FROM users WHERE username=$1",
+      [username]
+    );
 
-  let validPassword = false;
-  let temporaryLogin = false;
-
-  if (user.must_change_password) {
-    const expiresAt = user.temporary_password_expires_at ? new Date(user.temporary_password_expires_at) : null;
-    if (!expiresAt || expiresAt <= new Date() || !user.temporary_password_hash) {
-      return res.status(401).json({ error: "Votre mot de passe temporaire a expiré. Faites une nouvelle demande." });
+    if (!user || user.disabled) {
+      return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
     }
-    validPassword = bcrypt.compareSync(password, user.temporary_password_hash);
-    temporaryLogin = validPassword;
-  } else {
-    validPassword = bcrypt.compareSync(password, user.password_hash);
-  }
 
-  if (!validPassword) {
-    return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
-  }
+    let validPassword = false;
+    let temporaryLogin = false;
 
-  req.session.userId = user.id;
-  res.json({
-    message: temporaryLogin ? "Connexion temporaire réussie. Nouveau mot de passe requis." : "Connexion réussie.",
-    temporary_login: temporaryLogin,
-    must_change_password: Boolean(user.must_change_password),
-    user: userView(user)
-  });
+    if (user.must_change_password) {
+      const expiresAt = user.temporary_password_expires_at
+        ? new Date(user.temporary_password_expires_at)
+        : null;
+
+      if (!expiresAt || expiresAt <= new Date() || !user.temporary_password_hash) {
+        return res.status(401).json({
+          error: "Votre mot de passe temporaire a expiré. Faites une nouvelle demande."
+        });
+      }
+
+      validPassword = bcrypt.compareSync(
+        password,
+        user.temporary_password_hash
+      );
+      temporaryLogin = validPassword;
+    } else {
+      validPassword = bcrypt.compareSync(password, user.password_hash);
+    }
+
+    if (!validPassword) {
+      return res.status(401).json({
+        error: "Identifiants incorrects ou compte désactivé."
+      });
+    }
+
+    req.session.userId = user.id;
+
+    res.json({
+      message: temporaryLogin
+        ? "Connexion temporaire réussie. Nouveau mot de passe requis."
+        : "Connexion réussie.",
+      temporary_login: temporaryLogin,
+      must_change_password: Boolean(user.must_change_password),
+      user: userView(user)
+    });
+  } catch (error) {
+    console.error("login PostgreSQL:", error);
+    res.status(500).json({ error: "Erreur lors de la connexion." });
+  }
 });
 
 app.post("/api/logout", (req, res) => {
   req.session.destroy(() => res.json({ message: "Déconnexion réussie." }));
 });
 
-app.get("/api/me", requireUser, (req, res) => {
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  if (!user) return res.status(401).json({ error: "Session invalide." });
-  res.json({ user: userView(user) });
+app.get("/api/me", requireUser, async (req, res) => {
+  try {
+    const user = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [req.session.userId]
+    );
+
+    if (!user) return res.status(401).json({ error: "Session invalide." });
+
+    res.json({ user: userView(user) });
+  } catch (error) {
+    console.error("api/me PostgreSQL:", error);
+    res.status(500).json({ error: "Impossible de récupérer le compte." });
+  }
 });
 
-app.post("/api/password-reset", (req, res) => {
+app.post("/api/password-reset", async (req, res) => {
   const username = String(req.body.username || "").trim();
-  const user = DB.prepare("SELECT id, disabled FROM users WHERE username=?").get(username);
 
-  if (!user || user.disabled) {
-    return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
+  try {
+    const user = await pgGet(
+      "SELECT id, disabled FROM users WHERE username=$1",
+      [username]
+    );
+
+    if (!user || user.disabled) {
+      return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
+    }
+
+    let request = await pgGet(
+      "SELECT id, delivery_token, status FROM password_resets WHERE user_id=$1 AND status='pending' ORDER BY id DESC LIMIT 1",
+      [user.id]
+    );
+
+    if (!request) {
+      const deliveryToken = crypto.randomBytes(32).toString("hex");
+      const result = await pgQuery(
+        "INSERT INTO password_resets(user_id,delivery_token) VALUES($1,$2) RETURNING id,delivery_token,status",
+        [user.id, deliveryToken]
+      );
+      request = result.rows[0];
+    } else if (!request.delivery_token) {
+      request.delivery_token = crypto.randomBytes(32).toString("hex");
+      await pgQuery(
+        "UPDATE password_resets SET delivery_token=$1 WHERE id=$2",
+        [request.delivery_token, request.id]
+      );
+    }
+
+    res.json({
+      message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.",
+      request_id: request.id,
+      request_token: request.delivery_token
+    });
+  } catch (error) {
+    console.error("password-reset PostgreSQL:", error);
+    res.status(500).json({ error: "Impossible d'enregistrer la demande de récupération." });
   }
-
-  let request = DB.prepare(
-    "SELECT id, delivery_token, status FROM password_resets WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1"
-  ).get(user.id);
-
-  if (!request) {
-    const deliveryToken = crypto.randomBytes(32).toString("hex");
-    const result = DB.prepare(
-      "INSERT INTO password_resets(user_id,delivery_token) VALUES(?,?)"
-    ).run(user.id, deliveryToken);
-    request = { id: Number(result.lastInsertRowid), delivery_token: deliveryToken, status: "pending" };
-  } else if (!request.delivery_token) {
-    request.delivery_token = crypto.randomBytes(32).toString("hex");
-    DB.prepare("UPDATE password_resets SET delivery_token=? WHERE id=?").run(request.delivery_token, request.id);
-  }
-
-  res.json({
-    message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.",
-    request_id: request.id,
-    request_token: request.delivery_token
-  });
 });
 
 // Compatibilité avec les anciennes versions de l'interface.
-app.post("/api/forgot-password", (req, res) => {
+app.post("/api/forgot-password", async (req, res) => {
   const username = String(req.body.username || "").trim();
-  const user = DB.prepare("SELECT id, disabled FROM users WHERE username=?").get(username);
 
-  if (!user || user.disabled) {
-    return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
+  try {
+    const user = await pgGet(
+      "SELECT id, disabled FROM users WHERE username=$1",
+      [username]
+    );
+
+    if (!user || user.disabled) {
+      return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
+    }
+
+    let existing = await pgGet(
+      "SELECT id, delivery_token FROM password_resets WHERE user_id=$1 AND status='pending' ORDER BY id DESC LIMIT 1",
+      [user.id]
+    );
+
+    if (!existing) {
+      const deliveryToken = crypto.randomBytes(32).toString("hex");
+      const result = await pgQuery(
+        "INSERT INTO password_resets(user_id,delivery_token) VALUES($1,$2) RETURNING id,delivery_token",
+        [user.id, deliveryToken]
+      );
+      existing = result.rows[0];
+    } else if (!existing.delivery_token) {
+      existing.delivery_token = crypto.randomBytes(32).toString("hex");
+      await pgQuery(
+        "UPDATE password_resets SET delivery_token=$1 WHERE id=$2",
+        [existing.delivery_token, existing.id]
+      );
+    }
+
+    res.json({
+      message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.",
+      request_id: existing.id,
+      request_token: existing.delivery_token
+    });
+  } catch (error) {
+    console.error("forgot-password PostgreSQL:", error);
+    res.status(500).json({ error: "Impossible d'enregistrer la demande de récupération." });
   }
-
-  let existing = DB.prepare(
-    "SELECT id, delivery_token FROM password_resets WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1"
-  ).get(user.id);
-
-  if (!existing) {
-    const deliveryToken = crypto.randomBytes(32).toString("hex");
-    const result = DB.prepare("INSERT INTO password_resets(user_id,delivery_token) VALUES(?,?)").run(user.id, deliveryToken);
-    existing = { id: Number(result.lastInsertRowid), delivery_token: deliveryToken };
-  } else if (!existing.delivery_token) {
-    existing.delivery_token = crypto.randomBytes(32).toString("hex");
-    DB.prepare("UPDATE password_resets SET delivery_token=? WHERE id=?").run(existing.delivery_token, existing.id);
-  }
-
-  res.json({ message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.", request_id: existing.id, request_token: existing.delivery_token });
 });
 
 // Vérification sécurisée de la demande depuis l'espace de connexion.
 // Le token est un secret temporaire conservé uniquement dans la session locale du navigateur.
-app.get("/api/password-reset/status", (req, res) => {
+app.get("/api/password-reset/status", async (req, res) => {
   const token = String(req.query.token || "").trim();
-  if (!token || token.length < 40) return res.status(400).json({ error: "Jeton de récupération invalide." });
 
-  const request = DB.prepare(`
-    SELECT pr.id, pr.status, pr.temporary_password_encrypted, pr.temporary_password_expires_at,
-           u.username, u.disabled, u.must_change_password
-    FROM password_resets pr
-    JOIN users u ON u.id=pr.user_id
-    WHERE pr.delivery_token=?
-    ORDER BY pr.id DESC LIMIT 1
-  `).get(token);
-
-  if (!request || request.disabled) return res.status(404).json({ error: "Demande introuvable." });
-
-  if (request.status === "pending") {
-    return res.json({ status: "pending", username: request.username });
+  if (!token || token.length < 40) {
+    return res.status(400).json({ error: "Jeton de récupération invalide." });
   }
 
-  const expiresAt = request.temporary_password_expires_at ? new Date(request.temporary_password_expires_at) : null;
-  if (!expiresAt || expiresAt <= new Date()) {
-    return res.json({ status: "expired", username: request.username });
+  try {
+    const request = await pgGet(`
+      SELECT
+        pr.id,
+        pr.status,
+        pr.temporary_password_encrypted,
+        pr.temporary_password_expires_at,
+        u.username,
+        u.disabled,
+        u.must_change_password
+      FROM password_resets pr
+      JOIN users u ON u.id = pr.user_id
+      WHERE pr.delivery_token=$1
+      ORDER BY pr.id DESC
+      LIMIT 1
+    `, [token]);
+
+    if (!request || request.disabled) {
+      return res.status(404).json({ error: "Demande introuvable." });
+    }
+
+    if (request.status === "pending") {
+      return res.json({
+        status: "pending",
+        username: request.username
+      });
+    }
+
+    const expiresAt = request.temporary_password_expires_at
+      ? new Date(request.temporary_password_expires_at)
+      : null;
+
+    if (!expiresAt || expiresAt <= new Date()) {
+      return res.json({
+        status: "expired",
+        username: request.username
+      });
+    }
+
+    const temporaryPassword = decryptTemporaryPassword(
+      request.temporary_password_encrypted
+    );
+
+    if (!temporaryPassword) {
+      return res.status(500).json({
+        error: "Impossible de récupérer le mot de passe temporaire."
+      });
+    }
+
+    res.json({
+      status: "ready",
+      username: request.username,
+      temporary_password: temporaryPassword,
+      expires_at: request.temporary_password_expires_at
+    });
+  } catch (error) {
+    console.error("password-reset/status PostgreSQL:", error);
+    res.status(500).json({
+      error: "Impossible de vérifier la demande de récupération."
+    });
   }
-
-  const temporaryPassword = decryptTemporaryPassword(request.temporary_password_encrypted);
-  if (!temporaryPassword) return res.status(500).json({ error: "Impossible de récupérer le mot de passe temporaire." });
-
-  res.json({
-    status: "ready",
-    username: request.username,
-    temporary_password: temporaryPassword,
-    expires_at: request.temporary_password_expires_at
-  });
 });
 
-app.post("/api/password-change", requireUser, (req, res) => {
+app.post("/api/password-change", requireUser, async (req, res) => {
   const password = String(req.body.password || "");
   const confirmation = String(req.body.confirm_password || "");
 
-  if (password.length < 6) return res.status(400).json({ error: "Le nouveau mot de passe doit contenir au moins 6 caractères." });
-  if (password !== confirmation) return res.status(400).json({ error: "Les deux mots de passe ne correspondent pas." });
+  if (password.length < 6) {
+    return res.status(400).json({
+      error: "Le nouveau mot de passe doit contenir au moins 6 caractères."
+    });
+  }
 
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
-  if (!user || user.disabled) return res.status(403).json({ error: "Compte indisponible." });
+  if (password !== confirmation) {
+    return res.status(400).json({
+      error: "Les deux mots de passe ne correspondent pas."
+    });
+  }
 
-  const result = DB.prepare(`
-    UPDATE users
-    SET password_hash=?, must_change_password=0, temporary_password_hash=NULL, temporary_password_expires_at=NULL
-    WHERE id=?
-  `).run(bcrypt.hashSync(password, 12), user.id);
+  try {
+    const user = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [req.session.userId]
+    );
 
-  if (!result.changes) return res.status(500).json({ error: "Impossible de modifier le mot de passe." });
+    if (!user || user.disabled) {
+      return res.status(403).json({ error: "Compte indisponible." });
+    }
 
-  res.json({ message: "Votre nouveau mot de passe a été enregistré avec succès.", user: userView(DB.prepare("SELECT * FROM users WHERE id=?").get(user.id)) });
+    const result = await pgQuery(`
+      UPDATE users
+      SET password_hash=$1,
+          must_change_password=false,
+          temporary_password_hash=NULL,
+          temporary_password_expires_at=NULL
+      WHERE id=$2
+    `, [
+      bcrypt.hashSync(password, 12),
+      user.id
+    ]);
+
+    if (!result.rowCount) {
+      return res.status(500).json({
+        error: "Impossible de modifier le mot de passe."
+      });
+    }
+
+    const updatedUser = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [user.id]
+    );
+
+    res.json({
+      message: "Votre nouveau mot de passe a été enregistré avec succès.",
+      user: userView(updatedUser)
+    });
+  } catch (error) {
+    console.error("password-change PostgreSQL:", error);
+    res.status(500).json({
+      error: "Impossible de modifier le mot de passe."
+    });
+  }
 });
 
-app.get("/api/daily-matches", requireUser, (req, res) => {
+app.get("/api/daily-matches", requireUser, async (req, res) => {
   const cacheKey = today();
   const now = Date.now();
-  if (!dailyMatchesCache || dailyMatchesCacheKey !== cacheKey || dailyMatchesCacheExpiresAt <= now) {
-    dailyMatchesCache = DB.prepare(
-      "SELECT * FROM daily_matches WHERE match_date=? ORDER BY id DESC"
-    ).all(cacheKey);
-    dailyMatchesCacheKey = cacheKey;
-    dailyMatchesCacheExpiresAt = now + 10000;
+
+  try {
+    if (
+      !dailyMatchesCache ||
+      dailyMatchesCacheKey !== cacheKey ||
+      dailyMatchesCacheExpiresAt <= now
+    ) {
+      dailyMatchesCache = await pgAll(
+        "SELECT * FROM daily_matches WHERE match_date=$1 ORDER BY id DESC",
+        [cacheKey]
+      );
+      dailyMatchesCacheKey = cacheKey;
+      dailyMatchesCacheExpiresAt = now + 10000;
+    }
+
+    res.set("Cache-Control", "private, max-age=10");
+    res.json({ matches: dailyMatchesCache });
+  } catch (error) {
+    console.error("daily-matches PostgreSQL:", error);
+    res.status(500).json({
+      error: "Impossible de récupérer les matchs du jour."
+    });
   }
-  res.set("Cache-Control", "private, max-age=10");
-  res.json({ matches: dailyMatchesCache });
 });
 
-app.post("/api/analysis-requests", requireUser, (req, res) => {
-  const type = req.body.type === "loto" ? "loto" : "football";
+app.post("/api/analysis-requests", requireUser, async (req, res) => {
+  const type = String(req.body.type || "football").trim().toLowerCase();
   const content = String(req.body.content || "").trim();
 
   if (!content) {
@@ -541,11 +600,15 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
     });
   }
 
-  const id = DB.prepare(
-    "INSERT INTO analysis_requests(user_id,type,content) VALUES(?,?,?)"
-  ).run(req.session.userId, type, content).lastInsertRowid;
+  const row = await pgGet(
+    `INSERT INTO analysis_requests(user_id,type,content)
+     VALUES($1,$2,$3)
+     RETURNING id`,
+    [req.session.userId, type, content]
+  );
 
-  const settings = getSettings();
+  const id = row.id;
+  const settings = await getSettings();
   const phone = cleanPhone(settings.whatsapp);
   const label = type === "loto" ? "Loto" : "Football";
   const text =
@@ -564,71 +627,125 @@ app.post("/api/analysis-requests", requireUser, (req, res) => {
       ? `https://t.me/${String(settings.telegram).replace(/^@/, "")}`
       : ""
   });
-});
+});;
 
-function cleanupExpiredBatBotMessages(){
-  try{
-    DB.prepare("DELETE FROM batbot_messages WHERE expires_at <= CURRENT_TIMESTAMP").run();
-  }catch(error){
-    console.error("BATBOT MESSAGE CLEANUP:",error.message);
+async function cleanupExpiredBatBotMessages() {
+  try {
+    const result = await pgQuery(
+      "DELETE FROM batbot_messages WHERE expires_at <= CURRENT_TIMESTAMP"
+    );
+    return result.rowCount || 0;
+  } catch (error) {
+    console.error("BATBOT MESSAGE CLEANUP:", error.message);
+    return 0;
   }
 }
-
 cleanupExpiredBatBotMessages();
 setInterval(cleanupExpiredBatBotMessages, 5 * 60 * 1000).unref();
 
-app.get("/api/messages/mine", requireUser, (req, res) => {
-  const messages=DB.prepare(`
+app.get("/api/messages/mine", requireUser, async (req, res) => {
+  const messages = await pgAll(`
     SELECT m.id,m.title,m.body,m.created_at,m.expires_at,
            CASE WHEN r.message_id IS NULL THEN 0 ELSE 1 END AS is_read
     FROM batbot_messages m
-    LEFT JOIN batbot_message_reads r ON r.message_id=m.id AND r.user_id=?
+    LEFT JOIN batbot_message_reads r
+      ON r.message_id=m.id AND r.user_id=$1
     WHERE m.expires_at > CURRENT_TIMESTAMP
     ORDER BY m.id DESC
-  `).all(req.session.userId).map(x=>({...x,is_read:Boolean(x.is_read)}));
-  res.json({messages});
-});
+  `, [req.session.userId]);
 
-app.post("/api/messages/:id/read", requireUser, (req, res) => {
-  const id=Number(req.params.id);
-  const message=DB.prepare("SELECT id FROM batbot_messages WHERE id=? AND expires_at>CURRENT_TIMESTAMP").get(id);
-  if(!message)return res.status(404).json({error:"Message introuvable ou expiré."});
-  DB.prepare("INSERT OR IGNORE INTO batbot_message_reads(message_id,user_id) VALUES(?,?)").run(id,req.session.userId);
-  res.json({message:"Message marqué comme lu."});
+  res.json({
+    messages: messages.map(x => ({
+      ...x,
+      is_read: Boolean(x.is_read)
+    }))
+  });
 });
+app.post("/api/messages/:id/read", requireUser, async (req, res) => {
+  const id = Number(req.params.id);
 
-app.get("/api/admin/messages", requireAdmin, (req, res) => {
-  cleanupExpiredBatBotMessages();
-  const messages=DB.prepare(`
+  const message = await pgGet(
+    "SELECT id FROM batbot_messages WHERE id=$1 AND expires_at>CURRENT_TIMESTAMP",
+    [id]
+  );
+
+  if (!message) {
+    return res.status(404).json({ error: "Message introuvable ou expiré." });
+  }
+
+  await pgQuery(
+    "INSERT INTO batbot_message_reads(message_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
+    [id, req.session.userId]
+  );
+
+  res.json({ message: "Message marqué comme lu." });
+});
+app.get("/api/admin/messages", requireAdmin, async (req, res) => {
+  await cleanupExpiredBatBotMessages();
+
+  const messages = await pgAll(`
     SELECT id,title,body,created_at,expires_at
     FROM batbot_messages
-    WHERE expires_at>CURRENT_TIMESTAMP
+    WHERE expires_at > CURRENT_TIMESTAMP
     ORDER BY id DESC
-  `).all();
-  res.json({messages});
+  `);
+
+  res.json({ messages });
+});
+app.post("/api/admin/messages", requireAdmin, async (req, res) => {
+  const title = String(req.body.title || "").trim();
+  const body = String(req.body.body || "").trim();
+
+  if (!title || !body) {
+    return res.status(400).json({
+      error: "Le titre et le contenu du message sont obligatoires."
+    });
+  }
+
+  if (title.length > 120) {
+    return res.status(400).json({
+      error: "Le titre ne doit pas dépasser 120 caractères."
+    });
+  }
+
+  if (body.length > 2000) {
+    return res.status(400).json({
+      error: "Le contenu ne doit pas dépasser 2000 caractères."
+    });
+  }
+
+  await cleanupExpiredBatBotMessages();
+
+  const result = await pgQuery(
+    `INSERT INTO batbot_messages(title,body,created_at,expires_at)
+     VALUES($1,$2,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP + INTERVAL '24 hours')
+     RETURNING id,title,body,created_at,expires_at`,
+    [title, body]
+  );
+
+  const created = result.rows[0];
+
+  res.status(201).json({
+    message: "Message publié avec succès. Il restera visible pendant 24 heures.",
+    id: Number(created.id),
+    expires_at: created.expires_at
+  });
+});
+app.delete("/api/admin/messages/:id", requireAdmin, async (req, res) => {
+  const result = await pgQuery(
+    "DELETE FROM batbot_messages WHERE id=$1",
+    [Number(req.params.id)]
+  );
+
+  if (!result.rowCount) {
+    return res.status(404).json({ error: "Message introuvable." });
+  }
+
+  res.json({ message: "Message supprimé avec succès." });
 });
 
-app.post("/api/admin/messages", requireAdmin, (req, res) => {
-  const title=String(req.body.title||"").trim();
-  const body=String(req.body.body||"").trim();
-  if(!title||!body)return res.status(400).json({error:"Le titre et le contenu du message sont obligatoires."});
-  if(title.length>120)return res.status(400).json({error:"Le titre ne doit pas dépasser 120 caractères."});
-  if(body.length>2000)return res.status(400).json({error:"Le contenu ne doit pas dépasser 2000 caractères."});
-  cleanupExpiredBatBotMessages();
-  const result=DB.prepare("INSERT INTO batbot_messages(title,body,created_at,expires_at) VALUES(?,?,CURRENT_TIMESTAMP,datetime('now','+24 hours'))")
-    .run(title,body);
-  const created=DB.prepare("SELECT id,title,body,created_at,expires_at FROM batbot_messages WHERE id=?").get(Number(result.lastInsertRowid));
-  res.status(201).json({message:"Message publié avec succès. Il restera visible pendant 24 heures.",id:Number(result.lastInsertRowid),expires_at:created.expires_at});
-});
-
-app.delete("/api/admin/messages/:id", requireAdmin, (req, res) => {
-  const result=DB.prepare("DELETE FROM batbot_messages WHERE id=?").run(Number(req.params.id));
-  if(!result.changes)return res.status(404).json({error:"Message introuvable."});
-  res.json({message:"Message supprimé avec succès."});
-});
-
-app.post("/api/admin/login", (req, res) => {
-  const settings = getSettings();
+app.post("/api/admin/login", async (req, res) => {
+  const settings = await getSettings();
   const phone = cleanPhone(req.body.phone);
   const password = String(req.body.password || "");
 
@@ -659,20 +776,21 @@ app.post("/api/admin/logout", (req, res) => {
   res.json({ message: "Administration déconnectée." });
 });
 
-app.get("/api/admin/stats", requireAdmin, (req, res) => {
+app.get("/api/admin/stats", requireAdmin, async (req, res) => {
+  const users = await pgGet("SELECT COUNT(*) AS n FROM users");
+  const analyses = await pgGet("SELECT COUNT(*) AS n FROM analysis_requests");
+  const pending = await pgGet("SELECT COUNT(*) AS n FROM analysis_requests WHERE status='pending'");
+  const passwordResets = await pgGet("SELECT COUNT(*) AS n FROM password_resets WHERE status='pending'");
+
   res.json({
-    users: DB.prepare("SELECT COUNT(*) AS n FROM users").get().n,
-    analyses: DB.prepare("SELECT COUNT(*) AS n FROM analysis_requests").get().n,
-    pending: DB.prepare(
-      "SELECT COUNT(*) AS n FROM analysis_requests WHERE status='pending'"
-    ).get().n,
-    password_resets: DB.prepare(
-      "SELECT COUNT(*) AS n FROM password_resets WHERE status='pending'"
-    ).get().n
+    users: Number(users?.n || 0),
+    analyses: Number(analyses?.n || 0),
+    pending: Number(pending?.n || 0),
+    password_resets: Number(passwordResets?.n || 0)
   });
 });
 
-app.post("/api/payment-requests", requireUser, (req, res) => {
+app.post("/api/payment-requests", requireUser, async (req, res) => {
   const offer = String(req.body.offer || "").trim();
   const operator = String(req.body.operator || "").trim();
   const amount = Number(req.body.amount);
@@ -682,248 +800,426 @@ app.post("/api/payment-requests", requireUser, (req, res) => {
   if (!offer || !allowedOperators.includes(operator) || !Number.isFinite(amount) || amount <= 0 || !reference) {
     return res.status(400).json({ error: "Veuillez remplir correctement tous les champs du paiement." });
   }
-  const result = DB.prepare(
-    "INSERT INTO payment_requests(user_id,offer,operator,amount,reference) VALUES(?,?,?,?,?)"
-  ).run(req.session.userId, offer, operator, Math.round(amount), reference);
-  res.json({ message: "Référence enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.lastInsertRowid });
+  const result = await pgGet(
+    `INSERT INTO payment_requests(user_id,offer,operator,amount,reference)
+     VALUES($1,$2,$3,$4,$5)
+     RETURNING id`,
+    [req.session.userId, offer, operator, Math.round(amount), reference]
+  );
+  res.json({ message: "Référence enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.id });
 });
 
-app.get("/api/payment-requests/mine", requireUser, (req, res) => {
-  const requests = DB.prepare(`
+app.get("/api/payment-requests/mine", requireUser, async (req, res) => {
+  const requests = await pgAll(`
     SELECT id, offer, operator, amount, reference, status, admin_note, created_at, resolved_at
     FROM payment_requests
-    WHERE user_id=?
+    WHERE user_id=$1
     ORDER BY id DESC
-  `).all(req.session.userId);
+  `, [req.session.userId]);
   res.json({ requests });
 });
 
-app.get("/api/admin/payment-requests", requireAdmin, (req, res) => {
-  const requests = DB.prepare(`
+app.get("/api/admin/payment-requests", requireAdmin, async (req, res) => {
+  const requests = await pgAll(`
     SELECT p.*, u.username, u.phone
-    FROM payment_requests p LEFT JOIN users u ON u.id=p.user_id
+    FROM payment_requests p
+    LEFT JOIN users u ON u.id=p.user_id
     ORDER BY CASE WHEN p.status='pending' THEN 0 ELSE 1 END, p.id DESC
-  `).all();
+  `);
   res.json({ requests });
 });
 
-app.patch("/api/admin/payment-requests/:id", requireAdmin, (req, res) => {
+app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
   const status = String(req.body.status || "").toLowerCase();
-  if (!["accepted", "rejected"].includes(status)) return res.status(400).json({ error: "Statut invalide." });
-  const request = DB.prepare("SELECT * FROM payment_requests WHERE id=?").get(Number(req.params.id));
-  if (!request) return res.status(404).json({ error: "Demande introuvable." });
-  if (request.status !== "pending") return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+  if (!["accepted", "rejected"].includes(status)) {
+    return res.status(400).json({ error: "Statut invalide." });
+  }
 
-  const resolve = DB.transaction(() => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const requestResult = await client.query(
+      "SELECT * FROM payment_requests WHERE id=$1 FOR UPDATE",
+      [Number(req.params.id)]
+    );
+    const request = requestResult.rows[0];
+
+    if (!request) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Demande introuvable." });
+    }
+
+    if (request.status !== "pending") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+    }
+
     if (status === "accepted" && /premium/i.test(request.offer)) {
       const durationDays = /30\s*j|30\s*jours/i.test(request.offer) ? 30 : 7;
       const now = new Date();
-      const user = DB.prepare("SELECT premium_until, ai_until FROM users WHERE id=?").get(request.user_id);
-      const currentUntil = user?.premium_until && new Date(user.premium_until) > now ? new Date(user.premium_until) : now;
-      const until = new Date(currentUntil.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
-      DB.prepare("UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?").run(now.toISOString(), until, request.user_id);
-      if (/ia/i.test(request.offer)) DB.prepare("UPDATE users SET ai_started_at=?, ai_until=? WHERE id=?").run(now.toISOString(), until, request.user_id);
+
+      const userResult = await client.query(
+        "SELECT premium_until, ai_until FROM users WHERE id=$1 FOR UPDATE",
+        [request.user_id]
+      );
+      const user = userResult.rows[0];
+
+      if (!user) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Utilisateur introuvable." });
+      }
+
+      const currentUntil =
+        user.premium_until && new Date(user.premium_until) > now
+          ? new Date(user.premium_until)
+          : now;
+
+      const until = new Date(
+        currentUntil.getTime() + durationDays * 24 * 60 * 60 * 1000
+      ).toISOString();
+
+      await client.query(
+        "UPDATE users SET premium_started_at=$1, premium_until=$2 WHERE id=$3",
+        [now.toISOString(), until, request.user_id]
+      );
+
+      if (/ia/i.test(request.offer)) {
+        await client.query(
+          "UPDATE users SET ai_started_at=$1, ai_until=$2 WHERE id=$3",
+          [now.toISOString(), until, request.user_id]
+        );
+      }
     }
-    const result = DB.prepare("UPDATE payment_requests SET status=?, resolved_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").run(status, request.id);
-    if (result.changes !== 1) throw new Error("Cette demande a déjà été traitée.");
-  });
-  try {
-    resolve();
-    res.json({ message: status === "accepted" ? "Paiement accepté." : "Paiement refusé." });
+
+    const result = await client.query(
+      "UPDATE payment_requests SET status=$1, resolved_at=CURRENT_TIMESTAMP WHERE id=$2 AND status=pending",
+      [status, request.id]
+    );
+
+    if (result.rowCount !== 1) {
+      throw new Error("Cette demande a déjà été traitée.");
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: status === "accepted" ? "Paiement accepté." : "Paiement refusé."
+    });
   } catch (error) {
-    res.status(409).json({ error: error.message || "Demande déjà traitée." });
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {}
+
+    res.status(409).json({
+      error: error.message || "Demande déjà traitée."
+    });
+  } finally {
+    client.release();
   }
 });
 
-app.get("/api/admin/users", requireAdmin, (req, res) => {
+app.get("/api/admin/users", requireAdmin, async (req, res) => {
+  const users = await pgAll("SELECT * FROM users ORDER BY id DESC");
   res.json({
-    users: DB.prepare("SELECT * FROM users ORDER BY id DESC").all().map(userView)
+    users: users.map(userView)
   });
 });
 
-app.post("/api/admin/subscription", requireAdmin, (req, res) => {
+app.post("/api/admin/subscription", requireAdmin, async (req, res) => {
   const id = Number(req.body.user_id);
   const active = Boolean(req.body.active);
-  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
+  const durationDays = Math.max(
+    1,
+    Math.min(3650, Number(req.body.duration_days) || 7)
+  );
+
   const startedAt = active ? new Date() : null;
   const until = active
     ? new Date(startedAt.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
     : null;
 
-  const result = DB.prepare(
-    "UPDATE users SET premium_started_at=?, premium_until=? WHERE id=?"
-  ).run(startedAt ? startedAt.toISOString() : null, until, id);
+  const result = await pgQuery(
+    "UPDATE users SET premium_started_at=$1, premium_until=$2 WHERE id=$3",
+    [startedAt ? startedAt.toISOString() : null, until, id]
+  );
 
-  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
-  res.json({ message: active ? `Premium activé pour ${durationDays} jour(s).` : "Premium désactivé." });
+  if (!result.rowCount) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
+
+  res.json({
+    message: active
+      ? `Premium activé pour ${durationDays} jour(s).`
+      : "Premium désactivé."
+  });
 });
-
 // Activation de l'accès IA : l'utilisateur doit aussi avoir Premium actif.
-app.post("/api/admin/ai-subscription", requireAdmin, (req, res) => {
+app.post("/api/admin/ai-subscription", requireAdmin, async (req, res) => {
   const id = Number(req.body.user_id);
   const active = Boolean(req.body.active);
-  const durationDays = Math.max(1, Math.min(3650, Number(req.body.duration_days) || 7));
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(id);
+  const durationDays = Math.max(
+    1,
+    Math.min(3650, Number(req.body.duration_days) || 7)
+  );
 
-  if (!user) return res.status(404).json({ error: "Utilisateur introuvable." });
+  const user = await pgGet(
+    "SELECT * FROM users WHERE id=$1",
+    [id]
+  );
+
+  if (!user) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
 
   if (active) {
-    const premiumActive = !!(user.premium_until && new Date(user.premium_until) > new Date());
+    const premiumActive = !!(
+      user.premium_until &&
+      new Date(user.premium_until) > new Date()
+    );
+
     if (!premiumActive) {
       return res.status(400).json({
         error: "Activez d’abord Premium pour autoriser l’accès à l’IA."
       });
     }
-    const until = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
-    DB.prepare("UPDATE users SET ai_started_at=?, ai_until=? WHERE id=?").run(new Date().toISOString(), until, id);
-    return res.json({ message: `IA activée pour ${durationDays} jour(s).`, ai_until: until });
+
+    const startedAt = new Date();
+    const until = new Date(
+      Date.now() + durationDays * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    await pgQuery(
+      "UPDATE users SET ai_started_at=$1, ai_until=$2 WHERE id=$3",
+      [startedAt.toISOString(), until, id]
+    );
+
+    return res.json({
+      message: `IA activée pour ${durationDays} jour(s).`,
+      ai_until: until
+    });
   }
 
-  DB.prepare("UPDATE users SET ai_until=NULL WHERE id=?").run(id);
+  await pgQuery(
+    "UPDATE users SET ai_until=NULL WHERE id=$1",
+    [id]
+  );
+
   res.json({ message: "Accès IA désactivé." });
 });
-
-app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
+app.patch("/api/admin/users/:id/status", requireAdmin, async (req, res) => {
   const disabled = Boolean(req.body.disabled);
-  const result = DB.prepare("UPDATE users SET disabled=? WHERE id=?")
-    .run(disabled ? 1 : 0, Number(req.params.id));
-  if (!result.changes) return res.status(404).json({ error: "Utilisateur introuvable." });
-  res.json({ message: disabled ? "Compte désactivé." : "Compte réactivé." });
+
+  const result = await pgQuery(
+    "UPDATE users SET disabled=$1 WHERE id=$2",
+    [disabled, Number(req.params.id)]
+  );
+
+  if (!result.rowCount) {
+    return res.status(404).json({ error: "Utilisateur introuvable." });
+  }
+
+  res.json({
+    message: disabled ? "Compte désactivé." : "Compte réactivé."
+  });
 });
 
-app.post("/api/admin/reset-password", requireAdmin, (req, res) => {
+app.post("/api/admin/reset-password", requireAdmin, async (req, res) => {
   const password = String(req.body.password || "");
+
   if (password.length < 6) {
     return res.status(400).json({ error: "Minimum 6 caractères." });
   }
 
-  const result = DB.prepare(`
-    UPDATE users
-    SET password_hash=?, must_change_password=0, temporary_password_hash=NULL, temporary_password_expires_at=NULL
-    WHERE id=?
-  `).run(bcrypt.hashSync(password, 12), Number(req.body.user_id));
+  const result = await pgQuery(
+    `UPDATE users
+     SET password_hash=$1,
+         must_change_password=false,
+         temporary_password_hash=NULL,
+         temporary_password_expires_at=NULL
+     WHERE id=$2`,
+    [bcrypt.hashSync(password, 12), Number(req.body.user_id)]
+  );
 
-  if (!result.changes) {
+  if (!result.rowCount) {
     return res.status(404).json({ error: "Utilisateur introuvable." });
   }
 
   res.json({ message: "Mot de passe modifié avec succès." });
 });
 
-app.delete("/api/admin/users/:id", requireAdmin, (req, res) => {
-  const result = DB.prepare(
-    "DELETE FROM users WHERE id=?"
-  ).run(Number(req.params.id));
+app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  const result = await pgQuery(
+    "DELETE FROM users WHERE id=$1",
+    [Number(req.params.id)]
+  );
 
-  if (!result.changes) {
+  if (!result.rowCount) {
     return res.status(404).json({ error: "Utilisateur introuvable." });
   }
 
   res.json({ message: "Membre supprimé." });
 });
 
-app.get("/api/admin/password-resets", requireAdmin, (req, res) => {
-  res.json({
-    requests: DB.prepare(`
-      SELECT pr.*, u.username, u.phone
-      FROM password_resets pr
-      JOIN users u ON u.id=pr.user_id
-      WHERE pr.status='pending'
-      ORDER BY pr.id DESC
-    `).all()
-  });
+app.get("/api/admin/password-resets", requireAdmin, async (req, res) => {
+  const requests = await pgAll(`
+    SELECT pr.*, u.username, u.phone
+    FROM password_resets pr
+    JOIN users u ON u.id=pr.user_id
+    WHERE pr.status='pending'
+    ORDER BY pr.id DESC
+  `);
+
+  res.json({ requests });
 });
 
 // Alias utilisé par l'interface actuelle.
-app.get("/api/admin/reset-requests", requireAdmin, (req, res) => {
-  res.json({
-    requests: DB.prepare(`
-      SELECT pr.*, u.username, u.phone
-      FROM password_resets pr
-      JOIN users u ON u.id=pr.user_id
-      WHERE pr.status='pending'
-      ORDER BY pr.id DESC
-    `).all()
-  });
-});
-
-app.post("/api/admin/reset-requests/:id/resolve", requireAdmin, (req, res) => {
-  const id = Number(req.params.id);
-  const request = DB.prepare(`
-    SELECT pr.id, pr.user_id, pr.status, pr.delivery_token, u.username, u.disabled
+app.get("/api/admin/reset-requests", requireAdmin, async (req, res) => {
+  const requests = await pgAll(`
+    SELECT pr.*, u.username, u.phone
     FROM password_resets pr
     JOIN users u ON u.id=pr.user_id
-    WHERE pr.id=?
-  `).get(id);
+    WHERE pr.status='pending'
+    ORDER BY pr.id DESC
+  `);
 
-  if (!request) return res.status(404).json({ error: "Demande introuvable." });
-  if (request.status !== "pending") return res.status(409).json({ error: "Cette demande a déjà été traitée." });
-  if (request.disabled) return res.status(409).json({ error: "Ce compte est désactivé." });
+  res.json({ requests });
+});
+
+app.post("/api/admin/reset-requests/:id/resolve", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  const request = await pgGet(
+    `
+      SELECT pr.id, pr.user_id, pr.status, pr.delivery_token,
+             u.username, u.disabled
+      FROM password_resets pr
+      JOIN users u ON u.id=pr.user_id
+      WHERE pr.id=$1
+    `,
+    [id]
+  );
+
+  if (!request) {
+    return res.status(404).json({ error: "Demande introuvable." });
+  }
+
+  if (request.status !== "pending") {
+    return res.status(409).json({
+      error: "Cette demande a déjà été traitée."
+    });
+  }
+
+  if (request.disabled) {
+    return res.status(409).json({
+      error: "Ce compte est désactivé."
+    });
+  }
 
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let temporaryPassword = "BBOT-";
   const bytes = crypto.randomBytes(8);
-  for (const byte of bytes) temporaryPassword += alphabet[byte % alphabet.length];
 
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  for (const byte of bytes) {
+    temporaryPassword += alphabet[byte % alphabet.length];
+  }
 
-  const transaction = DB.transaction(() => {
-    DB.prepare(`
-      UPDATE users
-      SET temporary_password_hash=?, temporary_password_expires_at=?, must_change_password=1
-      WHERE id=?
-    `).run(bcrypt.hashSync(temporaryPassword, 12), expiresAt, request.user_id);
+  const expiresAt = new Date(
+    Date.now() + 24 * 60 * 60 * 1000
+  ).toISOString();
 
-    DB.prepare(`
-      UPDATE password_resets
-      SET status='resolved', temporary_password_encrypted=?, temporary_password_expires_at=?, resolved_at=CURRENT_TIMESTAMP
-      WHERE id=? AND status='pending'
-    `).run(encryptTemporaryPassword(temporaryPassword), expiresAt, id);
-  });
+  const client = await pool.connect();
 
-  transaction();
+  try {
+    await client.query("BEGIN");
 
-  res.json({
-    message: `Nouveau mot de passe temporaire généré pour ${request.username}.`,
-    username: request.username,
-    new_password: temporaryPassword,
-    expires_at: expiresAt,
-    request_token: request.delivery_token
-  });
+    await client.query(
+      `
+        UPDATE users
+        SET temporary_password_hash=$1,
+            temporary_password_expires_at=$2,
+            must_change_password=true
+        WHERE id=$3
+      `,
+      [
+        bcrypt.hashSync(temporaryPassword, 12),
+        expiresAt,
+        request.user_id
+      ]
+    );
+
+    const resolved = await client.query(
+      `
+        UPDATE password_resets
+        SET status='resolved',
+            temporary_password_encrypted=$1,
+            temporary_password_expires_at=$2,
+            resolved_at=CURRENT_TIMESTAMP
+        WHERE id=$3 AND status='pending'
+      `,
+      [
+        encryptTemporaryPassword(temporaryPassword),
+        expiresAt,
+        id
+      ]
+    );
+
+    if (!resolved.rowCount) {
+      throw new Error("La demande n'est plus en attente.");
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: `Nouveau mot de passe temporaire généré pour ${request.username}.`,
+      username: request.username,
+      new_password: temporaryPassword,
+      expires_at: expiresAt,
+      request_token: request.delivery_token
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 });
-
-app.patch("/api/admin/password-resets/:id", requireAdmin, (req, res) => {
+app.patch("/api/admin/password-resets/:id", requireAdmin, async (req, res) => {
   const status = req.body.status === "resolved" ? "resolved" : "pending";
-  DB.prepare(
-    "UPDATE password_resets SET status=? WHERE id=?"
-  ).run(status, Number(req.params.id));
+
+  await pgQuery(
+    "UPDATE password_resets SET status=$1 WHERE id=$2",
+    [status, Number(req.params.id)]
+  );
+
   res.json({ message: "Demande traitée." });
 });
 
-app.get("/api/admin/requests", requireAdmin, (req, res) => {
-  res.json({
-    requests: DB.prepare(`
-      SELECT ar.*, u.username, u.phone
-      FROM analysis_requests ar
-      LEFT JOIN users u ON u.id=ar.user_id
-      ORDER BY ar.id DESC
-    `).all()
-  });
+app.get("/api/admin/requests", requireAdmin, async (req, res) => {
+  const requests = await pgAll(`
+    SELECT ar.*, u.username, u.phone
+    FROM analysis_requests ar
+    LEFT JOIN users u ON u.id=ar.user_id
+    ORDER BY ar.id DESC
+  `);
+
+  res.json({ requests });
 });
 
-app.patch("/api/admin/requests/:id", requireAdmin, (req, res) => {
+app.patch("/api/admin/requests/:id", requireAdmin, async (req, res) => {
   const allowed = ["pending", "processing", "completed", "cancelled"];
   const status = allowed.includes(req.body.status)
     ? req.body.status
     : "pending";
 
-  DB.prepare(
-    "UPDATE analysis_requests SET status=? WHERE id=?"
-  ).run(status, Number(req.params.id));
+  await pgQuery(
+    "UPDATE analysis_requests SET status=$1 WHERE id=$2",
+    [status, Number(req.params.id)]
+  );
 
   res.json({ message: "Demande mise à jour." });
 });
-
 // ======================================================
 // VALIDATION DES ÉQUIPES + TEMPS RÉEL DES PRONOSTICS
 // ======================================================
@@ -931,10 +1227,19 @@ const footballTeamCache = new Map();
 const memberPredictionClients = new Set();
 const MEMBER_PREDICTION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-function cleanupExpiredMemberPredictions(notify = true) {
-  const result = DB.prepare("DELETE FROM member_predictions WHERE created_at <= datetime('now','-24 hours')").run();
-  if (result.changes && notify) broadcastMemberPredictionEvent({ type: "expired", count: result.changes });
-  return result.changes;
+async function cleanupExpiredMemberPredictions(notify = true) {
+  const result = await pgQuery(
+    "DELETE FROM member_predictions WHERE created_at <= CURRENT_TIMESTAMP - INTERVAL '24 hours'"
+  );
+
+  if (result.rowCount && notify) {
+    broadcastMemberPredictionEvent({
+      type: "expired",
+      count: result.rowCount
+    });
+  }
+
+  return result.rowCount;
 }
 
 function broadcastMemberPredictionEvent(payload) {
@@ -1164,40 +1469,45 @@ function validateMemberPredictionComment(comment, homeTeam, awayTeam) {
   return { valid: true };
 }
 
-function findActiveCoupon(code, bookmaker) {
+async function findActiveCoupon(code, bookmaker) {
   if (!code) return null;
+
   const normalizedCode = code.trim().toLowerCase();
-  const coupons = DB.prepare(
-    "SELECT id,platform_name,code,platform_url,description FROM coupons WHERE active=1"
-  ).all();
+
+  const coupons = await pgAll(
+    "SELECT id,platform_name,code,platform_url,description FROM coupons WHERE active=true"
+  );
 
   const match = coupons.find(c =>
     String(c.code || "").trim().toLowerCase() === normalizedCode &&
-    (!bookmaker || String(c.platform_name || "").trim().toLowerCase() === bookmaker.trim().toLowerCase())
+    (!bookmaker ||
+      String(c.platform_name || "").trim().toLowerCase() === bookmaker.trim().toLowerCase())
   );
+
   return match || null;
 }
 
 // ======================================================
 // PRONOSTICS DES MEMBRES
 // ======================================================
-app.get("/api/member-predictions", requireUser, (req, res) => {
-  cleanupExpiredMemberPredictions(false);
-  const predictions = DB.prepare(`
+app.get("/api/member-predictions", requireUser, async (req, res) => {
+  await cleanupExpiredMemberPredictions(false);
+
+  const predictions = await pgAll(`
     SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
            p.home_probability,p.draw_probability,p.away_probability,
            p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
     FROM member_predictions p
     JOIN users u ON u.id=p.user_id
-    WHERE u.disabled=0
-      AND p.created_at > datetime('now','-24 hours')
+    WHERE u.disabled=false
+      AND p.created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'
     ORDER BY p.id DESC
     LIMIT 100
-  `).all();
+  `);
+
   res.json({ predictions });
 });
-
-app.post("/api/member-predictions", requireUser, (req, res) => {
+app.post("/api/member-predictions", requireUser, async (req, res) => {
   const homeTeam = String(req.body.home_team || "").trim();
   const awayTeam = String(req.body.away_team || "").trim();
   const prediction = String(req.body.prediction || "").trim();
@@ -1213,8 +1523,17 @@ app.post("/api/member-predictions", requireUser, (req, res) => {
     return res.status(400).json({ error: "Les deux équipes et le pronostic sont obligatoires." });
   }
 
-  cleanupExpiredMemberPredictions(false);
-  const recent = DB.prepare("SELECT id FROM member_predictions WHERE user_id=? AND created_at > datetime('now','-24 hours') LIMIT 1").get(req.session.userId);
+  await cleanupExpiredMemberPredictions(false);
+  const recent = await pgGet(
+    `
+      SELECT id
+      FROM member_predictions
+      WHERE user_id=$1
+        AND created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'
+      LIMIT 1
+    `,
+    [req.session.userId]
+  );
   if (recent) {
     return res.status(409).json({ error: "Vous avez déjà publié un pronostic au cours des dernières 24 heures. Vous pourrez en publier un nouveau après ce délai." });
   }
@@ -1259,7 +1578,7 @@ app.post("/api/member-predictions", requireUser, (req, res) => {
   }
 
   if (couponCode) {
-    const coupon = findActiveCoupon(couponCode, bookmaker);
+    const coupon = await findActiveCoupon(couponCode, bookmaker);
     if (!coupon) {
       return res.status(400).json({
         error: "Le code coupon indiqué n'est pas un coupon actif enregistré dans BatBot pour ce bookmaker."
@@ -1267,24 +1586,31 @@ app.post("/api/member-predictions", requireUser, (req, res) => {
     }
   }
 
-  const result = DB.prepare(`
-    INSERT INTO member_predictions(
-      user_id,home_team,away_team,home_probability,draw_probability,
-      away_probability,prediction,coupon_code,bookmaker,comment
-    ) VALUES(?,?,?,?,?,?,?,?,?,?)
-  `).run(
-    req.session.userId,homeTeam,awayTeam,homeProbability,drawProbability,
-    awayProbability,prediction,couponCode,bookmaker,comment
+  const result = await pgQuery(
+    `
+      INSERT INTO member_predictions(
+        user_id,home_team,away_team,home_probability,draw_probability,
+        away_probability,prediction,coupon_code,bookmaker,comment
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      RETURNING id
+    `,
+    [
+      req.session.userId,homeTeam,awayTeam,homeProbability,drawProbability,
+      awayProbability,prediction,couponCode,bookmaker,comment
+    ]
   );
 
-  const created = DB.prepare(`
-    SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
-           p.home_probability,p.draw_probability,p.away_probability,
-           p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
-    FROM member_predictions p
-    JOIN users u ON u.id=p.user_id
-    WHERE p.id=?
-  `).get(Number(result.lastInsertRowid));
+  const created = await pgGet(
+    `
+      SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
+             p.home_probability,p.draw_probability,p.away_probability,
+             p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
+      FROM member_predictions p
+      JOIN users u ON u.id=p.user_id
+      WHERE p.id=$1
+    `,
+    [result.rows[0].id]
+  );
 
   broadcastMemberPredictionEvent({ type: "created", prediction: created });
   res.status(201).json({
@@ -1293,32 +1619,36 @@ app.post("/api/member-predictions", requireUser, (req, res) => {
   });
 });
 
-app.get("/api/admin/member-predictions", requireAdmin, (req, res) => {
-  const predictions = DB.prepare(`
+app.get("/api/admin/member-predictions", requireAdmin, async (req, res) => {
+  const predictions = await pgAll(`
     SELECT p.id,p.user_id,u.username,u.disabled,p.home_team,p.away_team,
            p.home_probability,p.draw_probability,p.away_probability,
            p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
     FROM member_predictions p
     JOIN users u ON u.id=p.user_id
     ORDER BY p.id DESC
-  `).all();
+  `);
+
   res.json({ predictions });
 });
+app.delete("/api/admin/member-predictions/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
 
-app.delete("/api/admin/member-predictions/:id", requireAdmin, (req, res) => {
-  const result = DB.prepare(
-    "DELETE FROM member_predictions WHERE id=?"
-  ).run(Number(req.params.id));
+  const result = await pgQuery(
+    "DELETE FROM member_predictions WHERE id=$1",
+    [id]
+  );
 
-  if (!result.changes) {
+  if (!result.rowCount) {
     return res.status(404).json({ error: "Pronostic introuvable." });
   }
 
-  broadcastMemberPredictionEvent({ type: "deleted", id: Number(req.params.id) });
+  broadcastMemberPredictionEvent({ type: "deleted", id });
+
   res.json({ message: "Pronostic supprimé avec succès." });
 });
 
-app.post("/api/admin/daily-matches", requireAdmin, (req, res) => {
+app.post("/api/admin/daily-matches", requireAdmin, async (req, res) => {
   const name = String(req.body.match_name || "").trim();
   const pick = String(req.body.recommended_pick || "").trim();
   const h = Number(req.body.home_probability);
@@ -1345,32 +1675,39 @@ app.post("/api/admin/daily-matches", requireAdmin, (req, res) => {
     return res.status(400).json({ error: "Cote invalide." });
   }
 
-  DB.prepare(`
-    INSERT INTO daily_matches(
-      match_name, home_probability, draw_probability,
-      away_probability, recommended_pick, odds, match_date
-    ) VALUES(?,?,?,?,?,?,?)
-  `).run(name, h, d, a, pick, odds, today());
+  await pgQuery(
+    `
+      INSERT INTO daily_matches(
+        match_name, home_probability, draw_probability,
+        away_probability, recommended_pick, odds, match_date
+      ) VALUES($1,$2,$3,$4,$5,$6,$7)
+    `,
+    [name, h, d, a, pick, odds, today()]
+  );
 
   dailyMatchesCache = null;
   dailyMatchesCacheExpiresAt = 0;
+
   res.status(201).json({ message: "Match ajouté avec succès." });
 });
+app.get("/api/admin/daily-matches", requireAdmin, async (req, res) => {
+  const matches = await pgAll(
+    "SELECT * FROM daily_matches WHERE match_date=$1 ORDER BY id DESC",
+    [today()]
+  );
 
-app.get("/api/admin/daily-matches", requireAdmin, (req, res) => {
-  res.json({
-    matches: DB.prepare(
-      "SELECT * FROM daily_matches WHERE match_date=? ORDER BY id DESC"
-    ).all(today())
-  });
+  res.json({ matches });
 });
 
-app.delete("/api/admin/daily-matches/:id", requireAdmin, (req, res) => {
-  DB.prepare(
-    "DELETE FROM daily_matches WHERE id=?"
-  ).run(Number(req.params.id));
+app.delete("/api/admin/daily-matches/:id", requireAdmin, async (req, res) => {
+  await pgQuery(
+    "DELETE FROM daily_matches WHERE id=$1",
+    [Number(req.params.id)]
+  );
+
   dailyMatchesCache = null;
   dailyMatchesCacheExpiresAt = 0;
+
   res.json({ message: "Match supprimé." });
 });
 
@@ -1383,8 +1720,15 @@ function validHttpUrl(value) {
   }
 }
 
-// Initialisation des bookmakers existants, une seule fois.
-if (DB.prepare("SELECT COUNT(*) AS n FROM bookmakers").get().n === 0) {
+async function initializeBookmakers() {
+  const current = await pgGet(
+    "SELECT COUNT(*)::int AS n FROM bookmakers"
+  );
+
+  if (current && current.n > 0) {
+    return;
+  }
+
   const seed = [
     ["1WIN", "500%", "https://1wyvrz.life/?p=gc9k"],
     ["PARIPESA", "500%", "https://combodef.com/L?tag=d_4081071m_60651c_&site=4081071&ad=60651"],
@@ -1392,13 +1736,19 @@ if (DB.prepare("SELECT COUNT(*) AS n FROM bookmakers").get().n === 0) {
     ["MELBET", "200%", "https://refpa3665.com/L?tag=d_4685320m_66335c_&site=4685320&ad=663"],
     ["LOTO", "", "https://jdnlotto.com/register?promo=123"]
   ];
-  const insert = DB.prepare("INSERT INTO bookmakers(name,bonus,url) VALUES(?,?,?)");
-  const seedMany = DB.transaction(rows => rows.forEach(row => insert.run(...row)));
-  seedMany(seed);
+
+  for (const [name, bonus, url] of seed) {
+    await pgQuery(
+      "INSERT INTO bookmakers(name, bonus, url, active) VALUES($1, $2, $3, true)",
+      [name, bonus, url]
+    );
+  }
+
+  console.log("BatBot: bookmakers PostgreSQL initialisés.");
 }
 
-app.get("/api/config", (req, res) => {
-  const s = getSettings();
+app.get("/api/config", async (req, res) => {
+  const s = await getSettings();
   res.json({
     whatsapp: s.whatsapp, telegram: s.telegram,
     whatsappGroup: s.whatsappGroup, telegramGroup: s.telegramGroup,
@@ -1406,11 +1756,13 @@ app.get("/api/config", (req, res) => {
     wave500: s.wave500, wave1000: s.wave1000, wavePromo: s.wavePromo,
     promoFee: s.promoFee,
     sdriveLink: s.sdriveLink || "", sdriveInviteMessage: s.sdriveInviteMessage || "",
-    bookmakers: DB.prepare("SELECT id,name,bonus,url FROM bookmakers WHERE active=1 ORDER BY id DESC").all()
+    bookmakers: await pgAll(
+      "SELECT id,name,bonus,url FROM bookmakers WHERE active=true ORDER BY id DESC"
+    )
   });
 });
 
-app.get("/api/payment-number", requireUser, (req, res) => {
+app.get("/api/payment-number", requireUser, async (req, res) => {
   const operator = String(req.query.operator || "").trim();
   const keyByOperator = {
     "Orange Money": "orangeMoney",
@@ -1419,112 +1771,184 @@ app.get("/api/payment-number", requireUser, (req, res) => {
   };
   const key = keyByOperator[operator];
   if (!key) return res.status(400).json({ error: "Opérateur de paiement invalide." });
-  const settings = getSettings();
+  const settings = await getSettings();
   const number = cleanPhone(settings[key]);
   if (!number) return res.status(404).json({ error: "Numéro de dépôt indisponible pour cet opérateur." });
   res.set("Cache-Control","no-store");
   res.json({ number });
 });
 
-app.get("/api/coupons", requireUser, (req, res) => {
-  res.json({ coupons: DB.prepare(
-    "SELECT id,platform_name,code,platform_url,description FROM coupons WHERE active=1 ORDER BY id DESC"
-  ).all() });
+app.get("/api/coupons", requireUser, async (req, res) => {
+  const coupons = await pgAll(
+    "SELECT id,platform_name,code,platform_url,description FROM coupons WHERE active=true ORDER BY id DESC"
+  );
+
+  res.json({ coupons });
 });
 
-app.get("/api/admin/bookmakers", requireAdmin, (req, res) => {
-  res.json({ bookmakers: DB.prepare("SELECT * FROM bookmakers ORDER BY id DESC").all() });
+app.get("/api/admin/bookmakers", requireAdmin, async (req, res) => {
+  const bookmakers = await pgAll("SELECT * FROM bookmakers ORDER BY id DESC");
+  res.json({ bookmakers });
 });
 
-app.post("/api/admin/bookmakers", requireAdmin, (req, res) => {
+app.post("/api/admin/bookmakers", requireAdmin, async (req, res) => {
   const name = String(req.body.name || "").trim();
   const bonus = String(req.body.bonus || "").trim();
   const url = String(req.body.url || "").trim();
   if (!name || !validHttpUrl(url)) return res.status(400).json({ error: "Nom et lien HTTP/HTTPS valides requis." });
-  const result = DB.prepare("INSERT INTO bookmakers(name,bonus,url,active) VALUES(?,?,?,?)")
-    .run(name, bonus, url, req.body.active === false ? 0 : 1);
-  res.status(201).json({ id: result.lastInsertRowid, message: "Bookmaker ajouté." });
+
+  const active = req.body.active === false ? false : true;
+
+  const result = await pgQuery(
+    "INSERT INTO bookmakers(name,bonus,url,active) VALUES($1,$2,$3,$4) RETURNING id",
+    [name, bonus, url, active]
+  );
+
+  res.status(201).json({
+    id: result.rows[0].id,
+    message: "Bookmaker ajouté."
+  });
 });
 
-app.patch("/api/admin/bookmakers/:id", requireAdmin, (req, res) => {
-  const current = DB.prepare("SELECT * FROM bookmakers WHERE id=?").get(Number(req.params.id));
-  if (!current) return res.status(404).json({ error: "Bookmaker introuvable." });
+app.patch("/api/admin/bookmakers/:id", requireAdmin, async (req, res) => {
+  const current = await pgGet(
+    "SELECT * FROM bookmakers WHERE id=$1",
+    [Number(req.params.id)]
+  );
+
+  if (!current) {
+    return res.status(404).json({ error: "Bookmaker introuvable." });
+  }
+
   const name = String(req.body.name ?? current.name).trim();
   const bonus = String(req.body.bonus ?? current.bonus).trim();
   const url = String(req.body.url ?? current.url).trim();
-  if (!name || !validHttpUrl(url)) return res.status(400).json({ error: "Nom et lien valides requis." });
-  DB.prepare("UPDATE bookmakers SET name=?,bonus=?,url=?,active=? WHERE id=?")
-    .run(name, bonus, url, req.body.active === undefined ? current.active : (req.body.active ? 1 : 0), current.id);
+
+  if (!name || !validHttpUrl(url)) {
+    return res.status(400).json({
+      error: "Nom et lien valides requis."
+    });
+  }
+
+  const active =
+    req.body.active === undefined
+      ? current.active
+      : Boolean(req.body.active);
+
+  await pgQuery(
+    "UPDATE bookmakers SET name=$1, bonus=$2, url=$3, active=$4 WHERE id=$5",
+    [name, bonus, url, active, current.id]
+  );
+
   res.json({ message: "Bookmaker modifié." });
 });
 
-app.delete("/api/admin/bookmakers/:id", requireAdmin, (req, res) => {
-  DB.prepare("DELETE FROM bookmakers WHERE id=?").run(Number(req.params.id));
+
+app.delete("/api/admin/bookmakers/:id", requireAdmin, async (req, res) => {
+  await pgQuery(
+    "DELETE FROM bookmakers WHERE id=$1",
+    [Number(req.params.id)]
+  );
+
   res.json({ message: "Bookmaker supprimé." });
 });
 
-app.get("/api/admin/coupons", requireAdmin, (req, res) => {
-  res.json({ coupons: DB.prepare("SELECT * FROM coupons ORDER BY id DESC").all() });
+
+app.get("/api/admin/coupons", requireAdmin, async (req, res) => {
+  const coupons = await pgAll("SELECT * FROM coupons ORDER BY id DESC");
+  res.json({ coupons });
 });
 
-app.post("/api/admin/coupons", requireAdmin, (req, res) => {
+app.post("/api/admin/coupons", requireAdmin, async (req, res) => {
   const platformName = String(req.body.platform_name || "").trim();
   const code = String(req.body.code || "").trim();
   const platformUrl = String(req.body.platform_url || "").trim();
   const description = String(req.body.description || "").trim();
+
   if (!platformName || !code || !validHttpUrl(platformUrl)) {
     return res.status(400).json({ error: "Plateforme, code et lien valides requis." });
   }
-  const result = DB.prepare(
-    "INSERT INTO coupons(platform_name,code,platform_url,description,active) VALUES(?,?,?,?,?)"
-  ).run(platformName, code, platformUrl, description, req.body.active === false ? 0 : 1);
-  res.status(201).json({ id: result.lastInsertRowid, message: "Coupon ajouté." });
+
+  const active = req.body.active === false ? false : true;
+
+  const result = await pgQuery(
+    "INSERT INTO coupons(platform_name,code,platform_url,description,active) VALUES($1,$2,$3,$4,$5) RETURNING id",
+    [platformName, code, platformUrl, description, active]
+  );
+
+  res.status(201).json({
+    id: result.rows[0].id,
+    message: "Coupon ajouté."
+  });
 });
 
-app.patch("/api/admin/coupons/:id", requireAdmin, (req, res) => {
-  const c = DB.prepare("SELECT * FROM coupons WHERE id=?").get(Number(req.params.id));
+app.patch("/api/admin/coupons/:id", requireAdmin, async (req, res) => {
+  const c = await pgGet(
+    "SELECT * FROM coupons WHERE id=$1",
+    [Number(req.params.id)]
+  );
+
   if (!c) return res.status(404).json({ error: "Coupon introuvable." });
+
   const data = {
     platform_name: String(req.body.platform_name ?? c.platform_name).trim(),
     code: String(req.body.code ?? c.code).trim(),
     platform_url: String(req.body.platform_url ?? c.platform_url).trim(),
     description: String(req.body.description ?? c.description).trim(),
-    active: req.body.active === undefined ? c.active : (req.body.active ? 1 : 0)
+    active: req.body.active === undefined ? c.active : Boolean(req.body.active)
   };
+
   if (!data.platform_name || !data.code || !validHttpUrl(data.platform_url)) {
     return res.status(400).json({ error: "Données de coupon invalides." });
   }
-  DB.prepare("UPDATE coupons SET platform_name=?,code=?,platform_url=?,description=?,active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
-    .run(data.platform_name, data.code, data.platform_url, data.description, data.active, c.id);
+
+  await pgQuery(
+    "UPDATE coupons SET platform_name=$1,code=$2,platform_url=$3,description=$4,active=$5,updated_at=CURRENT_TIMESTAMP WHERE id=$6",
+    [
+      data.platform_name,
+      data.code,
+      data.platform_url,
+      data.description,
+      data.active,
+      c.id
+    ]
+  );
+
   res.json({ message: "Coupon modifié." });
 });
+app.delete("/api/admin/coupons/:id", requireAdmin, async (req, res) => {
+  await pgQuery(
+    "DELETE FROM coupons WHERE id=$1",
+    [Number(req.params.id)]
+  );
 
-app.delete("/api/admin/coupons/:id", requireAdmin, (req, res) => {
-  DB.prepare("DELETE FROM coupons WHERE id=?").run(Number(req.params.id));
   res.json({ message: "Coupon supprimé." });
 });
 
-app.get("/api/admin/settings", requireAdmin, (req, res) => {
-  const s = getSettings(); delete s.adminPasswordHash;
+app.get("/api/admin/settings", requireAdmin, async (req, res) => {
+  const s = await getSettings(); delete s.adminPasswordHash;
   res.json({ settings: s });
 });
 
-app.patch("/api/admin/settings", requireAdmin, (req, res) => {
+app.patch("/api/admin/settings", requireAdmin, async (req, res) => {
   const allowed = [
     "whatsapp", "telegram", "whatsappGroup", "telegramGroup",
     "tiktok", "facebook", "instagram", "wave500", "wave1000",
     "wavePromo", "promoFee", "orangeMoney", "moovMoney", "mtnMoney",
     "adminPhone", "sdriveLink", "sdriveInviteMessage"
   ];
-  for (const key of allowed) if (req.body[key] !== undefined) writeSetting(key, String(req.body[key]));
-  const settings = getSettings(); delete settings.adminPasswordHash;
+  for (const key of allowed) if (req.body[key] !== undefined) await writeSetting(key, String(req.body[key]));
+  const settings = await getSettings(); delete settings.adminPasswordHash;
   res.json({ message: "Configuration enregistrée.", settings });
 });
 
 
 app.post("/api/football/odds", requireUser, async (req, res) => {
   try {
-    const currentUser = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+    const currentUser = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [req.session.userId]
+    );
     const premiumActive = !!(
       currentUser &&
       currentUser.premium_until &&
@@ -1577,7 +2001,11 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
       error: "Le service IA externe est actuellement désactivé. L'analyse football BATBOT fonctionne avec son moteur statistique dédié."
     });
   }
-  const user = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+
+  const user = await pgGet(
+    "SELECT * FROM users WHERE id=$1",
+    [req.session.userId]
+  );
   const premiumActive = !!(user && user.premium_until && new Date(user.premium_until) > new Date());
   const aiActive = !!(user && user.ai_until && new Date(user.ai_until) > new Date());
   if (!premiumActive || !aiActive) {
@@ -1829,9 +2257,12 @@ async function getSportScoreFixtures(params = {}) {
   return { ...value, cached: false };
 }
 
-app.get("/api/football/access", requireUser, (req, res) => {
+app.get("/api/football/access", requireUser, async (req, res) => {
   try {
-    const currentUser = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+    const currentUser = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [req.session.userId]
+    );
     const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
     if (!premiumActive) {
       return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux données football." });
@@ -1844,7 +2275,10 @@ app.get("/api/football/access", requireUser, (req, res) => {
 
 app.get("/api/football/fixtures", requireUser, async (req, res) => {
   try {
-    const currentUser = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+    const currentUser = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [req.session.userId]
+    );
     const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
     if (!premiumActive) {
       return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs." });
@@ -1880,7 +2314,10 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
 
 app.get("/api/football/live", requireUser, async (req, res) => {
   try {
-    const currentUser = DB.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId);
+    const currentUser = await pgGet(
+      "SELECT * FROM users WHERE id=$1",
+      [req.session.userId]
+    );
     const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
     if (!premiumActive) {
       return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs en direct." });
@@ -1960,9 +2397,23 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`BatBot démarré sur le port ${PORT}`);
-});
+let server;
+
+async function startServer() {
+  try {
+    await initializeSettings();
+    await initializeBookmakers();
+
+    server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`BatBot démarré sur le port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("BatBot: échec de l'initialisation PostgreSQL/settings:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 function shutdown(signal) {
   console.log(`BatBot: arrêt demandé (${signal})`);
@@ -1972,7 +2423,6 @@ function shutdown(signal) {
     } catch (error) {
       console.error("POSTGRES SESSION CLOSE:", error.message);
     }
-    try { DB.close(); } catch (_) {}
     process.exit(0);
   });
   setTimeout(() => process.exit(1), 10000).unref();

@@ -130,5 +130,33 @@ CREATE INDEX IF NOT EXISTS idx_batbot_message_reads_user ON batbot_message_reads
 CREATE INDEX IF NOT EXISTS idx_member_predictions_user_created ON member_predictions(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_member_predictions_created ON member_predictions(created_at DESC);
 
--- Sequences are deliberately avoided here because Phase 2 migration preserves IDs.
--- They will be created/owned when the application switches to generated PostgreSQL IDs.
+-- PostgreSQL-generated IDs for application inserts.
+-- These sequences preserve explicit IDs during migration while allowing
+-- future inserts to omit the id column and use nextval() automatically.
+
+CREATE SEQUENCE IF NOT EXISTS users_id_seq OWNED BY users.id;
+ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS daily_matches_id_seq OWNED BY daily_matches.id;
+ALTER TABLE daily_matches ALTER COLUMN id SET DEFAULT nextval('daily_matches_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS password_resets_id_seq OWNED BY password_resets.id;
+ALTER TABLE password_resets ALTER COLUMN id SET DEFAULT nextval('password_resets_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS analysis_requests_id_seq OWNED BY analysis_requests.id;
+ALTER TABLE analysis_requests ALTER COLUMN id SET DEFAULT nextval('analysis_requests_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS payment_requests_id_seq OWNED BY payment_requests.id;
+ALTER TABLE payment_requests ALTER COLUMN id SET DEFAULT nextval('payment_requests_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS bookmakers_id_seq OWNED BY bookmakers.id;
+ALTER TABLE bookmakers ALTER COLUMN id SET DEFAULT nextval('bookmakers_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS coupons_id_seq OWNED BY coupons.id;
+ALTER TABLE coupons ALTER COLUMN id SET DEFAULT nextval('coupons_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS batbot_messages_id_seq OWNED BY batbot_messages.id;
+ALTER TABLE batbot_messages ALTER COLUMN id SET DEFAULT nextval('batbot_messages_id_seq'::regclass);
+
+CREATE SEQUENCE IF NOT EXISTS member_predictions_id_seq OWNED BY member_predictions.id;
+ALTER TABLE member_predictions ALTER COLUMN id SET DEFAULT nextval('member_predictions_id_seq'::regclass);
