@@ -929,36 +929,31 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <h2>📢 Pronostics des membres</h2>
     <p class="muted">Choisissez un match et publiez votre pronostic pour la communauté.</p>
 
-    <div class="notice">📊 Les probabilités <strong>1 / N / 2</strong> doivent totaliser exactement <strong>100 %</strong>. Le code coupon est facultatif, mais s’il est renseigné, il doit correspondre à un coupon actif enregistré dans BatBot. La description doit rester strictement liée à l’analyse du match.</div>
+    <div class="notice">🎫 Saisissez les deux équipes, choisissez votre pronostic, puis indiquez le <strong>code coupon</strong> et le <strong>nom du bookmaker</strong>. Les noms des équipes sont saisis librement.</div>
 
     <input id="memberPredictionHome" maxlength="80" placeholder="Équipe 1 — Exemple : Real Madrid">
     <input id="memberPredictionAway" maxlength="80" placeholder="Équipe 2 — Exemple : FC Barcelone">
 
-    <div class="two-columns">
-      <input id="memberPredictionHomeProb" type="number" min="0" max="100" step="0.01" placeholder="1 — Probabilité (%)">
-      <input id="memberPredictionDrawProb" type="number" min="0" max="100" step="0.01" placeholder="N — Probabilité (%)">
-    </div>
-    <input id="memberPredictionAwayProb" type="number" min="0" max="100" step="0.01" placeholder="2 — Probabilité (%)">
 
     <div class="member-prediction-pick-field">
-      <span class="muted member-prediction-pick-label">Votre pronostic</span>
+      <span class="muted member-prediction-pick-label">🎯 Votre pronostic</span>
       <input id="memberPredictionPick" type="hidden" value="1">
       <div class="member-prediction-pick-options" role="group" aria-label="Choisissez votre pronostic">
         <button type="button" class="member-prediction-pick-option active" data-pick="1" aria-pressed="true">
-          <span class="member-pick-code">1</span><span>Équipe 1</span>
+          <span class="member-pick-code">V1</span><span>Victoire Équipe 1</span>
         </button>
         <button type="button" class="member-prediction-pick-option" data-pick="N" aria-pressed="false">
-          <span class="member-pick-code">N</span><span>Match nul</span>
+          <span class="member-pick-code">X</span><span>Match nul</span>
         </button>
         <button type="button" class="member-prediction-pick-option" data-pick="2" aria-pressed="false">
-          <span class="member-pick-code">2</span><span>Équipe 2</span>
+          <span class="member-pick-code">V2</span><span>Victoire Équipe 2</span>
         </button>
       </div>
     </div>
 
-    <input id="memberPredictionCoupon" maxlength="120" placeholder="🎫 Code coupon (facultatif)">
-    <input id="memberPredictionBookmaker" maxlength="120" placeholder="🏷️ Site / bookmaker du coupon (facultatif)">
-    <textarea id="memberPredictionComment" maxlength="500" placeholder="📝 Analyse du match : forme, buts, défense, statistiques… (obligatoire)"></textarea>
+    <input id="memberPredictionCoupon" maxlength="120" placeholder="🎫 Code coupon — obligatoire">
+    <input id="memberPredictionBookmaker" maxlength="120" placeholder="🏷️ Nom du bookmaker — obligatoire">
+
 
     <button id="publishMemberPredictionButton" class="btn green" type="button" onclick="publishMemberPrediction()">📢 Publier mon pronostic</button>
     <div id="memberPredictionStatus" class="status"></div>
@@ -4197,9 +4192,17 @@ function initMemberPredictionPick(){
 
 function formatMemberPredictionDate(value){
   if(!value)return "Date non disponible";
-  const d=new Date(String(value).replace(" ","T")+"Z");
+  const d=new Date(value);
   if(Number.isNaN(d.getTime()))return String(value);
-  return d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  return new Intl.DateTimeFormat("fr-FR",{
+    day:"2-digit",
+    month:"long",
+    year:"numeric",
+    hour:"2-digit",
+    minute:"2-digit",
+    hour12:false,
+    timeZone:"Africa/Abidjan"
+  }).format(d).replace(" à ", " à ");
 }
 
 function renderMemberPredictionCard(item,adminMode){
@@ -4207,29 +4210,56 @@ function renderMemberPredictionCard(item,adminMode){
   const home=escapeHtml(item.home_team||"Équipe 1");
   const away=escapeHtml(item.away_team||"Équipe 2");
   const username=escapeHtml(item.username||"Membre BatBot");
-  const pick=escapeHtml(item.prediction||"");
+  const rawPick=String(item.prediction||"").trim();
+  const pickMap={
+    "1":{code:"V1",label:"Victoire Équipe 1"},
+    "N":{code:"X",label:"Match nul"},
+    "2":{code:"V2",label:"Victoire Équipe 2"}
+  };
+  const pickInfo=pickMap[rawPick]||{code:rawPick||"—",label:"Pronostic"};
   const coupon=String(item.coupon_code||"");
   const bookmaker=String(item.bookmaker||"");
-  const comment=String(item.comment||"");
   const couponSafe=escapeHtml(coupon);
   const bookmakerSafe=escapeHtml(bookmaker);
-  const commentSafe=escapeHtml(comment);
   const disabled=item.disabled?'<span class="badge" style="background:#7F1D1D;border-color:#FF8A8A">Compte désactivé</span>':'';
+
   return `
     <article class="member-prediction-card" id="memberPredictionCard_${id}">
       <div class="member-prediction-head">
-        <div><div class="member-prediction-user">👤 ${username}</div><div class="member-prediction-date">📅 ${escapeHtml(formatMemberPredictionDate(item.created_at))}</div></div>
+        <div>
+          <div class="member-prediction-user">👤 ${username}</div>
+          <div class="member-prediction-date">📅 ${escapeHtml(formatMemberPredictionDate(item.created_at))}</div>
+        </div>
         ${disabled}
       </div>
-      <div class="member-prediction-match">⚽ ${home} <span class="muted">vs</span> ${away}</div>
-      <div class="member-prediction-probs">
-        <div class="member-prediction-prob"><strong>${escapeHtml(String(item.home_probability))}%</strong><span>1 — Équipe 1</span></div>
-        <div class="member-prediction-prob"><strong>${escapeHtml(String(item.draw_probability))}%</strong><span>N — Nul</span></div>
-        <div class="member-prediction-prob"><strong>${escapeHtml(String(item.away_probability))}%</strong><span>2 — Équipe 2</span></div>
+
+      <div class="member-prediction-match">
+        <div class="member-prediction-team">${home}</div>
+        <div class="member-prediction-vs">VS</div>
+        <div class="member-prediction-team">${away}</div>
       </div>
-      <div class="member-prediction-pick">🎯 <strong>Pronostic : ${pick}</strong></div>
-      ${comment?`<div class="member-prediction-comment">📝 ${commentSafe}</div>`:""}
-      ${coupon?`<div class="member-prediction-coupon"><span class="admin-small">🎫 Code coupon${bookmaker?" · 🏷️ "+bookmakerSafe:""}</span><code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code><div class="member-prediction-actions"><button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(${JSON.stringify(coupon)},this)">📋 Copier le code</button></div></div>`:""}
+
+      <div class="member-prediction-pick">
+        <div class="member-prediction-pick-title">🎯 PRONOSTIC</div>
+        <div class="member-prediction-pick-value">
+          <strong>${escapeHtml(pickInfo.code)}</strong>
+          <span>— ${escapeHtml(pickInfo.label)}</span>
+        </div>
+      </div>
+
+      <div class="member-prediction-bookmaker">
+        <span class="admin-small">🏷️ BOOKMAKER</span>
+        <strong>${bookmakerSafe}</strong>
+      </div>
+
+      <div class="member-prediction-coupon">
+        <span class="admin-small">🎫 CODE COUPON</span>
+        <code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code>
+        <div class="member-prediction-actions">
+          <button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(${JSON.stringify(coupon)},this)">📋 Copier le code</button>
+        </div>
+      </div>
+
       ${adminMode?`<div class="member-prediction-actions"><button class="btn danger" type="button" onclick="deleteMemberPrediction(${id})">🗑️ Supprimer ce pronostic</button></div>`:""}
     </article>`;
 }
@@ -4266,38 +4296,76 @@ async function loadMemberPredictions(){
 async function publishMemberPrediction(){
   const home=document.getElementById("memberPredictionHome").value.trim();
   const away=document.getElementById("memberPredictionAway").value.trim();
-  const h=Number(document.getElementById("memberPredictionHomeProb").value);
-  const d=Number(document.getElementById("memberPredictionDrawProb").value);
-  const a=Number(document.getElementById("memberPredictionAwayProb").value);
   const prediction=document.getElementById("memberPredictionPick").value;
   const coupon=document.getElementById("memberPredictionCoupon").value.trim();
   const bookmaker=document.getElementById("memberPredictionBookmaker").value.trim();
-  const comment=document.getElementById("memberPredictionComment").value.trim();
-  if(!home||!away)return showStatus("memberPredictionStatus","Indiquez les deux équipes du match.","error");
-  if(!comment)return showStatus("memberPredictionStatus","Ajoutez une description directement liée à l'analyse du match.","error");
-  if(![h,d,a].every(Number.isFinite)||h<0||h>100||d<0||d>100||a<0||a>100||Math.abs(h+d+a-100)>0.01)return showStatus("memberPredictionStatus","Les probabilités 1 / N / 2 doivent totaliser exactement 100 %. ","error");
-  if(coupon&&!bookmaker)return showStatus("memberPredictionStatus","Indiquez le site ou bookmaker correspondant au code coupon.","error");
+
+  if(!home||!away){
+    return showStatus("memberPredictionStatus","Indiquez les deux équipes du match.","error");
+  }
+
+  if(!prediction||!["1","N","2"].includes(prediction)){
+    return showStatus("memberPredictionStatus","Choisissez votre pronostic : V1, X ou V2.","error");
+  }
+
+  if(!coupon){
+    return showStatus("memberPredictionStatus","Le code coupon est obligatoire.","error");
+  }
+
+  if(!bookmaker){
+    return showStatus("memberPredictionStatus","Le nom du bookmaker est obligatoire.","error");
+  }
+
   setLoading("publishMemberPredictionButton",true,"📢 Publier mon pronostic");
+
   try{
-    const response=await fetch("/api/member-predictions",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify({home_team:home,away_team:away,home_probability:h,draw_probability:d,away_probability:a,prediction,coupon_code:coupon,bookmaker,comment})});
+    const response=await fetch("/api/member-predictions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({
+        home_team:home,
+        away_team:away,
+        prediction,
+        coupon_code:coupon,
+        bookmaker
+      })
+    });
+
     const data=await readApiResponse(response);
-    if(!response.ok){showStatus("memberPredictionStatus",data.error||"Impossible de publier le pronostic.","error");return;}
+
+    if(!response.ok){
+      showStatus("memberPredictionStatus",data.error||"Impossible de publier le pronostic.","error");
+      return;
+    }
+
     showStatus("memberPredictionStatus","✅ Votre pronostic a été publié et est maintenant visible par les membres.","success");
-    ["memberPredictionHome","memberPredictionAway","memberPredictionHomeProb","memberPredictionDrawProb","memberPredictionAwayProb","memberPredictionCoupon","memberPredictionBookmaker","memberPredictionComment"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+
+    ["memberPredictionHome","memberPredictionAway","memberPredictionCoupon","memberPredictionBookmaker"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)el.value="";
+    });
+
     const pickInput=document.getElementById("memberPredictionPick");
+
     if(pickInput){
       pickInput.value="1";
+
       document.querySelectorAll(".member-prediction-pick-option[data-pick]").forEach(item=>{
         const active=item.dataset.pick==="1";
         item.classList.toggle("active",active);
         item.setAttribute("aria-pressed",active?"true":"false");
       });
     }
+
     await loadMemberPredictions();
+
   }catch(error){
     console.error("PUBLISH MEMBER PREDICTION:",error);
     showStatus("memberPredictionStatus","Impossible de contacter le serveur.","error");
-  }finally{setLoading("publishMemberPredictionButton",false,"📢 Publier mon pronostic");}
+  }finally{
+    setLoading("publishMemberPredictionButton",false,"📢 Publier mon pronostic");
+  }
 }
 
 async function loadAdminMemberPredictions(){

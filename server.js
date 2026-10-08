@@ -1513,17 +1513,25 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
   const prediction = String(req.body.prediction || "").trim();
   const couponCode = String(req.body.coupon_code || "").trim();
   const bookmaker = String(req.body.bookmaker || "").trim();
-  const comment = String(req.body.comment || "").trim();
-
-  const homeProbability = Number(req.body.home_probability);
-  const drawProbability = Number(req.body.draw_probability);
-  const awayProbability = Number(req.body.away_probability);
 
   if (!homeTeam || !awayTeam || !prediction) {
     return res.status(400).json({ error: "Les deux équipes et le pronostic sont obligatoires." });
   }
 
+  if (!["1", "N", "2"].includes(prediction)) {
+    return res.status(400).json({ error: "Le pronostic doit être V1, X ou V2." });
+  }
+
+  if (!couponCode) {
+    return res.status(400).json({ error: "Le code coupon est obligatoire." });
+  }
+
+  if (!bookmaker) {
+    return res.status(400).json({ error: "Le nom du bookmaker est obligatoire." });
+  }
+
   await cleanupExpiredMemberPredictions(false);
+
   const recent = await pgGet(
     `
       SELECT id
@@ -1534,69 +1542,59 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
     `,
     [req.session.userId]
   );
-  if (recent) {
-    return res.status(409).json({ error: "Vous avez déjà publié un pronostic au cours des dernières 24 heures. Vous pourrez en publier un nouveau après ce délai." });
-  }
 
-  const homeValid = validateLocalFootballTeam(homeTeam);
-  const awayValid = validateLocalFootballTeam(awayTeam);
-  if (!homeValid || !awayValid) {
-    return res.status(400).json({
-      error: "Les deux noms doivent correspondre à des équipes de football reconnues dans le catalogue local de BatBot."
+  if (recent) {
+    return res.status(409).json({
+      error: "Vous avez déjà publié un pronostic au cours des dernières 24 heures. Vous pourrez en publier un nouveau après ce délai."
     });
   }
 
   if (
-    homeTeam.length > 80 || awayTeam.length > 80 ||
-    prediction.length > 120 || couponCode.length > 120 ||
-    bookmaker.length > 80 || comment.length > 500
+    homeTeam.length > 80 ||
+    awayTeam.length > 80 ||
+    prediction.length > 120 ||
+    couponCode.length > 120 ||
+    bookmaker.length > 80
   ) {
     return res.status(400).json({ error: "Un ou plusieurs champs sont trop longs." });
   }
 
-  if (
-    ![homeProbability, drawProbability, awayProbability].every(Number.isFinite) ||
-    homeProbability < 0 || homeProbability > 100 ||
-    drawProbability < 0 || drawProbability > 100 ||
-    awayProbability < 0 || awayProbability > 100 ||
-    Math.abs(homeProbability + drawProbability + awayProbability - 100) > 0.01
-  ) {
+  const coupon = await findActiveCoupon(couponCode, bookmaker);
+
+  if (!coupon) {
     return res.status(400).json({
-      error: "Les probabilités doivent être comprises entre 0 et 100% et totaliser exactement 100%."
+      error: "Le code coupon indiqué n'est pas un coupon actif enregistré dans BatBot pour ce bookmaker."
     });
-  }
-
-  if (couponCode && !bookmaker) {
-    return res.status(400).json({
-      error: "Indiquez le site ou bookmaker correspondant au code coupon."
-    });
-  }
-
-  const commentValidation = validateMemberPredictionComment(comment, homeTeam, awayTeam);
-  if (!commentValidation.valid) {
-    return res.status(400).json({ error: commentValidation.error });
-  }
-
-  if (couponCode) {
-    const coupon = await findActiveCoupon(couponCode, bookmaker);
-    if (!coupon) {
-      return res.status(400).json({
-        error: "Le code coupon indiqué n'est pas un coupon actif enregistré dans BatBot pour ce bookmaker."
-      });
-    }
   }
 
   const result = await pgQuery(
     `
       INSERT INTO member_predictions(
-        user_id,home_team,away_team,home_probability,draw_probability,
-        away_probability,prediction,coupon_code,bookmaker,comment
-      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        user_id,
+        home_team,
+        away_team,
+        home_probability,
+        draw_probability,
+        away_probability,
+        prediction,
+        coupon_code,
+        bookmaker,
+        comment
+      )
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       RETURNING id
     `,
     [
-      req.session.userId,homeTeam,awayTeam,homeProbability,drawProbability,
-      awayProbability,prediction,couponCode,bookmaker,comment
+      req.session.userId,
+      homeTeam,
+      awayTeam,
+      0,
+      0,
+      0,
+      prediction,
+      couponCode,
+      bookmaker,
+      ""
     ]
   );
 
@@ -1613,10 +1611,6 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
   );
 
   broadcastMemberPredictionEvent({ type: "created", prediction: created });
-  res.status(201).json({
-    message: "Pronostic publié avec succès.",
-    prediction: created
-  });
 });
 
 app.get("/api/admin/member-predictions", requireAdmin, async (req, res) => {
