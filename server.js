@@ -894,7 +894,7 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
     }
 
     const result = await client.query(
-      "UPDATE payment_requests SET status=$1, resolved_at=CURRENT_TIMESTAMP WHERE id=$2 AND status=pending",
+      "UPDATE payment_requests SET status=$1, resolved_at=CURRENT_TIMESTAMP WHERE id=$2 AND status='pending'",
       [status, request.id]
     );
 
