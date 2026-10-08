@@ -4150,55 +4150,22 @@ window.copyMemberCoupon=async function copyMemberCoupon(value,button){
     return;
   }
 
-  let copied=false;
-
   try{
-    if(navigator.clipboard && typeof navigator.clipboard.writeText==="function"){
-      const clipboardPromise=navigator.clipboard.writeText(text);
-      const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error("Clipboard timeout")),1200));
-      await Promise.race([clipboardPromise,timeoutPromise]);
-      copied=true;
+    if(!navigator.clipboard)throw new Error("Copie indisponible sur cet appareil.");
+    await navigator.clipboard.writeText(text);
+    showToast("Code coupon copié avec succès.","success");
+
+    if(button){
+      const original=button.innerHTML;
+      button.innerHTML="✅ Code copié";
+      button.disabled=true;
+      setTimeout(()=>{
+        button.innerHTML=original;
+        button.disabled=false;
+      },1800);
     }
-  }catch(e){}
-
-  if(!copied){
-    try{
-      const ta=document.createElement("textarea");
-      ta.value=text;
-      ta.setAttribute("readonly","");
-      ta.style.position="fixed";
-      ta.style.left="0";
-      ta.style.top="0";
-      ta.style.width="1px";
-      ta.style.height="1px";
-      ta.style.opacity="0";
-      ta.style.pointerEvents="none";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      ta.setSelectionRange(0,text.length);
-      copied=document.execCommand("copy");
-      ta.remove();
-    }catch(e){
-      copied=false;
-    }
-  }
-
-  if(!copied){
-    showToast("Impossible de copier le code automatiquement. Maintenez le code pour le copier.","error");
-    return;
-  }
-
-  showToast("Code coupon copié avec succès.","success");
-
-  if(button){
-    const original=button.innerHTML;
-    button.innerHTML="✅ Code copié avec succès";
-    button.disabled=true;
-    setTimeout(()=>{
-      button.innerHTML=original;
-      button.disabled=false;
-    },1800);
+  }catch(error){
+    showToast(error.message||"Impossible de copier le code coupon.","error");
   }
 }
 
