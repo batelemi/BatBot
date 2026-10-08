@@ -4371,7 +4371,7 @@ async function publishMemberPrediction(){
       });
     }
 
-    await loadMemberPredictions();
+    loadMemberPredictions().catch(error=>console.error('REFRESH MEMBER PREDICTIONS:',error));
 
   }catch(error){
     console.error("PUBLISH MEMBER PREDICTION:",error);
