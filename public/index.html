@@ -961,7 +961,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div style="margin-top:18px">
       <h3>🌍 Pronostics publiés par la communauté</h3>
       <p class="muted">Les dernières publications sont visibles ici par tous les membres connectés.</p>
-      <div id="memberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications de la communauté…</small></div></div></div>
+
     </div>
   </section>
 
@@ -4143,7 +4143,7 @@ async function resolvePaymentRequest(id,status,button){
 }
 
 
-async function copyMemberCoupon(value,button){
+window.copyMemberCoupon=async function copyMemberCoupon(value,button){
   const text=String(value??"").trim();
   if(!text){
     showToast("Aucun code coupon à copier.","error");
