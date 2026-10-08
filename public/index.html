@@ -4154,7 +4154,9 @@ window.copyMemberCoupon=async function copyMemberCoupon(value,button){
 
   try{
     if(navigator.clipboard && typeof navigator.clipboard.writeText==="function"){
-      await navigator.clipboard.writeText(text);
+      const clipboardPromise=navigator.clipboard.writeText(text);
+      const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error("Clipboard timeout")),1200));
+      await Promise.race([clipboardPromise,timeoutPromise]);
       copied=true;
     }
   }catch(e){}
