@@ -235,6 +235,147 @@ textarea{min-height:120px;resize:vertical}
 }
 
 
+
+/* Ticket professionnel des pronostics membres — BATBOT */
+.member-prediction-card.member-ticket{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  padding:16px;
+  border:1px solid rgba(0,191,255,.65);
+  border-radius:20px;
+  background:linear-gradient(145deg,#102F52 0%,#071A2D 100%);
+  box-shadow:0 12px 28px rgba(0,0,0,.28),inset 0 0 24px rgba(0,191,255,.04);
+}
+.member-prediction-card.member-ticket::before{
+  content:"BATBOT";
+  position:absolute;
+  z-index:0;
+  right:-12px;
+  top:42%;
+  transform:rotate(-32deg);
+  color:rgba(83,207,255,.09);
+  font-size:clamp(42px,12vw,76px);
+  font-weight:1000;
+  letter-spacing:3px;
+  pointer-events:none;
+}
+.member-prediction-card.member-ticket > *{
+  position:relative;
+  z-index:1;
+}
+.member-prediction-card.member-ticket .member-ticket-brand{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding-bottom:12px;
+  margin-bottom:12px;
+  border-bottom:1px dashed rgba(83,207,255,.4);
+}
+.member-prediction-card.member-ticket .member-ticket-logo{
+  color:#fff;
+  font-size:17px;
+  font-weight:1000;
+  letter-spacing:.7px;
+}
+.member-prediction-card.member-ticket .member-ticket-label{
+  color:#53CFFF;
+  font-size:10px;
+  font-weight:900;
+  text-align:right;
+  letter-spacing:.8px;
+}
+.member-prediction-card.member-ticket .member-ticket-match{
+  position:relative;
+  padding:13px;
+  border:1px solid rgba(83,207,255,.2);
+  border-radius:14px;
+  background:rgba(3,18,34,.65);
+}
+.member-prediction-card.member-ticket .member-prediction-match{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin:0;
+  color:#fff;
+  font-size:16px;
+  font-weight:900;
+  line-height:1.4;
+}
+.member-prediction-card.member-ticket .member-prediction-team{
+  flex:1 1 0;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.member-prediction-card.member-ticket .member-prediction-team:first-child{
+  text-align:left;
+}
+.member-prediction-card.member-ticket .member-prediction-team:last-child{
+  text-align:right;
+}
+.member-prediction-card.member-ticket .member-prediction-vs{
+  flex:0 0 auto;
+  color:#53CFFF;
+  font-size:11px;
+  font-weight:1000;
+}
+.member-prediction-card.member-ticket .member-ticket-pick{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(33,197,93,.65);
+  border-radius:13px;
+  background:linear-gradient(120deg,rgba(33,197,93,.18),rgba(7,26,45,.8));
+}
+.member-prediction-card.member-ticket .member-prediction-pick-title{
+  color:#6EE7A0;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.5px;
+}
+.member-prediction-card.member-ticket .member-prediction-pick-value{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:5px;
+  color:#fff;
+  line-height:1.4;
+}
+.member-prediction-card.member-ticket .member-ticket-details{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:9px;
+  margin-top:10px;
+}
+.member-prediction-card.member-ticket .member-ticket-detail{
+  min-width:0;
+  padding:10px 12px;
+  border:1px solid rgba(83,207,255,.2);
+  border-radius:12px;
+  background:rgba(3,18,34,.7);
+}
+.member-prediction-card.member-ticket .member-ticket-detail strong{
+  display:block;
+  margin-top:4px;
+  color:#fff;
+  overflow-wrap:anywhere;
+}
+.member-prediction-card.member-ticket .member-ticket-footer{
+  margin-top:12px;
+  text-align:center;
+  color:#53CFFF;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.5px;
+}
+@media(max-width:380px){
+  .member-prediction-card.member-ticket{padding:12px}
+  .member-prediction-card.member-ticket .member-ticket-logo{font-size:15px}
+  .member-prediction-card.member-ticket .member-prediction-match{font-size:13px;gap:5px}
+  .member-prediction-card.member-ticket .member-ticket-match{padding:9px}
+}
+
 /* Pronostics des membres */
 .member-prediction-card{background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(0,191,255,.28);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 8px 22px rgba(0,0,0,.16)}
 .member-prediction-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
@@ -4232,48 +4373,54 @@ function renderMemberPredictionCard(item,adminMode){
   const couponSafe=escapeHtml(coupon);
   const bookmakerSafe=escapeHtml(bookmaker);
   const disabled=item.disabled?'<span class="badge" style="background:#7F1D1D;border-color:#FF8A8A">Compte désactivé</span>':'';
+  const ticketClass=adminMode?"":" member-ticket";
 
   return `
-    <article class="member-prediction-card" id="memberPredictionCard_${id}">
-      <div class="member-prediction-head">
+    <article class="member-prediction-card${ticketClass}" id="memberPredictionCard_${id}">
+      <div class="member-ticket-brand">
         <div>
+          <div class="member-ticket-logo">⚽ BATBOT</div>
           <div class="member-prediction-user">👤 ${username}</div>
           <div class="member-prediction-date">📅 ${escapeHtml(formatMemberPredictionDate(item.created_at))}</div>
         </div>
+        <div class="member-ticket-label">TICKET<br>PRONOSTIC</div>
         ${disabled}
       </div>
 
-      <div class="member-prediction-match">
-        <div class="member-prediction-team">${home}</div>
-        <div class="member-prediction-vs">VS</div>
-        <div class="member-prediction-team">${away}</div>
+      <div class="member-ticket-match">
+        <div class="member-prediction-match">
+          <div class="member-prediction-team">${home}</div>
+          <div class="member-prediction-vs">VS</div>
+          <div class="member-prediction-team">${away}</div>
+        </div>
       </div>
 
-      <div class="member-prediction-pick">
-        <div class="member-prediction-pick-title">🎯 PRONOSTIC</div>
+      <div class="member-ticket-pick">
+        <div class="member-prediction-pick-title">🎯 PRONOSTIC SÉLECTIONNÉ</div>
         <div class="member-prediction-pick-value">
           <strong>${escapeHtml(pickInfo.code)}</strong>
           <span>— ${escapeHtml(pickInfo.label)}</span>
         </div>
       </div>
 
-      <div class="member-prediction-bookmaker">
-        <span class="admin-small">🏷️ BOOKMAKER</span>
-        <strong>${bookmakerSafe}</strong>
-      </div>
-
-      <div class="member-prediction-coupon">
-        <span class="admin-small">🎫 CODE COUPON</span>
-        <code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code>
-        <div class="member-prediction-actions">
-          <button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(this.parentElement.parentElement.querySelector('.member-coupon-code').textContent,this)">📋 Copier le code</button>
+      <div class="member-ticket-details">
+        <div class="member-ticket-detail">
+          <span class="admin-small">🏷️ BOOKMAKER</span>
+          <strong>${bookmakerSafe||"Non précisé"}</strong>
+        </div>
+        <div class="member-ticket-detail member-prediction-coupon">
+          <span class="admin-small">🎫 CODE COUPON</span>
+          <code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code>
+          <div class="member-prediction-actions">
+            <button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(this.parentElement.parentElement.querySelector('.member-coupon-code').textContent,this)">📋 Copier le code</button>
+          </div>
         </div>
       </div>
 
+      <div class="member-ticket-footer">BATBOT • PRONOSTIC DE LA COMMUNAUTÉ</div>
       ${adminMode?`<div class="member-prediction-actions"><button class="btn danger" type="button" onclick="deleteMemberPrediction(${id})">🗑️ Supprimer ce pronostic</button></div>`:""}
     </article>`;
 }
-
 initMemberPredictionPick();
 
 async function loadMemberPredictions(){
