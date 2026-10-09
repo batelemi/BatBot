@@ -1604,6 +1604,10 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
   );
 
   broadcastMemberPredictionEvent({ type: "created", prediction: created });
+  return res.status(201).json({
+    success: true,
+    prediction: created
+  });
 });
 
 app.get("/api/admin/member-predictions", requireAdmin, async (req, res) => {
