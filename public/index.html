@@ -611,6 +611,17 @@ textarea{min-height:120px;resize:vertical}
   background:rgba(255,255,255,.98);
   border:1.5px solid var(--gold);
 }
+#usersList .admin-switches{display:grid;grid-template-columns:1fr;gap:9px;min-width:0}
+#usersList .admin-toggle-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:9px 11px;border:1px solid #315D82;border-radius:10px;background:#102F50;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+#usersList .admin-toggle-row>span:first-child{flex:1;min-width:0}
+#usersList .admin-switch{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
+#usersList .admin-switch-ui{position:relative;display:inline-block;flex:0 0 48px;width:48px;height:27px;border-radius:20px;background:#DC2626;transition:background .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+#usersList .admin-switch-ui:after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);transition:transform .18s ease}
+#usersList .admin-switch:checked+.admin-switch-ui{background:#16A34A}
+#usersList .admin-switch:checked+.admin-switch-ui:after{transform:translateX(21px)}
+#usersList .admin-switch:focus-visible+.admin-switch-ui{outline:2px solid #fff;outline-offset:3px}
+#usersList .admin-actions{grid-template-columns:1fr}
+#usersList .admin-actions>.btn.danger{width:100%;min-height:44px}
 .member-card{background:#0C2745;border:1px solid #315D82;border-radius:13px;padding:13px;margin:9px 0}
 .member-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .member-username{font-weight:800;word-break:break-word}
@@ -2297,8 +2308,15 @@ async function copyText(value){
 }
 function shareCoupon(platform,code,url){const msg=`Code à utiliser sur ${platform} : ${code}\n${url}`;if(navigator.share)navigator.share({title:"Code coupon BatBot",text:msg}).catch(()=>{});else window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
 async function toggleUserDisabled(id,disabled){
-  try{const r=await fetch("/api/admin/users/"+id+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({disabled})});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Action impossible");await loadAdmin();}catch(e){alert(e.message);}
+  try{
+    const r=await fetch("/api/admin/users/"+id+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({disabled})});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Action impossible");
+    await loadAdmin();
+    return true;
+  }catch(e){alert(e.message);return false;}
 }
+
 async function saveBookmaker(){
   const body={name:document.getElementById("bmName").value.trim(),bonus:document.getElementById("bmBonus").value.trim(),url:document.getElementById("bmUrl").value.trim(),active:true};
   try{const r=await fetch("/api/admin/bookmakers",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("bookmakerAdminStatus",d.message||"Ajouté","success");await loadAdminBookmakers();await loadBookmakers();}catch(e){showStatus("bookmakerAdminStatus",e.message,"error");}
@@ -2352,23 +2370,27 @@ function filterAdminUsers(){
 function renderAdminUsers(users){
   document.getElementById("usersList").innerHTML=users.map(function(user){
     const active=Boolean(user.subscription_active||user.is_subscribed||user.subscribed);
+    const aiActive=Boolean(user.ai_active);
+    const accountActive=!Boolean(user.disabled);
+    const userId=Number(user.id);
     return `<div class="member-card">
       <div class="member-card-top">
         <div class="member-username">👤 ${escapeHtml(user.username||user.name||"Utilisateur")}</div>
         <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre BatBot'}</span>
       </div>
       <div class="admin-small">📅 Inscription : ${escapeHtml(formatDateTime(user.created_at))}</div>
-      ${user.premium_started_at?`<div class="admin-small">💎 Premium activé : ${escapeHtml(formatDateTime(user.premium_started_at))}</div>`:''}
+      ${user.premium_started_at?`<div class="admin-small"> 💎 Premium activé : ${escapeHtml(formatDateTime(user.premium_started_at))}</div>`:''}
       ${active?`<div class="admin-small">⏳ Premium jusqu'au : ${escapeHtml(formatDateTime(user.premium_until))}</div>`:''}
-      <div class="admin-small">🤖 IA : ${user.ai_active?'Active':'Non active'}</div>
+      <div class="admin-small">🤖 IA : ${aiActive?'Active':'Non active'}</div>
       ${user.ai_started_at?`<div class="admin-small">🤖 IA activée : ${escapeHtml(formatDateTime(user.ai_started_at))}</div>`:''}
       ${user.ai_until?`<div class="admin-small">⏳ IA jusqu'au : ${escapeHtml(formatDateTime(user.ai_until))}</div>`:''}${user.disabled?'<div class="admin-small" style="color:#FF8A8A">⛔ Compte désactivé</div>':''}
       <div class="admin-actions">
-        <button class="btn green" type="button" onclick="setPremium(${Number(user.id)},true)">✅ Activer Premium</button>
-        <button class="btn gold" type="button" onclick="setPremium(${Number(user.id)},false)">↩️ Retirer Premium</button>
-        <button class="btn primary" type="button" onclick="setAISubscription(${Number(user.id)},true)">🤖 Activer IA</button>
-        <button class="btn gold" type="button" onclick="setAISubscription(${Number(user.id)},false)">🚫 Désactiver IA</button>
-        <button class="btn secondary" type="button" onclick="toggleUserDisabled(${Number(user.id)},${user.disabled?false:true})">${user.disabled?"▶️ Réactiver":"⛔ Désactiver"}</button><button class="btn danger" type="button" onclick="deleteAdminUser(${Number(user.id)})">🗑️ Supprimer</button>
+        <div class="admin-switches">
+          <label class="admin-toggle-row"><span>💎 Premium</span><input class="admin-switch" type="checkbox" ${active?'checked':''} onchange="handleMemberSwitch(this,'premium',${userId})" aria-label="Activer ou désactiver Premium"><span class="admin-switch-ui"></span></label>
+          <label class="admin-toggle-row"><span>🤖 Abonnement IA</span><input class="admin-switch" type="checkbox" ${aiActive?'checked':''} onchange="handleMemberSwitch(this,'ai',${userId})" aria-label="Activer ou désactiver l'IA"><span class="admin-switch-ui"></span></label>
+          <label class="admin-toggle-row"><span>👤 Compte actif</span><input class="admin-switch" type="checkbox" ${accountActive?'checked':''} onchange="handleMemberSwitch(this,'account',${userId})" aria-label="Activer ou désactiver le compte"><span class="admin-switch-ui"></span></label>
+        </div>
+        <button class="btn danger" type="button" onclick="deleteAdminUser(${userId})">🗑️ Supprimer</button>
       </div>
     </div>`;
   }).join("")||'<p class="muted">Aucun client trouvé.</p>';
@@ -2393,25 +2415,44 @@ function askBatBotDuration(feature){
 async function setPremium(id,enabled){
   try{
     const duration=enabled?await askBatBotDuration("Premium"):7;
-    if(enabled&&duration===null)return;
+    if(enabled&&duration===null)return false;
     const response=await fetch("/api/admin/subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action impossible.");
-    showToast(data.message|| (enabled?"Premium activé avec succès.":"Premium désactivé avec succès."),"success");
+    showToast(data.message||(enabled?"Premium activé avec succès.":"Premium désactivé avec succès."),"success");
     await loadAdmin();
-  }catch(e){showToast(e.message||"Action impossible.","error");}
+    return true;
+  }catch(e){showToast(e.message||"Action impossible.","error");return false;}
 }
 
 async function setAISubscription(id,enabled){
   try{
     const duration=enabled?await askBatBotDuration("IA"):7;
-    if(enabled&&duration===null)return;
+    if(enabled&&duration===null)return false;
     const response=await fetch("/api/admin/ai-subscription",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({user_id:id,active:enabled,duration_days:duration})});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Action IA impossible.");
-    showToast(data.message|| (enabled?"Accès IA activé avec succès.":"Accès IA désactivé avec succès."),"success");
+    showToast(data.message||(enabled?"Accès IA activé avec succès.":"Accès IA désactivé avec succès."),"success");
     await loadAdmin();
-  }catch(e){showToast(e.message||"Action IA impossible.","error");}
+    return true;
+  }catch(e){showToast(e.message||"Action IA impossible.","error");return false;}
+}
+
+async function handleMemberSwitch(input,feature,id){
+  const requested=Boolean(input.checked);
+  const previous=!requested;
+  input.disabled=true;
+  let success=false;
+  try{
+    if(feature==="premium")success=await setPremium(id,requested);
+    else if(feature==="ai")success=await setAISubscription(id,requested);
+    else if(feature==="account")success=await toggleUserDisabled(id,!requested);
+  }catch(error){
+    showToast(error.message||"Action impossible.","error");
+  }finally{
+    if(!success)input.checked=previous;
+    input.disabled=false;
+  }
 }
 
 async function deleteAdminUser(id){
