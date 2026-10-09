@@ -6154,7 +6154,6 @@ document.addEventListener("keydown",function(event){
       const selected=getSelectedOption(match);
       const predictedScore=getProbableScore(match);
       const exactScore=getExactScoreOption(match);
-      const complementary=getComplementaryOptions(match);
 
       lines.push("");
 
@@ -6182,15 +6181,6 @@ document.addEventListener("keydown",function(event){
         lines.push("");
       }
 
-      if(complementary.length){
-        lines.push("💡 LES AUTRES OPTIONS POSSIBLES");
-
-        complementary.forEach(function(option){
-          lines.push("• "+simpleName(option.name, match, fixture));
-        });
-
-        lines.push("");
-      }
     });
 
     return lines.join("\n").trim();
@@ -6303,7 +6293,6 @@ document.addEventListener("keydown",function(event){
       const selected=getSelectedOption(match);
       const predictedScore=getProbableScore(match);
       const exactScore=getExactScoreOption(match);
-      const complementary=getComplementaryOptions(match);
 
       const currentHome=num(fixture?.goals?.home);
       const currentAway=num(fixture?.goals?.away);
@@ -6425,37 +6414,7 @@ document.addEventListener("keydown",function(event){
 
         }
 
-        if(complementary.length){
-
-          html+='<div class="ai-ticket-options-title">'+
-            '💡 LES AUTRES OPTIONS POSSIBLES'+
-          '</div>';
-
-          html+='<div class="ai-ticket-options">';
-
-          complementary.forEach(function(option){
-
-            html+='<div class="ai-ticket-option">'+
-              '<span>'+
-                escapeHtml(simpleName(option.name, match, fixture))+
-              '</span>';
-
-            const confidence=getConfidenceLabel(option.probability);
-
-            if(confidence){
-              html+='<strong>'+
-                escapeHtml(confidence)+
-              '</strong>';
-            }
-
-            html+='</div>';
-
-          });
-
-          html+='</div>';
-        }
-
-        if(!selected&&!predictedScore&&!exactScore&&!complementary.length){
+        if(!selected&&!predictedScore&&!exactScore){
 
           html+='<div class="batbot-ticket-muted">'+
             'Analyse insuffisante'+
@@ -6528,7 +6487,6 @@ document.addEventListener("keydown",function(event){
     matches.forEach(function(match,index){
       const selected=getSelectedOption(match);
       const score=getProbableScore(match);
-      const complementary=getComplementaryOptions(match);
 
       ctx.fillStyle="#102235";
       ctx.font="900 25px Arial";
@@ -6565,17 +6523,6 @@ document.addEventListener("keydown",function(event){
       }
 
       y+=35;
-
-      if(complementary.length){
-        ctx.fillStyle="#52687a";
-        ctx.font="700 17px Arial";
-        ctx.fillText(
-          "📌 Options : "+complementary.map(function(option){
-            return simpleName(option.name, match, match && match.fixture)+" "+formatPercent(option.probability);
-          }).join(" • "),
-          50,y
-        );
-      }
 
       y+=50;
 
