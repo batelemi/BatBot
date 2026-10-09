@@ -504,6 +504,18 @@ textarea{min-height:120px;resize:vertical}
 .payment-price{text-align:center;margin:12px 0 18px}
 .payment-price strong{display:block;font-size:38px;color:var(--green)}
 .payment-price span{color:var(--muted);font-size:13px}
+.settings-grid{display:grid;gap:12px}
+.settings-service-field{display:grid;gap:7px;padding:12px;border:1px solid #23486B;border-radius:13px;background:#0B223D}
+.settings-service-field>label:not(.settings-service-toggle){display:block;font-weight:700;color:#D9E7F3}
+.settings-service-field input[data-setting]{margin-bottom:0}
+.settings-service-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:8px;border-top:1px solid rgba(83,207,255,.16);font-size:13px;font-weight:800}
+.settings-service-toggle input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.settings-service-switch{position:relative;display:inline-block;flex:0 0 48px;width:48px;height:27px;border-radius:20px;background:#DC2626;transition:background .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.settings-service-switch:after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);transition:transform .18s ease}
+.settings-service-toggle input:checked+.settings-service-switch{background:#16A34A}
+.settings-service-toggle input:checked+.settings-service-switch:after{transform:translateX(21px)}
+.settings-service-toggle input:focus-visible+.settings-service-switch{outline:2px solid #fff;outline-offset:3px}
+[hidden]{display:none!important}
 .payment-number{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:13px;border-radius:15px;background:#071A2D;border:1px solid #315D82;margin:10px 0;
@@ -1257,7 +1269,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <div class="notice">
       📌 Effectuez le paiement de <strong>500 F</strong> avant d'envoyer votre demande d'analyse.
     </div>
-    <a id="waveDayButton" class="btn wave"
+    <a id="waveDayButton" class="btn wave" hidden
       href=""
       target="_blank" rel="noopener noreferrer"> Payer 500 F avec Wave</a>
     <div class="payment-confirm">
@@ -1277,7 +1289,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
       <br><br>
       Votre profil reçoit également un <strong>badge bleu</strong>.
     </div>
-    <a id="wavePremiumButton" class="btn wave"
+    <a id="wavePremiumButton" class="btn wave" hidden
       href=""
       target="_blank" rel="noopener noreferrer"> Souscrire 7 jours — 1 000 F</a>
     <div class="payment-confirm">
@@ -1298,31 +1310,31 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         <span>Payer avec Wave</span>
       </div>
       <div class="wave-mobile-payment-actions">
-        <a id="waveMobileDayButton" class="btn wave wave-mobile-payment-button" href="" target="_blank" rel="noopener noreferrer">
+        <a id="waveMobileDayButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
           <img src="/wave.png" alt="" aria-hidden="true"> Payer 500 F avec Wave
         </a>
-        <a id="waveMobilePremiumButton" class="btn wave wave-mobile-payment-button" href="" target="_blank" rel="noopener noreferrer">
+        <a id="waveMobilePremiumButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
           <img src="/wave.png" alt="" aria-hidden="true"> Souscrire 7 jours — 1 000 F
         </a>
       </div>
     </div>
 
     <div class="payment-grid">
-      <div class="payment-number orange-network">
+      <div class="payment-number orange-network" hidden>
         <div class="payment-number-main">
           <img class="payment-network-icon" src="/orange-money.png" alt="Orange Money">
           <div class="payment-network-copy"><span class="payment-network-name">Orange Money</span></div>
         </div>
         <button class="btn orange payment-number-action" type="button" onclick="copyPaymentNumber('Orange Money')">📋 Copier</button>
       </div>
-      <div class="payment-number mtn-network">
+      <div class="payment-number mtn-network" hidden>
         <div class="payment-number-main">
           <img class="payment-network-icon" src="/mtn-money.png" alt="MTN Money">
           <div class="payment-network-copy"><span class="payment-network-name">MTN Money</span></div>
         </div>
         <button class="btn payment-number-action" type="button" style="background:linear-gradient(145deg,#FFE84A,#F2C900);color:#111;box-shadow:0 6px 0 #A88700,0 10px 18px rgba(255,215,0,.18)" onclick="copyPaymentNumber('MTN Money')">📋 Copier</button>
       </div>
-      <div class="payment-number moov-network">
+      <div class="payment-number moov-network" hidden>
         <div class="payment-number-main">
           <img class="payment-network-icon" src="/moov-money.png" alt="Moov Money">
           <div class="payment-network-copy"><span class="payment-network-name">Moov Money</span></div>
@@ -1353,7 +1365,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
     <label><span class="muted">Référence de transaction</span><input id="paymentReference" maxlength="120" placeholder="Référence du paiement"></label>
     <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ Enregistrer la référence</button>
-    <button class="btn whatsapp" type="button" onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
+    <button class="btn whatsapp" type="button" hidden onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
     <div id="paymentNumberStatus" class="status"></div>
   </div>
 
@@ -1404,8 +1416,8 @@ PSG vs Marseille"></textarea>
       <div id="fileName" class="file-name"></div>
     </label>
 
-    <button id="sendAnalysisWhatsAppButton" class="btn whatsapp" type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
-    <button id="sendAnalysisTelegramButton" class="btn telegram" type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
+    <button id="sendAnalysisWhatsAppButton" class="btn whatsapp" hidden type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
+    <button id="sendAnalysisTelegramButton" class="btn telegram" hidden type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
     <div id="analysisStatus" class="status"></div>
     <div class="payment-processing-note">⏱️ <strong>Délai de traitement</strong><br>Les demandes d’analyse envoyées au service BatBot ne sont pas traitées instantanément. Le délai habituel est d’environ <strong>5 à 7 minutes</strong>, et peut exceptionnellement atteindre <strong>10 minutes ou plus</strong> selon le nombre de demandes en cours. Le résultat est transmis à l’utilisateur dès que l’analyse est terminée.</div>
   </div>
@@ -1442,11 +1454,11 @@ PSG vs Marseille"></textarea>
     <h2>👥 Nos groupes</h2>
     <p class="muted">Rejoignez nos communautés BatBot.</p>
     <div class="two-columns">
-      <a class="btn contact-button whatsapp"
-        href="https://chat.whatsapp.com/GikWdoQLZ8TFDHK2rTHH8T?s=cl&p=a&mlu=4&ilr=4"
+      <a id="whatsappGroupLink" class="btn contact-button whatsapp" data-service="whatsappGroup" hidden
+        href=""
         target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a class="btn contact-button telegram"
-        href="https://t.me/sdrive123" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+      <a id="telegramGroupLink" class="btn contact-button telegram" data-service="telegramGroup" hidden
+        href="" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
     </div>
   </div>
 
@@ -1459,9 +1471,9 @@ PSG vs Marseille"></textarea>
     <h2>📞 Contacter un agent</h2>
     <p class="muted">Besoin d'aide ? Contactez directement notre équipe.</p>
     <div class="two-columns">
-      <a id="whatsappContact" class="btn contact-button whatsapp" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-      <a id="telegramContact" class="btn contact-button telegram"
-        href="https://t.me/sdrive12" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
+      <a id="whatsappContact" data-service="whatsapp" class="btn contact-button whatsapp" hidden target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+      <a id="telegramContact" data-service="telegram" class="btn contact-button telegram" hidden
+        href="" target="_blank" rel="noopener noreferrer">✈️ Telegram</a>
     </div>
   </div>
 
@@ -1471,12 +1483,12 @@ PSG vs Marseille"></textarea>
     <h2>📱 Nos réseaux sociaux</h2>
     <p class="muted">Suivez BatBot sur nos réseaux sociaux.</p>
     <div class="social-grid">
-      <a class="btn social-btn" style="background:#000;color:white;box-shadow:0 6px 0 #333;"
-        href="https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99ezQTy3tTh" target="_blank" rel="noopener noreferrer">🎵 TikTok</a>
-      <a class="btn social-btn" style="background:#1877F2;color:white;box-shadow:0 6px 0 #0A4A9A;"
-        href="https://www.facebook.com/share/1KDERc7ZAP/" target="_blank" rel="noopener noreferrer">🔵 Facebook</a>
-      <a class="btn social-btn" style="background:linear-gradient(145deg,#E1306C,#833AB4);color:white;box-shadow:0 6px 0 #54206F;"
-        href="https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==" target="_blank" rel="noopener noreferrer">📸 Instagram</a>
+      <a class="btn social-btn" data-service="tiktok" hidden style="background:#000;color:white;box-shadow:0 6px 0 #333;"
+        href="" target="_blank" rel="noopener noreferrer">🎵 TikTok</a>
+      <a class="btn social-btn" data-service="facebook" hidden style="background:#1877F2;color:white;box-shadow:0 6px 0 #0A4A9A;"
+        href="" target="_blank" rel="noopener noreferrer">🔵 Facebook</a>
+      <a class="btn social-btn" data-service="instagram" hidden style="background:linear-gradient(145deg,#E1306C,#833AB4);color:white;box-shadow:0 6px 0 #54206F;"
+        href="" target="_blank" rel="noopener noreferrer">📸 Instagram</a>
     </div>
   </div>
 
@@ -1626,8 +1638,8 @@ PSG vs Marseille"></textarea>
 <script>
 "use strict";
 
-let WHATSAPP_NUMBER="2250152171974";
-let TELEGRAM_CONTACT="https://t.me/sdrive12";
+let WHATSAPP_NUMBER="";
+let TELEGRAM_CONTACT="";
 let WAVE_PAYMENT_DAY_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500";
 let WAVE_PAYMENT_7_DAYS_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000";
 const PAYMENT_NUMBER="0152171974";
@@ -2080,10 +2092,12 @@ function useTemporaryPassword(){
 }
 
 function createWhatsAppUrl(message){
-  return "https://wa.me/"+WHATSAPP_NUMBER.replace(/[^\d]/g,"")+"?text="+encodeURIComponent(message);
+  const phone=String(WHATSAPP_NUMBER||"").replace(/[^\d]/g,"");
+  return phone?"https://wa.me/"+phone+"?text="+encodeURIComponent(message):"";
 }
 
 function sendAnalysisWhatsApp(){
+  if(!SERVICE_FLAGS.whatsapp)return showStatus("analysisStatus","Le service WhatsApp est temporairement désactivé.","error");
   const matches=document.getElementById("matches").value.trim();
   const capture=document.getElementById("capture");
   const button=document.getElementById("sendAnalysisWhatsAppButton");
@@ -2099,6 +2113,7 @@ function sendAnalysisWhatsApp(){
 }
 
 function sendAnalysisTelegram(){
+  if(!SERVICE_FLAGS.telegram)return showStatus("analysisStatus","Le service Telegram est temporairement désactivé.","error");
   const matches=document.getElementById("matches").value.trim();
   const button=document.getElementById("sendAnalysisTelegramButton");
   if(!matches){window.open(TELEGRAM_CONTACT,"_blank");showStatus("analysisStatus","✈️ Telegram est prêt. Envoyez votre demande au service BatBot.","success");return;}
@@ -2139,7 +2154,7 @@ async function copyPaymentNumber(operator){
     showStatus(statusId,error.message||"Impossible de copier le numéro pour le moment.","error");
   }
 }
-function sendPaymentWhatsApp(){const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BatBot 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
+function sendPaymentWhatsApp(){if(!SERVICE_FLAGS.whatsapp)return showStatus("paymentNumberStatus","Le service WhatsApp est temporairement désactivé.","error");const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BatBot 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
 
 function updatePaymentOfferStyle(){
   const select=document.getElementById('paymentOffer');
@@ -2254,6 +2269,7 @@ if(document.readyState==='loading'){
 })();
 
 function requestPaymentNumber(){
+  if(!SERVICE_FLAGS.whatsapp)return showStatus("paymentNumberStatus","Le service WhatsApp est temporairement désactivé.","error");
   const message="Bonjour BatBot 👋\n\nJe souhaite recevoir le numéro de dépôt pour effectuer mon paiement par Orange Money, Moov Money ou MTN Money.";
   window.location.href=createWhatsAppUrl(message);
   showStatus("paymentNumberStatus","WhatsApp a été ouvert pour recevoir le numéro de dépôt.","success");
@@ -2472,12 +2488,16 @@ async function deleteAdminUser(id){
 }
 
 function renderSettingsForm(settings){
-  const fields=[
+  const serviceFields=[
     ["whatsapp","Numéro WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Lien groupe WhatsApp"],["telegramGroup","Lien groupe Telegram"],
     ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
-    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien BatBot"],["sdriveInviteMessage","Message BatBot"],["adminPhone","Numéro administrateur"]
+    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien BatBot"]
   ];
-  return '<div class="settings-grid">'+fields.map(([k,label])=>`<label>${label}<input data-setting="${k}" value="${escapeHtml(settings[k]||'')}"></label>`).join('')+'</div>';
+  const ordinaryFields=[["sdriveInviteMessage","Message BatBot"],["adminPhone","Numéro administrateur"]];
+  const enabled=key=>String(settings[key+"Enabled"]??"true").toLowerCase()!=="false";
+  const services=serviceFields.map(([key,label])=>`<div class="settings-service-field"><label for="setting-${key}">${label}</label><input id="setting-${key}" data-setting="${key}" value="${escapeHtml(settings[key]||'')}"><label class="settings-service-toggle"><span>${enabled(key)?"Service activé":"Service désactivé"}</span><input type="checkbox" data-setting-enabled="${key}" ${enabled(key)?"checked":""} onchange="toggleServiceSetting(this,'${key}')" aria-label="Activer ou désactiver ${escapeHtml(label)}"><span class="settings-service-switch" aria-hidden="true"></span></label></div>`).join('');
+  const ordinary=ordinaryFields.map(([key,label])=>`<label>${label}<input data-setting="${key}" value="${escapeHtml(settings[key]||'')}"></label>`).join('');
+  return '<div class="settings-grid">'+services+ordinary+'</div>';
 }
 
 async function loadConfig(){
@@ -2485,8 +2505,9 @@ async function loadConfig(){
     const response=await fetch("/api/config",{cache:"no-store"});
     const data=await readApiResponse(response);
     if(!response.ok)throw new Error(data.error||"Configuration indisponible");
-    if(data.whatsapp)WHATSAPP_NUMBER=data.whatsapp;
-    if(data.telegram)TELEGRAM_CONTACT=data.telegram;
+    WHATSAPP_NUMBER=data.whatsappEnabled!==false?String(data.whatsapp||""):"";
+    TELEGRAM_CONTACT=data.telegramEnabled!==false&&data.telegram?"https://t.me/"+String(data.telegram).replace(/^@/,""):"";
+    applyServiceVisibility(data);
     const syncPaymentLink=(ids,url)=>{
       ids.forEach(id=>{
         const button=document.getElementById(id);if(!button)return;
@@ -2496,9 +2517,27 @@ async function loadConfig(){
         else{button.removeAttribute("href");button.classList.add("payment-link-disabled");button.setAttribute("aria-disabled","true");}
       });
     };
-    syncPaymentLink(["waveDayButton","waveMobileDayButton"],data.wave500);
-    syncPaymentLink(["wavePremiumButton","waveMobilePremiumButton"],data.wave1000);
+    syncPaymentLink(["waveDayButton","waveMobileDayButton"],SERVICE_FLAGS.wave500?data.wave500:"");
+    syncPaymentLink(["wavePremiumButton","waveMobilePremiumButton"],SERVICE_FLAGS.wave1000?data.wave1000:"");
   }catch(error){console.warn("CONFIG:",error.message);}
+}
+
+async function toggleServiceSetting(input,key){
+  const previous=!input.checked;
+  input.disabled=true;
+  const label=input.closest('.settings-service-toggle')?.querySelector('span:first-child');
+  try{
+    const response=await fetch('/api/admin/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({[key+'Enabled']:Boolean(input.checked)})});
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||'Impossible de modifier ce service.');
+    if(label)label.textContent=input.checked?'Service activé':'Service désactivé';
+    showStatus('settingsStatus',(input.checked?'Service activé : ':'Service désactivé : ')+key+'.','success');
+    try{await refreshPublicServiceSettings();}catch(refreshError){console.warn('SERVICE_REFRESH:',refreshError);}
+  }catch(error){
+    input.checked=previous;
+    if(label)label.textContent=previous?'Service activé':'Service désactivé';
+    showStatus('settingsStatus',error.message||'Impossible de modifier ce service.','error');
+  }finally{input.disabled=false;}
 }
 
 async function saveAdminSettings(){
@@ -5125,24 +5164,62 @@ async function checkSession(){
   hideLoading();
 }
 
+const SERVICE_FLAGS={whatsapp:true,telegram:true,whatsappGroup:true,telegramGroup:true,wave500:true,wave1000:true,orangeMoney:true,moovMoney:true,mtnMoney:true,tiktok:true,facebook:true,instagram:true,sdriveLink:true};
+function applyServiceVisibility(data){
+  const keys=Object.keys(SERVICE_FLAGS);
+  keys.forEach(key=>{SERVICE_FLAGS[key]=data[key+"Enabled"]!==false;});
+  const setVisible=(element,visible)=>{if(!element)return;element.hidden=!visible;if(!visible&&element.tagName==='A')element.removeAttribute('href');};
+  const assignLink=(element,key,url)=>{setVisible(element,SERVICE_FLAGS[key]&&Boolean(url));if(element&&SERVICE_FLAGS[key]&&url)element.href=url;};
+  assignLink(document.getElementById('whatsappContact'),'whatsapp',createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent."));
+  assignLink(document.getElementById('telegramContact'),'telegram',SERVICE_FLAGS.telegram?TELEGRAM_CONTACT:'');
+  assignLink(document.getElementById('whatsappGroupLink'),'whatsappGroup',data.whatsappGroup);
+  assignLink(document.getElementById('telegramGroupLink'),'telegramGroup',data.telegramGroup);
+  const contactCard=document.getElementById('whatsappContact')?.closest('.card');
+  setVisible(contactCard,Boolean(document.getElementById('whatsappContact')&&!document.getElementById('whatsappContact').hidden)||Boolean(document.getElementById('telegramContact')&&!document.getElementById('telegramContact').hidden));
+  const groupsCard=document.getElementById('whatsappGroupLink')?.closest('.card');
+  setVisible(groupsCard,Boolean(document.getElementById('whatsappGroupLink')&&!document.getElementById('whatsappGroupLink').hidden)||Boolean(document.getElementById('telegramGroupLink')&&!document.getElementById('telegramGroupLink').hidden));
+  const wave500=SERVICE_FLAGS.wave500&&Boolean(data.wave500);
+  const wave1000=SERVICE_FLAGS.wave1000&&Boolean(data.wave1000);
+  ['waveDayButton','waveMobileDayButton'].forEach(id=>assignLink(document.getElementById(id),'wave500',wave500?data.wave500:''));
+  ['wavePremiumButton','waveMobilePremiumButton'].forEach(id=>assignLink(document.getElementById(id),'wave1000',wave1000?data.wave1000:''));
+  setVisible(document.getElementById('waveDayCard'),wave500);
+  setVisible(document.getElementById('wavePremiumCard'),wave1000);
+  const mobileWave=document.querySelector('.wave-mobile-payment-block');
+  setVisible(mobileWave,wave500||wave1000);
+  const operatorKeys={'Orange Money':'orangeMoney','MTN Money':'mtnMoney','Moov Money':'moovMoney'};
+  document.querySelectorAll('#paymentOperator option').forEach(option=>{const key=operatorKeys[option.value];if(key)option.disabled=!SERVICE_FLAGS[key];else if(option.value==='Wave')option.disabled=!(SERVICE_FLAGS.wave500||SERVICE_FLAGS.wave1000);});
+  const paymentOperator=document.getElementById('paymentOperator');
+  if(paymentOperator){const selected=paymentOperator.options[paymentOperator.selectedIndex];if(selected&&selected.disabled){const next=Array.from(paymentOperator.options).find(option=>!option.disabled);if(next)next.selected=true;}paymentOperator.disabled=!Array.from(paymentOperator.options).some(option=>!option.disabled);}
+  document.querySelectorAll('.payment-number.orange-network').forEach(el=>setVisible(el,SERVICE_FLAGS.orangeMoney));
+  document.querySelectorAll('.payment-number.mtn-network').forEach(el=>setVisible(el,SERVICE_FLAGS.mtnMoney));
+  document.querySelectorAll('.payment-number.moov-network').forEach(el=>setVisible(el,SERVICE_FLAGS.moovMoney));
+  document.querySelectorAll('[data-service]').forEach(el=>{const key=el.dataset.service; if(['whatsapp','telegram','whatsappGroup','telegramGroup','tiktok','facebook','instagram'].includes(key)){if(key==='whatsapp')assignLink(el,key,createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent."));else if(key==='telegram')assignLink(el,key,TELEGRAM_CONTACT);else assignLink(el,key,data[key]);}});
+  const socialGrid=document.querySelector('.social-grid');
+  setVisible(socialGrid?.closest('.card'),Boolean(socialGrid&&Array.from(socialGrid.querySelectorAll('a')).some(link=>!link.hidden)));
+  const waButton=document.getElementById('sendAnalysisWhatsAppButton');setVisible(waButton,SERVICE_FLAGS.whatsapp);
+  const tgButton=document.getElementById('sendAnalysisTelegramButton');setVisible(tgButton,SERVICE_FLAGS.telegram);
+  document.querySelectorAll('button[onclick*="sendPaymentWhatsApp"]').forEach(el=>setVisible(el,SERVICE_FLAGS.whatsapp));
+  const launcher=document.querySelector('.mobile-all-networks');
+  setVisible(launcher,SERVICE_FLAGS.wave500||SERVICE_FLAGS.wave1000||SERVICE_FLAGS.orangeMoney||SERVICE_FLAGS.mtnMoney||SERVICE_FLAGS.moovMoney);
+}
+
+async function refreshPublicServiceSettings(){
+  const response=await fetch("/api/config",{cache:"no-store"});
+  const data=await readApiResponse(response);
+  if(!response.ok)return false;
+  WHATSAPP_NUMBER=data.whatsappEnabled!==false?String(data.whatsapp||""):"";
+  TELEGRAM_CONTACT=data.telegramEnabled!==false&&data.telegram?"https://t.me/"+String(data.telegram).replace(/^@/,""):"";
+  WAVE_PAYMENT_DAY_URL=data.wave500Enabled!==false?String(data.wave500||""):"";
+  WAVE_PAYMENT_7_DAYS_URL=data.wave1000Enabled!==false?String(data.wave1000||""):"";
+  applyServiceVisibility(data);
+  return true;
+}
+
 async function loadPublicConfig(){
   try{
-    const response=await fetch("/api/config",{cache:"no-store"});
-    const data=await readApiResponse(response);
-    if(!response.ok)return;
-    if(data.whatsapp)WHATSAPP_NUMBER=String(data.whatsapp);
-    if(data.telegram)TELEGRAM_CONTACT="https://t.me/"+String(data.telegram).replace(/^@/,"");
-    if(data.wave500){WAVE_PAYMENT_DAY_URL=data.wave500;const el=document.getElementById("waveDayButton");if(el)el.href=data.wave500;}
-    if(data.wave1000){WAVE_PAYMENT_7_DAYS_URL=data.wave1000;const el=document.getElementById("wavePremiumButton");if(el)el.href=data.wave1000;}
-    ["orangeMoney","mtnMoney","moovMoney"].forEach(k=>{const el=document.getElementById(k+"Number");if(el&&data[k])el.textContent=data[k];});
-    const wa=document.getElementById("whatsappContact");if(wa)wa.href=createWhatsAppUrl("Bonjour BatBot 👋\n\nJe souhaite contacter un agent.");
-    const tg=document.getElementById("telegramContact");if(tg)tg.href=TELEGRAM_CONTACT;
-    const groupWa=document.querySelector('a[href*="chat.whatsapp.com"]');if(groupWa&&data.whatsappGroup)groupWa.href=data.whatsappGroup;
-    const groupTg=document.querySelector('a[href="https://t.me/sdrive123"]');if(groupTg&&data.telegramGroup)groupTg.href=data.telegramGroup;
+    if(!await refreshPublicServiceSettings())return;
     loadBookmakers();
     loadCoupons();
-    const socialMap={"TikTok":data.tiktok,"Facebook":data.facebook,"Instagram":data.instagram};
-    document.querySelectorAll('.social-grid a').forEach(a=>{const key=a.textContent.trim().replace(/^🎵 |^🔵 |^📸 /,'');if(socialMap[key])a.href=socialMap[key];});
   }catch(e){console.error("CONFIG:",e);}
 }
 
@@ -5173,7 +5250,8 @@ function startBatBotLiveSync(){
       await Promise.allSettled([
         loadDailyMatches(),
         loadMyTransactions(),
-        refreshCurrentUserSilently()
+        refreshCurrentUserSilently(),
+        refreshPublicServiceSettings()
       ]);
       // Ne pas recharger toute l'administration automatiquement : cela
       // recréait les champs et effaçait le numéro pendant la saisie.

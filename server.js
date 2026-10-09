@@ -44,6 +44,19 @@ const defaults = {
   mtnMoney: "0554740711",
   sdriveLink: "",
   sdriveInviteMessage: "Invite tes amis à rejoindre BatBot et profite de tes avantages.",
+  whatsappEnabled: "true",
+  telegramEnabled: "true",
+  whatsappGroupEnabled: "true",
+  telegramGroupEnabled: "true",
+  wave500Enabled: "true",
+  wave1000Enabled: "true",
+  orangeMoneyEnabled: "true",
+  moovMoneyEnabled: "true",
+  mtnMoneyEnabled: "true",
+  tiktokEnabled: "true",
+  facebookEnabled: "true",
+  instagramEnabled: "true",
+  sdriveLinkEnabled: "true",
   adminPhone: process.env.ADMIN_PHONE || "2250152171974"
 };
 
@@ -1740,13 +1753,27 @@ async function initializeBookmakers() {
 
 app.get("/api/config", async (req, res) => {
   const s = await getSettings();
+  const publicServiceValue = key => String(s[key + "Enabled"] ?? "true").toLowerCase() === "false" ? "" : (s[key] || "");
   res.json({
-    whatsapp: s.whatsapp, telegram: s.telegram,
-    whatsappGroup: s.whatsappGroup, telegramGroup: s.telegramGroup,
-    tiktok: s.tiktok, facebook: s.facebook, instagram: s.instagram,
-    wave500: s.wave500, wave1000: s.wave1000, wavePromo: s.wavePromo,
+    whatsapp: publicServiceValue("whatsapp"), telegram: publicServiceValue("telegram"),
+    whatsappGroup: publicServiceValue("whatsappGroup"), telegramGroup: publicServiceValue("telegramGroup"),
+    tiktok: publicServiceValue("tiktok"), facebook: publicServiceValue("facebook"), instagram: publicServiceValue("instagram"),
+    wave500: publicServiceValue("wave500"), wave1000: publicServiceValue("wave1000"), wavePromo: s.wavePromo,
     promoFee: s.promoFee,
-    sdriveLink: s.sdriveLink || "", sdriveInviteMessage: s.sdriveInviteMessage || "",
+    sdriveLink: publicServiceValue("sdriveLink"), sdriveInviteMessage: s.sdriveInviteMessage || "",
+    whatsappEnabled: String(s.whatsappEnabled ?? "true").toLowerCase() !== "false",
+    telegramEnabled: String(s.telegramEnabled ?? "true").toLowerCase() !== "false",
+    whatsappGroupEnabled: String(s.whatsappGroupEnabled ?? "true").toLowerCase() !== "false",
+    telegramGroupEnabled: String(s.telegramGroupEnabled ?? "true").toLowerCase() !== "false",
+    wave500Enabled: String(s.wave500Enabled ?? "true").toLowerCase() !== "false",
+    wave1000Enabled: String(s.wave1000Enabled ?? "true").toLowerCase() !== "false",
+    orangeMoneyEnabled: String(s.orangeMoneyEnabled ?? "true").toLowerCase() !== "false",
+    moovMoneyEnabled: String(s.moovMoneyEnabled ?? "true").toLowerCase() !== "false",
+    mtnMoneyEnabled: String(s.mtnMoneyEnabled ?? "true").toLowerCase() !== "false",
+    tiktokEnabled: String(s.tiktokEnabled ?? "true").toLowerCase() !== "false",
+    facebookEnabled: String(s.facebookEnabled ?? "true").toLowerCase() !== "false",
+    instagramEnabled: String(s.instagramEnabled ?? "true").toLowerCase() !== "false",
+    sdriveLinkEnabled: String(s.sdriveLinkEnabled ?? "true").toLowerCase() !== "false",
     bookmakers: await pgAll(
       "SELECT id,name,bonus,url FROM bookmakers WHERE active=true ORDER BY id DESC"
     )
@@ -1763,6 +1790,8 @@ app.get("/api/payment-number", requireUser, async (req, res) => {
   const key = keyByOperator[operator];
   if (!key) return res.status(400).json({ error: "Opérateur de paiement invalide." });
   const settings = await getSettings();
+  const enabledKey = key + "Enabled";
+  if (String(settings[enabledKey] ?? "true").toLowerCase() === "false") return res.status(404).json({ error: "Service désactivé par l’administrateur." });
   const number = cleanPhone(settings[key]);
   if (!number) return res.status(404).json({ error: "Numéro de dépôt indisponible pour cet opérateur." });
   res.set("Cache-Control","no-store");
@@ -1926,6 +1955,7 @@ app.patch("/api/admin/settings", requireAdmin, async (req, res) => {
     "whatsapp", "telegram", "whatsappGroup", "telegramGroup",
     "tiktok", "facebook", "instagram", "wave500", "wave1000",
     "wavePromo", "promoFee", "orangeMoney", "moovMoney", "mtnMoney",
+    "whatsappEnabled", "telegramEnabled", "whatsappGroupEnabled", "telegramGroupEnabled", "wave500Enabled", "wave1000Enabled", "orangeMoneyEnabled", "moovMoneyEnabled", "mtnMoneyEnabled", "tiktokEnabled", "facebookEnabled", "instagramEnabled", "sdriveLinkEnabled",
     "adminPhone", "sdriveLink", "sdriveInviteMessage"
   ];
   for (const key of allowed) if (req.body[key] !== undefined) await writeSetting(key, String(req.body[key]));
