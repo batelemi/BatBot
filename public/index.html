@@ -4266,7 +4266,7 @@ function renderMemberPredictionCard(item,adminMode){
         <span class="admin-small">🎫 CODE COUPON</span>
         <code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code>
         <div class="member-prediction-actions">
-          <button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(${JSON.stringify(coupon)},this)">📋 Copier le code</button>
+          <button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(this.parentElement.parentElement.querySelector('.member-coupon-code').textContent,this)">📋 Copier le code</button>
         </div>
       </div>
 
