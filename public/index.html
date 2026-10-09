@@ -4460,7 +4460,7 @@ function renderMemberPredictionCard(item,adminMode){
   const couponSafe=escapeHtml(coupon);
   const bookmakerSafe=escapeHtml(bookmaker);
   const disabled=item.disabled?'<span class="badge" style="background:#7F1D1D;border-color:#FF8A8A">Compte désactivé</span>':'';
-  const ticketClass=adminMode?"":" member-ticket";
+  const ticketClass=" member-ticket";
 
   return `
     <article class="member-prediction-card${ticketClass}" id="memberPredictionCard_${id}">
