@@ -4484,17 +4484,43 @@ async function loadAdminPaymentRequests(){
     box.innerHTML=items.length
       ? items.map(x=>{
           const meta=getPaymentStatusMeta(x.status);
-          const actionButtons=meta.key==="pending"
-            ? `<div class="two-columns" style="margin-top:8px">
-                 <button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted',this)">✅ Approuver le paiement</button>
-                 <button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected',this)">❌ Refuser le paiement</button>
-               </div>`
+          const reviewButtons=meta.key==="pending"
+            ? `<button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted',this)">✅ Approuver le paiement</button>
+               <button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected',this)">❌ Refuser le paiement</button>`
             : "";
+          const actionButtons=`<div class="two-columns" style="margin-top:8px">${reviewButtons}
+               <button class="btn danger" type="button" onclick="deletePaymentRequest(${x.id},this)">🗑️ Supprimer le reçu</button>
+             </div>`;
           return `<div class="payment-request-card"><div class="payment-request-title">🧾 Reçu de transaction #${x.id}</div>${renderBatBotReceipt(x)}${actionButtons}</div>`;
         }).join("")
       : '<div class="professional-status"><div class="professional-status-head">ℹ️ Aucune demande de paiement</div><div class="professional-status-body">Les nouvelles demandes apparaîtront automatiquement ici.</div></div>';
   }catch(e){
     if(!hadContent)box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Demandes indisponibles</div><div class="professional-status-body">Impossible de charger les demandes de paiement pour le moment. Veuillez réessayer dans quelques instants.</div></div>';
+  }
+}
+
+async function deletePaymentRequest(id,button){
+  if(button?.disabled)return;
+  if(!window.confirm("Supprimer définitivement ce reçu de paiement ?"))return;
+  if(button){
+    button.disabled=true;
+    button.textContent="Suppression…";
+  }
+  try{
+    const r=await fetch("/api/admin/payment-requests/"+encodeURIComponent(id),{
+      method:"DELETE",
+      credentials:"same-origin",
+      headers:{"Accept":"application/json"}
+    });
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Suppression impossible.");
+    showToast(d.message||"Reçu supprimé.","success");
+    const box=document.getElementById("paymentRequestsAdminList");
+    if(box)box.dataset.signature="";
+    await loadAdminPaymentRequests();
+  }catch(e){
+    showToast(e.message||"Impossible de supprimer ce reçu.","error");
+    if(button){button.disabled=false;button.textContent="🗑️ Supprimer le reçu";}
   }
 }
 
