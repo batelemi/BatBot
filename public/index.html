@@ -6655,5 +6655,107 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+
+<script id="batbot-android-back-navigation-script">
+(function () {
+  if (window.__batbotAndroidBackNavigationInstalled) return;
+  window.__batbotAndroidBackNavigationInstalled = true;
+
+  const selectors = [
+    ['.admin-modal:not(.hidden)', '.admin-modal-close'],
+    ['.public-option-modal:not(.hidden)', '.public-option-modal-close'],
+    ['#batbotAIModal.open', '.batbot-ai-modal-close'],
+    ['#batbotTicketModal.open', '.ai-ticket-close'],
+    ['#paymentWindowModal:not(.hidden)', '#paymentWindowClose'],
+    ['.batbot-admin-nav-sheet.open', '.batbot-admin-nav-sheet-backdrop.open'],
+    ['.batbot-nav-sheet.open', '.batbot-nav-sheet-backdrop.open']
+  ];
+
+  function activePanels() {
+    return selectors.flatMap(([selector]) =>
+      Array.from(document.querySelectorAll(selector))
+    );
+  }
+
+  function panelKey() {
+    return activePanels().map(el =>
+      el.id || el.className.toString()
+    ).join('|');
+  }
+
+  function closeTopPanel() {
+    for (const [selector, closeSelector] of selectors) {
+      const panel = document.querySelector(selector);
+      if (!panel) continue;
+
+      const isSheet = panel.matches(
+        '.batbot-admin-nav-sheet, .batbot-nav-sheet'
+      );
+      const close = isSheet
+        ? document.querySelector(closeSelector)
+        : panel.querySelector(closeSelector);
+
+      if (close) {
+        close.click();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  let lastKey = panelKey();
+  let guardActive = false;
+  let handlingBack = false;
+
+  function addGuard() {
+    history.pushState(
+      Object.assign({}, history.state || {}, { batbotBackGuard: true }),
+      '',
+      location.href
+    );
+    guardActive = true;
+  }
+
+  if (lastKey) addGuard();
+
+  window.addEventListener('popstate', function () {
+    if (!activePanels().length) return;
+
+    handlingBack = true;
+    if (!closeTopPanel()) {
+      handlingBack = false;
+      return;
+    }
+  });
+
+  const observer = new MutationObserver(function () {
+    const nextKey = panelKey();
+    if (nextKey === lastKey) return;
+    lastKey = nextKey;
+
+    if (nextKey) {
+      if (!guardActive) addGuard();
+      return;
+    }
+
+    if (!guardActive) return;
+
+    guardActive = false;
+    if (handlingBack) {
+      handlingBack = false;
+    } else {
+      history.back();
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['class', 'aria-hidden']
+  });
+})();
+</script>
+
 </body>
 </html>
