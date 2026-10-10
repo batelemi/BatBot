@@ -5633,7 +5633,8 @@ document.addEventListener("keydown",function(event){
 
     function closeSheet(){sheet.classList.remove('open');backdrop.classList.remove('open');}
     function closeAdminModal(){
-      const modal=document.querySelector('#admin .admin-modal:not(.hidden)');
+      // La fenêtre est ajoutée directement à document.body, pas dans #admin.
+      const modal=document.querySelector('.admin-modal:not(.hidden)');
       if(modal){
         const button=modal.querySelector('.admin-modal-close');
         if(button)button.click();
@@ -5649,7 +5650,9 @@ document.addEventListener("keydown",function(event){
     function runTool(index){
       const button=getTool(index);
       if(!button){showToast('Cette rubrique administrative est indisponible.','error');return;}
-      // Garder le menu administratif parent ouvert derrière la fenêtre enfant.
+      // Une seule fenêtre de contenu à la fois : fermer le menu et l'ancienne fenêtre.
+      closeSheet();
+      closeAdminModal();
       button.click();
     }
     function renderSheet(key){
