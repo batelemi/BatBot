@@ -656,6 +656,21 @@ async function cleanupExpiredBatBotMessages() {
 cleanupExpiredBatBotMessages();
 setInterval(cleanupExpiredBatBotMessages, 5 * 60 * 1000).unref();
 
+// Les reçus de paiement ne sont conservés que 24 heures.
+async function cleanupExpiredPaymentRequests() {
+  try {
+    const result = await pgQuery(
+      "DELETE FROM payment_requests WHERE created_at <= CURRENT_TIMESTAMP - INTERVAL '24 hours'"
+    );
+    return result.rowCount || 0;
+  } catch (error) {
+    console.error("BATBOT PAYMENT RECEIPT CLEANUP:", error.message);
+    return 0;
+  }
+}
+cleanupExpiredPaymentRequests();
+setInterval(cleanupExpiredPaymentRequests, 5 * 60 * 1000).unref();
+
 app.get("/api/messages/mine", requireUser, async (req, res) => {
   const messages = await pgAll(`
     SELECT m.id,m.title,m.body,m.created_at,m.expires_at,
@@ -823,23 +838,48 @@ app.post("/api/payment-requests", requireUser, async (req, res) => {
 });
 
 app.get("/api/payment-requests/mine", requireUser, async (req, res) => {
+  await cleanupExpiredPaymentRequests();
   const requests = await pgAll(`
     SELECT id, offer, operator, amount, reference, status, admin_note, created_at, resolved_at
     FROM payment_requests
     WHERE user_id=$1
+      AND created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'
     ORDER BY id DESC
   `, [req.session.userId]);
   res.json({ requests });
 });
 
 app.get("/api/admin/payment-requests", requireAdmin, async (req, res) => {
+  await cleanupExpiredPaymentRequests();
   const requests = await pgAll(`
     SELECT p.*, u.username, u.phone
     FROM payment_requests p
     LEFT JOIN users u ON u.id=p.user_id
+    WHERE p.created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'
     ORDER BY CASE WHEN p.status='pending' THEN 0 ELSE 1 END, p.id DESC
   `);
   res.json({ requests });
+});
+
+app.delete("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant de reçu invalide." });
+  }
+
+  try {
+    const result = await pgQuery(
+      "DELETE FROM payment_requests WHERE id=$1",
+      [id]
+    );
+    if (!result.rowCount) {
+      return res.status(404).json({ error: "Reçu introuvable ou déjà supprimé." });
+    }
+    res.json({ message: "Reçu de paiement supprimé." });
+  } catch (error) {
+    console.error("BATBOT PAYMENT RECEIPT DELETE:", error.message);
+    res.status(500).json({ error: "Impossible de supprimer ce reçu pour le moment." });
+  }
 });
 
 app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
