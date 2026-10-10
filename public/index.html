@@ -5432,7 +5432,13 @@ document.addEventListener("keydown",function(event){
     let active=null;
 
     function closeModal(){
-      if(!active)return;
+      if(!active){
+        // Une rubrique indisponible peut ouvrir la modale sans carte active.
+        modal.classList.add('hidden');
+        body.innerHTML='';
+        document.body.style.overflow='';
+        return;
+      }
       active.classList.add('hidden');
       if(active._publicPlaceholder&&active._publicPlaceholder.parentNode){
         active._publicPlaceholder.parentNode.insertBefore(active,active._publicPlaceholder.nextSibling);
@@ -5519,7 +5525,8 @@ document.addEventListener("keydown",function(event){
         button.className='batbot-nav-action';
         button.innerHTML='<i class="'+item[1]+'" aria-hidden="true"></i><span>'+item[0]+'</span>';
         button.addEventListener('click',function(){
-          closeSheet();
+          // Garder le menu parent ouvert derrière la fenêtre enfant :
+          // Retour Android ferme d'abord l'enfant, puis révèle ce menu.
           if(item[2]==='ai'){
             openBatBotAIFromMenu();
             return;
@@ -5642,7 +5649,7 @@ document.addEventListener("keydown",function(event){
     function runTool(index){
       const button=getTool(index);
       if(!button){showToast('Cette rubrique administrative est indisponible.','error');return;}
-      closeSheet();
+      // Garder le menu administratif parent ouvert derrière la fenêtre enfant.
       button.click();
     }
     function renderSheet(key){
