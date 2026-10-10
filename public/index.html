@@ -3943,33 +3943,52 @@ function translateSportScoreCompetition(value){
 }
 
 function normalizeSportScoreClientMatch(match,index){
-  const homeObj=match?.teams?.home||match?.home_team_data||{};
-  const awayObj=match?.teams?.away||match?.away_team_data||{};
+  const homeObj=match?.teams?.home||match?.home_team_data||match?.home_team||{};
+  const awayObj=match?.teams?.away||match?.away_team_data||match?.away_team||{};
   const homeName=String(match?.home||match?.home_team?.name||homeObj?.name||"Équipe 1").trim();
   const awayName=String(match?.away||match?.away_team?.name||awayObj?.name||"Équipe 2").trim();
-  const homeScore=Number.isFinite(Number(match?.home_score))?Number(match.home_score):
-    (Number.isFinite(Number(match?.score?.home))?Number(match.score.home):
-    (Number.isFinite(Number(match?.score?.fulltime?.home))?Number(match.score.fulltime.home):null));
-  const awayScore=Number.isFinite(Number(match?.away_score))?Number(match.away_score):
-    (Number.isFinite(Number(match?.score?.away))?Number(match.score.away):
-    (Number.isFinite(Number(match?.score?.fulltime?.away))?Number(match.score.fulltime.away):null));
+
+  function readScore(candidates){
+    for(const value of candidates){
+      if(value===null||value===undefined||value==="")continue;
+      const parsed=Number(value);
+      if(Number.isFinite(parsed)&&parsed>=0)return parsed;
+    }
+    return null;
+  }
+  const homeScore=readScore([
+    match?.goals?.home,match?.fixture?.goals?.home,match?.home_score,match?.homeScore,
+    match?.score?.home,match?.score?.fulltime?.home,match?.scores?.home,match?.scores?.fulltime?.home
+  ]);
+  const awayScore=readScore([
+    match?.goals?.away,match?.fixture?.goals?.away,match?.away_score,match?.awayScore,
+    match?.score?.away,match?.score?.fulltime?.away,match?.scores?.away,match?.scores?.fulltime?.away
+  ]);
   const date=extractSportScoreDate(match);
   const competitionName=translateSportScoreCompetition(match?.competition?.name||match?.competition||match?.league?.name||match?.league||"Compétition");
   const slug=String(match?.slug||match?.uri?.split?.("/").filter(Boolean).pop?.()||((homeName+"-vs-"+awayName).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")));
   const homeId=String(match?.home_slug||match?.home_team?.slug||match?.home_team?.id||homeObj?.slug||homeObj?.id||slugifySportScoreTeam(homeName));
   const awayId=String(match?.away_slug||match?.away_team?.slug||match?.away_team?.id||awayObj?.slug||awayObj?.id||slugifySportScoreTeam(awayName));
 
-  // SportScore peut utiliser LIVE, 1H, HT, 2H, ET ou PEN.
-  // Tous ces codes correspondent à une rencontre en cours.
-  const rawStatus=String(
+  // SportScore peut renvoyer le statut sous forme de texte ou d'objet.
+  // Lire les deux formes évite d'écarter les matchs LIVE, 1H, HT, 2H, ET ou PEN.
+  const statusValue=
     match?.fixture?.status?.short||
     match?.fixture?.status?.long||
+    match?.status?.short||
+    match?.status?.long||
     match?.status||
     match?.status_code||
     match?.state||
     match?.status_text||
-    ""
-  ).toLowerCase().trim();
+    match?.statusText||
+    match?.fixture?.status_text||
+    match?.fixture?.statusText||
+    match?.sportscore?.status?.short||
+    match?.sportscore?.status?.long||
+    match?.sportscore?.status||
+    "";
+  const rawStatus=String(statusValue).toLowerCase().trim();
   const statusKey=rawStatus.replace(/[._-]+/g," ").replace(/\s+/g," ");
   const isLiveStatus=/\b(live|in progress|progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalties|penalty|pen)\b/i.test(statusKey);
   const isFinishedStatus=/\b(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout)\b/i.test(statusKey);
@@ -3978,7 +3997,7 @@ function normalizeSportScoreClientMatch(match,index){
 
   return {
     fixture:{
-      id:String(match?.id||slug||index),
+      id:String(match?.fixture?.id||match?.id||slug||index),
       date:date,
       status:{short:short,long:displayStatus}
     },
@@ -3996,13 +4015,12 @@ function normalizeSportScoreClientMatch(match,index){
     sportscore:{
       slug:slug,
       uri:match?.uri||null,
-      status:match?.status||match?.status_code||null,
-      status_text:match?.status_text||null,
+      status:statusValue||null,
+      status_text:match?.status_text||match?.statusText||null,
       raw:match
     }
   };
 }
-
 function slugifySportScoreTeam(name){
   return String(name||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 }
