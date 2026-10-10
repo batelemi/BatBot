@@ -20,5 +20,6 @@
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "description": "BATBOT analyse les matchs de football et propose des prédictions statistiques pour aider à étudier les probabilités de buts."
 }
