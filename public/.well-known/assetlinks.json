@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.onrender.s_drive_12.twa",
+        "sha256_cert_fingerprints": ["00:E2:12:80:E8:4F:D1:E0:39:6A:5D:82:76:B7:1A:0C:E5:9E:6E:53:F4:B7:91:68:D6:B0:70:D2:CE:BD:AA:DB"]
+      }
+    }]
