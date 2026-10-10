@@ -6661,12 +6661,13 @@ if ("serviceWorker" in navigator) {
   if (window.__batbotAndroidBackNavigationInstalled) return;
   window.__batbotAndroidBackNavigationInstalled = true;
 
+  // Ordre de fermeture : fenêtre au premier plan avant les fenêtres derrière.
   const selectors = [
-    ['.admin-modal:not(.hidden)', '.admin-modal-close'],
-    ['.public-option-modal:not(.hidden)', '.public-option-modal-close'],
-    ['#batbotAIModal.open', '.batbot-ai-modal-close'],
-    ['#batbotTicketModal.open', '.ai-ticket-close'],
     ['#paymentWindowModal:not(.hidden)', '#paymentWindowClose'],
+    ['#batbotTicketModal.open', '.ai-ticket-close'],
+    ['.admin-modal:not(.hidden)', '.admin-modal-close'],
+    ['#batbotAIModal.open', '.batbot-ai-modal-close'],
+    ['.public-option-modal:not(.hidden)', '.public-option-modal-close'],
     ['.batbot-admin-nav-sheet.open', '.batbot-admin-nav-sheet-backdrop.open'],
     ['.batbot-nav-sheet.open', '.batbot-nav-sheet-backdrop.open']
   ];
@@ -6719,12 +6720,22 @@ if ("serviceWorker" in navigator) {
   if (lastKey) addGuard();
 
   window.addEventListener('popstate', function () {
-    if (!activePanels().length) return;
+    if (!activePanels().length) {
+      guardActive = false;
+      return;
+    }
 
     handlingBack = true;
     if (!closeTopPanel()) {
       handlingBack = false;
       return;
+    }
+
+    // Si une fenêtre reste ouverte derrière, lui réserver l'étape Retour suivante.
+    if (activePanels().length) {
+      addGuard();
+    } else {
+      guardActive = false;
     }
   });
 
@@ -6733,17 +6744,19 @@ if ("serviceWorker" in navigator) {
     if (nextKey === lastKey) return;
     lastKey = nextKey;
 
+    if (handlingBack) {
+      handlingBack = false;
+      guardActive = !!nextKey;
+      return;
+    }
+
     if (nextKey) {
       if (!guardActive) addGuard();
       return;
     }
 
-    if (!guardActive) return;
-
-    guardActive = false;
-    if (handlingBack) {
-      handlingBack = false;
-    } else {
+    if (guardActive) {
+      guardActive = false;
       history.back();
     }
   });
