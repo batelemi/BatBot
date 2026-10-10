@@ -824,7 +824,21 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .bookmaker{align-items:flex-start;flex-direction:column}
   .bookmaker .btn{width:100%}
 }
-.admin-secret{position:fixed;right:10px;bottom:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:14px;opacity:.45;cursor:pointer;z-index:50}.admin-secret:active{opacity:.9;transform:scale(.96)}
+.auth-brand-title{cursor:default;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.terms-link{color:#8FAFC9;text-decoration:none;font-size:11px;border-bottom:1px solid rgba(143,175,201,.35);padding-bottom:1px}
+.terms-link:hover,.terms-link:focus{color:#22C8F3}
+.footer-separator{color:#49657E}
+.terms-modal{position:fixed;inset:0;z-index:200000;display:flex;align-items:center;justify-content:center;padding:16px}
+.terms-modal.hidden{display:none!important}
+.terms-modal-backdrop{position:absolute;inset:0;background:rgba(1,8,18,.78);backdrop-filter:blur(5px)}
+.terms-modal-card{position:relative;z-index:1;width:min(100%,560px);max-height:min(82vh,760px);overflow:auto;border:1px solid #315D82;border-radius:20px;padding:18px;background:linear-gradient(160deg,#102D49,#071A2D);box-shadow:0 24px 70px rgba(0,0,0,.5);color:#D9E7F3}
+.terms-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.terms-modal-head h2{margin:0;font-size:19px;color:#fff}
+.terms-modal-close{border:1px solid #315D82;background:#173B5D;color:#fff;border-radius:10px;width:36px;height:36px;font-size:25px;line-height:1;cursor:pointer}
+.terms-modal-body{font-size:13px;line-height:1.6;color:#C6D8E8}
+.terms-modal-body h3{font-size:14px;color:#6EE7F5;margin:14px 0 4px}
+.terms-modal-body p{margin:6px 0}
+.terms-modal-done{width:100%;margin-top:14px}
 
 .brand-mark{font-size:.42em;vertical-align:super;letter-spacing:0;margin-left:3px}.section-kicker{display:inline-block;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#6EE7A0;font-weight:900;margin-bottom:7px}.professional-note{border:1px solid #315D82;background:#0b2947;border-radius:14px;padding:12px;margin:10px 0;color:#c9d9e9;font-size:13px}.deposit-space,.partners-space{border:1px solid #2f628a;border-radius:22px;padding:12px;background:linear-gradient(145deg,rgba(12,39,69,.9),rgba(8,26,46,.9));margin:14px 0}.deposit-space>.card,.partners-space>.card{margin:10px 0}.compact-conditions summary{cursor:pointer;color:#6EE7A0;font-weight:900;padding:10px 0}.compact-conditions .notice{margin-top:8px}
 .payment-trigger-icon{width:30px;height:30px;object-fit:contain;vertical-align:middle;margin-right:6px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.2))}\n.payment-window-launcher{display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0 14px}
@@ -1046,7 +1060,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
     </div>
-    <h1>BatBot<sup class="brand-mark">•</sup></h1>
+    <h1 id="authBrandTitle" class="auth-brand-title" tabindex="0" aria-label="BatBot">BatBot<sup class="brand-mark">•</sup></h1>
     <p class="muted">Analyse professionnelle de vos matchs</p>
   </div>
 
@@ -1628,11 +1642,35 @@ PSG vs Marseille"></textarea>
   </div>
 </section>
 
-<footer>
-  BatBot — Analyse de matchs
-  <br>
-  <button type="button" class="admin-secret" aria-label="Accès sécurisé" title="Accès sécurisé" onclick="adminSecretTap()">•</button>
+<footer id="appFooter">
+  <a href="#" id="termsLink" class="terms-link">Conditions d’utilisation</a>
+  <span class="footer-separator" aria-hidden="true"> · </span>
+  <span>BatBot — Analyse de matchs</span>
 </footer>
+
+<div id="termsModal" class="terms-modal hidden" role="dialog" aria-modal="true" aria-labelledby="termsModalTitle">
+  <div class="terms-modal-backdrop" data-close-terms></div>
+  <section class="terms-modal-card">
+    <div class="terms-modal-head">
+      <h2 id="termsModalTitle">Conditions d’utilisation</h2>
+      <button type="button" class="terms-modal-close" data-close-terms aria-label="Fermer">×</button>
+    </div>
+    <div class="terms-modal-body">
+      <p><strong>Bienvenue sur BatBot.</strong> En créant un compte ou en utilisant l’application, vous acceptez les règles suivantes.</p>
+      <h3>1. Utilisation du service</h3>
+      <p>BatBot propose des analyses et informations sportives à titre informatif. Les résultats sportifs restent incertains et aucune prédiction ne garantit un gain.</p>
+      <h3>2. Responsabilité de l’utilisateur</h3>
+      <p>Vous êtes responsable de votre compte, de la confidentialité de vos identifiants et de l’usage que vous faites des informations affichées.</p>
+      <h3>3. Paiements et abonnements</h3>
+      <p>Vérifiez les offres, montants et conditions affichés avant toute transaction. En cas de doute, contactez le service BatBot avant de payer.</p>
+      <h3>4. Usage interdit</h3>
+      <p>Il est interdit de tenter d’accéder sans autorisation aux espaces privés, de perturber le service ou d’utiliser l’application à des fins frauduleuses.</p>
+      <h3>5. Évolution du service</h3>
+      <p>Les fonctionnalités et présentes conditions peuvent évoluer. L’utilisation continue de BatBot vaut acceptation des conditions mises à jour.</p>
+    </div>
+    <button type="button" class="btn primary terms-modal-done" data-close-terms>J’ai compris</button>
+  </section>
+</div>
 
 </main>
 
@@ -2562,11 +2600,16 @@ async function logout(){
 }
 
 let adminTapCount=0;let adminTapTimer=null;
-function adminSecretTap(){
+function registerAdminTitleTap(){
+  // Geste discret : 17 pressions rapides sur le titre BatBot de l’écran public.
   adminTapCount++;
   clearTimeout(adminTapTimer);
-  adminTapTimer=setTimeout(()=>{adminTapCount=0;},2500);
-  if(adminTapCount>=10){adminTapCount=0;openAdmin();}
+  adminTapTimer=setTimeout(()=>{adminTapCount=0;},3500);
+  if(adminTapCount>=17){
+    adminTapCount=0;
+    clearTimeout(adminTapTimer);
+    openAdmin();
+  }
 }
 function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
@@ -4066,7 +4109,27 @@ document.addEventListener("DOMContentLoaded",function(){
   document.querySelectorAll("[data-close-ai-modal]").forEach(function(el){el.addEventListener("click",closeBatBotAIModal);});
   const ticket=document.getElementById("batbotTicketModal");
   if(ticket)ticket.addEventListener("click",function(e){if(e.target===ticket)closeBatBotTicketModal();});
-  document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;closeBatBotAIModal();closeBatBotTicketModal();});
+
+  const authTitle=document.getElementById("authBrandTitle");
+  if(authTitle){
+    authTitle.addEventListener("click",registerAdminTitleTap);
+    authTitle.addEventListener("keydown",function(e){
+      if(e.key==="Enter"||e.key===" "){e.preventDefault();registerAdminTitleTap();}
+    });
+  }
+  const termsLink=document.getElementById("termsLink");
+  const termsModal=document.getElementById("termsModal");
+  function closeTerms(){if(termsModal)termsModal.classList.add("hidden");}
+  if(termsLink&&termsModal){
+    termsLink.addEventListener("click",function(e){e.preventDefault();termsModal.classList.remove("hidden");});
+    termsModal.querySelectorAll("[data-close-terms]").forEach(function(el){el.addEventListener("click",closeTerms);});
+  }
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Escape")return;
+    closeBatBotAIModal();
+    closeBatBotTicketModal();
+    closeTerms();
+  });
 });
 
 function openAdmin(){
