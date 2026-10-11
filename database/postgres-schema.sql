@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS member_predictions (
   prediction TEXT NOT NULL,
   coupon_code TEXT NOT NULL DEFAULT '',
   bookmaker TEXT NOT NULL DEFAULT '',
+  betclic_url TEXT NOT NULL DEFAULT '',
   comment TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
