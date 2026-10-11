@@ -1543,13 +1543,36 @@ async function findActiveCoupon(code, bookmaker) {
 // ======================================================
 // PRONOSTICS DES MEMBRES
 // ======================================================
+function validateBetclicShareUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "www.betclic.ci" ||
+      url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !/^\/bet\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)
+    ) {
+      return null;
+    }
+    return url.href;
+  } catch (_) {
+    return null;
+  }
+}
+
 app.get("/api/member-predictions", requireUser, async (req, res) => {
   await cleanupExpiredMemberPredictions(false);
 
   const predictions = await pgAll(`
     SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
            p.home_probability,p.draw_probability,p.away_probability,
-           p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
+           p.prediction,p.coupon_code,p.bookmaker,p.betclic_url,p.comment,p.created_at
     FROM member_predictions p
     JOIN users u ON u.id=p.user_id
     WHERE u.disabled=false
@@ -1563,20 +1586,17 @@ app.get("/api/member-predictions", requireUser, async (req, res) => {
 app.post("/api/member-predictions", requireUser, async (req, res) => {
   const homeTeam = String(req.body.home_team || "").trim();
   const awayTeam = String(req.body.away_team || "").trim();
-  const prediction = String(req.body.prediction || "").trim();
   const couponCode = String(req.body.coupon_code || "").trim();
   const bookmaker = String(req.body.bookmaker || "").trim();
+  const betclicUrlRaw = String(req.body.betclic_url || "").trim();
+  const betclicUrl = validateBetclicShareUrl(betclicUrlRaw);
 
-  if (!homeTeam || !awayTeam || !prediction) {
-    return res.status(400).json({ error: "Les deux équipes et le pronostic sont obligatoires." });
+  if (!homeTeam || !awayTeam) {
+    return res.status(400).json({ error: "Les deux équipes du match sont obligatoires." });
   }
 
-  if (!["1", "N", "2"].includes(prediction)) {
-    return res.status(400).json({ error: "Le pronostic doit être V1, X ou V2." });
-  }
-
-  if (!couponCode) {
-    return res.status(400).json({ error: "Le code coupon est obligatoire." });
+  if (betclicUrl === null) {
+    return res.status(400).json({ error: "Le lien doit être un lien de partage Betclic valide au format https://www.betclic.ci/bet/… ." });
   }
 
   if (!bookmaker) {
@@ -1605,9 +1625,9 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
   if (
     homeTeam.length > 80 ||
     awayTeam.length > 80 ||
-    prediction.length > 120 ||
     couponCode.length > 120 ||
-    bookmaker.length > 80
+    bookmaker.length > 80 ||
+    betclicUrl.length > 200
   ) {
     return res.status(400).json({ error: "Un ou plusieurs champs sont trop longs." });
   }
@@ -1625,9 +1645,10 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
         prediction,
         coupon_code,
         bookmaker,
+        betclic_url,
         comment
       )
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING id
     `,
     [
@@ -1637,9 +1658,10 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
       0,
       0,
       0,
-      prediction,
+      "",
       couponCode,
       bookmaker,
+      betclicUrl,
       ""
     ]
   );
@@ -1648,7 +1670,7 @@ app.post("/api/member-predictions", requireUser, async (req, res) => {
     `
       SELECT p.id,p.user_id,u.username,p.home_team,p.away_team,
              p.home_probability,p.draw_probability,p.away_probability,
-             p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
+             p.prediction,p.coupon_code,p.bookmaker,p.betclic_url,p.comment,p.created_at
       FROM member_predictions p
       JOIN users u ON u.id=p.user_id
       WHERE p.id=$1
@@ -1667,7 +1689,7 @@ app.get("/api/admin/member-predictions", requireAdmin, async (req, res) => {
   const predictions = await pgAll(`
     SELECT p.id,p.user_id,u.username,u.disabled,p.home_team,p.away_team,
            p.home_probability,p.draw_probability,p.away_probability,
-           p.prediction,p.coupon_code,p.bookmaker,p.comment,p.created_at
+           p.prediction,p.coupon_code,p.bookmaker,p.betclic_url,p.comment,p.created_at
     FROM member_predictions p
     JOIN users u ON u.id=p.user_id
     ORDER BY p.id DESC
