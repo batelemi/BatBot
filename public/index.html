@@ -1207,24 +1207,10 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
     <input id="memberPredictionAway" maxlength="80" placeholder="Équipe 2 — Exemple : FC Barcelone">
 
 
-    <div class="member-prediction-pick-field">
-      <span class="muted member-prediction-pick-label">🎯 Votre pronostic</span>
-      <input id="memberPredictionPick" type="hidden" value="1">
-      <div class="member-prediction-pick-options" role="group" aria-label="Choisissez votre pronostic">
-        <button type="button" class="member-prediction-pick-option active" data-pick="1" aria-pressed="true">
-          <span class="member-pick-code">V1</span><span>Victoire Équipe 1</span>
-        </button>
-        <button type="button" class="member-prediction-pick-option" data-pick="N" aria-pressed="false">
-          <span class="member-pick-code">X</span><span>Match nul</span>
-        </button>
-        <button type="button" class="member-prediction-pick-option" data-pick="2" aria-pressed="false">
-          <span class="member-pick-code">V2</span><span>Victoire Équipe 2</span>
-        </button>
-      </div>
-    </div>
-
-    <input id="memberPredictionCoupon" maxlength="120" placeholder="🎫 Code coupon — obligatoire">
-    <input id="memberPredictionBookmaker" maxlength="120" placeholder="🏷️ Nom du bookmaker — obligatoire">
+    <input id="memberPredictionCoupon" maxlength="120" placeholder="🎫 Code coupon — facultatif">
+    <input id="memberPredictionBookmaker" maxlength="80" placeholder="🏷️ Nom du bookmaker — obligatoire">
+    <input id="memberPredictionBetclicUrl" type="url" maxlength="200" inputmode="url" autocomplete="url" placeholder="🔗 Lien de partage Betclic — facultatif">
+    <p class="muted">Seuls les liens de partage Betclic au format https://www.betclic.ci/bet/… sont acceptés.</p>
 
 
     <button id="publishMemberPredictionButton" class="btn green" type="button" onclick="publishMemberPrediction()">📢 Publier mon pronostic</button>
@@ -4601,23 +4587,6 @@ function startMemberPredictionsRealtime(){
   }catch(_){memberPredictionsStream=null;}
 }
 
-function initMemberPredictionPick(){
-  const input=document.getElementById("memberPredictionPick");
-  const buttons=document.querySelectorAll(".member-prediction-pick-option[data-pick]");
-  if(!input||!buttons.length)return;
-  buttons.forEach(button=>{
-    button.addEventListener("click",()=>{
-      const value=button.dataset.pick||"1";
-      input.value=value;
-      buttons.forEach(item=>{
-        const active=item===button;
-        item.classList.toggle("active",active);
-        item.setAttribute("aria-pressed",active?"true":"false");
-      });
-    });
-  });
-}
-
 function formatMemberPredictionDate(value){
   if(!value)return "Date non disponible";
   const d=new Date(value);
@@ -4644,16 +4613,37 @@ function renderMemberPredictionCard(item,adminMode){
     "N":{code:"X",label:"Match nul"},
     "2":{code:"V2",label:"Victoire Équipe 2"}
   };
-  const pickInfo=pickMap[rawPick]||{code:rawPick||"—",label:"Pronostic"};
+  const pickInfo=pickMap[rawPick]||(rawPick?{code:rawPick,label:"Pronostic"}:null);
   const coupon=String(item.coupon_code||"");
   const bookmaker=String(item.bookmaker||"");
+  const betclicUrl=validateBetclicShareUrl(String(item.betclic_url||""))||"";
   const couponSafe=escapeHtml(coupon);
   const bookmakerSafe=escapeHtml(bookmaker);
+  const betclicUrlSafe=escapeHtml(betclicUrl);
   const disabled=item.disabled?'<span class="badge" style="background:#7F1D1D;border-color:#FF8A8A">Compte désactivé</span>':'';
-  const ticketClass=" member-ticket";
-
+  const pickHtml=pickInfo?`
+      <div class="member-ticket-pick">
+        <div class="member-prediction-pick-title">🎯 PRONOSTIC SÉLECTIONNÉ</div>
+        <div class="member-prediction-pick-value">
+          <strong>${escapeHtml(pickInfo.code)}</strong>
+          <span>— ${escapeHtml(pickInfo.label)}</span>
+        </div>
+      </div>`:"";
+  const couponHtml=coupon?`
+        <div class="member-ticket-detail member-prediction-coupon">
+          <span class="admin-small">🎫 CODE COUPON</span>
+          <code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code>
+          <div class="member-prediction-actions">
+            <button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(this.parentElement.parentElement.querySelector('.member-coupon-code').textContent,this)">📋 Copier le code</button>
+          </div>
+        </div>`:"";
+  const betclicHtml=betclicUrl?`
+        <div class="member-ticket-detail member-prediction-betclic">
+          <span class="admin-small">🔗 PARTAGE BETCLIC</span>
+          <a href="${betclicUrlSafe}" target="_blank" rel="noopener noreferrer nofollow">${betclicUrlSafe}</a>
+        </div>`:"";
   return `
-    <article class="member-prediction-card${ticketClass}" id="memberPredictionCard_${id}">
+    <article class="member-prediction-card member-ticket" id="memberPredictionCard_${id}">
       <div class="member-ticket-brand">
         <div>
           <div class="member-ticket-logo">⚽ BATBOT</div>
@@ -4663,7 +4653,6 @@ function renderMemberPredictionCard(item,adminMode){
         <div class="member-ticket-label">TICKET<br>PRONOSTIC</div>
         ${disabled}
       </div>
-
       <div class="member-ticket-match">
         <div class="member-prediction-match">
           <div class="member-prediction-team">${home}</div>
@@ -4671,34 +4660,30 @@ function renderMemberPredictionCard(item,adminMode){
           <div class="member-prediction-team">${away}</div>
         </div>
       </div>
-
-      <div class="member-ticket-pick">
-        <div class="member-prediction-pick-title">🎯 PRONOSTIC SÉLECTIONNÉ</div>
-        <div class="member-prediction-pick-value">
-          <strong>${escapeHtml(pickInfo.code)}</strong>
-          <span>— ${escapeHtml(pickInfo.label)}</span>
-        </div>
-      </div>
-
+      ${pickHtml}
       <div class="member-ticket-details">
         <div class="member-ticket-detail">
           <span class="admin-small">🏷️ BOOKMAKER</span>
           <strong>${bookmakerSafe||"Non précisé"}</strong>
         </div>
-        <div class="member-ticket-detail member-prediction-coupon">
-          <span class="admin-small">🎫 CODE COUPON</span>
-          <code id="memberCoupon_${id}" class="member-coupon-code" tabindex="0">${couponSafe}</code>
-          <div class="member-prediction-actions">
-            <button class="btn secondary copy-member-coupon" type="button" onclick="copyMemberCoupon(this.parentElement.parentElement.querySelector('.member-coupon-code').textContent,this)">📋 Copier le code</button>
-          </div>
-        </div>
+        ${couponHtml}
+        ${betclicHtml}
       </div>
-
       <div class="member-ticket-footer">BATBOT • PRONOSTIC DE LA COMMUNAUTÉ</div>
       ${adminMode?`<div class="member-prediction-actions"><button class="btn danger" type="button" onclick="deleteMemberPrediction(${id})">🗑️ Supprimer ce pronostic</button></div>`:""}
     </article>`;
 }
-initMemberPredictionPick();
+
+function validateBetclicShareUrl(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+  try{
+    const url=new URL(raw);
+    if(url.protocol!=="https:"||url.hostname!=="www.betclic.ci"||url.port||url.username||url.password||url.search||url.hash)return "";
+    if(!/^\/bet\/[A-Za-z0-9_-]+\/?$/.test(url.pathname))return "";
+    return url.href;
+  }catch(_){return "";}
+}
 
 async function loadMemberPredictions(){
   const container=document.getElementById("publicMemberPredictionsList");
@@ -4727,24 +4712,23 @@ async function loadMemberPredictions(){
 async function publishMemberPrediction(){
   const home=document.getElementById("memberPredictionHome").value.trim();
   const away=document.getElementById("memberPredictionAway").value.trim();
-  const prediction=document.getElementById("memberPredictionPick").value;
   const coupon=document.getElementById("memberPredictionCoupon").value.trim();
   const bookmaker=document.getElementById("memberPredictionBookmaker").value.trim();
+  const betclicInput=document.getElementById("memberPredictionBetclicUrl");
+  const betclicRaw=betclicInput?betclicInput.value.trim():"";
+  const betclicUrl=validateBetclicShareUrl(betclicRaw);
 
   if(!home||!away){
     return showStatus("memberPredictionStatus","Indiquez les deux équipes du match.","error");
   }
-
-  if(!prediction||!["1","N","2"].includes(prediction)){
-    return showStatus("memberPredictionStatus","Choisissez votre pronostic : V1, X ou V2.","error");
+  if(coupon.length>120||bookmaker.length>80){
+    return showStatus("memberPredictionStatus","Un ou plusieurs champs sont trop longs.","error");
   }
-
-  if(!coupon){
-    return showStatus("memberPredictionStatus","Le code coupon est obligatoire.","error");
-  }
-
   if(!bookmaker){
     return showStatus("memberPredictionStatus","Le nom du bookmaker est obligatoire.","error");
+  }
+  if(betclicRaw&&!betclicUrl){
+    return showStatus("memberPredictionStatus","Le lien doit être un lien de partage Betclic valide au format https://www.betclic.ci/bet/…","error");
   }
 
   setLoading("publishMemberPredictionButton",true,"📢 Publier mon pronostic");
@@ -4757,40 +4741,24 @@ async function publishMemberPrediction(){
       body:JSON.stringify({
         home_team:home,
         away_team:away,
-        prediction,
         coupon_code:coupon,
-        bookmaker
+        bookmaker,
+        betclic_url:betclicUrl
       })
     });
 
     const data=await readApiResponse(response);
-
     if(!response.ok){
       showStatus("memberPredictionStatus",data.error||"Impossible de publier le pronostic.","error");
       return;
     }
 
     showStatus("memberPredictionStatus","✅ Votre pronostic a été publié et est maintenant visible par les membres.","success");
-
-    ["memberPredictionHome","memberPredictionAway","memberPredictionCoupon","memberPredictionBookmaker"].forEach(id=>{
+    ["memberPredictionHome","memberPredictionAway","memberPredictionCoupon","memberPredictionBookmaker","memberPredictionBetclicUrl"].forEach(id=>{
       const el=document.getElementById(id);
       if(el)el.value="";
     });
-
-    const pickInput=document.getElementById("memberPredictionPick");
-
-    if(pickInput){
-      pickInput.value="1";
-
-      document.querySelectorAll(".member-prediction-pick-option[data-pick]").forEach(item=>{
-        const active=item.dataset.pick==="1";
-        item.classList.toggle("active",active);
-        item.setAttribute("aria-pressed",active?"true":"false");
-      });
-    }
-
-    loadMemberPredictions().catch(error=>console.error('REFRESH MEMBER PREDICTIONS:',error));
-
+    loadMemberPredictions().catch(error=>console.error("REFRESH MEMBER PREDICTIONS:",error));
   }catch(error){
     console.error("PUBLISH MEMBER PREDICTION:",error);
     showStatus("memberPredictionStatus","Impossible de contacter le serveur.","error");
