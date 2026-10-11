@@ -923,6 +923,16 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
   .batbot-team-flag-emoji{
     width:auto;height:auto;font-size:21px;line-height:1;object-fit:initial;
   }
+
+/* BATBOT — icônes professionnelles uniformes (remplacement visuel des émojis) */
+.batbot-ui-icon{display:inline-flex;align-items:center;justify-content:center;vertical-align:-.08em;line-height:1;min-width:1.05em;margin-inline:.08em;color:var(--blue);font-size:.96em;font-family:Arial,Helvetica,sans-serif;font-style:normal}
+button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
+.batbot-ui-icon.fa-solid,.batbot-ui-icon.fa-regular,.batbot-ui-icon.fa-brands{font-family:'Font Awesome 6 Free','Font Awesome 6 Brands';font-weight:900}
+.batbot-ui-icon.icon-gold{color:var(--gold)}
+.batbot-ui-icon.icon-green{color:var(--green)}
+.batbot-ui-icon.icon-muted{color:var(--muted)}
+@media(prefers-reduced-motion:reduce){.batbot-ui-icon{animation:none!important}}
+
 </style>
 
 <style id="batbot-admin-navigation-style">
@@ -6886,6 +6896,86 @@ if ("serviceWorker" in navigator) {
     attributes: true,
     attributeFilter: ['class', 'aria-hidden']
   });
+})();
+</script>
+
+
+<script>
+/* Conversion visuelle uniquement : les données, les textes des champs et la logique restent intacts. */
+(function(){
+  'use strict';
+  const icons={
+    '👤':['fa-user',''], '👁':['fa-eye',''], '🙈':['fa-eye-slash',''],
+    '✨':['fa-sparkles','icon-gold'], '🔐':['fa-lock',''], '🚀':['fa-right-to-bracket',''],
+    '🔑':['fa-key',''], '📩':['fa-envelope',''], '💬':['fa-comment-dots',''],
+    '🔒':['fa-lock',''], '🏅':['fa-medal','icon-gold'], '🔔':['fa-bell',''],
+    '📢':['fa-bullhorn',''], '🎫':['fa-ticket',''], '🎯':['fa-bullseye',''],
+    '🏷️':['fa-tag',''], '🏷':['fa-tag',''], '🌍':['fa-earth-africa',''],
+    '🤖':['fa-robot','icon-blue'], '📋':['fa-clipboard',''], '💳':['fa-credit-card',''],
+    '📱':['fa-mobile-screen-button',''], '📌':['fa-thumbtack',''], '✅':['fa-circle-check','icon-green'],
+    '💰':['fa-coins','icon-gold'], '📷':['fa-camera',''], '✈️':['fa-paper-plane',''],
+    '✈':['fa-paper-plane',''], '🛡️':['fa-shield-halved',''], '🛡':['fa-shield-halved',''],
+    '🏆':['fa-trophy','icon-gold'], '🎁':['fa-gift',''], '👥':['fa-users',''],
+    '📞':['fa-phone',''], '🎵':['fa-music',''], '🔵':['fa-circle',''], '📸':['fa-camera-retro',''],
+    '🔎':['fa-magnifying-glass',''], '⚙️':['fa-gear',''], '⚙':['fa-gear',''],
+    '💾':['fa-floppy-disk',''], '➕':['fa-plus',''], '🚪':['fa-right-from-bracket',''],
+    '🗑️':['fa-trash-can',''], '🗑':['fa-trash-can',''], '❌':['fa-circle-xmark',''],
+    '⚠️':['fa-triangle-exclamation','icon-gold'], '⚠':['fa-triangle-exclamation','icon-gold'],
+    'ℹ️':['fa-circle-info',''], 'ℹ':['fa-circle-info',''], '✓':['fa-check','icon-green'],
+    '🌱':['fa-seedling','icon-green'], '⚽':['fa-futbol',''], '📅':['fa-calendar-days',''],
+    '📍':['fa-location-dot',''], '🏠':['fa-house',''], '🤝':['fa-handshake',''],
+    '🔴':['fa-circle',''], '🟢':['fa-circle','icon-green'], '👉':['fa-arrow-right',''],
+    '📊':['fa-chart-column',''], '🆕':['fa-sparkles','icon-gold'], '➖':['fa-minus',''],
+    '🧾':['fa-receipt',''], '🔄':['fa-rotate',''], '⏳':['fa-hourglass-half',''],
+    '⭐':['fa-star','icon-gold'], '💡':['fa-lightbulb','icon-gold'], '🔗':['fa-link',''],
+    '🧠':['fa-brain',''], '📈':['fa-chart-line',''], '💎':['fa-gem','icon-blue'],
+    '🪙':['fa-coins','icon-gold'], '📨':['fa-paper-plane',''], '🔍':['fa-magnifying-glass','']
+  };
+  const keys=Object.keys(icons).sort((a,b)=>b.length-a.length);
+  const pattern=new RegExp(keys.map(k=>k.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')).join('|'),'gu');
+  function convertTextNode(node){
+    if(!node || !node.nodeValue || !pattern.test(node.nodeValue)){ pattern.lastIndex=0; return; }
+    pattern.lastIndex=0;
+    const text=node.nodeValue;
+    const fragment=document.createDocumentFragment();
+    let last=0, match;
+    while((match=pattern.exec(text))){
+      if(match.index>last) fragment.appendChild(document.createTextNode(text.slice(last,match.index)));
+      const def=icons[match[0]];
+      if(def){
+        const icon=document.createElement('i');
+        icon.className='batbot-ui-icon fa-solid '+def[0]+(def[1]?' '+def[1]:'');
+        icon.setAttribute('aria-hidden','true');
+        icon.setAttribute('data-batbot-icon','1');
+        fragment.appendChild(icon);
+      } else fragment.appendChild(document.createTextNode(match[0]));
+      last=pattern.lastIndex;
+    }
+    if(last<text.length) fragment.appendChild(document.createTextNode(text.slice(last)));
+    if(node.parentNode) node.parentNode.replaceChild(fragment,node);
+  }
+  function scan(root){
+    if(!root) return;
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{
+      acceptNode:function(node){
+        const parent=node.parentElement;
+        if(!parent || parent.closest('script,style,textarea,input,select,option,code,pre,[data-no-icon-convert],.batbot-ui-icon')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(convertTextNode);
+  }
+  function start(){
+    scan(document.body);
+    const observer=new MutationObserver(records=>{
+      for(const record of records){
+        if(record.type==='childList') record.addedNodes.forEach(node=>{if(node.nodeType===Node.TEXT_NODE) convertTextNode(node); else if(node.nodeType===Node.ELEMENT_NODE && !node.matches('.batbot-ui-icon')) scan(node);});
+      }
+    });
+    observer.observe(document.body,{subtree:true,childList:true});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
 })();
 </script>
 
