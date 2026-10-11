@@ -904,11 +904,22 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .payment-window-conditions .notice{margin:9px 0}
 @media(min-width:480px){.payment-window-launcher{grid-template-columns:repeat(3,minmax(0,1fr))}.payment-window-trigger{font-size:12px;min-height:58px}}
 
-.batbot-toast-container{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;width:min(92vw,420px);display:flex;flex-direction:column;gap:10px;pointer-events:none}
-.batbot-toast{display:flex;align-items:flex-start;gap:10px;padding:13px 15px;border:1px solid rgba(110,231,160,.45);border-radius:14px;background:linear-gradient(135deg,#123b32,#0b223d);box-shadow:0 10px 30px rgba(0,0,0,.35);color:#fff;font-weight:700;opacity:0;transform:translateY(-12px);transition:opacity .2s ease,transform .2s ease;pointer-events:auto}
+.batbot-toast-container{position:fixed;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:2147483000;width:min(92vw,420px);display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.batbot-toast{position:relative;display:flex;align-items:flex-start;gap:11px;padding:14px 42px 14px 14px;border:1px solid rgba(110,231,160,.48);border-left:4px solid #21C55D;border-radius:16px;background:linear-gradient(135deg,#123b32,#0b223d);box-shadow:0 12px 34px rgba(0,0,0,.42);color:#fff;font-weight:700;opacity:0;transform:translateY(-12px);transition:opacity .22s ease,transform .22s ease;pointer-events:auto;overflow:hidden}
 .batbot-toast.show{opacity:1;transform:translateY(0)}
-.batbot-toast.error{border-color:rgba(248,113,113,.6);background:linear-gradient(135deg,#4a2027,#0b223d)}
-.batbot-toast-icon{font-size:20px;line-height:1.1}.batbot-toast-text{font-size:14px;line-height:1.4}
+.batbot-toast.error{border-color:rgba(248,113,113,.62);border-left-color:#EF4444;background:linear-gradient(135deg,#4a2027,#0b223d)}
+.batbot-toast.info{border-color:rgba(0,191,255,.55);border-left-color:#00BFFF;background:linear-gradient(135deg,#12395b,#0b223d)}
+.batbot-toast-icon{display:flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:rgba(33,197,93,.16);color:#6EE7A0;font-size:17px;line-height:1}
+.batbot-toast.error .batbot-toast-icon{background:rgba(239,68,68,.16);color:#FF8585}
+.batbot-toast.info .batbot-toast-icon{background:rgba(0,191,255,.16);color:#53CFFF}
+.batbot-toast-content{min-width:0;flex:1}
+.batbot-toast-title{display:block;margin:1px 0 3px;font-size:13px;font-weight:900;letter-spacing:.1px}
+.batbot-toast-text{font-size:14px;line-height:1.45;overflow-wrap:anywhere;font-weight:600}
+.batbot-toast-close{position:absolute;top:8px;right:8px;width:28px;height:28px;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#d9e7f3;font-size:18px;line-height:1;cursor:pointer}
+.batbot-toast-progress{position:absolute;bottom:0;left:0;height:3px;width:100%;background:rgba(255,255,255,.16);transform-origin:left}
+.batbot-toast.show .batbot-toast-progress{animation:batbotToastProgress 4s linear forwards}
+@keyframes batbotToastProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media(prefers-reduced-motion:reduce){.batbot-toast,.batbot-toast-progress{transition:none!important;animation:none!important}}
 
 /* Fenêtre professionnelle BatBot pour la durée des accès */
 .batbot-duration-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,8,20,.78);backdrop-filter:blur(5px)}
@@ -1726,20 +1737,63 @@ function showStatus(id,message,type=""){
   element.className="status "+(type||"");
   if(!value){element.innerHTML="";return;}
   const isLoading=/en cours|chargement|actualisation|récupération|ouverture|traitement/i.test(value);
-  const icon=type==="success"?"✅":type==="error"?"⚠️":"ℹ️";
-  const title=type==="success"?"Opération réussie":type==="error"?"Action non effectuée":isLoading?"Traitement en cours":"Information";
-  const spinner=isLoading?'<span class="batbot-spinner" aria-hidden="true"></span>':"";
-  element.innerHTML='<div class="professional-status '+(type||"")+(isLoading?' loading':'')+'"><div class="professional-status-head">'+spinner+'<span>'+icon+' '+title+'</span></div><div class="professional-status-body">'+escapeHtml(value)+'</div></div>';
+  if(!isLoading){
+    element.innerHTML="";
+    showToast(value,type||"info");
+    return;
+  }
+  const spinner='<span class="batbot-spinner" aria-hidden="true"></span>';
+  element.innerHTML='<div class="professional-status loading"><div class="professional-status-head">'+spinner+'<span>Traitement en cours</span></div><div class="professional-status-body">'+escapeHtml(value)+'</div></div>';
 }
 
 function showToast(message,type="success"){
+  const value=String(message||"").trim();
+  if(!value)return;
   let container=document.getElementById("batbotToastContainer");
-  if(!container){container=document.createElement("div");container.id="batbotToastContainer";container.className="batbot-toast-container";document.body.appendChild(container);}
-  const toast=document.createElement("div");toast.className="batbot-toast "+(type==="error"?"error":"");
-  const icon=document.createElement("span");icon.className="batbot-toast-icon";icon.textContent=type==="error"?"⚠️":"✓";
-  const text=document.createElement("div");text.className="batbot-toast-text";text.textContent=String(message||"");
-  toast.append(icon,text);container.appendChild(toast);requestAnimationFrame(()=>toast.classList.add("show"));
-  setTimeout(()=>{toast.classList.remove("show");setTimeout(()=>toast.remove(),220);},3200);
+  if(!container){
+    container=document.createElement("div");
+    container.id="batbotToastContainer";
+    container.className="batbot-toast-container";
+    container.setAttribute("aria-live","polite");
+    container.setAttribute("aria-relevant","additions");
+    document.body.appendChild(container);
+  }
+  const normalizedType=type==="error"?"error":type==="info"||type==="warning"?"info":"success";
+  const toast=document.createElement("div");
+  toast.className="batbot-toast "+normalizedType;
+  toast.setAttribute("role",normalizedType==="error"?"alert":"status");
+  const icon=document.createElement("span");
+  icon.className="batbot-toast-icon";
+  icon.setAttribute("aria-hidden","true");
+  icon.innerHTML=normalizedType==="error"?'<i class="fa-solid fa-xmark"></i>':normalizedType==="info"?'<i class="fa-solid fa-circle-info"></i>':'<i class="fa-solid fa-check"></i>';
+  const content=document.createElement("div");
+  content.className="batbot-toast-content";
+  const title=document.createElement("strong");
+  title.className="batbot-toast-title";
+  title.textContent=normalizedType==="error"?"Opération échouée":normalizedType==="info"?"Information":"Opération réussie";
+  const text=document.createElement("div");
+  text.className="batbot-toast-text";
+  text.textContent=value;
+  content.append(title,text);
+  const close=document.createElement("button");
+  close.type="button";
+  close.className="batbot-toast-close";
+  close.setAttribute("aria-label","Fermer la notification");
+  close.innerHTML="&times;";
+  const progress=document.createElement("span");
+  progress.className="batbot-toast-progress";
+  progress.setAttribute("aria-hidden","true");
+  let removeTimer;
+  const removeToast=()=>{
+    if(removeTimer)clearTimeout(removeTimer);
+    toast.classList.remove("show");
+    setTimeout(()=>toast.remove(),230);
+  };
+  close.addEventListener("click",removeToast);
+  toast.append(icon,content,close,progress);
+  container.appendChild(toast);
+  requestAnimationFrame(()=>toast.classList.add("show"));
+  removeTimer=setTimeout(removeToast,4000);
 }
 window.alert=function(message){showToast(message,"error");};
 
