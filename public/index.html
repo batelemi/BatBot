@@ -1179,16 +1179,15 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
 
 <section id="dashboard" class="hidden">
 
-  <div class="center">
-    <div class="logo">
-      <img src="logo.png" alt="BatBot"
-        onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
-      <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="logo.png" alt="BatBot" class="inline-logo" aria-hidden="true"></span>
+  <header class="batbot-app-header" aria-label="En-tête BATBOT">
+    <div class="batbot-header-brand">
+      <div class="batbot-wordmark" aria-label="BATBOT">
+        <span class="brand-bat">BAT</span><span class="brand-ball" aria-hidden="true"><i class="fa-solid fa-futbol"></i></span><span class="brand-bot">BOT</span>
+      </div>
+      <span class="batbot-header-subtitle">Analyse sportive intelligente</span>
     </div>
-    <h1>BatBot<sup class="brand-mark">•</sup></h1>
-    <p id="welcomeText" class="muted">Bienvenue</p>
-    <span id="profileBadge" class="badge">🏅 Membre BatBot</span>
-  </div>
+    <span id="profileBadge" class="batbot-header-badge">Membre BatBot</span>
+  </header>
 
   <div id="userBox" class="user-box">👤 Compte connecté</div>
   <div class="profile-status-grid" aria-label="Statuts du compte">
@@ -1770,7 +1769,7 @@ function showToast(message,type="success"){
   content.className="batbot-toast-content";
   const title=document.createElement("strong");
   title.className="batbot-toast-title";
-  title.textContent=normalizedType==="error"?"Opération échouée":normalizedType==="info"?"Information":"Opération réussie";
+  title.textContent=type==="welcome"?"Bienvenue sur BATBOT":normalizedType==="error"?"Opération échouée":normalizedType==="info"?"Information":"Opération réussie";
   const text=document.createElement("div");
   text.className="batbot-toast-text";
   text.textContent=value;
@@ -1936,8 +1935,15 @@ function showDashboard(user){
   const username=user.username||user.name||"";
   const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre BatBot");
 
-  const welcome=document.getElementById("welcomeText");
-  if(welcome)welcome.textContent=username?"Bienvenue, "+username:"Bienvenue";
+  // Le message de bienvenue est temporaire : il apparaît à l'ouverture du tableau de bord.
+  if(username){
+    showToast("Bienvenue, "+username+" !","welcome");
+    const welcomeToast=document.getElementById("batbotToastContainer");
+    if(welcomeToast){
+      const latestToast=welcomeToast.lastElementChild;
+      if(latestToast)latestToast.classList.add("batbot-welcome-toast");
+    }
+  }
 
   const userBox=document.getElementById("userBox");
   if(userBox){
@@ -1948,7 +1954,7 @@ function showDashboard(user){
 
   const profileBadge=document.getElementById("profileBadge");
   if(profileBadge){
-    profileBadge.textContent="🏅 "+badge;
+    profileBadge.textContent=badge;
     if(user.is_subscribed||user.subscribed||user.subscription_active){
       profileBadge.classList.add("badge-blue");
     }else{
@@ -5480,6 +5486,57 @@ document.addEventListener("keydown",function(event){
 });
 </script>
 
+
+
+<style id="batbot-dashboard-brand-header-style">
+  /* En-tête compact BATBOT : modification visuelle ciblée du tableau de bord */
+  #dashboard .batbot-app-header{
+    position:sticky;top:0;z-index:8500;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    width:calc(100% + 24px);margin:-18px -12px 18px;padding:12px 16px;
+    padding-top:max(12px,env(safe-area-inset-top,0px));
+    background:rgba(5,18,33,.96);
+    border-bottom:1px solid rgba(83,207,255,.25);
+    box-shadow:0 8px 24px rgba(0,0,0,.22);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  }
+  #dashboard .batbot-wordmark{
+    display:inline-flex;align-items:center;gap:2px;min-width:0;
+    font-size:clamp(25px,7vw,32px);font-weight:1000;line-height:1;
+    letter-spacing:.4px;text-decoration:none;white-space:nowrap;
+    text-shadow:0 0 16px rgba(0,191,255,.13);
+  }
+  #dashboard .batbot-wordmark .brand-bat{
+    color:#39CFFF;
+    background:linear-gradient(180deg,#8DEBFF 0%,#20C8FF 45%,#0078D4 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  #dashboard .batbot-wordmark .brand-ball{
+    display:inline-flex;align-items:center;justify-content:center;
+    margin:0 1px;color:#D9F7FF;font-size:.67em;
+    filter:drop-shadow(0 0 5px rgba(0,191,255,.4));
+    -webkit-text-fill-color:#D9F7FF;
+  }
+  #dashboard .batbot-wordmark .brand-bot{
+    color:#F8D96B;
+    background:linear-gradient(180deg,#FFF4B0 0%,#F5C542 48%,#B77B11 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  #dashboard .batbot-header-subtitle{
+    display:block;margin-top:4px;color:#AFC1D4;font-size:10px;
+    font-weight:700;letter-spacing:.75px;text-transform:uppercase;
+  }
+  #dashboard .batbot-header-badge{
+    flex:0 0 auto;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    padding:7px 10px;border:1px solid rgba(245,197,66,.42);border-radius:999px;
+    background:rgba(245,197,66,.09);color:#FFE89A;font-size:11px;font-weight:900;
+  }
+  #dashboard .batbot-dashboard-hero{display:none!important}
+  #dashboard .batbot-welcome-toast{border-left-color:#00BFFF!important}
+  @media(min-width:561px){
+    #dashboard .batbot-app-header{width:100%;margin:-18px 0 18px;border-radius:0 0 16px 16px}
+  }
+</style>
 
 <style id="batbot-public-options-style">
   /* ===== BatBot — navigation mobile refondue ===== */
