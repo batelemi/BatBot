@@ -2259,8 +2259,14 @@ function sportScoreStatus(status, statusText) {
 function normalizeSportScoreMatch(match, index = 0) {
   const homeName = String(match?.home || match?.home_team || "Équipe 1").trim();
   const awayName = String(match?.away || match?.away_team || "Équipe 2").trim();
-  const homeScore = Number.isFinite(Number(match?.home_score)) ? Number(match.home_score) : null;
-  const awayScore = Number.isFinite(Number(match?.away_score)) ? Number(match.away_score) : null;
+  const readScore = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "string" && value.trim() === "") return null;
+    const score = Number(value);
+    return Number.isFinite(score) && score >= 0 ? score : null;
+  };
+  const homeScore = readScore(match?.home_score);
+  const awayScore = readScore(match?.away_score);
   const date = match?.time || match?.date || null;
   const competitionName = match?.competition || match?.league || "Compétition";
   const slug = match?.slug || `${homeName}-vs-${awayName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

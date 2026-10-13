@@ -3939,7 +3939,26 @@ function isFinishedFixture(item){
 function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|1st half|2nd half|first half|second half|half time|halftime|mi temps|1re mi temps|2e mi temps|1h|2h|ht|extra time|et|penalties|penalty|pen)(\b|$)/i.test(fixtureStatusKey(item));}
 function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard/i.test(fixtureStatusKey(item));}
 function isAnalyzableFixture(item){return !isFinishedFixture(item)&&!isNonAnalyzableFixture(item);}
-function sportScoreFixtureScore(item){const h=item?.goals?.home??item?.score?.fulltime?.home??item?.fixture?.goals?.home??item?.fixture?.score?.fulltime?.home,a=item?.goals?.away??item?.score?.fulltime?.away??item?.fixture?.goals?.away??item?.fixture?.score?.fulltime?.away;return Number.isFinite(Number(h))&&Number.isFinite(Number(a))?String(h)+"–"+String(a):"";}
+function sportScoreFixtureScore(item){
+  const readScore = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "string" && value.trim() === "") return null;
+    const score = Number(value);
+    return Number.isFinite(score) && score >= 0 ? score : null;
+  };
+  const candidates = [
+    [item?.goals?.home, item?.goals?.away],
+    [item?.score?.fulltime?.home, item?.score?.fulltime?.away],
+    [item?.fixture?.goals?.home, item?.fixture?.goals?.away],
+    [item?.fixture?.score?.fulltime?.home, item?.fixture?.score?.fulltime?.away]
+  ];
+  for (const [homeValue, awayValue] of candidates) {
+    const home = readScore(homeValue);
+    const away = readScore(awayValue);
+    if (home !== null && away !== null) return String(home) + "–" + String(away);
+  }
+  return "";
+}
 function showFinishedSportScoreMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=sportScoreFixtureScore(item),when=formatSportScoreDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
 function renderSportScoreFixtures(fixtures,checkedDate){
   const box=document.getElementById("sportScoreResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
