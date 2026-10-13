@@ -1216,6 +1216,22 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
   </section>
 
 
+  <section class="card hidden" id="batbotDailyMatchesCard">
+    <div class="section-kicker">Football • Données en direct</div>
+    <h2>⚽ Matchs du jour</h2>
+    <p class="muted">Consultez les rencontres disponibles et demandez un pronostic pour un match à venir ou en direct.</p>
+    <div class="two-columns" style="margin:12px 0">
+      <button type="button" class="btn secondary" id="sportScorePreviousDayButton" onclick="changeSportScoreDate(-1)">← Jour précédent</button>
+      <button type="button" class="btn secondary" id="sportScoreNextDayButton" onclick="changeSportScoreDate(1)">Jour suivant →</button>
+    </div>
+    <label for="sportScoreDate" class="muted">Date des rencontres</label>
+    <input type="date" id="sportScoreDate" style="margin:6px 0 10px">
+    <button type="button" class="btn primary" id="sportScoreLoadButton" onclick="loadSportScoreFixtures(document.getElementById('sportScoreDate').value)">🔎 Charger les matchs</button>
+    <button type="button" class="btn secondary" id="sportScoreLiveButton" onclick="loadSportScoreLive()">🔴 Voir les matchs en direct</button>
+    <div id="sportScoreStatus" class="status" aria-live="polite"></div>
+    <div id="sportScoreResults" class="hidden" aria-live="polite"></div>
+  </section>
+
   <section class="card" id="memberPredictionsSection">
     <div class="section-kicker">Communauté BatBot</div>
     <h2>📢 Pronostics des membres</h2>
@@ -5664,6 +5680,7 @@ document.addEventListener("keydown",function(event){
       payments:()=>findCard(t=>t.includes('Dépôts & paiements')),
       transactions:()=>document.getElementById('myTransactionsCard'),
       analysisRequest:()=>findCard(t=>t.includes('Demander une analyse')),
+      dailyMatches:()=>document.getElementById('batbotDailyMatchesCard'),
       daily:()=>findCard(t=>t.includes('Probabilités des matchs du jour')),
       partners:()=>findCard(t=>t.includes('Partenaires authentifiés')),
       groups:()=>findCard(t=>t.includes('Nos groupes')),
@@ -5736,6 +5753,7 @@ document.addEventListener("keydown",function(event){
 
     const configs={
       analyses:{title:'Analyses & IA',icon:'fa-solid fa-magnifying-glass-chart',subtitle:'Analyse et pronostics de la communauté',items:[
+        ['Matchs du jour','fa-solid fa-futbol','dailyMatches'],
         ['Demander une analyse','fa-solid fa-paper-plane','analysisRequest'],
         ['Analyse BatBot IA','fa-solid fa-brain','ai'],
         ['Pronostics des membres','fa-solid fa-bullhorn','predictions']
@@ -5786,6 +5804,7 @@ document.addEventListener("keydown",function(event){
           }
           const card=cards[item[2]]();
           openModal(card,item[0]);
+          if(item[2]==='dailyMatches')loadSportScoreFixtures(getAbidjanDate(0));
           if(item[2]==='predictions')loadMemberPredictions();
         });
         actions.appendChild(button);
