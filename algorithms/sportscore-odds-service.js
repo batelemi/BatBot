@@ -851,25 +851,32 @@ function getMatchTeamName(match, side) {
 }
 
 function getMatchScore(match, side) {
+  const readScore = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "string" && value.trim() === "") return null;
+    const score = Number(value);
+    return Number.isFinite(score) && score >= 0 ? score : null;
+  };
+
   const keys = side === "home"
     ? ["home_score", "homeScore"]
     : ["away_score", "awayScore"];
 
   for (const key of keys) {
-    const value = match?.[key];
-    if (Number.isFinite(Number(value))) return Number(value);
+    const score = readScore(match?.[key]);
+    if (score !== null) return score;
   }
 
   const containers = [match?.score, match?.scores, match?.goals, match?.result];
   for (const container of containers) {
     if (!container || typeof container !== "object") continue;
     const value = container?.[side] ?? container?.fulltime?.[side] ?? container?.current?.[side];
-    if (Number.isFinite(Number(value))) return Number(value);
+    const score = readScore(value);
+    if (score !== null) return score;
   }
 
   return null;
 }
-
 function isFinished(match) {
   // Un statut LIVE explicite est prioritaire : un match en cours peut déjà
   // avoir un score et une heure de début passée. Il ne doit jamais être
