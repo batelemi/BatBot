@@ -1660,10 +1660,12 @@ async function analyzeOne(homeName, awayName, providedFixture = null) {
   // saisie française ou un alias que /search/ ne reconnaît pas.
   const resolvedHomeName =
     providedFixture?.home ||
+    providedFixture?.teams?.home?.name ||
     homeName;
 
   const resolvedAwayName =
     providedFixture?.away ||
+    providedFixture?.teams?.away?.name ||
     awayName;
 
   const [homeTeam, awayTeam] = await Promise.all([
