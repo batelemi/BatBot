@@ -7,6 +7,8 @@ const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/pos
 const path = require("path");
 const crypto = require("crypto");
 const { analyzeSportScoreMatches } = require("./algorithms/sportscore-odds-service");
+const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
+const { mergeFootballFixtures } = require("./algorithms/football-fixtures-merge-service");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -2250,12 +2252,48 @@ async function callSportScore(endpoint, params = {}) {
 }
 
 function sportScoreStatus(status, statusText) {
-  const value = String(status || "").toLowerCase();
-  if (value === "live") return { short: "LIVE", long: statusText || "En direct" };
-  if (value === "finished") return { short: "FT", long: statusText || "Terminé" };
-  return { short: "NS", long: statusText || "Programmé" };
-}
+  const value = String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ");
 
+  const live = new Set([
+    "live", "in progress", "in play", "1h", "2h", "ht",
+    "half time", "halftime", "first half", "second half",
+    "extra time", "et", "penalties", "paused"
+  ]);
+
+  const finished = new Set([
+    "finished", "ft", "full time", "fulltime", "ended",
+    "completed", "aet", "after extra time"
+  ]);
+
+  const scheduled = new Set([
+    "ns", "scheduled", "not started", "upcoming", "timed",
+    "fixture", "pre match", "prematch"
+  ]);
+
+  const blocked = /cancel|postpon|abandon|suspend|annul|report|delay|retard|unknown|not known|tbd/;
+
+  if (live.has(value)) {
+    return { short: "LIVE", long: statusText || "En direct" };
+  }
+
+  if (finished.has(value)) {
+    return { short: "FT", long: statusText || "Terminé" };
+  }
+
+  if (blocked.test(value)) {
+    return { short: "UNKNOWN", long: statusText || String(status || "Statut bloqué") };
+  }
+
+  if (scheduled.has(value)) {
+    return { short: "NS", long: statusText || "Programmé" };
+  }
+
+  return { short: "UNKNOWN", long: statusText || String(status || "Statut inconnu") };
+}
 function normalizeSportScoreMatch(match, index = 0) {
   const homeName = String(match?.home || match?.home_team || "Équipe 1").trim();
   const awayName = String(match?.away || match?.away_team || "Équipe 2").trim();
@@ -2340,41 +2378,143 @@ app.get("/api/football/access", requireUser, async (req, res) => {
   }
 });
 
+
+const mergedFootballFixturesCache = new Map();
+const MERGED_FOOTBALL_CACHE_TTL = 30 * 1000;
+
+async function getMergedFootballFixtures(date, statusFilter = "") {
+  const key = `${date}:${statusFilter || "all"}`;
+  const cached = mergedFootballFixturesCache.get(key);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return { ...cached.value, cached: true };
+  }
+
+  // Une source peut échouer sans empêcher l'utilisation de l'autre.
+  const results = await Promise.allSettled([
+    fetchSportApiFixtures(date),
+    getSportScoreFixtures({ date })
+  ]);
+
+  const apiResult = results[0];
+  const scoreResult = results[1];
+
+  const sportApiFixtures =
+    apiResult.status === "fulfilled" &&
+    Array.isArray(apiResult.value?.fixtures)
+      ? apiResult.value.fixtures
+      : [];
+
+  const sportScoreMatches =
+    scoreResult.status === "fulfilled" &&
+    Array.isArray(scoreResult.value?.matches)
+      ? scoreResult.value.matches
+      : [];
+
+  const apiAvailable = apiResult.status === "fulfilled";
+  const scoreAvailable = scoreResult.status === "fulfilled";
+
+  if (!apiAvailable) {
+    console.warn("SportAPI.ai fixtures indisponibles:",
+      apiResult.reason?.message || "Erreur inconnue");
+  }
+
+  if (!scoreAvailable) {
+    console.warn("SportScore fixtures indisponibles:",
+      scoreResult.reason?.message || "Erreur inconnue");
+  }
+
+  if (!apiAvailable && !scoreAvailable) {
+    const error = new Error("Les sources football sont temporairement indisponibles.");
+    error.status = 502;
+    throw error;
+  }
+
+  const merged = mergeFootballFixtures(
+    sportScoreMatches,
+    sportApiFixtures
+  );
+
+  const statusMap = {
+    live: "LIVE",
+    finished: "FT",
+    upcoming: "NS"
+  };
+
+  const requiredStatus = statusMap[statusFilter];
+  const fixtures = requiredStatus
+    ? merged.filter(item => item?.fixture?.status?.short === requiredStatus)
+    : merged;
+
+  const source = apiAvailable && scoreAvailable
+    ? "SportAPI.ai+SportScore"
+    : apiAvailable
+      ? "SportAPI.ai"
+      : "SportScore";
+
+  const value = {
+    source,
+    date,
+    count: fixtures.length,
+    updated: scoreAvailable
+      ? scoreResult.value.updated || new Date().toISOString()
+      : new Date().toISOString(),
+    fixtures
+  };
+
+  mergedFootballFixturesCache.set(key, {
+    value,
+    expiresAt: Date.now() + MERGED_FOOTBALL_CACHE_TTL
+  });
+
+  return { ...value, cached: false };
+}
+
 app.get("/api/football/fixtures", requireUser, async (req, res) => {
   try {
     const currentUser = await pgGet(
       "SELECT * FROM users WHERE id=$1",
       [req.session.userId]
     );
-    const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
+
+    const premiumActive = !!(
+      currentUser &&
+      currentUser.premium_until &&
+      new Date(currentUser.premium_until) > new Date()
+    );
+
     if (!premiumActive) {
-      return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs." });
+      return res.status(403).json({
+        ok: false,
+        error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs."
+      });
     }
 
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || "")) ? String(req.query.date) : currentAbidjanDate();
-    const statusFilter = String(req.query.status || "").trim();
-    const params = { date };
-    if (["live", "finished", "upcoming"].includes(statusFilter)) params.status = statusFilter;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || ""))
+      ? String(req.query.date)
+      : currentAbidjanDate();
 
-    const data = await getSportScoreFixtures(params);
-    const fixtures = data.matches.map(normalizeSportScoreMatch);
+    const requestedStatus = String(req.query.status || "").trim();
+    const statusFilter = ["live", "finished", "upcoming"].includes(requestedStatus)
+      ? requestedStatus
+      : "";
 
-    res.json({
+    const data = await getMergedFootballFixtures(date, statusFilter);
+
+    return res.json({
       ok: true,
-      source: "sportscore",
+      source: data.source,
       checked_date: date,
-      results_count: fixtures.length,
+      results_count: data.fixtures.length,
       updated: data.updated,
       cached: data.cached,
-      response: fixtures
+      response: data.fixtures
     });
   } catch (error) {
-    console.error("SportScore fixtures:", error.message);
-    res.status(error.status || 502).json({
+    console.error("Football fixtures fusion:", error.message);
+    return res.status(error.status || 502).json({
       ok: false,
-      source: "sportscore",
-      error: "Impossible de récupérer les matchs SportScore.",
-      details: error.message
+      error: "Impossible de récupérer les matchs des sources football."
     });
   }
 });
@@ -2385,28 +2525,38 @@ app.get("/api/football/live", requireUser, async (req, res) => {
       "SELECT * FROM users WHERE id=$1",
       [req.session.userId]
     );
-    const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
+
+    const premiumActive = !!(
+      currentUser &&
+      currentUser.premium_until &&
+      new Date(currentUser.premium_until) > new Date()
+    );
+
     if (!premiumActive) {
-      return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs en direct." });
+      return res.status(403).json({
+        ok: false,
+        error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs en direct."
+      });
     }
 
-    const data = await getSportScoreFixtures({ status: "live" });
-    const fixtures = data.matches.map(normalizeSportScoreMatch);
-    res.json({
+    const date = currentAbidjanDate();
+    const data = await getMergedFootballFixtures(date, "live");
+
+    return res.json({
       ok: true,
-      source: "sportscore",
+      source: data.source,
       live: true,
-      results_count: fixtures.length,
+      checked_date: date,
+      results_count: data.fixtures.length,
       updated: data.updated,
-      response: fixtures
+      cached: data.cached,
+      response: data.fixtures
     });
   } catch (error) {
-    console.error("SportScore live:", error.message);
-    res.status(error.status || 502).json({
+    console.error("Football live fusion:", error.message);
+    return res.status(error.status || 502).json({
       ok: false,
-      source: "sportscore",
-      error: "Impossible de récupérer les matchs en direct SportScore.",
-      details: error.message
+      error: "Impossible de récupérer les matchs en direct des sources football."
     });
   }
 });
