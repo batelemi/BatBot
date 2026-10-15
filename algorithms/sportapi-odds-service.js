@@ -6,7 +6,7 @@ const API_BASE = 'https://sportapi.ai/api';
 const REQUEST_TIMEOUT_MS = 15000;
 const HISTORY_LIMIT = 12;
 const FINISHED_STATUSES = new Set([
-  'FT', 'AET', 'PEN', 'FINISHED', 'FULL_TIME', 'COMPLETED',
+  'FT', 'AET', 'PEN', 'PENS', 'FINISHED', 'FULL_TIME', 'COMPLETED',
   'AFTER_EXTRA_TIME', 'AFTER_PENALTIES', 'ENDED'
 ]);
 
@@ -129,6 +129,17 @@ function collectTeamStats(matches, teamId, teamName) {
   return stats;
 }
 
+function extractHistoryMatches(payload) {
+  const candidates = [
+    payload?.matches,
+    payload?.results,
+    payload?.data?.matches,
+    payload?.data?.results,
+    payload?.data
+  ];
+  return candidates.find(Array.isArray) || null;
+}
+
 async function fetchTeamHistory(teamId, apiKey) {
   const response = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}`, {
     method: 'GET',
@@ -137,11 +148,7 @@ async function fetchTeamHistory(teamId, apiKey) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`SportAPI.ai équipe ${teamId}: HTTP ${response.status}.`);
-  const matches = Array.isArray(payload?.matches)
-    ? payload.matches
-    : Array.isArray(payload?.data?.matches)
-      ? payload.data.matches
-      : null;
+  const matches = extractHistoryMatches(payload);
   if (!matches) throw new Error(`Réponse historique SportAPI.ai inattendue pour l'équipe ${teamId}.`);
   return matches;
 }
@@ -241,8 +248,20 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
       recommendation: model.recommendation,
       reason: model.reason,
       data_quality: model.data_quality,
-      homeTeam: { id: String(homeId), name: homeName },
-      awayTeam: { id: String(awayId), name: awayName },
+      homeTeam: {
+        id: String(homeId),
+        name: homeName,
+        logo: fixture?.teams?.home?.logo || fixture?.teams?.home?.flag || null,
+        flag: fixture?.teams?.home?.flag || fixture?.teams?.home?.logo || null,
+        slug: fixture?.teams?.home?.slug || null
+      },
+      awayTeam: {
+        id: String(awayId),
+        name: awayName,
+        logo: fixture?.teams?.away?.logo || fixture?.teams?.away?.flag || null,
+        flag: fixture?.teams?.away?.flag || fixture?.teams?.away?.logo || null,
+        slug: fixture?.teams?.away?.slug || null
+      },
       stats: { home: homeStats, away: awayStats },
       model,
       odds
@@ -261,5 +280,6 @@ module.exports = {
   analyzeSportApiMatches,
   collectTeamStats,
   isFinishedMatch,
+  extractHistoryMatches,
   readScore
 };

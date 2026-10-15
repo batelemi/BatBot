@@ -3386,12 +3386,14 @@ async function submitBatBotAI(){
           homeTeam:{
             name:item?.homeTeam?.name||first.home,
             slug:item?.homeTeam?.slug||"",
-            flag:item?.homeTeam?.flag||item?.homeTeam?.flag_emoji||item?.homeTeam?.flagEmoji||""
+            flag:item?.homeTeam?.flag||item?.homeTeam?.flag_emoji||item?.homeTeam?.flagEmoji||item?.homeTeam?.logo||item?.fixture?.teams?.home?.flag||item?.fixture?.teams?.home?.logo||"",
+            logo:item?.homeTeam?.logo||item?.fixture?.teams?.home?.logo||""
           },
           awayTeam:{
             name:item?.awayTeam?.name||first.away,
             slug:item?.awayTeam?.slug||"",
-            flag:item?.awayTeam?.flag||item?.awayTeam?.flag_emoji||item?.awayTeam?.flagEmoji||""
+            flag:item?.awayTeam?.flag||item?.awayTeam?.flag_emoji||item?.awayTeam?.flagEmoji||item?.awayTeam?.logo||item?.fixture?.teams?.away?.flag||item?.fixture?.teams?.away?.logo||"",
+            logo:item?.awayTeam?.logo||item?.fixture?.teams?.away?.logo||""
           },
           homeForm:{
             teamName:item?.homeTeam?.name||first.home,

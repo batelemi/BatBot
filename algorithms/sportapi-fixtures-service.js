@@ -6,38 +6,47 @@ const REQUEST_TIMEOUT_MS = 15000;
 function normalizeFixture(match) {
   if (!match || typeof match !== 'object') return null;
 
-  const home = String(match.home_team || '').trim();
-  const away = String(match.away_team || '').trim();
-  const id = match.id;
+  const homeObj = match.teams?.home || match.home_team_data ||
+    (match.home_team && typeof match.home_team === 'object' ? match.home_team : null) ||
+    (match.home && typeof match.home === 'object' ? match.home : {});
+  const awayObj = match.teams?.away || match.away_team_data ||
+    (match.away_team && typeof match.away_team === 'object' ? match.away_team : null) ||
+    (match.away && typeof match.away === 'object' ? match.away : {});
+  const home = String(
+    (typeof match.home_team === 'string' && match.home_team) ||
+    homeObj.name || match.home || ''
+  ).trim();
+  const away = String(
+    (typeof match.away_team === 'string' && match.away_team) ||
+    awayObj.name || match.away || ''
+  ).trim();
+  const id = match.id ?? match.fixture?.id;
   const date = String(
-    match.kickoff_utc || match.datetime || match.date || ''
+    match.kickoff_utc || match.datetime || match.date || match.fixture?.date || ''
   ).trim();
 
   if (!home || !away || id == null || !date) return null;
 
-  const rawStatus = String(match.status || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_');
+  const rawStatus = String(
+    match.status?.short || match.status?.long || match.status ||
+    match.fixture?.status?.short || match.fixture?.status?.long ||
+    match.status_code || match.state || ''
+  ).trim().toUpperCase().replace(/[\s.-]+/g, '_');
 
   const finishedStatuses = new Set([
-    'FT', 'AET', 'PEN', 'FINISHED', 'FULL_TIME', 'COMPLETED',
-    'AFTER_EXTRA_TIME', 'AFTER_PENALTIES'
+    'FT', 'AET', 'PEN', 'PENS', 'FINISHED', 'FULL_TIME', 'COMPLETED',
+    'AFTER_EXTRA_TIME', 'AFTER_PENALTIES', 'ENDED'
   ]);
-
   const blockedStatuses = new Set([
-    'CANCELLED', 'CANCELED', 'POSTPONED',
-    'ABANDONED', 'SUSPENDED'
+    'CANCELLED', 'CANCELED', 'POSTPONED', 'ABANDONED', 'SUSPENDED'
   ]);
-
   const scheduledStatuses = new Set([
-    'SCHEDULED', 'NS', 'NOT_STARTED', 'TIMED', 'UPCOMING'
+    'SCHEDULED', 'NS', 'NOT_STARTED', 'TIMED', 'UPCOMING', 'FIXTURE'
   ]);
-
   const liveStatuses = new Set([
     'LIVE', '1H', '2H', 'HT', 'ET', 'IN_PLAY', 'PAUSED',
-    'IN_PROGRESS', 'FIRST_HALF', 'SECOND_HALF',
-    'HALF_TIME', 'HALFTIME', 'EXTRA_TIME'
+    'IN_PROGRESS', 'FIRST_HALF', 'SECOND_HALF', 'HALF_TIME',
+    'HALFTIME', 'EXTRA_TIME', 'PENALTIES'
   ]);
 
   let status = 'UNKNOWN';
@@ -46,13 +55,25 @@ function normalizeFixture(match) {
   else if (scheduledStatuses.has(rawStatus)) status = 'NS';
   else if (liveStatuses.has(rawStatus)) status = 'LIVE';
 
+  const homeScore = match.home_score ?? match.goals?.home ?? match.score?.home;
+  const awayScore = match.away_score ?? match.goals?.away ?? match.score?.away;
   const validScore =
-    match.home_score != null &&
-    match.away_score != null &&
-    Number.isFinite(Number(match.home_score)) &&
-    Number.isFinite(Number(match.away_score)) &&
-    Number(match.home_score) >= 0 &&
-    Number(match.away_score) >= 0;
+    homeScore != null && awayScore != null &&
+    homeScore !== '' && awayScore !== '' &&
+    Number.isFinite(Number(homeScore)) &&
+    Number.isFinite(Number(awayScore)) &&
+    Number(homeScore) >= 0 && Number(awayScore) >= 0;
+
+  const homeId = match.home_id ?? match.home_team_id ?? homeObj.id ?? null;
+  const awayId = match.away_id ?? match.away_team_id ?? awayObj.id ?? null;
+  const homeLogo = match.home_logo || match.home_team_logo ||
+    homeObj.logo || homeObj.flag || match.teams?.home?.logo || null;
+  const awayLogo = match.away_logo || match.away_team_logo ||
+    awayObj.logo || awayObj.flag || match.teams?.away?.logo || null;
+  const leagueObj = match.league || match.competition || {};
+  const leagueId = match.league_id ?? leagueObj.id ?? null;
+  const leagueName = (typeof leagueObj === 'object' ? leagueObj.name : leagueObj) ||
+    match.league_name || 'Compétition inconnue';
 
   return {
     fixture: {
@@ -60,28 +81,32 @@ function normalizeFixture(match) {
       date,
       status: {
         short: status,
-        long: String(match.status || 'Statut inconnu')
+        long: String(match.status?.long || match.status?.short || match.status || 'Statut inconnu')
       }
     },
     teams: {
       home: {
-        id: match.home_id == null ? null : String(match.home_id),
+        id: homeId == null ? null : String(homeId),
         name: home,
-        logo: match.home_logo || null
+        logo: homeLogo,
+        flag: homeObj.flag || null,
+        slug: homeObj.slug || null
       },
       away: {
-        id: match.away_id == null ? null : String(match.away_id),
+        id: awayId == null ? null : String(awayId),
         name: away,
-        logo: match.away_logo || null
+        logo: awayLogo,
+        flag: awayObj.flag || null,
+        slug: awayObj.slug || null
       }
     },
     league: {
-      id: match.league_id == null ? null : String(match.league_id),
-      name: String(match.league_name || 'Compétition inconnue')
+      id: leagueId == null ? null : String(leagueId),
+      name: String(leagueName)
     },
     goals: {
-      home: validScore ? Number(match.home_score) : null,
-      away: validScore ? Number(match.away_score) : null
+      home: validScore ? Number(homeScore) : null,
+      away: validScore ? Number(awayScore) : null
     },
     sportapi: {
       status: rawStatus,
