@@ -6,9 +6,8 @@ const bcrypt = require("bcryptjs");
 const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
 const path = require("path");
 const crypto = require("crypto");
-const { analyzeSportScoreMatches } = require("./algorithms/sportscore-odds-service");
+const { analyzeSportApiMatches } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
-const { mergeFootballFixtures } = require("./algorithms/football-fixtures-merge-service");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -1304,92 +1303,29 @@ function broadcastMemberPredictionEvent(payload) {
   }
 }
 
-async function sportScoreSearchTeams(query, limit = 8) {
-  const q = String(query || '').trim();
-  if (q.length < 2) return [];
-  const url = new URL("https://sportscore.com/api/v1/search/");
-  url.searchParams.set("sport", "football");
-  url.searchParams.set("q", q);
-  url.searchParams.set("limit", String(Math.min(Math.max(Number(limit) || 8, 1), 20)));
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(`SportScore search HTTP ${response.status}`);
-    error.status = response.status;
-    throw error;
-  }
-  return Array.isArray(data?.teams) ? data.teams : [];
-}
-
 async function validateFootballTeamForAI(teamName, teamId = "") {
-  const name = String(teamName || '').trim();
-  const id = String(teamId || '').trim();
+  const name = String(teamName || "").trim();
+  const id = String(teamId || "").trim();
   if (!name && !id) return false;
 
-  const cacheBase = id ? `id:${id}` : `name:${name}`;
-  const cacheKey = cacheBase.toLowerCase().normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9:]+/g,' ')
-    .trim();
-
+  const cacheKey = (id ? `id:${id}` : `name:${name}`).toLowerCase();
   const cached = footballTeamCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.valid;
 
-  // 1) Le catalogue local reste prioritaire pour les équipes déjà connues.
   if (name && typeof validateLocalFootballTeam === "function" && validateLocalFootballTeam(name)) {
     footballTeamCache.set(cacheKey, { valid: true, expiresAt: Date.now() + 15 * 60 * 1000 });
     return true;
   }
 
-  // 2) Si l'équipe provient directement d'un résultat SportScore côté navigateur,
-  // son slug est déjà un identifiant SportScore exploitable. Cela évite de dépendre
-  // d'un appel serveur-à-serveur qui peut être bloqué par l'hébergeur.
-  // Les identifiants renvoyés par SportScore peuvent être des slugs, des IDs
-  // numériques ou d'autres identifiants courts. Dès lors qu'ils proviennent
-  // directement du résultat SportScore côté navigateur, ils sont considérés
-  // comme fiables et on évite tout nouvel appel serveur-à-serveur.
+  // Ne jamais fabriquer un identifiant d'équipe à partir de son nom.
+  // L'identifiant fourni doit provenir d'une fixture SportAPI.ai réelle.
   if (id && /^[a-z0-9][a-z0-9_-]{0,199}$/i.test(id)) {
-    footballTeamCache.set(cacheKey, { valid: true, slug: id, expiresAt: Date.now() + 15 * 60 * 1000 });
+    footballTeamCache.set(cacheKey, { valid: true, expiresAt: Date.now() + 15 * 60 * 1000 });
     return true;
   }
 
-  // 3) Fallback : SportScore devient la source officielle de validation des équipes.
-  const searchNames = [];
-  if (name) searchNames.push(name);
-  const simplified = name
-    .replace(/\bfootball club\b/gi, " ")
-    .replace(/\b(fc|cf|sc|afc|ac)\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (simplified && simplified.toLowerCase() !== name.toLowerCase()) searchNames.push(simplified);
-
-  try {
-    for (const searchName of searchNames) {
-      const teams = await sportScoreSearchTeams(searchName, 10);
-      const normalizedTarget = normalizeFootballTeamName(searchName);
-      const match = teams.find(team => {
-        const candidate = normalizeFootballTeamName(team?.name || "");
-        return candidate === normalizedTarget ||
-          candidate.includes(normalizedTarget) ||
-          normalizedTarget.includes(candidate);
-      });
-      if (match) {
-        footballTeamCache.set(cacheKey, {
-          valid: true,
-          slug: match.slug || null,
-          team: match,
-          expiresAt: Date.now() + 15 * 60 * 1000
-        });
-        return true;
-      }
-    }
-
-    footballTeamCache.set(cacheKey, { valid: false, expiresAt: Date.now() + 15 * 60 * 1000 });
-    return false;
-  } catch (error) {
-    console.error('TEAM VALIDATION SPORTSCORE:', error.message);
-    return null;
-  }
+  footballTeamCache.set(cacheKey, { valid: false, expiresAt: Date.now() + 15 * 60 * 1000 });
+  return false;
 }
 
 app.get('/api/member-predictions/stream', requireUser, (req, res) => {
@@ -1412,8 +1348,8 @@ setInterval(() => cleanupExpiredMemberPredictions(true), 60 * 1000);
 
 // Catalogue local des équipes reconnues par les publications de membres.
 // IMPORTANT : ce catalogue est volontairement local : aucune requête externe
-// n'est effectuée lors de la publication d'un pronostic membre. SportScore
-// est utilisé uniquement par les fonctions football/IA qui en ont besoin.
+// n'est effectuée lors de la publication d'un pronostic membre. Les données
+// football sont fournies par SportAPI.ai dans les routes dédiées.
 const FOOTBALL_TEAMS_FILE = path.join(__dirname, "data", "football-teams.json");
 let LOCAL_FOOTBALL_TEAMS;
 try {
@@ -1424,11 +1360,11 @@ try {
     .map(team => team.trim());
 } catch (error) {
   // Le catalogue local est un accélérateur de validation, pas une dépendance
-  // obligatoire. L'IA peut toujours valider une équipe par son ID ou via
-  // la recherche SportScore. Cela évite qu'un déploiement incomplet
+  // obligatoire. L'IA peut toujours valider une équipe par son ID SportAPI.ai.
+  // Cela évite qu'un déploiement incomplet
   // empêche tout le serveur de démarrer.
   LOCAL_FOOTBALL_TEAMS = [];
-  console.warn("CATALOGUE ÉQUIPES LOCALES indisponible, validation SportScore activée:", error.message);
+  console.warn("CATALOGUE ÉQUIPES LOCALES indisponible:", error.message);
 }
 
 function normalizeFootballTeamName(value) {
@@ -2075,19 +2011,26 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       }
     }
 
-    const analysis = await analyzeSportScoreMatches(matches);
+    const validFixtures = matches
+      .map(item => item?.fixture)
+      .filter(fixture => fixture?.teams?.home?.id && fixture?.teams?.away?.id);
 
-    return res.json({
-      ok: true,
-      source: "SportScore",
-      ...analysis
-    });
+    if (!validFixtures.length) {
+      return res.status(400).json({
+        ok: false,
+        source: "SportAPI.ai",
+        error: "Sélectionnez un match proposé par SportAPI.ai avec les identifiants réels des deux équipes. Une saisie manuelle seule ne permet pas de récupérer un historique fiable."
+      });
+    }
+
+    const analysis = await analyzeSportApiMatches(validFixtures);
+    return res.json({ ok: true, source: "SportAPI.ai", ...analysis });
   } catch (error) {
-    console.error("SportScore odds analysis:", error.message);
+    console.error("SportAPI.ai odds analysis:", error.message);
 
     return res.status(502).json({
       ok: false,
-      source: "SportScore",
+      source: "SportAPI.ai",
       error: "Impossible de calculer l'analyse statistique des cotes.",
       details: error.message
     });
@@ -2156,14 +2099,14 @@ app.post("/api/ai/analyze", requireUser, async (req, res) => {
     : '';
   const evidence = req.body.analysis_evidence && typeof req.body.analysis_evidence === "object" ? req.body.analysis_evidence : null;
   const models = Array.isArray(req.body.analysis_models) ? req.body.analysis_models : [];
-  const compactEvidence = evidence ? JSON.stringify(evidence).slice(0, 42000) : "Aucune donnée statistique SportScore supplémentaire n’a été fournie.";
-  const modelInstruction = models.length ? `\nMODÈLE STATISTIQUE BATBOT (à respecter exactement pour les pourcentages) :\n${JSON.stringify(models)}\nLes valeurs 1/X/2 et les probabilités d’options fournies par ce modèle sont calculées à partir des données SportScore disponibles. Tu ne dois pas les inventer ni les modifier. Tu peux seulement expliquer leur lecture et choisir une recommandation cohérente.` : "";
+  const compactEvidence = evidence ? JSON.stringify(evidence).slice(0, 42000) : "Aucune donnée statistique SportAPI.ai supplémentaire n’a été fournie.";
+  const modelInstruction = models.length ? `\nMODÈLE STATISTIQUE BATBOT (à respecter exactement pour les pourcentages) :\n${JSON.stringify(models)}\nLes valeurs 1/X/2 et les probabilités d’options fournies par ce modèle sont calculées à partir des données SportAPI.ai disponibles. Tu ne dois pas les inventer ni les modifier. Tu peux seulement expliquer leur lecture et choisir une recommandation cohérente.` : "";
   const prompt = `Tu es BatBot IA, assistant d’analyse football. Réponds uniquement avec un JSON valide, sans introduction, sans Markdown et sans texte supplémentaire.
 
 Matchs à analyser :
 ${matches.join("\n")}
 
-DONNÉES SPORTIVES RÉELLES DISPONIBLES (SportScore) :
+DONNÉES SPORTIVES RÉELLES DISPONIBLES (SportAPI.ai) :
 ${compactEvidence}
 ${modelInstruction}
 
@@ -2191,7 +2134,7 @@ Utilise exactement cette structure :
   ]${combinedStructure}
 }`;
 
-  const systemInstruction = "Retourne uniquement le JSON demandé en français. Utilise exclusivement les données SportScore et le modèle statistique fournis. Ne présente jamais une estimation comme une certitude.";
+  const systemInstruction = "Retourne uniquement le JSON demandé en français. Utilise exclusivement les données SportAPI.ai et le modèle statistique fournis. Ne présente jamais une estimation comme une certitude.";
 
   try {
     let analysis = "";
@@ -2255,151 +2198,12 @@ Utilise exactement cette structure :
 });
 
 
-// ===== SPORTSCORE FOOTBALL API =====
-// Source football principale de BATBOT. SportScore fournit une API REST publique
-// sans clé pour le niveau gratuit, avec attribution visible requise.
-const SPORTSCORE_BASE = "https://sportscore.com/api/v1";
-const footballFixturesCache = new Map();
-const FOOTBALL_FIXTURES_CACHE_TTL = 30 * 1000;
-
-function sportScoreUrl(endpoint, params = {}) {
-  const url = new URL(`${SPORTSCORE_BASE}/${endpoint.replace(/^\//, '')}`);
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  }
-  // Identifie volontairement l'application dans les statistiques de SportScore.
-  url.searchParams.set("src", "batbot");
-  return url;
-}
-
-async function callSportScore(endpoint, params = {}) {
-  const url = sportScoreUrl(endpoint, params);
-  const response = await fetch(url, {
-    method: "GET",
-    headers: { Accept: "application/json" }
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = data?.error || data?.message || `SportScore HTTP ${response.status}`;
-    const error = new Error(message);
-    error.status = response.status || 502;
-    throw error;
-  }
-  return data;
-}
-
-function sportScoreStatus(status, statusText) {
-  const value = String(status || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[._-]+/g, " ")
-    .replace(/\s+/g, " ");
-
-  const live = new Set([
-    "live", "in progress", "in play", "1h", "2h", "ht",
-    "half time", "halftime", "first half", "second half",
-    "extra time", "et", "penalties", "paused"
-  ]);
-
-  const finished = new Set([
-    "finished", "ft", "full time", "fulltime", "ended",
-    "completed", "aet", "after extra time"
-  ]);
-
-  const scheduled = new Set([
-    "ns", "scheduled", "not started", "upcoming", "timed",
-    "fixture", "pre match", "prematch"
-  ]);
-
-  const blocked = /cancel|postpon|abandon|suspend|annul|report|delay|retard|unknown|not known|tbd/;
-
-  if (live.has(value)) {
-    return { short: "LIVE", long: statusText || "En direct" };
-  }
-
-  if (finished.has(value)) {
-    return { short: "FT", long: statusText || "Terminé" };
-  }
-
-  if (blocked.test(value)) {
-    return { short: "UNKNOWN", long: statusText || String(status || "Statut bloqué") };
-  }
-
-  if (scheduled.has(value)) {
-    return { short: "NS", long: statusText || "Programmé" };
-  }
-
-  return { short: "UNKNOWN", long: statusText || String(status || "Statut inconnu") };
-}
-function normalizeSportScoreMatch(match, index = 0) {
-  const homeName = String(match?.home || match?.home_team || "Équipe 1").trim();
-  const awayName = String(match?.away || match?.away_team || "Équipe 2").trim();
-  const readScore = (value) => {
-    if (value === null || value === undefined) return null;
-    if (typeof value === "string" && value.trim() === "") return null;
-    const score = Number(value);
-    return Number.isFinite(score) && score >= 0 ? score : null;
-  };
-  const homeScore = readScore(match?.home_score);
-  const awayScore = readScore(match?.away_score);
-  const date = match?.time || match?.date || null;
-  const competitionName = match?.competition || match?.league || "Compétition";
-  const slug = match?.slug || `${homeName}-vs-${awayName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return {
-    fixture: {
-      id: String(match?.id || slug || index),
-      date,
-      status: sportScoreStatus(match?.status, match?.status_text)
-    },
-    teams: {
-      home: { id: String(match?.home_slug || homeName), name: homeName, logo: match?.home_logo || null },
-      away: { id: String(match?.away_slug || awayName), name: awayName, logo: match?.away_logo || null }
-    },
-    league: {
-      id: String(match?.competition_slug || competitionName),
-      name: competitionName,
-      slug: match?.competition_slug || null
-    },
-    goals: { home: homeScore, away: awayScore },
-    score: { fulltime: { home: homeScore, away: awayScore } },
-    sportscore: {
-      slug,
-      uri: match?.uri || null,
-      status: match?.status || null,
-      status_text: match?.status_text || null,
-      raw: match
-    }
-  };
-}
-
 function currentAbidjanDate() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Africa/Abidjan", year: "numeric", month: "2-digit", day: "2-digit"
   }).format(new Date());
 }
 
-async function getSportScoreFixtures(params = {}) {
-  const cacheKey = JSON.stringify(params);
-  const cached = footballFixturesCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return { ...cached.value, cached: true };
-
-  const data = await callSportScore("fixtures/", {
-    sport: "football",
-    limit: 200,
-    ...params
-  });
-  const matches = Array.isArray(data?.matches) ? data.matches : [];
-  const value = {
-    sport: "football",
-    count: Number(data?.count ?? matches.length),
-    matches,
-    updated: data?.updated || null
-  };
-  footballFixturesCache.set(cacheKey, { value, expiresAt: Date.now() + FOOTBALL_FIXTURES_CACHE_TTL });
-  return { ...value, cached: false };
-}
 
 app.get("/api/football/access", requireUser, async (req, res) => {
   try {
@@ -2411,101 +2215,37 @@ app.get("/api/football/access", requireUser, async (req, res) => {
     if (!premiumActive) {
       return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux données football." });
     }
-    return res.json({ ok: true, source: "sportscore", access: true });
+    return res.json({ ok: true, source: "SportAPI.ai", access: true });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "Vérification de l'accès football indisponible." });
   }
 });
 
 
-const mergedFootballFixturesCache = new Map();
-const MERGED_FOOTBALL_CACHE_TTL = 30 * 1000;
+const sportApiFixturesCache = new Map();
+const SPORTAPI_FIXTURES_CACHE_TTL = 30 * 1000;
 
-async function getMergedFootballFixtures(date, statusFilter = "") {
+async function getSportApiFixturesCached(date, statusFilter = "") {
   const key = `${date}:${statusFilter || "all"}`;
-  const cached = mergedFootballFixturesCache.get(key);
+  const cached = sportApiFixturesCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return { ...cached.value, cached: true };
 
-  if (cached && cached.expiresAt > Date.now()) {
-    return { ...cached.value, cached: true };
-  }
-
-  // Une source peut échouer sans empêcher l'utilisation de l'autre.
-  const results = await Promise.allSettled([
-    fetchSportApiFixtures(date),
-    getSportScoreFixtures({ date })
-  ]);
-
-  const apiResult = results[0];
-  const scoreResult = results[1];
-
-  const sportApiFixtures =
-    apiResult.status === "fulfilled" &&
-    Array.isArray(apiResult.value?.fixtures)
-      ? apiResult.value.fixtures
-      : [];
-
-  const sportScoreMatches =
-    scoreResult.status === "fulfilled" &&
-    Array.isArray(scoreResult.value?.matches)
-      ? scoreResult.value.matches
-      : [];
-
-  const apiAvailable = apiResult.status === "fulfilled";
-  const scoreAvailable = scoreResult.status === "fulfilled";
-
-  if (!apiAvailable) {
-    console.warn("SportAPI.ai fixtures indisponibles:",
-      apiResult.reason?.message || "Erreur inconnue");
-  }
-
-  if (!scoreAvailable) {
-    console.warn("SportScore fixtures indisponibles:",
-      scoreResult.reason?.message || "Erreur inconnue");
-  }
-
-  if (!apiAvailable && !scoreAvailable) {
-    const error = new Error("Les sources football sont temporairement indisponibles.");
-    error.status = 502;
-    throw error;
-  }
-
-  const merged = mergeFootballFixtures(
-    sportScoreMatches,
-    sportApiFixtures
-  );
-
-  const statusMap = {
-    live: "LIVE",
-    finished: "FT",
-    upcoming: "NS"
-  };
-
+  const apiResult = await fetchSportApiFixtures(date);
+  const statusMap = { live: "LIVE", finished: "FT", upcoming: "NS" };
   const requiredStatus = statusMap[statusFilter];
+  const allFixtures = Array.isArray(apiResult?.fixtures) ? apiResult.fixtures : [];
   const fixtures = requiredStatus
-    ? merged.filter(item => item?.fixture?.status?.short === requiredStatus)
-    : merged;
-
-  const source = apiAvailable && scoreAvailable
-    ? "SportAPI.ai+SportScore"
-    : apiAvailable
-      ? "SportAPI.ai"
-      : "SportScore";
+    ? allFixtures.filter(item => item?.fixture?.status?.short === requiredStatus)
+    : allFixtures;
 
   const value = {
-    source,
+    source: "SportAPI.ai",
     date,
     count: fixtures.length,
-    updated: scoreAvailable
-      ? scoreResult.value.updated || new Date().toISOString()
-      : new Date().toISOString(),
+    updated: new Date().toISOString(),
     fixtures
   };
-
-  mergedFootballFixturesCache.set(key, {
-    value,
-    expiresAt: Date.now() + MERGED_FOOTBALL_CACHE_TTL
-  });
-
+  sportApiFixturesCache.set(key, { value, expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL });
   return { ...value, cached: false };
 }
 
@@ -2538,7 +2278,7 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       ? requestedStatus
       : "";
 
-    const data = await getMergedFootballFixtures(date, statusFilter);
+    const data = await getSportApiFixturesCached(date, statusFilter);
 
     return res.json({
       ok: true,
@@ -2550,10 +2290,10 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       response: data.fixtures
     });
   } catch (error) {
-    console.error("Football fixtures fusion:", error.message);
+    console.error("SportAPI.ai fixtures:", error.message);
     return res.status(error.status || 502).json({
       ok: false,
-      error: "Impossible de récupérer les matchs des sources football."
+      error: "Impossible de récupérer les matchs SportAPI.ai."
     });
   }
 });
@@ -2579,7 +2319,7 @@ app.get("/api/football/live", requireUser, async (req, res) => {
     }
 
     const date = currentAbidjanDate();
-    const data = await getMergedFootballFixtures(date, "live");
+    const data = await getSportApiFixturesCached(date, "live");
 
     return res.json({
       ok: true,
@@ -2592,58 +2332,20 @@ app.get("/api/football/live", requireUser, async (req, res) => {
       response: data.fixtures
     });
   } catch (error) {
-    console.error("Football live fusion:", error.message);
+    console.error("SportAPI.ai live:", error.message);
     return res.status(error.status || 502).json({
       ok: false,
-      error: "Impossible de récupérer les matchs en direct des sources football."
+      error: "Impossible de récupérer les matchs en direct SportAPI.ai."
     });
-  }
-});
-
-app.get("/api/football/search", requireUser, async (req, res) => {
-  try {
-    const query = String(req.query.q || "").trim();
-    if (query.length < 2) return res.status(400).json({ ok: false, error: "La recherche doit contenir au moins 2 caractères." });
-    const teams = await sportScoreSearchTeams(query, 20);
-    res.json({ ok: true, source: "sportscore", query, teams });
-  } catch (error) {
-    console.error("SportScore search:", error.message);
-    res.status(error.status || 502).json({ ok: false, source: "sportscore", error: "Recherche d'équipe indisponible.", details: error.message });
-  }
-});
-
-app.get("/api/football/h2h", requireUser, async (req, res) => {
-  try {
-    const team1 = String(req.query.team1 || "").trim();
-    const team2 = String(req.query.team2 || "").trim();
-    if (!team1 || !team2) return res.status(400).json({ ok: false, error: "Les deux équipes sont nécessaires pour le H2H." });
-    const data = await callSportScore("h2h/", { sport: "football", team1, team2, limit: 20 });
-    res.json({ ok: true, source: "sportscore", ...data });
-  } catch (error) {
-    console.error("SportScore H2H:", error.message);
-    res.status(error.status || 502).json({ ok: false, source: "sportscore", error: "Historique H2H indisponible.", details: error.message });
-  }
-});
-
-app.get("/api/football/match", requireUser, async (req, res) => {
-  try {
-    const slug = String(req.query.slug || "").trim();
-    if (!slug) return res.status(400).json({ ok: false, error: "Le slug du match est nécessaire." });
-    const data = await callSportScore("match/", { sport: "football", slug });
-    res.json({ ok: true, source: "sportscore", ...data });
-  } catch (error) {
-    console.error("SportScore match:", error.message);
-    res.status(error.status || 502).json({ ok: false, source: "sportscore", error: "Détails du match indisponibles.", details: error.message });
   }
 });
 
 app.get("/api/football/status", requireUser, async (_req, res) => {
   res.json({
     ok: true,
-    source: "sportscore",
-    api_key_required: false,
-    attribution_required: true,
-    message: "SportScore est la source football active de BATBOT."
+    source: "SportAPI.ai",
+    api_key_required: true,
+    message: "SportAPI.ai est l’unique source de données football de BATBOT."
   });
 });
 

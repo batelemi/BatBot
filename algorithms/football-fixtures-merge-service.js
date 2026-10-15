@@ -105,7 +105,7 @@ function normalizeFixture(match, source) {
 
   const fixtureId =
     match?.fixture?.id ?? match?.id ??
-    match?.sportapi?.rawId ?? match?.sportscore?.id ?? null;
+    match?.sportapi?.rawId ?? null;
 
   const existingLeague = match?.league || match?.competition;
   const leagueName =
@@ -185,33 +185,14 @@ function sameFixture(a, b) {
   return Math.abs(timeA - timeB) <= 2 * 60 * 60 * 1000;
 }
 
-function mergeFootballFixtures(sportScoreMatches, sportApiMatches) {
+function mergeFootballFixtures(sportApiMatches) {
   const sportApi = Array.isArray(sportApiMatches) ? sportApiMatches : [];
-  const sportScore = Array.isArray(sportScoreMatches) ? sportScoreMatches : [];
-
-  const merged = [];
-
-  // La source prioritaire est insérée en premier.
+  const fixtures = [];
   for (const item of sportApi) {
     const fixture = normalizeFixture(item, 'SportAPI.ai');
-    if (fixture) merged.push(fixture);
+    if (fixture) fixtures.push(fixture);
   }
-
-  for (const item of sportScore) {
-    const fixture = normalizeFixture(item, 'SportScore');
-    if (!fixture) continue;
-
-    const duplicateIndex = merged.findIndex(existing =>
-      sameFixture(existing, fixture)
-    );
-
-    if (duplicateIndex === -1) {
-      merged.push(fixture);
-    }
-    // En cas de doublon, on conserve la version SportAPI.ai.
-  }
-
-  return merged;
+  return fixtures;
 }
 
 module.exports = {

@@ -1221,15 +1221,15 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
     <h2>⚽ Matchs du jour</h2>
     <p class="muted">Consultez les rencontres disponibles et demandez un pronostic pour un match à venir ou en direct.</p>
     <div class="two-columns" style="margin:12px 0">
-      <button type="button" class="btn secondary" id="sportScorePreviousDayButton" onclick="changeSportScoreDate(-1)">← Jour précédent</button>
-      <button type="button" class="btn secondary" id="sportScoreNextDayButton" onclick="changeSportScoreDate(1)">Jour suivant →</button>
+      <button type="button" class="btn secondary" id="footballPreviousDayButton" onclick="changeFootballDate(-1)">← Jour précédent</button>
+      <button type="button" class="btn secondary" id="footballNextDayButton" onclick="changeFootballDate(1)">Jour suivant →</button>
     </div>
-    <label for="sportScoreDate" class="muted">Date des rencontres</label>
-    <input type="date" id="sportScoreDate" style="margin:6px 0 10px">
-    <button type="button" class="btn primary" id="sportScoreLoadButton" onclick="loadSportScoreFixtures(document.getElementById('sportScoreDate').value)">🔎 Charger les matchs</button>
-    <button type="button" class="btn secondary" id="sportScoreLiveButton" onclick="loadSportScoreLive()">🔴 Voir les matchs en direct</button>
-    <div id="sportScoreStatus" class="status" aria-live="polite"></div>
-    <div id="sportScoreResults" class="hidden" aria-live="polite"></div>
+    <label for="footballDate" class="muted">Date des rencontres</label>
+    <input type="date" id="footballDate" style="margin:6px 0 10px">
+    <button type="button" class="btn primary" id="footballLoadButton" onclick="loadFootballFixtures(document.getElementById('footballDate').value)">🔎 Charger les matchs</button>
+    <button type="button" class="btn secondary" id="footballLiveButton" onclick="loadFootballLive()">🔴 Voir les matchs en direct</button>
+    <div id="footballStatus" class="status" aria-live="polite"></div>
+    <div id="footballResults" class="hidden" aria-live="polite"></div>
   </section>
 
   <section class="card" id="memberPredictionsSection">
@@ -1560,7 +1560,7 @@ PSG vs Marseille"></textarea>
     <div class="notice"><strong>3. Analyse</strong><br><br>L’analyse utilise les informations disponibles sur le match pour présenter les statistiques et les éléments disponibles.</div>
       <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
     <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
-    <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportScore</strong>. BATBOT utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
+    <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportAPI.ai</strong>. BATBOT utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
     </details>
   </div>
 
@@ -2717,7 +2717,7 @@ function splitMatch(value){
     return {home:parts[0]||"",away:parts.slice(1).join(" vs ")||"",raw:text};
   }
 
-  // Sans séparateur, on laisse le service SportScore déterminer la coupure
+  // Sans séparateur, on laisse le parseur déterminer la coupure
   // entre les deux équipes. Cela permet les noms composés.
   return {home:"",away:"",raw:text};
 }
@@ -2764,7 +2764,7 @@ function closeBatBotTicketModal(){
   modal.setAttribute("aria-hidden","true");
 }
 function buildBatBotTicketText(data){
-  const lines=["BATBOT IA — TICKET D’ANALYSE","DONNÉES SPORTCORE",""];
+  const lines=["BATBOT IA — TICKET D’ANALYSE","DONNÉES SPORTAPI.AI",""];
   (data?.matches||[]).forEach(function(match,index){
     lines.push((index+1)+". "+(match.name||"Match"));
     lines.push("Choix : "+(match.recommendation||"—"));
@@ -2877,7 +2877,7 @@ function renderBatBotModelCard(model,fixture,evidence){
   const expected=batBotFormatExpectedGoals(model?.expected_goals??model?.expectedGoals);
   const best=batBotFormatMostLikelyScore(model?.bestScore??model?.most_likely_score??model?.mostLikelyScore);
   if(isLiveFixture(fixture)){
-    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel : <strong>'+escapeHtml(sportScoreFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
+    return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT — direct</strong><br>⚽ Score actuel : <strong>'+escapeHtml(footballFixtureScore(fixture)||"Score indisponible")+'</strong><br>📊 Buts attendus de base : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br><span style="opacity:.8">Le score exact final n’est pas affiché pour un match en direct lorsqu’aucune minute de jeu fiable n’est disponible.</span></div>';
   }
   return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus (domicile • extérieur) : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(best)+'</strong><br></div>';
 }
@@ -3069,7 +3069,7 @@ function renderBatBotAIResult(raw,modelData){
           :'<span class="batbot-status">Terminé</span>';
 
     const score=
-      sportScoreFixtureScore(fixture)||
+      footballFixtureScore(fixture)||
       "0–0";
 
     const homeWins=Number.isFinite(Number(hf.wins))?Number(hf.wins):0;
@@ -3176,7 +3176,7 @@ function renderBatBotAIResult(raw,modelData){
           statusHtml+
         '</div>'+
         '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
-        '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatSportScoreDateTime(fixture.date):"Date non disponible")+'</div>'+
+        '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatFootballDateTime(fixture.date):"Date non disponible")+'</div>'+
         '<div class="batbot-real-score">'+escapeHtml(score)+'</div>'+
       '</div>';
     }
@@ -3200,7 +3200,7 @@ function renderBatBotAIResult(raw,modelData){
       '<div class="batbot-match-meta">📅 '+
         escapeHtml(
           fixture?.date
-            ?formatSportScoreDateTime(fixture.date)
+            ?formatFootballDateTime(fixture.date)
             :"Date non disponible"
         )+
       '</div>'+
@@ -3303,433 +3303,6 @@ function renderBatBotAIResult(raw,modelData){
   box.innerHTML=html;
 }
 
-function sportScoreExtractStandings(data){
-  const candidates=[data?.standings,data?.table,data?.rows,data?.results,data?.data?.standings,data?.data?.table,data?.data?.rows,data?.data?.results];
-  return candidates.find(Array.isArray)||[];
-}
-function sportScoreMatchForEvidence(match){
-  const homeObj=match?.teams?.home||match?.home_team_data||match?.home_team||{};
-  const awayObj=match?.teams?.away||match?.away_team_data||match?.away_team||{};
-  const home=String(match?.home||match?.home_team?.name||homeObj?.name||match?.teams?.home?.team?.name||"").trim();
-  const away=String(match?.away||match?.away_team?.name||awayObj?.name||match?.teams?.away?.team?.name||"").trim();
-  const scoreCandidates=[
-    match?.score?.fulltime,match?.score?.full_time,match?.score,
-    match?.scores?.fulltime,match?.scores?.full_time,match?.scores?.final,match?.scores,
-    match?.result,match?.goals,match?.result?.score
-  ];
-  const pick=(side)=>{
-    const direct=side==="home"?[match?.home_score,match?.homeScore,match?.goals_home,match?.homeGoals]:[match?.away_score,match?.awayScore,match?.goals_away,match?.awayGoals];
-    for(const v of direct){if(v!==null&&v!==undefined&&String(v).trim()!==""&&Number.isFinite(Number(v)))return Number(v);}
-    for(const obj of scoreCandidates){
-      if(obj&&typeof obj==="object"){
-        const keys=side==="home"?["home","home_score","homeScore","host"]:["away","away_score","awayScore","guest"];
-        for(const k of keys){const v=obj[k];if(v!==null&&v!==undefined&&String(v).trim()!==""&&Number.isFinite(Number(v)))return Number(v);}
-      }
-    }
-    return null;
-  };
-  const hs=pick("home"),as=pick("away");
-  const date=match?.time||match?.date||match?.start_time||match?.startTime||match?.fixture?.date||null;
-  const status=String(match?.status||match?.status_text||match?.statusText||match?.state||match?.fixture?.status?.short||match?.fixture?.status?.long||"").toLowerCase();
-  const hasScore=Number.isFinite(hs)&&Number.isFinite(as)&&hs>=0&&as>=0;
-  return {home,away,homeScore:hasScore?hs:null,awayScore:hasScore?as:null,date,status,hasScore,slug:String(match?.slug||match?.fixture?.slug||"")};
-}
-function sportScoreFinishedForEvidence(m){
-  if(!m||!m.hasScore)return false;
-  const st=String(m.status||"").toLowerCase();
-  if(/cancel|postpon|scheduled|not started|upcoming|live|half time|halftime|in progress|suspend|abandon/i.test(st))return false;
-  if(/finish|full time|fulltime|ended|completed|ft\b/i.test(st))return true;
-  const t=m.date?new Date(m.date).getTime():NaN;
-  return Number.isFinite(t)&&t<=(Date.now()-2*60*1000);
-}
-function sportScoreNameKey(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\b(fc|cf|sc|afc|ac|club|football club|cd)\b/g," ").replace(/[^a-z0-9]+/g," ").trim();}
-function summarizeSportScoreTeam(teamName,matches){
-  const target=sportScoreNameKey(teamName);
-  const relevant=(matches||[]).map(sportScoreMatchForEvidence).filter(function(m){return sportScoreNameKey(m.home)===target||sportScoreNameKey(m.away)===target;}).filter(sportScoreFinishedForEvidence).sort(function(a,b){return new Date(b.date||0)-new Date(a.date||0);}).slice(0,8);
-  let w=0,d=0,l=0,gf=0,ga=0,homeGF=[],homeGA=[],awayGF=[],awayGA=[];
-  relevant.forEach(function(m){
-    const isHome=sportScoreNameKey(m.home)===target; const own=isHome?m.homeScore:m.awayScore; const opp=isHome?m.awayScore:m.homeScore;
-    if(!Number.isFinite(own)||!Number.isFinite(opp))return;
-    gf+=own;ga+=opp;if(own>opp)w++;else if(own===opp)d++;else l++;
-    if(isHome){homeGF.push(own);homeGA.push(opp);}else{awayGF.push(own);awayGA.push(opp);}
-  });
-  const avg=(arr)=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
-  return {sample:relevant.length,wins:w,draws:d,losses:l,goalsFor:gf,goalsAgainst:ga,avgGoalsFor:avg(relevant.map(m=>sportScoreNameKey(m.home)===target?m.homeScore:m.awayScore)),avgGoalsAgainst:avg(relevant.map(m=>sportScoreNameKey(m.home)===target?m.awayScore:m.homeScore)),home:{sample:homeGF.length,avgFor:avg(homeGF),avgAgainst:avg(homeGA)},away:{sample:awayGF.length,avgFor:avg(awayGF),avgAgainst:avg(awayGA)},recent:relevant};
-}
-function poissonProbability(k,lambda){return Math.exp(-lambda)*Math.pow(lambda,k)/factorial(k);}
-function factorial(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r;}
-function normalizePercentages(values){
-  const safe=values.map(v=>Number.isFinite(v)&&v>=0?v:0); const sum=safe.reduce((a,b)=>a+b,0);
-  if(!(sum>0))return null;
-  const raw=safe.map(v=>v/sum*100); const floors=raw.map(v=>Math.floor(v*10)/10); let remainder=Math.round((100-floors.reduce((a,b)=>a+b,0))*10);
-  const order=raw.map((v,i)=>({i,frac:v-floors[i]})).sort((a,b)=>b.frac-a.frac);
-  for(let k=0;k<remainder;k++)floors[order[k%order.length].i]+=0.1;
-  return floors.map(v=>Math.round(v*10)/10);
-}
-function buildSportScoreProbabilityModel(homeForm,awayForm,h2h){
-  const hf=homeForm||{},af=awayForm||{}; const minSample=5;
-  if((hf.sample||0)<minSample || (af.sample||0)<minSample){
-    return {ready:false,reason:"Données récentes insuffisantes : au moins 5 matchs terminés avec score vérifiable pour chaque équipe sont nécessaires.",probabilities:[],options:[],recommendation:"Analyse insuffisante",data_quality:"limitée"};
-  }
-  const avg=(v,fallback)=>Number.isFinite(v)?v:fallback;
-  const shrink=(value,sample,prior,weight)=>((value*sample)+(prior*weight))/(sample+weight);
-  const formPoints=(form,teamName)=>{
-    const target=sportScoreNameKey(teamName),games=(form.recent||[]).slice(0,5);
-    if(!games.length)return null; let points=0,den=0;
-    games.forEach((m,i)=>{const isHome=sportScoreNameKey(m.home)===target,own=isHome?m.homeScore:m.awayScore,opp=isHome?m.awayScore:m.homeScore;if(!Number.isFinite(own)||!Number.isFinite(opp))return;const w=Math.pow(.86,i);points+=(own>opp?3:own===opp?1:0)*w;den+=3*w;});
-    return den?points/den:null;
-  };
-  const homeFormIndex=formPoints(hf,hf.teamName),awayFormIndex=formPoints(af,af.teamName);
-  const formDelta=(Number.isFinite(homeFormIndex)&&Number.isFinite(awayFormIndex))?(homeFormIndex-awayFormIndex):0;
-  const homeAttack=shrink(avg(hf.home?.avgFor,hf.avgGoalsFor),Math.max(1,hf.home?.sample||hf.sample),1.35,2);
-  const homeDefense=shrink(avg(hf.home?.avgAgainst,hf.avgGoalsAgainst),Math.max(1,hf.home?.sample||hf.sample),1.15,2);
-  const awayAttack=shrink(avg(af.away?.avgFor,af.avgGoalsFor),Math.max(1,af.away?.sample||af.sample),1.15,2);
-  const awayDefense=shrink(avg(af.away?.avgAgainst,af.avgGoalsAgainst),Math.max(1,af.away?.sample||af.sample),1.25,2);
-  let lambdaHome=Math.max(.20,Math.min(3.80,(homeAttack+awayDefense)/2+0.12+(formDelta*0.10)));
-  let lambdaAway=Math.max(.15,Math.min(3.40,(awayAttack+homeDefense)/2-(formDelta*0.08)));
-  const h2hMatches=Array.isArray(h2h?.matches)?h2h.matches.map(sportScoreMatchForEvidence).filter(sportScoreFinishedForEvidence).slice(0,8):[];
-  if(h2hMatches.length>=3){
-    let hGF=0,hGA=0,n=0; const target=sportScoreNameKey(hf.teamName||"");
-    h2hMatches.forEach(function(m){const homeIsTarget=sportScoreNameKey(m.home)===target;const awayIsTarget=sportScoreNameKey(m.away)===target;if(homeIsTarget){hGF+=m.homeScore;hGA+=m.awayScore;n++;}else if(awayIsTarget){hGF+=m.awayScore;hGA+=m.homeScore;n++;}});
-    if(n>=3){lambdaHome=(lambdaHome*.85)+(Math.max(.20,Math.min(3.8,hGF/n+.10))*.15);lambdaAway=(lambdaAway*.85)+(Math.max(.15,Math.min(3.4,hGA/n))*.15);}
-  }
-  let p1=0,px=0,p2=0,pover=0,pbtts=0,matrixTotal=0;
-  const scoreMatrix=[];
-
-  for(let i=0;i<=10;i++)for(let j=0;j<=10;j++){
-    const p=poissonProbability(i,lambdaHome)*poissonProbability(j,lambdaAway);
-    matrixTotal+=p;
-
-    if(i>j)p1+=p;
-    else if(i===j)px+=p;
-    else p2+=p;
-
-    if(i+j>=3)pover+=p;
-    if(i>0&&j>0)pbtts+=p;
-
-    scoreMatrix.push({home:i,away:j,probability:p});
-  }
-
-  if(!(matrixTotal>0)){
-    return {
-      ready:false,
-      reason:"Impossible de calculer une distribution à partir des données disponibles.",
-      probabilities:[],
-      options:[],
-      recommendation:"Analyse insuffisante",
-      data_quality:"limitée"
-    };
-  }
-
-  p1/=matrixTotal;
-  px/=matrixTotal;
-  p2/=matrixTotal;
-  pover/=matrixTotal;
-  pbtts/=matrixTotal;
-
-  const probs=normalizePercentages([p1,px,p2]);
-  if(!probs){
-    return {
-      ready:false,
-      reason:"Impossible de normaliser les probabilités à partir des données disponibles.",
-      probabilities:[],
-      options:[],
-      recommendation:"Analyse insuffisante",
-      data_quality:"limitée"
-    };
-  }
-
-  const [P1,PX,P2]=probs;
-  const o1x=Math.round((P1+PX)*10)/10;
-  const ox2=Math.round((PX+P2)*10)/10;
-  const o12=Math.round((P1+P2)*10)/10;
-  const obtts=Math.round(pbtts*1000)/10;
-  const oover=Math.round(pover*1000)/10;
-
-  const risk=p=>p>=78?"Faible":p>=62?"Modéré":"Élevé";
-
-  /*
-   * La recommandation principale est déterminée uniquement par
-   * les probabilités 1/X/2 calculées par le modèle.
-   */
-  const resultCandidates=[
-    {
-      key:"home",
-      probability:P1,
-      name:"Victoire "+(hf.teamName||"Équipe 1")
-    },
-    {
-      key:"draw",
-      probability:PX,
-      name:"Match nul"
-    },
-    {
-      key:"away",
-      probability:P2,
-      name:"Victoire "+(af.teamName||"Équipe 2")
-    }
-  ].sort((a,b)=>b.probability-a.probability);
-
-  const preferredResult=resultCandidates[0]||null;
-
-  /*
-   * Le score prévu est recherché dans la même matrice de Poisson,
-   * mais uniquement parmi les scores compatibles avec le résultat
-   * principal : victoire domicile, nul ou victoire extérieure.
-   */
-  function bestCompatibleScore(resultKey){
-    const candidates=scoreMatrix.filter(function(item){
-      if(resultKey==="home")return item.home>item.away;
-      if(resultKey==="away")return item.away>item.home;
-      return item.home===item.away;
-    });
-
-    candidates.sort(function(a,b){
-      return b.probability-a.probability;
-    });
-
-    return candidates[0]||null;
-  }
-
-  const bestScoreItem=preferredResult
-    ?bestCompatibleScore(preferredResult.key)
-    :null;
-
-  const bestScore=bestScoreItem
-    ?bestScoreItem.home+"-"+bestScoreItem.away
-    :"";
-
-  const oscore=bestScoreItem
-    ?Math.round((bestScoreItem.probability/matrixTotal)*1000)/10
-    :null;
-
-  /*
-   * Calcul des marchés de buts depuis la même matrice.
-   * Les lignes Over et Under sont toutes issues des probabilités
-   * réelles du match.
-   */
-  const goalMarkets=[];
-
-  for(let threshold=0.5;threshold<=5.5;threshold+=1){
-    let overProbability=0;
-
-    scoreMatrix.forEach(function(item){
-      if(item.home+item.away>threshold){
-        overProbability+=item.probability;
-      }
-    });
-
-    const over=Math.round((overProbability/matrixTotal)*1000)/10;
-    const under=Math.round((100-over)*10)/10;
-
-    goalMarkets.push({
-      threshold:threshold,
-      over:over,
-      under:under
-    });
-  }
-
-  /*
-   * Pour éviter une ligne de buts toujours identique, on choisit
-   * la ligne dont la probabilité est la plus informative autour
-   * d'une zone intermédiaire, tout en restant entièrement dérivée
-   * de la distribution du match.
-   */
-  const goalCandidates=[];
-
-  goalMarkets.forEach(function(line){
-    goalCandidates.push({
-      name:"Plus de "+line.threshold.toFixed(1)+" buts",
-      probability:line.over,
-      family:"goals"
-    });
-
-    goalCandidates.push({
-      name:"Moins de "+line.threshold.toFixed(1)+" buts",
-      probability:line.under,
-      family:"goals"
-    });
-  });
-
-  const targetGoalProbability=65;
-
-  const selectedGoal=goalCandidates
-    .filter(function(option){
-      return Number.isFinite(option.probability) &&
-             option.probability>=50 &&
-             option.probability<=85;
-    })
-    .sort(function(a,b){
-      const da=Math.abs(a.probability-targetGoalProbability);
-      const db=Math.abs(b.probability-targetGoalProbability);
-      if(da!==db)return da-db;
-      return b.probability-a.probability;
-    })[0] || goalCandidates
-      .filter(function(option){
-        return Number.isFinite(option.probability);
-      })
-      .sort(function(a,b){
-        return b.probability-a.probability;
-      })[0];
-
-  const selectedGoalName=selectedGoal
-    ?selectedGoal.name
-    :"Plus de 2.5 buts";
-
-  const selectedGoalProbability=selectedGoal
-    ?selectedGoal.probability
-    :oover;
-
-  const optionReasons={
-    "1X":"Probabilité combinée calculée à partir de la victoire à domicile et du match nul.",
-    "X2":"Probabilité combinée calculée à partir du match nul et de la victoire extérieure.",
-    "12":"Probabilité combinée calculée à partir des deux issues victorieuses, hors match nul.",
-    "BTTS (les deux équipes marquent)":"Estimation calculée par le modèle à partir de la distribution des buts attendus.",
-    [selectedGoalName]:"Estimation calculée à partir de la distribution des buts attendus propre à ce match.",
-    ["Victoire "+(hf.teamName||"Équipe 1")]:"Probabilité estimée par le modèle pour une victoire de l'équipe à domicile.",
-    ["Match nul"]:"Probabilité estimée par le modèle pour un match nul.",
-    ["Victoire "+(af.teamName||"Équipe 2")]:"Probabilité estimée par le modèle pour une victoire de l'équipe à l'extérieur.",
-    ["Score exact "+bestScore]:"Probabilité du score exact compatible avec le résultat principal et calculée par la distribution du modèle."
-  };
-
-  const options=[
-    {
-      name:"1X",
-      probability:o1x,
-      risk:risk(o1x),
-      reason:optionReasons["1X"]
-    },
-    {
-      name:"X2",
-      probability:ox2,
-      risk:risk(ox2),
-      reason:optionReasons["X2"]
-    },
-    {
-      name:"12",
-      probability:o12,
-      risk:risk(o12),
-      reason:optionReasons["12"]
-    },
-    {
-      name:"BTTS (les deux équipes marquent)",
-      probability:obtts,
-      risk:risk(obtts),
-      reason:optionReasons["BTTS (les deux équipes marquent)"]
-    },
-    {
-      name:selectedGoalName,
-      probability:selectedGoalProbability,
-      risk:risk(selectedGoalProbability),
-      reason:optionReasons[selectedGoalName]
-    },
-    {
-      name:"Victoire "+(hf.teamName||"Équipe 1"),
-      probability:P1,
-      risk:risk(P1),
-      reason:optionReasons["Victoire "+(hf.teamName||"Équipe 1")]
-    },
-    {
-      name:"Match nul",
-      probability:PX,
-      risk:risk(PX),
-      reason:optionReasons["Match nul"]
-    },
-    {
-      name:"Victoire "+(af.teamName||"Équipe 2"),
-      probability:P2,
-      risk:risk(P2),
-      reason:optionReasons["Victoire "+(af.teamName||"Équipe 2")]
-    }
-  ];
-
-  if(bestScore && Number.isFinite(oscore)){
-    options.push({
-      name:"Score exact "+bestScore,
-      probability:oscore,
-      risk:"Élevé",
-      reason:optionReasons["Score exact "+bestScore]
-    });
-  }
-
-  return {
-    ready:true,
-    lambdaHome:+lambdaHome.toFixed(2),
-    lambdaAway:+lambdaAway.toFixed(2),
-    probabilities:[
-      {label:"1",value:P1},
-      {label:"X",value:PX},
-      {label:"2",value:P2}
-    ],
-    options,
-    recommendation:preferredResult?.name||"Analyse insuffisante",
-    bestScore:bestScore,
-    over25:oover,
-    btts:obtts,
-    form_index_home:Number.isFinite(homeFormIndex)?+(homeFormIndex*100).toFixed(1):null,
-    form_index_away:Number.isFinite(awayFormIndex)?+(awayFormIndex*100).toFixed(1):null,
-    expected_goals:+(lambdaHome+lambdaAway).toFixed(2),
-    data_quality:(hf.sample>=7&&af.sample>=7)?"bonne":(hf.sample>=5&&af.sample>=5)?"moyenne":"limitée"
-  };
-}
-async function fetchSportScoreEvidence(endpoint,params){
-  try{
-    const primary=await fetchSportScorePublic(endpoint,params);
-    return primary;
-  }catch(primaryError){
-    try{
-      const widgetEndpoint=String(endpoint||"").replace(/^api\/v1\//,"").replace(/\/$/,"");
-      if(["team","standings"].includes(widgetEndpoint)){
-        return await fetchSportScorePublic("widget/"+widgetEndpoint+"/",params);
-      }
-    }catch(_){ }
-    return null;
-  }
-}
-async function collectSportScoreAnalysisEvidence(home,away,homeSlug,awaySlug,fixture1,secondHome,secondAway,secondHomeSlug,secondAwaySlug,fixture2){
-  const pairs=[];if(home&&away)pairs.push({home,away,homeSlug,awaySlug,fixture:fixture1});if(secondHome&&secondAway)pairs.push({home:secondHome,away:secondAway,homeSlug:secondHomeSlug,awaySlug:secondAwaySlug,fixture:fixture2});
-  const results=await Promise.all(pairs.map(async function(pair){
-    const [homeTeam,awayTeam,h2h,standings]=await Promise.all([
-      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.homeSlug,limit:30}),
-      fetchSportScoreEvidence("team/",{sport:"football",slug:pair.awaySlug,limit:30}),
-      fetchSportScoreEvidence("h2h/",{sport:"football",team1:pair.homeSlug,team2:pair.awaySlug,limit:10}),
-      pair.fixture?.league?.slug?fetchSportScoreEvidence("standings/",{sport:"football",slug:pair.fixture.league.slug}):Promise.resolve(null)
-    ]);
-    const homeMatches=sportScoreExtractMatches(homeTeam); const awayMatches=sportScoreExtractMatches(awayTeam);
-    const findUpcomingFixture=(list)=>{
-      const targetHome=sportScoreNameKey(pair.home),targetAway=sportScoreNameKey(pair.away);
-      return (list||[]).map(sportScoreMatchForEvidence).find(function(m){
-        if(!m.home||!m.away)return false;
-        if(sportScoreFinishedForEvidence(m))return false;
-        return sportScoreNameKey(m.home)===targetHome && sportScoreNameKey(m.away)===targetAway;
-      })||null;
-    };
-    const derivedFixture=pair.fixture||findUpcomingFixture(homeMatches)||findUpcomingFixture(awayMatches);
-    const homeForm=summarizeSportScoreTeam(pair.home,homeMatches);homeForm.teamName=pair.home;
-    const awayForm=summarizeSportScoreTeam(pair.away,awayMatches);awayForm.teamName=pair.away;
-    const table=sportScoreExtractStandings(standings);
-    const findRow=(name)=>table.find(function(row){const rn=row?.team?.name||row?.name||row?.team_name;return sportScoreNameKey(rn)===sportScoreNameKey(name);});
-    const hr=findRow(pair.home),ar=findRow(pair.away);
-    const model=buildSportScoreProbabilityModel(homeForm,awayForm,h2h||{});
-    const fixtureSource=derivedFixture;
-    return {match:pair.home+" vs "+pair.away,source_slugs:{home:pair.homeSlug,away:pair.awaySlug},fixture:fixtureSource?{date:(fixtureSource.fixture?.date||fixtureSource.date||fixtureSource.start_time||fixtureSource.startTime||fixtureSource.kickoff||fixtureSource.datetime||fixtureSource.scheduled_at||fixtureSource.scheduledAt||fixtureSource.time||null),status:(fixtureSource.fixture?.status||fixtureSource.status||fixtureSource.status_text||null),competition:(fixtureSource.league?.name||fixtureSource.competition?.name||fixtureSource.competition||null),goals:fixtureSource.goals||null,score:fixtureSource.score||null}:null,homeForm,awayForm,h2h:h2h?{summary:h2h.summary||null,matches:(sportScoreExtractMatches(h2h)||[]).slice(0,10).map(sportScoreMatchForEvidence)}:null,standings:{home:hr||null,away:ar||null},model};
-  }));
-  return {source:"SportScore",generatedAt:new Date().toISOString(),matches:results,models:results.map(function(r){return r.model;})};
-}
-async function fetchSportScoreEvidence(endpoint,params){
-  try{
-    const primary=await fetchSportScorePublic(endpoint,params);
-    return primary;
-  }catch(primaryError){
-    try{
-      const widgetEndpoint=String(endpoint||"").replace(/^api\/v1\//,"").replace(/\/$/,"");
-      if(["team","standings"].includes(widgetEndpoint)){
-        return await fetchSportScorePublic("widget/"+widgetEndpoint+"/",params);
-      }
-    }catch(_){ }
-    return null;
-  }
-}
 async function submitBatBotAI(){
   const button=document.getElementById("smartDriveAIButton");
   const match1=document.getElementById("aiMatch1")?.value.trim()||"";
@@ -3801,7 +3374,7 @@ async function submitBatBotAI(){
     });
 
     window.batBotLastEvidence={
-      source:d?.source||"SportScore",
+      source:d?.source||"SportAPI.ai",
       generatedAt:d?.generatedAt||new Date().toISOString(),
       matches:serverMatches.map(function(item,index){
         const stats=item?.stats||{};
@@ -3867,15 +3440,17 @@ async function submitBatBotAI(){
   }
 }
 
-function analyzeSportScoreMatch(home,away,homeId,awayId,fixture){
-  if(fixture){if(isFinishedFixture(fixture)){showFinishedSportScoreMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}}
+function analyzeFootballMatch(home,away,homeId,awayId,fixture){
+  if(fixture){if(isFinishedFixture(fixture)){showFinishedFootballMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}}
   const input1=document.getElementById("aiMatch1");
   const input2=document.getElementById("aiMatch2");
   if(!input1||!input2)return;
   const homeName=String(home||"").trim(),awayName=String(away||"").trim();
   input1.value=homeName+" vs "+awayName;
   input2.value="";
-  window.batBotSelectedIds={home:String(homeId||slugifySportScoreTeam(homeName)),away:String(awayId||slugifySportScoreTeam(awayName))};
+  const realHomeId=String(homeId||"").trim(),realAwayId=String(awayId||"").trim();
+  if(!realHomeId||!realAwayId){showToast("Les identifiants SportAPI.ai des deux équipes sont absents. Ce match ne peut pas être analysé de façon fiable.","error");return;}
+  window.batBotSelectedIds={home:realHomeId,away:realAwayId};
   window.batBotSelectedFixtures=fixture?[fixture]:[];
   window.batBotSelectedIds2={home:"",away:""};
   setBatBotAIModalResult("");
@@ -3884,11 +3459,11 @@ function analyzeSportScoreMatch(home,away,homeId,awayId,fixture){
   setTimeout(()=>submitBatBotAI(),120);
 }
 
-function analyzeFirstTwoSportScoreMatches(){
+function analyzeFirstTwoFootballMatches(){
   const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
   const candidates=fixtures.filter(isAnalyzableFixture).slice(0,2),first=candidates[0],second=candidates[1];
   const home1=first?.teams?.home?.name||"",away1=first?.teams?.away?.name||"",home2=second?.teams?.home?.name||"",away2=second?.teams?.away?.name||"";
-  if(!home1||!away1)return showStatus("sportScoreStatus","⚠️ Aucun match à venir ou en direct n’est disponible pour l’analyse.","error");
+  if(!home1||!away1)return showStatus("footballStatus","⚠️ Aucun match à venir ou en direct n’est disponible pour l’analyse.","error");
   const input1=document.getElementById("aiMatch1"),input2=document.getElementById("aiMatch2");if(!input1||!input2)return;
   input1.value=home1+" vs "+away1;input2.value=(home2&&away2)?home2+" vs "+away2:"";
   window.batBotSelectedIds={home:String(first?.teams?.home?.id||""),away:String(first?.teams?.away?.id||"")};window.batBotSelectedIds2={home:String(second?.teams?.home?.id||""),away:String(second?.teams?.away?.id||"")};window.batBotSelectedFixtures=[first,second].filter(Boolean);
@@ -3901,30 +3476,30 @@ function getAbidjanDate(offsetDays){
   return new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Abidjan",year:"numeric",month:"2-digit",day:"2-digit"}).format(base);
 }
 
-function getSportScoreSelectedDate(){
-  const input=document.getElementById("sportScoreDate");
+function getFootballSelectedDate(){
+  const input=document.getElementById("footballDate");
   const value=input?.value||"";
   return /^\d{4}-\d{2}-\d{2}$/.test(value)?value:getAbidjanDate(0);
 }
 
-function setSportScoreDate(value){
-  const input=document.getElementById("sportScoreDate");
+function setFootballDate(value){
+  const input=document.getElementById("footballDate");
   if(input)input.value=value;
 }
 
-function changeSportScoreDate(offset){
-  const current=getSportScoreSelectedDate();
+function changeFootballDate(offset){
+  const current=getFootballSelectedDate();
   const parts=current.split("-").map(Number);
   const date=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]));
   date.setUTCDate(date.getUTCDate()+Number(offset||0));
   const value=date.toISOString().slice(0,10);
-  setSportScoreDate(value);
-  loadSportScoreFixtures(value);
+  setFootballDate(value);
+  loadFootballFixtures(value);
 }
 
 
 function getBatBotLocalTimeZone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";}catch(_){return "UTC";}}
-function parseSportScoreDate(value){
+function parseFootballDate(value){
   if(value===null||value===undefined||value==="")return null;
   if(value instanceof Date){return Number.isNaN(value.getTime())?null:value;}
   if(typeof value==="number"||(/^\d{10,13}$/.test(String(value).trim()))){
@@ -3939,18 +3514,18 @@ function parseSportScoreDate(value){
   if(!Number.isNaN(d.getTime()))return d;
   const fallback=new Date(raw); return Number.isNaN(fallback.getTime())?null:fallback;
 }
-function extractSportScoreDate(match){
+function extractFootballDate(match){
   const direct=[match?.time,match?.date,match?.start_time,match?.startTime,match?.kickoff,match?.kick_off,match?.match_time,match?.datetime,match?.scheduled_at,match?.scheduledAt,match?.start?.time,match?.start?.date,match?.fixture?.date,match?.fixture?.start_time,match?.fixture?.startTime,match?.fixture?.kickoff,match?.event?.date,match?.event?.start_time,match?.event?.startTime,match?.raw?.time,match?.raw?.date];
-  for(const candidate of direct){if(parseSportScoreDate(candidate))return candidate;}
+  for(const candidate of direct){if(parseFootballDate(candidate))return candidate;}
   return null;
 }
-function formatSportScoreDateTime(value){const d=parseSportScoreDate(value);if(!d)return "Date/heure indisponible";const tz=getBatBotLocalTimeZone();try{return new Intl.DateTimeFormat(undefined,{timeZone:tz,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"}).format(d)+" • "+tz;}catch(_){return d.toLocaleString();}}
-function fixtureStatusKey(item){const f=item?.fixture||{};const status=f.status||item?.status||item?.status_code||item?.state||item?.sportscore?.status||item?.sportscore?.status_text||"";return String(status?.short||status?.long||status||"").toLowerCase().trim();}
+function formatFootballDateTime(value){const d=parseFootballDate(value);if(!d)return "Date/heure indisponible";const tz=getBatBotLocalTimeZone();try{return new Intl.DateTimeFormat(undefined,{timeZone:tz,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"}).format(d)+" • "+tz;}catch(_){return d.toLocaleString();}}
+function fixtureStatusKey(item){const f=item?.fixture||{};const status=f.status||item?.status||item?.status_code||item?.state||item?.sportapi?.status||"";return String(status?.short||status?.long||status||"").toLowerCase().trim();}
 function isFinishedFixture(item){
   const key=fixtureStatusKey(item);
   if(/(^|\b)(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout|termin|apres prolongation)(\b|$)/i.test(key))return true;
   if(isLiveFixture(item))return false;
-  const score=sportScoreFixtureScore(item);
+  const score=footballFixtureScore(item);
   const date=item?.fixture?.date||item?.date||item?.time||item?.start_time||item?.startTime||"";
   const timestamp=date?new Date(date).getTime():NaN;
   return Boolean(score)&&Number.isFinite(timestamp)&&timestamp<(Date.now()-2*60*1000);
@@ -3963,7 +3538,7 @@ function isAnalyzableFixture(item){
   const isScheduled=/^(ns|scheduled|not started|upcoming|timed|fixture|programmé|programmee)$/i.test(key);
   return isLive || isScheduled;
 }
-function sportScoreFixtureScore(item){
+function footballFixtureScore(item){
   const readScore = (value) => {
     if (value === null || value === undefined) return null;
     if (typeof value === "string" && value.trim() === "") return null;
@@ -3983,62 +3558,41 @@ function sportScoreFixtureScore(item){
   }
   return "";
 }
-function showFinishedSportScoreMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=sportScoreFixtureScore(item),when=formatSportScoreDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
-function renderSportScoreFixtures(fixtures,checkedDate){
-  const box=document.getElementById("sportScoreResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
+function showFinishedFootballMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=footballFixtureScore(item),when=formatFootballDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
+function renderFootballFixtures(fixtures,checkedDate){
+  const box=document.getElementById("footballResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
   if(!fixtures.length){box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni</div><div class="professional-status-body">Le service de données sportives a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';return;}
   const analyzable=fixtures.filter(isAnalyzableFixture);
-  const topAction=analyzable.length>=2?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser les 2 prochains matchs</button>':analyzable.length===1?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoSportScoreMatches()">🤖 Analyser le prochain match</button>':'';
+  const topAction=analyzable.length>=2?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoFootballMatches()">🤖 Analyser les 2 prochains matchs</button>':analyzable.length===1?'<button type="button" class="btn primary" style="width:100%;margin:0 0 12px" onclick="analyzeFirstTwoFootballMatches()">🤖 Analyser le prochain match</button>':'';
   box.innerHTML=topAction+fixtures.slice(0,30).map(function(item,index){
     const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
     const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||homeTeam.flag||""),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||awayTeam.flag||"");
-    const date=formatSportScoreDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateSportScoreStatus(f.status?.long||f.status?.short||"Programmé"),score=sportScoreFixtureScore(item);
+    const date=formatFootballDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateFootballStatus(f.status?.long||f.status?.short||"Programmé"),score=footballFixtureScore(item);
     let action="";
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
     else if(blocked||!isAnalyzableFixture(item))action='<div class="muted" style="margin-top:12px">⚠️ Match non analysable : '+escapeHtml(status)+'</div>';
     else action='<button type="button" class="btn primary" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     return '<div class="match-card" style="margin-bottom:12px;padding:16px"><div class="match-title" style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center">'+homeBadge+'<span>'+escapeHtml(home)+'</span><span style="color:#9FB4C8">—</span><span>'+escapeHtml(away)+'</span>'+awayBadge+'</div><div class="muted" style="margin-top:10px;text-align:center">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+' • '+escapeHtml(status)+(score?' • <strong>'+escapeHtml(score)+'</strong>':'')+'</div>'+action+'</div>';
   }).join("");
-  box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedSportScoreMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeSportScoreMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
-  box.querySelectorAll("[data-batbot-result-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-result-index"))];if(item)showFinishedSportScoreMatch(item);});});
+  box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedFootballMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeFootballMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
+  box.querySelectorAll("[data-batbot-result-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-result-index"))];if(item)showFinishedFootballMatch(item);});});
 }
 
-function sportScorePublicUrl(endpoint, params){
-  const ep=String(endpoint||"").replace(/^\//,"");
-  // Public SportScore paths: /api/v1/... or /api/widget/...
-  const base=ep.startsWith("widget/")?"https://sportscore.com/api/":"https://sportscore.com/api/v1/";
-  const path=ep.startsWith("widget/")?ep:ep.replace(/^v1\//,"");
-  const url=new URL(base+path);
-  Object.keys(params||{}).forEach(function(key){
-    const value=params[key];
-    if(value!==undefined&&value!==null&&value!=="")url.searchParams.set(key,String(value));
-  });
-  url.searchParams.set("src","batbot");
-  return url.toString();
-}
-
-async function fetchSportScorePublic(endpoint,params){
-  const r=await fetch(sportScorePublicUrl(endpoint,params),{method:"GET",headers:{Accept:"application/json"},cache:"no-store"});
-  const d=await r.json().catch(function(){return {};});
-  if(!r.ok)throw new Error(d.error||d.message||("Données sportives HTTP "+r.status));
-  return d;
-}
-
-function translateSportScoreStatus(value){
+function translateFootballStatus(value){
   const raw=String(value||"").trim();
   const key=raw.toLowerCase().replace(/[._-]+/g," ").replace(/\s+/g," ");
   const map={
-    "not started":"À venir","scheduled":"Programmé","upcoming":"À venir","pre match":"À venir","prematch":"À venir",
-    "live":"En direct","in progress":"En direct","first half":"1re mi-temps","second half":"2e mi-temps",
-    "half time":"Mi-temps","halftime":"Mi-temps","finished":"Terminé","full time":"Terminé","ft":"Terminé",
-    "after extra time":"Après prolongation","extra time":"Prolongation","penalties":"Tirs au but",
+    "ns":"À venir","not started":"À venir","scheduled":"Programmé","upcoming":"À venir","timed":"Programmé","fixture":"À venir","pre match":"À venir","prematch":"À venir",
+    "live":"En direct","in play":"En direct","in progress":"En direct","1h":"1re mi-temps","first half":"1re mi-temps","2h":"2e mi-temps","second half":"2e mi-temps",
+    "ht":"Mi-temps","half time":"Mi-temps","halftime":"Mi-temps","finished":"Terminé","full time":"Terminé","ft":"Terminé","aet":"Après prolongation","pen":"Tirs au but",
+    "after extra time":"Après prolongation","extra time":"Prolongation","et":"Prolongation","penalties":"Tirs au but",
     "postponed":"Reporté","cancelled":"Annulé","canceled":"Annulé","suspended":"Suspendu",
     "abandoned":"Abandonné","delayed":"Retardé"
   };
   return map[key]||raw||"Programmé";
 }
 
-function translateSportScoreCompetition(value){
+function translateFootballCompetition(value){
   let text=String(value||"Compétition").trim();
   const replacements=[
     [/\bPrimera Division\b/gi,"Première division"],
@@ -4059,165 +3613,81 @@ function translateSportScoreCompetition(value){
   return text||"Compétition";
 }
 
-function normalizeSportScoreClientMatch(match,index){
-  const homeObj=match?.teams?.home||match?.home_team_data||match?.home_team||{};
-  const awayObj=match?.teams?.away||match?.away_team_data||match?.away_team||{};
-  const homeName=String(match?.home||match?.home_team?.name||homeObj?.name||"Équipe 1").trim();
-  const awayName=String(match?.away||match?.away_team?.name||awayObj?.name||"Équipe 2").trim();
-
-  function readScore(candidates){
-    for(const value of candidates){
-      if(value===null||value===undefined||value==="")continue;
-      const parsed=Number(value);
-      if(Number.isFinite(parsed)&&parsed>=0)return parsed;
-    }
-    return null;
-  }
-  const homeScore=readScore([
-    match?.goals?.home,match?.fixture?.goals?.home,match?.home_score,match?.homeScore,
-    match?.score?.home,match?.score?.fulltime?.home,match?.scores?.home,match?.scores?.fulltime?.home
-  ]);
-  const awayScore=readScore([
-    match?.goals?.away,match?.fixture?.goals?.away,match?.away_score,match?.awayScore,
-    match?.score?.away,match?.score?.fulltime?.away,match?.scores?.away,match?.scores?.fulltime?.away
-  ]);
-  const date=extractSportScoreDate(match);
-  const competitionName=translateSportScoreCompetition(match?.competition?.name||match?.competition||match?.league?.name||match?.league||"Compétition");
-  const slug=String(match?.slug||match?.uri?.split?.("/").filter(Boolean).pop?.()||((homeName+"-vs-"+awayName).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")));
-  const homeId=String(match?.home_slug||match?.home_team?.slug||match?.home_team?.id||homeObj?.slug||homeObj?.id||slugifySportScoreTeam(homeName));
-  const awayId=String(match?.away_slug||match?.away_team?.slug||match?.away_team?.id||awayObj?.slug||awayObj?.id||slugifySportScoreTeam(awayName));
-
-  // SportScore peut renvoyer le statut sous forme de texte ou d'objet.
-  // Lire les deux formes évite d'écarter les matchs LIVE, 1H, HT, 2H, ET ou PEN.
-  const statusValue=
-    match?.fixture?.status?.short||
-    match?.fixture?.status?.long||
-    match?.status?.short||
-    match?.status?.long||
-    match?.status||
-    match?.status_code||
-    match?.state||
-    match?.status_text||
-    match?.statusText||
-    match?.fixture?.status_text||
-    match?.fixture?.statusText||
-    match?.sportscore?.status?.short||
-    match?.sportscore?.status?.long||
-    match?.sportscore?.status||
-    "";
-  const rawStatus=String(statusValue).toLowerCase().trim();
-  const statusKey=rawStatus.replace(/[._-]+/g," ").replace(/\s+/g," ");
-  const isLiveStatus=/\b(live|in progress|progress|1h|2h|ht|half time|halftime|first half|second half|extra time|et|penalties|penalty|pen)\b/i.test(statusKey);
-  const isFinishedStatus=/\b(ft|finished|full time|fulltime|ended|completed|after extra time|aet|tirs au but|penalty shootout)\b/i.test(statusKey);
-  const isBlockedStatus=/\b(cancelled|canceled|postponed|suspended|abandoned|cancel|postpon|suspend|abandon|annul|report|unknown|not known|tbd)\b/i.test(statusKey);
-  const isScheduledStatus=/\b(ns|scheduled|not started|upcoming|timed|fixture)\b/i.test(statusKey);
-  const short=isFinishedStatus?"FT":(isLiveStatus?"LIVE":(isBlockedStatus?"UNKNOWN":(isScheduledStatus?"NS":"UNKNOWN")));
-  const displayStatus=translateSportScoreStatus(rawStatus||"Programmé");
-
+function normalizeFootballClientMatch(match,index){
+  const homeObj=match?.teams?.home||{};
+  const awayObj=match?.teams?.away||{};
+  const homeName=String(homeObj.name||match?.home_team||match?.home||"Équipe 1").trim();
+  const awayName=String(awayObj.name||match?.away_team||match?.away||"Équipe 2").trim();
+  const rawStatus=String(match?.fixture?.status?.short||match?.status?.short||match?.status||match?.sportapi?.status||match?.fixture?.status?.long||match?.status?.long||"UNKNOWN").trim();
+  const displayStatus=String(match?.fixture?.status?.long||match?.status?.long||rawStatus).trim();
+  const key=rawStatus.toUpperCase().replace(/[\s.-]+/g,"_");
+  const finished=/^(FT|AET|PEN|FINISHED|FULL_TIME|COMPLETED|AFTER_EXTRA_TIME|AFTER_PENALTIES)$/.test(key);
+  const live=/^(LIVE|1H|2H|HT|ET|IN_PLAY|PAUSED|IN_PROGRESS|FIRST_HALF|SECOND_HALF|HALF_TIME|HALFTIME|EXTRA_TIME|PENALTIES)$/.test(key);
+  const blocked=/CANCEL|POSTPON|ABANDON|SUSPEND|ANNUL|REPORT|UNKNOWN|TBD/.test(key);
+  const scheduled=/^(NS|SCHEDULED|NOT_STARTED|TIMED|UPCOMING|FIXTURE)$/.test(key);
+  const short=finished?"FT":live?"LIVE":blocked?"UNKNOWN":scheduled?"NS":"UNKNOWN";
+  const homeScore=match?.goals?.home??match?.home_score??match?.score?.fulltime?.home??null;
+  const awayScore=match?.goals?.away??match?.away_score??match?.score?.fulltime?.away??null;
+  const date=match?.fixture?.date||match?.kickoff_utc||match?.datetime||match?.date||null;
+  const league=match?.league||{};
   return {
-    fixture:{
-      id:String(match?.fixture?.id||match?.id||slug||index),
-      date:date,
-      status:{short:short,long:displayStatus}
-    },
-    teams:{
-      home:{id:homeId,name:homeName,logo:match?.home_logo||homeObj?.logo||null},
-      away:{id:awayId,name:awayName,logo:match?.away_logo||awayObj?.logo||null}
-    },
-    league:{
-      id:String(match?.competition_slug||match?.competition?.slug||match?.league?.id||competitionName),
-      name:competitionName,
-      slug:match?.competition_slug||match?.competition?.slug||null
-    },
-    goals:{home:homeScore,away:awayScore},
-    score:{fulltime:{home:homeScore,away:awayScore}},
-    sportscore:{
-      slug:slug,
-      uri:match?.uri||null,
-      status:statusValue||null,
-      status_text:match?.status_text||match?.statusText||null,
-      raw:match
-    }
+    ...match,
+    fixture:{...(match?.fixture||{}),id:match?.fixture?.id??match?.id??null,date,status:{short,long:translateFootballStatus(displayStatus)}},
+    teams:{home:{...homeObj,id:homeObj.id??match?.home_id??null,name:homeName,logo:homeObj.logo||match?.home_logo||null},away:{...awayObj,id:awayObj.id??match?.away_id??null,name:awayName,logo:awayObj.logo||match?.away_logo||null}},
+    league:{...(typeof league==="object"?league:{}),name:league?.name||match?.league_name||match?.competition?.name||match?.competition||"Compétition"},
+    goals:{home:homeScore===null?null:Number(homeScore),away:awayScore===null?null:Number(awayScore)},
+    sportapi:match?.sportapi||{},
+    eligibility:{finished,cancelled:blocked,live,scheduled,canAnalyze:scheduled||live}
   };
 }
-function slugifySportScoreTeam(name){
-  return String(name||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-}
-
-async function ensureSportScoreFootballAccess(){
+async function ensureFootballAccess(){
   const r=await fetch("/api/football/access",{credentials:"same-origin",cache:"no-store"});
   const d=await readApiResponse(r);
   if(!r.ok)throw new Error(d.error||"Accès football indisponible.");
   return d;
 }
 
-async function resolveSportScoreTeamSlug(name){
-  const q=String(name||"").trim();
-  if(q.length<2)return "";
-  const queries=[q];
-  const simplified=q.replace(/\b(national team|football club|fc|cf|sc|afc|ac)\b/gi," ").replace(/\s+/g," ").trim();
-  if(simplified&&simplified.toLowerCase()!==q.toLowerCase())queries.push(simplified);
-  const normalize=function(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\b(fc|cf|sc|afc|ac|football club)\b/g," ").replace(/[^a-z0-9]+/g," ").trim();};
-  const target=normalize(q);
-  let best=null;
-  for(const query of queries){
-    const data=await fetchSportScorePublic("search/",{sport:"football",q:query,limit:20});
-    const teams=Array.isArray(data?.teams)?data.teams:[];
-    const exact=teams.find(function(team){return normalize(team?.name)===target;});
-    const partial=teams.find(function(team){const candidate=normalize(team?.name);return candidate&& (candidate.includes(target)||target.includes(candidate));});
-    best=exact||partial||best;
-    if(exact)break;
-  }
-  if(!best)return "";
-  const direct=String(best?.slug||best?.team_slug||best?.team?.slug||"").trim();
-  if(direct)return direct;
-  const candidateUrl=String(best?.url||best?.site_url||best?.uri||best?.team?.url||"").trim();
-  const m=candidateUrl.match(/\/football\/team\/([^?#]+)\/?$/i);
-  if(m&&m[1])return decodeURIComponent(m[1]);
-  return String(best?.id||"").trim();
-}
-
-async function loadSportScoreFixtures(selectedDate){
-  const status=document.getElementById("sportScoreStatus");
-  const box=document.getElementById("sportScoreResults");
-  const button=document.getElementById("sportScoreLoadButton");
+async function loadFootballFixtures(selectedDate){
+  const status=document.getElementById("footballStatus");
+  const box=document.getElementById("footballResults");
+  const button=document.getElementById("footballLoadButton");
   if(!status||!box)return;
   const date=/^\d{4}-\d{2}-\d{2}$/.test(String(selectedDate||""))?String(selectedDate):getAbidjanDate(0);
-  setSportScoreDate(date);
+  setFootballDate(date);
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
   status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion aux données sportives</strong><small>Récupération des rencontres du '+escapeHtml(date)+'…</small></div></div>';
   box.classList.remove("hidden");
-  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les données officielles des rencontres sont en cours de récupération…</small></div></div>';
+  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les données de SportAPI.ai sont en cours de récupération…</small></div></div>';
 
   try{
-    await ensureSportScoreFootballAccess();
+    await ensureFootballAccess();
     const response=await fetch("/api/football/fixtures?date="+encodeURIComponent(date),{credentials:"same-origin",headers:{Accept:"application/json"},cache:"no-store"});
     const d=await readApiResponse(response);
     if(!response.ok||d?.ok===false)throw new Error(d?.error||"Impossible de récupérer les rencontres.");
 
     const rawFixtures=Array.isArray(d?.response)?d.response:[];
-    const fixtures=rawFixtures.map(normalizeSportScoreClientMatch);
-    renderSportScoreFixtures(fixtures,date);
+    const fixtures=rawFixtures.map(normalizeFootballClientMatch);
+    renderFootballFixtures(fixtures,date);
     if(fixtures.length){
-      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données du match reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(date)+".</div></div>";
+      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données SportAPI.ai reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(date)+".</div></div>";
     }else{
-      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Données sportives connectées, mais aucun match reçu</div><div class="professional-status-body">Le service de données sportives a répondu avec 0 rencontre pour cette date.</div></div>';
+      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Données sportives connectées, mais aucun match reçu</div><div class="professional-status-body">SportAPI.ai a répondu avec 0 rencontre pour cette date.</div></div>';
     }
   }catch(e){
     window.batBotDailyFixtures=[];
     box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Données sportives indisponibles</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
-    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion non disponible</div><div class="professional-status-body">Le service de données sportives n’a pas pu fournir les rencontres pour le '+escapeHtml(date)+'.</div></div>';
+    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion non disponible</div><div class="professional-status-body">SportAPI.ai n’a pas pu fournir les rencontres pour le '+escapeHtml(date)+'.</div></div>';
   }finally{
     if(button)button.disabled=false;
   }
 }
 
-async function loadSportScoreLive(){
-  const status=document.getElementById("sportScoreStatus");
-  const box=document.getElementById("sportScoreResults");
-  const button=document.getElementById("sportScoreLiveButton");
+async function loadFootballLive(){
+  const status=document.getElementById("footballStatus");
+  const box=document.getElementById("footballResults");
+  const button=document.getElementById("footballLiveButton");
   if(!status||!box)return;
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
@@ -4228,14 +3698,14 @@ async function loadSportScoreLive(){
 
   const refresh=async function(){
     try{
-      await ensureSportScoreFootballAccess();
+      await ensureFootballAccess();
       const liveDate=getAbidjanDate(0);
       const response=await fetch("/api/football/live",{credentials:"same-origin",headers:{Accept:"application/json"},cache:"no-store"});
       const d=await readApiResponse(response);
       if(!response.ok||d?.ok===false)throw new Error(d?.error||"Impossible de récupérer les matchs en direct.");
       const rawFixtures=Array.isArray(d?.response)?d.response:[];
-      const fixtures=rawFixtures.map(normalizeSportScoreClientMatch).filter(function(item){return isLiveFixture(item);});
-      renderSportScoreFixtures(fixtures,"en direct");
+      const fixtures=rawFixtures.map(normalizeFootballClientMatch).filter(function(item){return isLiveFixture(item);});
+      renderFootballFixtures(fixtures,"en direct");
       status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"Aucune rencontre en cours n’est actuellement signalée.")+'</div></div>';
     }catch(e){
       window.batBotLiveRefreshTimer=null;
@@ -4249,7 +3719,7 @@ async function loadSportScoreLive(){
 }
 
 document.addEventListener("DOMContentLoaded",function(){
-  setSportScoreDate(getAbidjanDate(0));
+  setFootballDate(getAbidjanDate(0));
   document.querySelectorAll("[data-close-ai-modal]").forEach(function(el){el.addEventListener("click",closeBatBotAIModal);});
   const ticket=document.getElementById("batbotTicketModal");
   if(ticket)ticket.addEventListener("click",function(e){if(e.target===ticket)closeBatBotTicketModal();});
@@ -5819,7 +5289,7 @@ document.addEventListener("keydown",function(event){
           }
           const card=cards[item[2]]();
           openModal(card,item[0]);
-          if(item[2]==='dailyMatches')loadSportScoreFixtures(getAbidjanDate(0));
+          if(item[2]==='dailyMatches')loadFootballFixtures(getAbidjanDate(0));
           if(item[2]==='predictions')loadMemberPredictions();
         });
         actions.appendChild(button);
@@ -6293,7 +5763,7 @@ document.addEventListener("keydown",function(event){
 
     try{
       const d=new Date(fixture.date);
-      if(Number.isNaN(d.getTime()))return formatSportScoreDateTime(fixture);
+      if(Number.isNaN(d.getTime()))return formatFootballDateTime(fixture);
 
       return d.toLocaleDateString("fr-FR",{
         day:"2-digit",
@@ -6304,7 +5774,7 @@ document.addEventListener("keydown",function(event){
         minute:"2-digit"
       });
     }catch(_){
-      return formatSportScoreDateTime(fixture.date);
+      return formatFootballDateTime(fixture.date);
     }
   }
 
@@ -6438,7 +5908,7 @@ document.addEventListener("keydown",function(event){
       );
 
       if(!verified){
-        lines.push("⚠️ Rencontre non confirmée par SportScore — aucun pronostic.");
+        lines.push("⚠️ Rencontre non confirmée par SportAPI.ai — aucun pronostic.");
         lines.push("");
         return;
       }
@@ -6660,7 +6130,7 @@ document.addEventListener("keydown",function(event){
       }else if(!verified){
 
         html+='<div class="batbot-ticket-insufficient-note">'+
-          '⚠️ Cette rencontre n’a pas été confirmée par SportScore. Aucun pronostic n’est généré.'+
+          '⚠️ Cette rencontre n’a pas été confirmée par SportAPI.ai. Aucun pronostic n’est généré.'+
         '</div>';
 
       }else{
@@ -6803,7 +6273,7 @@ document.addEventListener("keydown",function(event){
       y+=42;
 
       if(finished){
-        const realScore=sportScoreFixtureScore(fixture);
+        const realScore=footballFixtureScore(fixture);
         ctx.fillStyle="#b45309";
         ctx.font="bold 22px Arial";
         ctx.fillText("MATCH TERMINE — AUCUN PRONOSTIC",50,y);

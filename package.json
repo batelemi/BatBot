@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test:odds": "node algorithms/test-multi-sportscore-odds.js",
+    "test:odds": "node algorithms/test-sportapi-odds.js",
     "db:migrate:postgres": "node scripts/migrate-sqlite-to-postgres.js"
   },
   "dependencies": {
