@@ -2888,6 +2888,9 @@ function renderBatBotTeamFlag(value){
   if(/^https?:\/\//i.test(flag)||flag.startsWith("/")||flag.startsWith("data:image/")){
     return '<img class="batbot-team-flag" src="'+escapeHtml(flag)+'" alt="">';
   }
+  if(/\.(png|jpe?g|webp|svg|gif)([?#].*)?$/i.test(flag)){
+    return '<span class="batbot-team-flag batbot-team-flag-emoji" aria-hidden="true">⚽</span>';
+  }
   return '<span class="batbot-team-flag batbot-team-flag-emoji" aria-hidden="true">'+escapeHtml(flag)+'</span>';
 }
 
@@ -3992,7 +3995,7 @@ function renderSportScoreFixtures(fixtures,checkedDate){
     const date=formatSportScoreDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateSportScoreStatus(f.status?.long||f.status?.short||"Programmé"),score=sportScoreFixtureScore(item);
     let action="";
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
-    else if(blocked)action='<div class="muted" style="margin-top:12px">⚠️ Match non analysable : '+escapeHtml(status)+'</div>';
+    else if(blocked||!isAnalyzableFixture(item))action='<div class="muted" style="margin-top:12px">⚠️ Match non analysable : '+escapeHtml(status)+'</div>';
     else action='<button type="button" class="btn primary" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     return '<div class="match-card" style="margin-bottom:12px;padding:16px"><div class="match-title" style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center">'+homeBadge+'<span>'+escapeHtml(home)+'</span><span style="color:#9FB4C8">—</span><span>'+escapeHtml(away)+'</span>'+awayBadge+'</div><div class="muted" style="margin-top:10px;text-align:center">'+escapeHtml(league.name||"Compétition")+' • '+escapeHtml(date)+' • '+escapeHtml(status)+(score?' • <strong>'+escapeHtml(score)+'</strong>':'')+'</div>'+action+'</div>';
   }).join("");

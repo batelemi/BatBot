@@ -2036,6 +2036,45 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       });
     }
 
+    // Refuser les fixtures dont le statut ne permet pas une analyse.
+    // Les analyses manuelles sans fixture restent autorisées.
+    const allowedFixtureStatuses = new Set([
+      "NS", "SCHEDULED", "NOT_STARTED", "TIMED", "UPCOMING", "FIXTURE",
+      "LIVE", "1H", "2H", "HT", "ET", "IN_PLAY", "IN_PROGRESS",
+      "FIRST_HALF", "SECOND_HALF", "HALF_TIME", "HALFTIME",
+      "EXTRA_TIME", "PENALTIES", "PAUSED"
+    ]);
+
+    for (const match of matches) {
+      if (match?.fixture == null) continue;
+
+      const fixture = match.fixture;
+      const rawStatus =
+        fixture?.fixture?.status?.short ||
+        fixture?.fixture?.status?.long ||
+        fixture?.status?.short ||
+        fixture?.status?.long ||
+        (typeof fixture?.status === "string" ? fixture.status : "") ||
+        fixture?.status_code ||
+        fixture?.state ||
+        "";
+
+      const status = String(rawStatus)
+        .trim()
+        .toUpperCase()
+        .replaceAll(" ", "_")
+        .replaceAll("-", "_")
+        .replaceAll(".", "_");
+
+      if (!allowedFixtureStatuses.has(status)) {
+        return res.status(400).json({
+          ok: false,
+          error: "Analyse refusée : statut du match inconnu ou non autorisé.",
+          status: status || "UNKNOWN"
+        });
+      }
+    }
+
     const analysis = await analyzeSportScoreMatches(matches);
 
     return res.json({
