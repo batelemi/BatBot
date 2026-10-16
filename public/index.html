@@ -3383,7 +3383,7 @@ async function submitBatBotAI(){
         const awayStats=stats.away||{};
         return {
           match:item?.match||compatibleMatches[index]?.name||"Match",
-          fixture:item?.fixture||null,
+          fixture:item?.fixture ? {...item.fixture,...(item.fixture.fixture||{})} : null,
           homeTeam:{
             name:item?.homeTeam?.name||first.home,
             slug:item?.homeTeam?.slug||"",
