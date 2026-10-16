@@ -2884,16 +2884,17 @@ function renderBatBotModelCard(model,fixture,evidence){
 
 function renderBatBotTeamFlag(value){
   const flag=String(value||"").trim();
-  if(!flag)return "";
+  if(!flag){
+    return '<span class="batbot-team-flag batbot-team-flag-emoji" aria-hidden="true">⚽</span>';
+  }
   if(/^https?:\/\//i.test(flag)||flag.startsWith("/")||flag.startsWith("data:image/")){
-    return '<img class="batbot-team-flag" src="'+escapeHtml(flag)+'" alt="">';
+    return '<img class="batbot-team-flag" src="'+escapeHtml(flag)+'" alt="" loading="lazy">';
   }
   if(/\.(png|jpe?g|webp|svg|gif)([?#].*)?$/i.test(flag)){
     return '<span class="batbot-team-flag batbot-team-flag-emoji" aria-hidden="true">⚽</span>';
   }
   return '<span class="batbot-team-flag batbot-team-flag-emoji" aria-hidden="true">'+escapeHtml(flag)+'</span>';
 }
-
 function renderBatBotAIResult(raw,modelData){
   const box=document.getElementById("smartDriveAIResult");
   if(!box)return;
@@ -3616,14 +3617,22 @@ function translateFootballCompetition(value){
 }
 
 function normalizeFootballClientMatch(match,index){
-  const homeObj=match?.teams?.home||{};
-  const awayObj=match?.teams?.away||{};
-  const homeName=String(homeObj.name||match?.home_team||match?.home||"Équipe 1").trim();
-  const awayName=String(awayObj.name||match?.away_team||match?.away||"Équipe 2").trim();
+  const homeObj=match?.teams?.home||match?.home_team_data||match?.homeTeam||
+    (match?.home_team&&typeof match.home_team==="object"?match.home_team:{})||
+    (match?.home&&typeof match.home==="object"?match.home:{});
+  const awayObj=match?.teams?.away||match?.away_team_data||match?.awayTeam||
+    (match?.away_team&&typeof match.away_team==="object"?match.away_team:{})||
+    (match?.away&&typeof match.away==="object"?match.away:{});
+  const cleanName=function(value){
+    if(typeof value!=="string")return "";
+    return value.replace(/^\s*(?:[\w-]+\.(?:png|jpe?g|webp|svg)\s*)+/i,"").trim();
+  };
+  const homeName=cleanName((typeof match?.home_team==="string"&&match.home_team)||homeObj.name||(typeof match?.home==="string"?match.home:""))||"Équipe 1";
+  const awayName=cleanName((typeof match?.away_team==="string"&&match.away_team)||awayObj.name||(typeof match?.away==="string"?match.away:""))||"Équipe 2";
   const rawStatus=String(match?.fixture?.status?.short||match?.status?.short||match?.status||match?.sportapi?.status||match?.fixture?.status?.long||match?.status?.long||"UNKNOWN").trim();
   const displayStatus=String(match?.fixture?.status?.long||match?.status?.long||rawStatus).trim();
   const key=rawStatus.toUpperCase().replace(/[\s.-]+/g,"_");
-  const finished=/^(FT|AET|PEN|FINISHED|FULL_TIME|COMPLETED|AFTER_EXTRA_TIME|AFTER_PENALTIES)$/.test(key);
+  const finished=/^(FT|AET|PEN|PENS|FINISHED|FULL_TIME|COMPLETED|AFTER_EXTRA_TIME|AFTER_PENALTIES|ENDED)$/.test(key);
   const live=/^(LIVE|1H|2H|HT|ET|IN_PLAY|PAUSED|IN_PROGRESS|FIRST_HALF|SECOND_HALF|HALF_TIME|HALFTIME|EXTRA_TIME|PENALTIES)$/.test(key);
   const blocked=/CANCEL|POSTPON|ABANDON|SUSPEND|ANNUL|REPORT|UNKNOWN|TBD/.test(key);
   const scheduled=/^(NS|SCHEDULED|NOT_STARTED|TIMED|UPCOMING|FIXTURE)$/.test(key);
@@ -3631,12 +3640,19 @@ function normalizeFootballClientMatch(match,index){
   const homeScore=match?.goals?.home??match?.home_score??match?.score?.fulltime?.home??null;
   const awayScore=match?.goals?.away??match?.away_score??match?.score?.fulltime?.away??null;
   const date=match?.fixture?.date||match?.kickoff_utc||match?.datetime||match?.date||null;
-  const league=match?.league||{};
+  const league=match?.league||match?.competition||{};
+  const homeId=homeObj.id??match?.home_id??match?.home_team_id??match?.homeTeam?.id??match?.home_team_data?.id??null;
+  const awayId=awayObj.id??match?.away_id??match?.away_team_id??match?.awayTeam?.id??match?.away_team_data?.id??null;
+  const homeLogo=homeObj.logo||homeObj.flag||match?.home_logo||match?.home_team_logo||match?.homeTeam?.logo||match?.home_team_data?.logo||null;
+  const awayLogo=awayObj.logo||awayObj.flag||match?.away_logo||match?.away_team_logo||match?.awayTeam?.logo||match?.away_team_data?.logo||null;
   return {
     ...match,
     fixture:{...(match?.fixture||{}),id:match?.fixture?.id??match?.id??null,date,status:{short,long:translateFootballStatus(displayStatus)}},
-    teams:{home:{...homeObj,id:homeObj.id??match?.home_id??null,name:homeName,logo:homeObj.logo||match?.home_logo||null},away:{...awayObj,id:awayObj.id??match?.away_id??null,name:awayName,logo:awayObj.logo||match?.away_logo||null}},
-    league:{...(typeof league==="object"?league:{}),name:league?.name||match?.league_name||match?.competition?.name||match?.competition||"Compétition"},
+    teams:{
+      home:{...homeObj,id:homeId==null?null:String(homeId),name:homeName,logo:homeLogo},
+      away:{...awayObj,id:awayId==null?null:String(awayId),name:awayName,logo:awayLogo}
+    },
+    league:{...(typeof league==="object"?league:{}),name:league?.name||match?.league_name||match?.competition?.name||(typeof match?.competition==="string"?match.competition:null)||"Compétition"},
     goals:{home:homeScore===null?null:Number(homeScore),away:awayScore===null?null:Number(awayScore)},
     sportapi:match?.sportapi||{},
     eligibility:{finished,cancelled:blocked,live,scheduled,canAnalyze:scheduled||live}

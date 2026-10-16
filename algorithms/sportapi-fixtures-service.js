@@ -7,19 +7,27 @@ function normalizeFixture(match) {
   if (!match || typeof match !== 'object') return null;
 
   const homeObj = match.teams?.home || match.home_team_data ||
+    match.homeTeam ||
     (match.home_team && typeof match.home_team === 'object' ? match.home_team : null) ||
     (match.home && typeof match.home === 'object' ? match.home : {});
   const awayObj = match.teams?.away || match.away_team_data ||
+    match.awayTeam ||
     (match.away_team && typeof match.away_team === 'object' ? match.away_team : null) ||
     (match.away && typeof match.away === 'object' ? match.away : {});
-  const home = String(
+  const cleanTeamName = value => {
+    if (typeof value !== 'string') return '';
+    return value
+      .replace(/^\s*(?:[\w-]+\.(?:png|jpe?g|webp|svg)\s*)+/i, '')
+      .trim();
+  };
+  const home = cleanTeamName(
     (typeof match.home_team === 'string' && match.home_team) ||
-    homeObj.name || match.home || ''
-  ).trim();
-  const away = String(
+    homeObj.name || (typeof match.home === 'string' ? match.home : '')
+  );
+  const away = cleanTeamName(
     (typeof match.away_team === 'string' && match.away_team) ||
-    awayObj.name || match.away || ''
-  ).trim();
+    awayObj.name || (typeof match.away === 'string' ? match.away : '')
+  );
   const id = match.id ?? match.fixture?.id;
   const date = String(
     match.kickoff_utc || match.datetime || match.date || match.fixture?.date || ''
@@ -64,12 +72,16 @@ function normalizeFixture(match) {
     Number.isFinite(Number(awayScore)) &&
     Number(homeScore) >= 0 && Number(awayScore) >= 0;
 
-  const homeId = match.home_id ?? match.home_team_id ?? homeObj.id ?? null;
-  const awayId = match.away_id ?? match.away_team_id ?? awayObj.id ?? null;
+  const homeId = match.home_id ?? match.home_team_id ??
+    match.homeTeam?.id ?? match.home_team_data?.id ?? homeObj.id ?? null;
+  const awayId = match.away_id ?? match.away_team_id ??
+    match.awayTeam?.id ?? match.away_team_data?.id ?? awayObj.id ?? null;
   const homeLogo = match.home_logo || match.home_team_logo ||
-    homeObj.logo || homeObj.flag || match.teams?.home?.logo || null;
+    match.homeTeam?.logo || match.home_team_data?.logo ||
+    homeObj.logo || homeObj.flag || null;
   const awayLogo = match.away_logo || match.away_team_logo ||
-    awayObj.logo || awayObj.flag || match.teams?.away?.logo || null;
+    match.awayTeam?.logo || match.away_team_data?.logo ||
+    awayObj.logo || awayObj.flag || null;
   const leagueObj = match.league || match.competition || {};
   const leagueId = match.league_id ?? leagueObj.id ?? null;
   const leagueName = (typeof leagueObj === 'object' ? leagueObj.name : leagueObj) ||

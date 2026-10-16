@@ -40,18 +40,31 @@ function readScore(match, side) {
 }
 
 function getTeamId(match, side) {
-  const direct = side === 'home'
-    ? [match?.home_id, match?.home_team_id, match?.home?.id, match?.home_team?.id, match?.teams?.home?.id]
-    : [match?.away_id, match?.away_team_id, match?.away?.id, match?.away_team?.id, match?.teams?.away?.id];
-  const value = direct.find(item => item !== null && item !== undefined && String(item).trim() !== '');
+  const values = side === 'home'
+    ? [match?.home_id, match?.home_team_id, match?.homeTeam?.id,
+       match?.home_team_data?.id, match?.home?.id,
+       match?.home_team?.id, match?.teams?.home?.id]
+    : [match?.away_id, match?.away_team_id, match?.awayTeam?.id,
+       match?.away_team_data?.id, match?.away?.id,
+       match?.away_team?.id, match?.teams?.away?.id];
+  const value = values.find(v =>
+    v !== null && v !== undefined && String(v).trim() !== ''
+  );
   return value === undefined ? null : String(value);
 }
 
 function getTeamName(match, side) {
-  const value = side === 'home'
-    ? (match?.home_team || match?.home?.name || match?.home_team_data?.name || match?.teams?.home?.name || match?.home)
-    : (match?.away_team || match?.away?.name || match?.away_team_data?.name || match?.teams?.away?.name || match?.away);
-  return String(value || '').trim();
+  const values = side === 'home'
+    ? [match?.home_team, match?.homeTeam?.name,
+       match?.home_team_data?.name, match?.home?.name,
+       match?.home_team?.name, match?.teams?.home?.name, match?.home]
+    : [match?.away_team, match?.awayTeam?.name,
+       match?.away_team_data?.name, match?.away?.name,
+       match?.away_team?.name, match?.teams?.away?.name, match?.away];
+  const value = values.find(v => typeof v === 'string' && v.trim());
+  return String(value || '')
+    .replace(/^\s*(?:[\w-]+\.(?:png|jpe?g|webp|svg)\s*)+/i, '')
+    .trim();
 }
 
 function isFinishedMatch(match) {

@@ -45,6 +45,44 @@ assert.equal(nested.teams.home.logo, 'https://example.test/gamma.png');
 assert.equal(nested.teams.away.id, '32');
 assert.equal(nested.teams.away.logo, 'https://example.test/delta.png');
 
+
+// Contrats variantes homeTeam/home_team_data
+const variants = normalizeFixture({
+  id: 102,
+  date: '2026-10-16T20:00:00Z',
+  status: 'NS',
+  homeTeam: {
+    id: 41,
+    name: 'espn-304.png Mansfield Town',
+    logo: 'https://example.test/mansfield.png'
+  },
+  away_team_data: {
+    id: 42,
+    name: 'Oxford United',
+    logo: 'https://example.test/oxford.png'
+  }
+});
+assert.ok(variants, 'Le format homeTeam/home_team_data doit être accepté');
+assert.equal(variants.teams.home.id, '41');
+assert.equal(variants.teams.away.id, '42');
+assert.equal(variants.teams.home.name, 'Mansfield Town');
+assert.equal(variants.teams.away.name, 'Oxford United');
+assert.equal(variants.teams.home.logo, 'https://example.test/mansfield.png');
+assert.equal(variants.teams.away.logo, 'https://example.test/oxford.png');
+
+const objectNames = normalizeFixture({
+  id: 103,
+  date: '2026-10-16T21:00:00Z',
+  status: 'NS',
+  home_team: { id: 51, name: 'Africa Sports', logo: 'https://example.test/africa.png' },
+  away_team: { id: 52, name: 'ASEC Mimosas', logo: 'https://example.test/asec.png' }
+});
+assert.ok(objectNames, 'Les objets home_team/away_team doivent être acceptés');
+assert.equal(objectNames.teams.home.name, 'Africa Sports');
+assert.equal(objectNames.teams.away.name, 'ASEC Mimosas');
+assert.equal(objectNames.teams.home.logo, 'https://example.test/africa.png');
+assert.equal(objectNames.teams.away.logo, 'https://example.test/asec.png');
+
 function historyFor(teamId) {
   return Array.from({ length: 6 }, (_, index) => {
     const isHome = index % 2 === 0;
