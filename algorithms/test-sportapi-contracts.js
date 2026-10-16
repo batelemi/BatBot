@@ -123,6 +123,68 @@ function historyFor(teamId) {
     assert.equal(result.matches[0].awayTeam.logo, 'https://example.test/beta.png');
     assert.equal(result.matches[0].stats.home.matches, 6);
     assert.equal(result.matches[0].stats.away.matches, 6);
+
+    // Le contrat doit exposer le même état au niveau du match et du modèle.
+    assert.equal(result.matches[0].ready, true);
+    assert.equal(result.matches[0].sufficientData, true);
+    assert.equal(result.matches[0].model.ready, true);
+    assert.equal(result.matches[0].model.sufficientData, true);
+
+    // Des identifiants manquants doivent entraîner un refus explicite.
+    const invalidResult = await analyzeSportApiMatches([{
+      fixture: { id: 'fixture-missing-team-ids' },
+      teams: {
+        home: { name: 'Alpha' },
+        away: { name: 'Beta' }
+      }
+    }], { apiKey: 'test-key' });
+
+    assert.equal(invalidResult.matches[0].ready, false);
+    assert.equal(invalidResult.matches[0].sufficientData, false);
+    assert.equal(invalidResult.matches[0].model.ready, false);
+    assert.equal(invalidResult.matches[0].model.sufficientData, false);
+
+
+    // Vérifications directes de la normalisation des statuts et des scores.
+    const makeFixture = (status, extra = {}) => ({
+      id: 'fixture-status-test',
+      date: '2026-10-16T12:00:00Z',
+      status,
+      home_team: 'Alpha',
+      away_team: 'Beta',
+      home_id: 11,
+      away_id: 22,
+      ...extra
+    });
+
+    const finished = normalizeFixture(makeFixture('PENS', {
+      home_score: 2,
+      away_score: 1
+    }));
+    assert.equal(finished.fixture.status.short, 'FT');
+    assert.equal(finished.goals.home, 2);
+    assert.equal(finished.goals.away, 1);
+    assert.equal(finished.eligibility.finished, true);
+    assert.equal(finished.eligibility.canAnalyze, false);
+
+    const postponed = normalizeFixture(makeFixture('POSTPONED'));
+    assert.equal(postponed.fixture.status.short, 'CANCELLED');
+    assert.equal(postponed.eligibility.cancelled, true);
+    assert.equal(postponed.eligibility.canAnalyze, false);
+
+    const unknown = normalizeFixture(makeFixture('STATUS_INCONNU'));
+    assert.equal(unknown.fixture.status.short, 'UNKNOWN');
+    assert.equal(unknown.eligibility.canAnalyze, false);
+
+    const invalidScore = normalizeFixture(makeFixture('FT', {
+      home_score: '',
+      away_score: 'invalide'
+    }));
+    assert.equal(invalidScore.goals.home, null);
+    assert.equal(invalidScore.goals.away, null);
+
+    console.log('TEST DIRECT NORMALISATION DES STATUTS : OK');
+
     console.log('TEST CONTRATS SPORTAPI.AI : OK');
     console.log('Historique formats matches/results/data : OK');
     console.log('Statut PENS, IDs et logos jusqu’au résultat d’analyse : OK');

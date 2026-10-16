@@ -234,10 +234,11 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
         match: `${homeName || 'Équipe domicile'} vs ${awayName || 'Équipe extérieur'}`,
         fixture,
         ready: false,
+        sufficientData: false,
         recommendation: 'Match non vérifiable',
         reason: 'Les identifiants réels des deux équipes sont nécessaires pour récupérer leur historique SportAPI.ai.',
         data_quality: 'non vérifiée',
-        model: { ready: false, probabilities: [], options: [], recommendation: 'Match non vérifiable', reason: 'Identifiants SportAPI.ai manquants.', data_quality: 'non vérifiée' }
+        model: { ready: false, sufficientData: false, probabilities: [], options: [], recommendation: 'Match non vérifiable', reason: 'Identifiants SportAPI.ai manquants.', data_quality: 'non vérifiée' }
       };
     }
 
@@ -257,7 +258,8 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
     return {
       match: `${homeName} vs ${awayName}`,
       fixture,
-      ready: Boolean(odds?.sufficientData),
+      ready: model.ready === true,
+      sufficientData: model.sufficientData === true,
       recommendation: model.recommendation,
       reason: model.reason,
       data_quality: model.data_quality,

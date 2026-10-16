@@ -2919,8 +2919,10 @@ function renderBatBotAIResult(raw,modelData){
 
   data.matches=data.matches.map(function(match,index){
     const model=models[index]||{};
+      match.ready=model.ready===true;
+      match.sufficientData=model.sufficientData===true;
 
-    if(model.ready===false){
+    if(model.ready!==true||model.sufficientData!==true){
       match.probabilities=[];
       match.options=[];
       match.recommendation=model.recommendation||"Analyse insuffisante";
@@ -2940,7 +2942,7 @@ function renderBatBotAIResult(raw,modelData){
       });
     }
 
-    if(Array.isArray(model.options)&&model.options.length){
+    if(model.ready===true&&model.sufficientData===true&&Array.isArray(model.options)&&model.options.length){
       const aiOptions=Array.isArray(match.options)?match.options:[];
 
       match.options=model.options.map(function(p){
@@ -2973,7 +2975,7 @@ function renderBatBotAIResult(raw,modelData){
   });
 
   if(models.length>1 && models.every(function(m){
-    return m&&m.ready!==false;
+    return m&&m.ready===true&&m.sufficientData===true;
   })){
     const picks=models.map(function(m){
       return m.recommendation;
@@ -3182,6 +3184,21 @@ function renderBatBotAIResult(raw,modelData){
       '</div>';
     }
 
+    if(match.ready!==true||match.sufficientData!==true){
+      return '<div class="ai-match-result batbot-match-card">'+
+        '<div class="batbot-match-head">'+
+          '<div class="batbot-match-title">⚽ '+
+            renderBatBotTeamFlag(homeFlag)+escapeHtml(homeName)+
+            ' <span class="batbot-vs">vs</span> '+
+            renderBatBotTeamFlag(awayFlag)+escapeHtml(awayName)+
+          '</div>'+statusHtml+
+        '</div>'+
+        '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
+        '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatFootballDateTime(fixture.date):"Date non disponible")+'</div>'+
+        '<div class="batbot-ticket-muted">⚠️ Analyse insuffisante — données vérifiables insuffisantes pour afficher un pronostic fiable.</div>'+
+      '</div>';
+    }
+
     return '<div class="ai-match-result batbot-match-card">'+
 
       '<div class="batbot-match-head">'+
@@ -3327,9 +3344,19 @@ async function submitBatBotAI(){
 
     const matches=[];
     const selectedFixtures=Array.isArray(window.batBotSelectedFixtures)?window.batBotSelectedFixtures:[];
-    if(first.home&&first.away)matches.push({home:first.home,away:first.away,fixture:selectedFixtures[0]||null});
+    const normalizeSelectedTeamName=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+    const findSelectedFixture=parsed=>{
+      if(!parsed?.home||!parsed?.away)return null;
+      const home=normalizeSelectedTeamName(parsed.home);
+      const away=normalizeSelectedTeamName(parsed.away);
+      return selectedFixtures.find(fixture=>
+        normalizeSelectedTeamName(fixture?.teams?.home?.name)===home &&
+        normalizeSelectedTeamName(fixture?.teams?.away?.name)===away
+      )||null;
+    };
+    if(first.home&&first.away)matches.push({home:first.home,away:first.away,fixture:findSelectedFixture(first)});
     else if(first.raw)matches.push({match:first.raw});
-    if(second.home&&second.away)matches.push({home:second.home,away:second.away,fixture:selectedFixtures[1]||null});
+    if(second.home&&second.away)matches.push({home:second.home,away:second.away,fixture:findSelectedFixture(second)});
     else if(second.raw)matches.push({match:second.raw});
 
     const response=await fetch("/api/football/odds",{
@@ -3357,7 +3384,9 @@ async function submitBatBotAI(){
       const model=item?.model||serverModels[index]||{};
       const stats=item?.stats||{};
       return {
-        name:item?.match||((item?.homeTeam?.name||first.home)+" vs "+(item?.awayTeam?.name||first.away)),
+        name:item?.match||((item?.homeTeam?.name||item?.fixture?.teams?.home?.name||"")+" vs "+(item?.awayTeam?.name||item?.fixture?.teams?.away?.name||"")),
+        ready:model.ready===true&&model.sufficientData===true&&item?.ready!==false&&serverModels[index]?.ready!==false,
+        sufficientData:model.sufficientData===true&&item?.sufficientData!==false&&serverModels[index]?.sufficientData!==false,
         probabilities:repairBatBotOneXTwo(model.probabilities||[],model.expected_goals||item?.odds?.expectedGoals),
         options:Array.isArray(model.options)?model.options:[],
         recommendation:model.recommendation||item?.recommendation||"Analyse insuffisante",
@@ -3385,19 +3414,19 @@ async function submitBatBotAI(){
           match:item?.match||compatibleMatches[index]?.name||"Match",
           fixture:item?.fixture ? {...item.fixture,...(item.fixture.fixture||{})} : null,
           homeTeam:{
-            name:item?.homeTeam?.name||first.home,
+            name:item?.homeTeam?.name||item?.fixture?.teams?.home?.name||"",
             slug:item?.homeTeam?.slug||"",
             flag:item?.homeTeam?.flag||item?.homeTeam?.flag_emoji||item?.homeTeam?.flagEmoji||item?.homeTeam?.logo||item?.fixture?.teams?.home?.flag||item?.fixture?.teams?.home?.logo||"",
             logo:item?.homeTeam?.logo||item?.fixture?.teams?.home?.logo||""
           },
           awayTeam:{
-            name:item?.awayTeam?.name||first.away,
+            name:item?.awayTeam?.name||item?.fixture?.teams?.away?.name||"",
             slug:item?.awayTeam?.slug||"",
             flag:item?.awayTeam?.flag||item?.awayTeam?.flag_emoji||item?.awayTeam?.flagEmoji||item?.awayTeam?.logo||item?.fixture?.teams?.away?.flag||item?.fixture?.teams?.away?.logo||"",
             logo:item?.awayTeam?.logo||item?.fixture?.teams?.away?.logo||""
           },
           homeForm:{
-            teamName:item?.homeTeam?.name||first.home,
+            teamName:item?.homeTeam?.name||item?.fixture?.teams?.home?.name||"",
             sample:Number(homeStats.matches)||0,
             wins:Number(homeStats.wins)||0,
             draws:Number(homeStats.draws)||0,
@@ -3410,7 +3439,7 @@ async function submitBatBotAI(){
             away:{sample:Number(homeStats.awayMatches)||0,avgFor:homeStats.awayMatches?Number(homeStats.awayGoalsFor||0)/Number(homeStats.awayMatches):null,avgAgainst:homeStats.awayMatches?Number(homeStats.awayGoalsAgainst||0)/Number(homeStats.awayMatches):null}
           },
           awayForm:{
-            teamName:item?.awayTeam?.name||first.away,
+            teamName:item?.awayTeam?.name||item?.fixture?.teams?.away?.name||"",
             sample:Number(awayStats.matches)||0,
             wins:Number(awayStats.wins)||0,
             draws:Number(awayStats.draws)||0,
@@ -5873,6 +5902,16 @@ document.addEventListener("keydown",function(event){
     return Number.isFinite(n)?n:null;
   }
 
+  function hasVerifiedFixture(fixture){
+    const matchId=fixture?.fixture?.id??fixture?.id;
+    const matchDate=fixture?.fixture?.date??fixture?.date;
+    const home=fixture?.teams?.home;
+    const away=fixture?.teams?.away;
+    const validId=value=>value!==null&&value!==undefined&&String(value).trim()!=="";
+    const validDate=typeof matchDate==="string"&&matchDate.trim()!==""&&Number.isFinite(new Date(matchDate).getTime());
+    return Boolean(fixture&&validId(matchId)&&validDate&&validId(home?.id)&&validId(away?.id)&&String(home?.name||"").trim()&&String(away?.name||"").trim());
+  }
+
   function buildTicketText(data){
     const matches=Array.isArray(data&&data.matches)?data.matches:[];
     const evidence=window.batBotLastEvidence&&Array.isArray(window.batBotLastEvidence.matches)
@@ -5902,9 +5941,15 @@ document.addEventListener("keydown",function(event){
 
       const currentHome=num(fixture?.goals?.home);
       const currentAway=num(fixture?.goals?.away);
+      const verified=hasVerifiedFixture(fixture);
+      const isFinished=verified&&isFinishedFixture(fixture);
+      const isLive=verified&&isLiveFixture(fixture);
 
-      const isFinished=isFinishedFixture(fixture);
-      const isLive=isLiveFixture(fixture);
+      if(!verified){
+        lines.push("⚠️ Rencontre non confirmée par SportAPI.ai — aucun pronostic.");
+        lines.push("");
+        return;
+      }
 
       if(isFinished){
         if(currentHome!==null && currentAway!==null){
@@ -5918,18 +5963,6 @@ document.addEventListener("keydown",function(event){
         return;
       }
 
-      const verified=Boolean(
-        fixture &&
-        home &&
-        away &&
-        fixture.date
-      );
-
-      if(!verified){
-        lines.push("⚠️ Rencontre non confirmée par SportAPI.ai — aucun pronostic.");
-        lines.push("");
-        return;
-      }
 
       if(isLive){
         lines.push("🔴 En direct");
@@ -5994,6 +6027,7 @@ document.addEventListener("keydown",function(event){
     function teamFlag(team){
       if(!team)return "";
       return String(
+        team.logo||
         team.flag||
         team.flag_emoji||
         team.flagEmoji||
@@ -6018,14 +6052,6 @@ document.addEventListener("keydown",function(event){
       ).trim();
     }
 
-    function hasVerifiedFixture(fixture){
-      return Boolean(
-        fixture &&
-        teamName(fixture,"home","") &&
-        teamName(fixture,"away","") &&
-        fixture.date
-      );
-    }
 
     let html='<div class="batbot-ticket-modern">';
 
@@ -6089,20 +6115,14 @@ document.addEventListener("keydown",function(event){
       const venue=venueName(fixture);
       const competition=fixture?.league?.name||fixture?.competition||"";
 
-      const flagHome=teamFlag(homeTeam);
-      const flagAway=teamFlag(awayTeam);
-
-      html+='<div class="ai-ticket-match">';
+      const flagHome=home?renderBatBotTeamFlag(teamFlag(homeTeam)):"";
+      const flagAway=away?renderBatBotTeamFlag(teamFlag(awayTeam)):"";
 
       html+='<div class="ai-ticket-header">'+
         '<div class="ai-ticket-name">'+
-          escapeHtml(
-            (flagHome?flagHome+" ":"")+
-            home+
-            (away?"  vs  ":"")+
-            (flagAway?flagAway+" ":"")+
-            away
-          )+
+          flagHome+(home?' '+escapeHtml(home):'')+
+          (away?'  vs  ':'')+
+          flagAway+(away?' '+escapeHtml(away):'')+
         '</div>'+
         '<div class="ai-ticket-status '+statusClass+'">'+
           '<span class="ai-ticket-status-dot"></span>'+
@@ -6278,7 +6298,7 @@ document.addEventListener("keydown",function(event){
       const fixture=ev.fixture||match.fixture||{};
       const home=fixture?.teams?.home?.name||fixture?.home||ev.homeTeam?.name||"";
       const away=fixture?.teams?.away?.name||fixture?.away||ev.awayTeam?.name||"";
-      const verified=Boolean(fixture&&home&&away&&fixture.date);
+      const verified=hasVerifiedFixture(fixture);
       const live=verified&&isLiveFixture(fixture);
       const finished=verified&&!live&&isFinishedFixture(fixture);
       const selected=verified&&!finished?getSelectedOption(match):null;
