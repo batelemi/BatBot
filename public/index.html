@@ -5985,7 +5985,10 @@ document.addEventListener("keydown",function(event){
       ?window.batBotLastEvidence.matches:[];
 
     function teamName(fixture,side,fallback){
-      return fixture?.teams?.[side]?.name||fixture?.[side]||fallback||"";
+      const value=fixture?.teams?.[side]?.name||fixture?.[side]||fallback||"";
+      return String(value)
+        .replace(/\b[\w-]+\.(?:png|jpe?g|webp|svg)\s*/gi,"")
+        .trim();
     }
 
     function teamFlag(team){
