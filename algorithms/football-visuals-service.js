@@ -42,6 +42,35 @@ function findExactMatch(items, name, nameSelector) {
   ) || null;
 }
 
+const COMPETITION_NAME_ALIASES = {
+  'dutch eredivisie': ['Eredivisie', 'DED']
+};
+
+function findCompetitionMatch(competitions, leagueName) {
+  const directMatch = findExactMatch(
+    competitions, leagueName, item => item.name
+  ) || findExactMatch(
+    competitions, leagueName, item => item.code
+  );
+
+  if (directMatch) return directMatch;
+
+  const aliases = COMPETITION_NAME_ALIASES[normalizeName(leagueName)] || [];
+
+  for (const alias of aliases) {
+    const match = findExactMatch(
+      competitions, alias, item => item.name
+    ) || findExactMatch(
+      competitions, alias, item => item.code
+    );
+
+    if (match) return match;
+  }
+
+  return null;
+}
+
+
 function normalizeTeamVisual(team) {
   if (!team || typeof team !== 'object') return null;
 
@@ -144,15 +173,7 @@ async function fetchVisualsForFixture(leagueName, homeName, awayName) {
       return Array.isArray(data.competitions) ? data.competitions : [];
     });
 
-    const competition = findExactMatch(
-      competitions,
-      leagueName,
-      item => item.name
-    ) || findExactMatch(
-      competitions,
-      leagueName,
-      item => item.code
-    );
+    const competition = findCompetitionMatch(competitions, leagueName);
 
     if (!competition || !competition.code) {
       return {
@@ -213,5 +234,6 @@ module.exports = {
   findExactMatch,
   normalizeTeamVisual,
   normalizeCompetitionVisual,
+  findCompetitionMatch,
   fetchVisualsForFixture
 };

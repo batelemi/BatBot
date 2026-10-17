@@ -69,4 +69,26 @@ assert.equal(
   'https://crests.football-data.org/PL.png'
 );
 
+const competitions = [
+  {
+    id: 2003,
+    name: 'Eredivisie',
+    code: 'DED',
+    emblem: 'https://crests.football-data.org/DED.png'
+  }
+];
+
+assert.equal(
+  visuals.findCompetitionMatch(competitions, 'Dutch Eredivisie').code,
+  'DED'
+);
+assert.equal(
+  visuals.findCompetitionMatch(competitions, 'Eredivisie').code,
+  'DED'
+);
+assert.equal(
+  visuals.findCompetitionMatch(competitions, 'Unknown League'),
+  null
+);
+
 console.log('TESTS FOOTBALL VISUALS : OK');
