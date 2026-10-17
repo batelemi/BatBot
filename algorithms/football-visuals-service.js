@@ -6,6 +6,8 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 const cache = new Map();
 const inFlight = new Map();
+let lastVisualErrorKey = '';
+let lastVisualErrorAt = 0;
 
 function normalizeName(value) {
   return String(value || '')
@@ -180,7 +182,23 @@ async function fetchVisualsForFixture(leagueName, homeName, awayName) {
       competitionLogo: visualCompetition?.logo || null
     };
   } catch (error) {
-    // Le service visuel ne doit jamais bloquer les matchs ou les analyses.
+    // Diagnostic limité : jamais de token, d'URL complète ou de données sensibles.
+    const errorKey = String(error?.status || error?.code || error?.name || "ERROR");
+    const now = Date.now();
+
+    if (
+      errorKey !== lastVisualErrorKey ||
+      now - lastVisualErrorAt > 5 * 60 * 1000
+    ) {
+      console.warn(
+        "[football-visuals] échec API ; catégorie=" +
+        errorKey +
+        (error?.status ? " ; HTTP=" + error.status : "")
+      );
+      lastVisualErrorKey = errorKey;
+      lastVisualErrorAt = now;
+    }
+
     return {
       homeLogo: null,
       awayLogo: null,
