@@ -91,4 +91,32 @@ assert.equal(
   null
 );
 
+
+const matchingTeams = [
+  { id: 10, name: 'SC Telstar', crest: 'https://crests.football-data.org/10.png' },
+  { id: 20, name: 'Feyenoord', crest: null },
+  { id: 21, name: 'Feyenoord Rotterdam', crest: 'https://crests.football-data.org/21.png' },
+  { id: 30, name: 'Club Inconnu', crest: null }
+];
+
+assert.equal(
+  visuals.findTeamMatch(matchingTeams, 'Telstar')?.id,
+  10
+);
+
+assert.equal(
+  visuals.findTeamMatch(matchingTeams, 'Feyenoord')?.id,
+  21
+);
+
+assert.equal(
+  visuals.findTeamMatch(matchingTeams, 'Club Inconnu')?.id,
+  30
+);
+
+assert.equal(
+  visuals.findTeamMatch(matchingTeams, 'Équipe totalement inconnue'),
+  null
+);
+
 console.log('TESTS FOOTBALL VISUALS : OK');

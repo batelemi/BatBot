@@ -37,9 +37,53 @@ function findExactMatch(items, name, nameSelector) {
   const wanted = normalizeName(name);
   if (!wanted || !Array.isArray(items)) return null;
 
-  return items.find(item =>
+  const matches = items.filter(item =>
     normalizeName(nameSelector(item)) === wanted
-  ) || null;
+  );
+
+  return matches.find(item => normalizeTeamVisual(item)?.logo) ||
+    matches[0] ||
+    null;
+}
+
+const TEAM_NAME_ALIASES = {
+  telstar: ['SC Telstar'],
+  feyenoord: ['Feyenoord Rotterdam']
+};
+
+function findTeamMatch(teams, teamName) {
+  if (!Array.isArray(teams) || !normalizeName(teamName)) return null;
+
+  const directMatches = teams.filter(team =>
+    normalizeName(team.name) === normalizeName(teamName)
+  );
+
+  const directWithLogo = directMatches.find(team =>
+    normalizeTeamVisual(team)?.logo
+  );
+
+  if (directWithLogo) return directWithLogo;
+  if (directMatches.length) {
+    const aliases = TEAM_NAME_ALIASES[normalizeName(teamName)] || [];
+    for (const alias of aliases) {
+      const aliasMatches = teams.filter(team =>
+        normalizeName(team.name) === normalizeName(alias)
+      );
+      const aliasWithLogo = aliasMatches.find(team =>
+        normalizeTeamVisual(team)?.logo
+      );
+      if (aliasWithLogo) return aliasWithLogo;
+    }
+    return directMatches[0];
+  }
+
+  const aliases = TEAM_NAME_ALIASES[normalizeName(teamName)] || [];
+  for (const alias of aliases) {
+    const match = findExactMatch(teams, alias, team => team.name);
+    if (match) return match;
+  }
+
+  return null;
 }
 
 const COMPETITION_NAME_ALIASES = {
@@ -193,8 +237,8 @@ async function fetchVisualsForFixture(leagueName, homeName, awayName) {
       }
     );
 
-    const home = findExactMatch(teams, homeName, item => item.name);
-    const away = findExactMatch(teams, awayName, item => item.name);
+    const home = findTeamMatch(teams, homeName);
+    const away = findTeamMatch(teams, awayName);
     const visualCompetition = normalizeCompetitionVisual(competition);
 
     return {
@@ -232,6 +276,7 @@ module.exports = {
   normalizeName,
   isValidImageUrl,
   findExactMatch,
+  findTeamMatch,
   normalizeTeamVisual,
   normalizeCompetitionVisual,
   findCompetitionMatch,
