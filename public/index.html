@@ -3666,6 +3666,21 @@ function footballFixtureScore(item){
   return "";
 }
 function showFinishedFootballMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=footballFixtureScore(item),when=formatFootballDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
+function renderBatBotCompetitionEmblem(value){
+  const url = String(value || "").trim();
+  if (!url || !/^https:\/\//i.test(url)) return "";
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "crests.football-data.org") return "";
+    if (!/\.(png|svg|webp|jpe?g)$/i.test(parsed.pathname)) return "";
+    return '<img src="' + escapeHtml(url) + '" alt="" loading="lazy" ' +
+      'style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px" ' +
+      'onerror="this.style.display=\'none\'">';
+  } catch (_) {
+    return "";
+  }
+}
+
 function renderFootballFixtures(fixtures,checkedDate){
   const box=document.getElementById("footballResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
   renderBatBotLeagueFixtures(window.batBotDailyFixtures);
@@ -3674,6 +3689,7 @@ function renderFootballFixtures(fixtures,checkedDate){
   box.innerHTML=fixtures.slice(0,visibleCount).map(function(item,index){
     const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
     const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.logo_url||homeTeam.image_url||"",homeTeam.name,homeTeam.country_code||homeTeam.countryCode||homeTeam.country),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.logo_url||awayTeam.image_url||"",awayTeam.name,awayTeam.country_code||awayTeam.countryCode||awayTeam.country);
+    const competitionEmblem=renderBatBotCompetitionEmblem(league.emblem);
     const date=formatFootballDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateFootballStatus(f.status?.long||f.status?.short||"Programmé"),score=footballFixtureScore(item);
     let action="";
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
@@ -3681,7 +3697,7 @@ function renderFootballFixtures(fixtures,checkedDate){
     else action='<button type="button" class="btn primary" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     const country=league.country||league.area||"";
     const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
-    return '<div class="match-card"><div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
+    return '<div class="match-card"><div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
   }).join("")+(fixtures.length>visibleCount?'<button type="button" class="btn secondary" id="batbotShowMoreFixtures" style="width:100%;margin-top:10px">Voir plus de matchs · '+(fixtures.length-visibleCount)+' restants</button>':"");
   const moreButton=box.querySelector("#batbotShowMoreFixtures");if(moreButton)moreButton.addEventListener("click",function(){window.batBotVisibleFixtureCount=visibleCount+20;renderFootballFixtures(fixtures,checkedDate);});
   box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedFootballMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeFootballMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});

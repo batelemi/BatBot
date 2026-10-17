@@ -8,6 +8,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { analyzeSportApiMatches } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
+const { fetchVisualsForFixture } = require("./algorithms/football-visuals-service");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -2234,9 +2235,45 @@ async function getSportApiFixturesCached(date, statusFilter = "") {
   const statusMap = { live: "LIVE", finished: "FT", upcoming: "NS" };
   const requiredStatus = statusMap[statusFilter];
   const allFixtures = Array.isArray(apiResult?.fixtures) ? apiResult.fixtures : [];
-  const fixtures = requiredStatus
+  const filteredFixtures = requiredStatus
     ? allFixtures.filter(item => item?.fixture?.status?.short === requiredStatus)
     : allFixtures;
+
+  // Complément visuel facultatif : ne modifie jamais les statuts ou scores.
+  const fixtures = await Promise.all(filteredFixtures.map(async item => {
+    try {
+      const home = item?.teams?.home || {};
+      const away = item?.teams?.away || {};
+      const league = item?.league || {};
+
+      const visuals = await fetchVisualsForFixture(
+        league.name,
+        home.name,
+        away.name
+      );
+
+      return {
+        ...item,
+        teams: {
+          ...item.teams,
+          home: {
+            ...home,
+            logo: home.logo || visuals.homeLogo || null
+          },
+          away: {
+            ...away,
+            logo: away.logo || visuals.awayLogo || null
+          }
+        },
+        league: {
+          ...league,
+          emblem: league.emblem || visuals.competitionLogo || null
+        }
+      };
+    } catch (_) {
+      return item;
+    }
+  }));
 
   const value = {
     source: "SportAPI.ai",
