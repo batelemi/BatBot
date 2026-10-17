@@ -76,16 +76,32 @@ function normalizeFixture(match) {
     match.homeTeam?.id ?? match.home_team_data?.id ?? homeObj.id ?? null;
   const awayId = match.away_id ?? match.away_team_id ??
     match.awayTeam?.id ?? match.away_team_data?.id ?? awayObj.id ?? null;
+  // SportAPI peut exposer les visuels sous plusieurs noms selon le format de réponse.
+  // On conserve en priorité les URL fournies par SportAPI.ai.
   const homeLogo = match.home_logo || match.home_team_logo ||
-    match.homeTeam?.logo || match.home_team_data?.logo ||
-    homeObj.logo || homeObj.flag || null;
+    match.homeTeam?.logo || match.homeTeam?.crest || match.homeTeam?.image ||
+    match.homeTeam?.logoUrl || match.home_team_data?.logo ||
+    match.home_team_data?.crest || match.home_team_data?.image ||
+    homeObj.logo || homeObj.crest || homeObj.image || homeObj.logo_url ||
+    homeObj.logoUrl || homeObj.image_url || homeObj.imageUrl ||
+    homeObj.badge || homeObj.flag || null;
   const awayLogo = match.away_logo || match.away_team_logo ||
-    match.awayTeam?.logo || match.away_team_data?.logo ||
-    awayObj.logo || awayObj.flag || null;
+    match.awayTeam?.logo || match.awayTeam?.crest || match.awayTeam?.image ||
+    match.awayTeam?.logoUrl || match.away_team_data?.logo ||
+    match.away_team_data?.crest || match.away_team_data?.image ||
+    awayObj.logo || awayObj.crest || awayObj.image || awayObj.logo_url ||
+    awayObj.logoUrl || awayObj.image_url || awayObj.imageUrl ||
+    awayObj.badge || awayObj.flag || null;
   const leagueObj = match.league || match.competition || {};
   const leagueId = match.league_id ?? leagueObj.id ?? null;
   const leagueName = (typeof leagueObj === 'object' ? leagueObj.name : leagueObj) ||
     match.league_name || 'Compétition inconnue';
+  const leagueEmblem = match.league_emblem || match.competition_emblem ||
+    match.league_logo || match.competition_logo ||
+    (typeof leagueObj === 'object' && leagueObj
+      ? leagueObj.emblem || leagueObj.logo || leagueObj.image || leagueObj.crest ||
+        leagueObj.logo_url || leagueObj.logoUrl || leagueObj.image_url || leagueObj.imageUrl
+      : null) || null;
 
   return {
     fixture: {
@@ -114,7 +130,8 @@ function normalizeFixture(match) {
     },
     league: {
       id: leagueId == null ? null : String(leagueId),
-      name: String(leagueName)
+      name: String(leagueName),
+      emblem: leagueEmblem
     },
     goals: {
       home: validScore ? Number(homeScore) : null,
