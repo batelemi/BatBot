@@ -971,6 +971,23 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
 .batbot-league-match .btn{width:auto;min-width:104px;min-height:38px;margin:0;padding:8px;font-size:11px}
 @media(max-width:420px){#footballResults .batbot-team-crest{width:36px;height:36px;flex-basis:36px}#footballResults .batbot-fixture-team{font-size:12px}#footballResults .batbot-fixture-vs{width:30px;height:30px}.batbot-league-match{grid-template-columns:minmax(0,1fr)}.batbot-league-match .btn{width:100%}}
 
+
+/* BATBOT — grille des championnats et matchs verticaux */
+.batbot-league-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:12px}
+.batbot-league-tile{min-width:0;min-height:145px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px 10px;border:1px solid rgba(83,207,255,.25);border-radius:17px;background:linear-gradient(145deg,#142d43,#091827);color:#fff;text-align:center;font:inherit;cursor:pointer}
+.batbot-league-tile:active{border-color:#ff414b;background:linear-gradient(145deg,#321719,#101722)}
+.batbot-league-tile-logo{width:54px;height:54px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f8fafc;overflow:hidden}
+.batbot-league-tile-logo .batbot-team-crest{width:54px;height:54px;border:0;box-shadow:none}
+.batbot-league-tile-logo img{width:100%;height:100%;object-fit:contain;padding:5px}
+.batbot-league-logo-fallback{font-size:27px}
+.batbot-league-tile strong{font-size:13px;line-height:1.3}
+.batbot-league-tile small{font-size:10px;color:#a9bfd2;line-height:1.3}
+.batbot-league-match{display:flex;flex-direction:column;gap:9px;padding:13px 0;border-top:1px solid rgba(83,207,255,.16)}
+.batbot-league-match-teams{display:grid;grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);align-items:center;gap:6px;text-align:center;font-size:12px;font-weight:800}
+.batbot-league-match-teams>span{display:flex;flex-direction:column;align-items:center;gap:5px;overflow-wrap:anywhere}
+.batbot-league-match-teams .batbot-team-crest{width:38px;height:38px}
+.batbot-league-match-teams b{color:#53CFFF;font-size:11px}
+.batbot-league-match .btn{width:100%;margin:0}
 </style>
 
 <style id="batbot-admin-navigation-style">
@@ -1271,7 +1288,7 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
     <label for="footballDate" class="muted">Date des rencontres</label>
     <input type="date" id="footballDate" style="margin:6px 0 10px">
     <button type="button" class="btn primary" id="footballLoadButton" onclick="loadFootballFixtures(document.getElementById('footballDate').value)">🔎 Charger les matchs</button>
-    <button type="button" class="btn secondary" id="footballLiveButton" onclick="loadFootballLive()">🔴 Voir les matchs en direct</button>
+    <button type="button" class="btn secondary" id="footballLiveButton" onclick="loadFootballLive()">🔴 Voir les matchs en direct</button><button type="button" class="btn secondary" id="footballTodayButton" onclick="loadFootballFixtures(getAbidjanDate(0))">Aujourd’hui</button>
     <div id="footballStatus" class="status" aria-live="polite"></div>
     <div id="footballResults" class="hidden" aria-live="polite"></div>
   </section>
@@ -1279,7 +1296,7 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
   <section class="card hidden" id="batbotLeaguesCard" aria-label="Matchs par ligue">
     <div class="section-kicker">Compétitions disponibles</div>
     <h2>🏆 Ligues & championnats</h2>
-    <p class="muted">Parcourez les compétitions présentes dans les données SportAPI.ai. Chaque rencontre disponible possède son bouton de pronostic.</p>
+    <p class="muted">Choisissez un championnat pour découvrir ses rencontres et demander un pronostic.</p>
     <div id="batbotLeagueStatus" class="status" aria-live="polite"></div>
     <div id="batbotLeagueList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des compétitions</strong><small>Les ligues disponibles seront affichées ici.</small></div></div></div>
   </section>
@@ -2818,7 +2835,7 @@ function closeBatBotTicketModal(){
   modal.setAttribute("aria-hidden","true");
 }
 function buildBatBotTicketText(data){
-  const lines=["BATBOT IA — TICKET D’ANALYSE","DONNÉES SPORTAPI.AI",""];
+  const lines=["BATBOT IA — TICKET D’ANALYSE",""];
   (data?.matches||[]).forEach(function(match,index){
     lines.push((index+1)+". "+(match.name||"Match"));
     lines.push("Choix : "+(match.recommendation||"—"));
@@ -2936,15 +2953,20 @@ function renderBatBotModelCard(model,fixture,evidence){
   return '<div class="ai-evidence-card"><strong>🧮 Moteur statistique BATBOT</strong><br>⚽ Buts attendus (domicile • extérieur) : <strong>'+escapeHtml(expected)+'</strong><br>🏠 Forme récente : <strong>'+escapeHtml(formHome===null?"—":formHome.toFixed(1))+'%</strong> &nbsp; • &nbsp; '+escapeHtml(formAway===null?"—":formAway.toFixed(1))+'%<br>🎯 Score le plus probable : <strong>'+escapeHtml(best)+'</strong><br></div>';
 }
 
-function renderBatBotTeamFlag(value){
-  const flag=String(value||"").trim();
-  if(!flag)return '<span class="batbot-team-crest" aria-hidden="true">⚽</span>';
-  const looksLikeImage=/^(https?:)?\/\//i.test(flag)||flag.startsWith("/")||flag.startsWith("data:image/")||/\.(png|jpe?g|webp|svg|gif)([?#].*)?$/i.test(flag);
-  if(looksLikeImage){
-    const src=/^\/\//.test(flag)?"https:"+flag:flag;
-    return '<span class="batbot-team-crest"><img src="'+escapeHtml(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display=&quot;none&quot;;if(this.nextElementSibling)this.nextElementSibling.style.display=&quot;flex&quot;"><span class="batbot-team-crest-fallback" aria-hidden="true">⚽</span></span>';
-  }
-  return '<span class="batbot-team-crest" aria-hidden="true">'+escapeHtml(flag)+'</span>';
+function footballCountryCodeForTeam(name){
+  const key=String(name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  const map={"cote d ivoire":"CI","ivory coast":"CI","ghana":"GH","nigeria":"NG","senegal":"SN","cameroon":"CM","morocco":"MA","algeria":"DZ","tunisia":"TN","mali":"ML","burkina faso":"BF","guinea":"GN","south africa":"ZA","egypt":"EG","france":"FR","england":"GB","scotland":"GB","wales":"GB","northern ireland":"GB","spain":"ES","portugal":"PT","italy":"IT","germany":"DE","netherlands":"NL","belgium":"BE","brazil":"BR","argentina":"AR","uruguay":"UY","colombia":"CO","mexico":"MX","united states":"US","usa":"US","japan":"JP","south korea":"KR","australia":"AU","switzerland":"CH","croatia":"HR","serbia":"RS","denmark":"DK","sweden":"SE","norway":"NO","finland":"FI","poland":"PL","ukraine":"UA","turkey":"TR","türkiye":"TR","czech republic":"CZ","czechia":"CZ","austria":"AT","ireland":"IE","cameroon":"CM"};
+  return map[key]||"";
+}
+function renderBatBotTeamFlag(value,teamName,countryCode){
+  const raw=String(value||"").trim(),code=(String(countryCode||"").trim().toUpperCase()||footballCountryCodeForTeam(teamName));
+  const countryFlag=/^[A-Z]{2}$/.test(code)?String.fromCodePoint(...[...code].map(ch=>127397+ch.charCodeAt(0))):"";
+  const initials=String(teamName||"").trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join("").toUpperCase();
+  const fallback=countryFlag||initials||"⚽";
+  if(!raw)return '<span class="batbot-team-crest" aria-label="'+escapeHtml(teamName||"Équipe")+'"><span class="batbot-team-crest-fallback" style="display:flex">'+escapeHtml(fallback)+'</span></span>';
+  const looksLikeImage=/^(https?:)?\/\//i.test(raw)||raw.startsWith("/")||raw.startsWith("data:image/")||/\.(png|jpe?g|webp|svg|gif)([?#].*)?$/i.test(raw);
+  if(looksLikeImage){const src=/^\/\//.test(raw)?"https:"+raw:raw;return '<span class="batbot-team-crest"><img src="'+escapeHtml(src)+'" alt="'+escapeHtml(teamName||"")+'" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display=&quot;none&quot;;if(this.nextElementSibling)this.nextElementSibling.style.display=&quot;flex&quot;"><span class="batbot-team-crest-fallback" aria-hidden="true">'+escapeHtml(fallback)+'</span></span>';}
+  return '<span class="batbot-team-crest" aria-label="'+escapeHtml(teamName||"Équipe")+'"><span class="batbot-team-crest-fallback" style="display:flex">'+escapeHtml(fallback)+'</span></span>';
 }
 function renderBatBotAIResult(raw,modelData){
   const box=document.getElementById("smartDriveAIResult");
@@ -3390,7 +3412,7 @@ async function submitBatBotAI(){
     return;
   }
   try{
-    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Analyse BATBOT en cours</strong><small>Les données vérifiables sont récupérées et le moteur statistique BATBOT calcule les probabilités…</small></div></div>');
+    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Analyse BATBOT en cours</strong><small>Veuillez patienter quelques instants.</small></div></div>');
     if(button)button.disabled=true;
 
     const matches=[];
@@ -3534,12 +3556,12 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
   input1.value=homeName+" vs "+awayName;
   input2.value="";
   const realHomeId=String(homeId||"").trim(),realAwayId=String(awayId||"").trim();
-  if(!realHomeId||!realAwayId){showToast("Les identifiants SportAPI.ai des deux équipes sont absents. Ce match ne peut pas être analysé de façon fiable.","error");return;}
+  if(!realHomeId||!realAwayId){showToast("Les informations de cette rencontre sont incomplètes. Impossible de lancer une analyse fiable.","error");return;}
   window.batBotSelectedIds={home:realHomeId,away:realAwayId};
   window.batBotSelectedFixtures=fixture?[fixture]:[];
   window.batBotSelectedIds2={home:"",away:""};
   setBatBotAIModalResult("");
-  setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">🤖 Match sélectionné</div><div class="professional-status-body">'+escapeHtml(homeName+" — "+awayName)+'. Récupération des données puis analyse en cours…</div></div>');
+  setBatBotAIModalStatus('<div class="ai-progress-status"><span class="batbot-spinner"></span><div><strong>Génération de votre pronostic en cours…</strong><small>Veuillez patienter quelques instants.</small></div></div>');
   openBatBotAIModal();
   setTimeout(()=>submitBatBotAI(),120);
 }
@@ -3604,7 +3626,7 @@ function extractFootballDate(match){
   for(const candidate of direct){if(parseFootballDate(candidate))return candidate;}
   return null;
 }
-function formatFootballDateTime(value){const d=parseFootballDate(value);if(!d)return "Date/heure indisponible";const tz=getBatBotLocalTimeZone();try{return new Intl.DateTimeFormat(undefined,{timeZone:tz,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZoneName:"short"}).format(d)+" • "+tz;}catch(_){return d.toLocaleString();}}
+function formatFootballDateTime(value){const d=parseFootballDate(value);if(!d)return "Horaire indisponible";try{return new Intl.DateTimeFormat("fr-FR",{timeZone:"Africa/Abidjan",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}).format(d).replace(".","");}catch(_){return d.toLocaleString("fr-FR",{timeZone:"Africa/Abidjan",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false});}}
 function fixtureStatusKey(item){const f=item?.fixture||{};const status=f.status||item?.status||item?.status_code||item?.state||item?.sportapi?.status||"";return String(status?.short||status?.long||status||"").toLowerCase().trim();}
 function isFinishedFixture(item){
   const key=fixtureStatusKey(item);
@@ -3647,10 +3669,11 @@ function showFinishedFootballMatch(item){const home=item?.teams?.home?.name||"É
 function renderFootballFixtures(fixtures,checkedDate){
   const box=document.getElementById("footballResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
   renderBatBotLeagueFixtures(window.batBotDailyFixtures);
-  if(!fixtures.length){box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match fourni</div><div class="professional-status-body">Le service de données sportives a répondu sans rencontre pour le '+escapeHtml(checkedDate||"date sélectionnée")+'. Essayez une autre date ou « Voir les matchs en direct ».</div></div>';return;}
-  box.innerHTML=fixtures.slice(0,20).map(function(item,index){
+  if(!fixtures.length){box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est disponible pour cette sélection. Consultez le direct ou réessayez plus tard.</div></div>';return;}
+  const visibleCount=Math.min(fixtures.length,Number(window.batBotVisibleFixtureCount)||20);
+  box.innerHTML=fixtures.slice(0,visibleCount).map(function(item,index){
     const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
-    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||homeTeam.flag||""),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||awayTeam.flag||"");
+    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.logo_url||homeTeam.image_url||"",homeTeam.name,homeTeam.country_code||homeTeam.countryCode||homeTeam.country),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.logo_url||awayTeam.image_url||"",awayTeam.name,awayTeam.country_code||awayTeam.countryCode||awayTeam.country);
     const date=formatFootballDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateFootballStatus(f.status?.long||f.status?.short||"Programmé"),score=footballFixtureScore(item);
     let action="";
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
@@ -3659,7 +3682,8 @@ function renderFootballFixtures(fixtures,checkedDate){
     const country=league.country||league.area||"";
     const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
     return '<div class="match-card"><div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
-  }).join("");
+  }).join("")+(fixtures.length>visibleCount?'<button type="button" class="btn secondary" id="batbotShowMoreFixtures" style="width:100%;margin-top:10px">Voir plus de matchs · '+(fixtures.length-visibleCount)+' restants</button>':"");
+  const moreButton=box.querySelector("#batbotShowMoreFixtures");if(moreButton)moreButton.addEventListener("click",function(){window.batBotVisibleFixtureCount=visibleCount+20;renderFootballFixtures(fixtures,checkedDate);});
   box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedFootballMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeFootballMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
   box.querySelectorAll("[data-batbot-result-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-result-index"))];if(item)showFinishedFootballMatch(item);});});
 }
@@ -3669,31 +3693,39 @@ function renderBatBotLeagueFixtures(fixtures){
   const status=document.getElementById("batbotLeagueStatus");
   if(!list)return;
   const all=Array.isArray(fixtures)?fixtures:[];
-  if(!all.length){list.innerHTML='<div class="professional-status">Aucune compétition disponible pour le moment. Rechargez les matchs du jour pour actualiser les données.</div>';if(status)status.innerHTML="";return;}
+  if(!all.length){list.innerHTML='<div class="professional-status">Aucun championnat disponible pour le moment.</div>';if(status)status.innerHTML="";return;}
   const groups=new Map();
   all.forEach(function(item,index){
-    const league=item?.league||{};
-    const name=league.name||"Autres compétitions";
-    const country=league.country||league.area||"";
-    const key=country+"|"+name;
-    if(!groups.has(key))groups.set(key,{name,country,items:[]});
+    const league=item?.league||{};const name=league.name||"Autres compétitions";const country=league.country||league.area||"";const key=String(league.id||"")+"|"+country+"|"+name;
+    if(!groups.has(key))groups.set(key,{key,name,country,logo:league.logo||league.image||league.logo_url||league.logoUrl||"",items:[]});
     groups.get(key).items.push({item,index});
   });
-  const sorted=Array.from(groups.values()).sort((a,b)=>((a.country+" "+a.name).localeCompare(b.country+" "+b.name,"fr")));
-  list.innerHTML=sorted.map(function(group){
-    const rows=group.items.map(function(entry){
-      const item=entry.item,home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2";
-      const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
-      const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!item?.teams?.home?.id||!item?.teams?.away?.id;
-      const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary" data-batbot-league-fixture="'+entry.index+'">Recevoir mon pronostic</button>';
-      return '<div class="batbot-league-match"><div><div class="batbot-league-match-name">'+escapeHtml(home)+' <span style="color:#53CFFF">—</span> '+escapeHtml(away)+'</div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div></div>'+action+'</div>';
-    }).join("");
-    return '<section class="batbot-league-group"><div class="batbot-league-group-title">🏆 <span>'+escapeHtml((group.country?group.country+" · ":"")+group.name)+'</span><span class="batbot-league-count">'+group.items.length+' match(s)</span></div>'+rows+'</section>';
+  const sorted=Array.from(groups.values()).sort((a,b)=>(a.name).localeCompare(b.name,"fr"));
+  const selected=window.batBotSelectedLeagueKey||"";
+  if(!selected){
+    list.innerHTML='<div class="batbot-league-grid">'+sorted.map(function(group){
+      const logo=group.logo?renderBatBotTeamFlag(group.logo,group.name):'<span class="batbot-league-logo-fallback">🏆</span>';
+      return '<button type="button" class="batbot-league-tile" data-batbot-open-league="'+escapeHtml(group.key)+'"><span class="batbot-league-tile-logo">'+logo+'</span><strong>'+escapeHtml(group.name)+'</strong><small>'+escapeHtml(group.country||"Compétition")+' · '+group.items.length+' match(s)</small></button>';
+    }).join('')+'</div>';
+    list.querySelectorAll('[data-batbot-open-league]').forEach(function(button){button.addEventListener('click',function(){window.batBotSelectedLeagueKey=button.dataset.batbotOpenLeague;renderBatBotLeagueFixtures(all);});});
+    if(status)status.innerHTML='<div class="professional-status success"><div class="professional-status-head">Championnats disponibles</div><div class="professional-status-body">Choisissez une compétition pour consulter ses matchs.</div></div>';
+    return;
+  }
+  const group=sorted.find(function(item){return item.key===selected;});
+  if(!group){window.batBotSelectedLeagueKey="";renderBatBotLeagueFixtures(all);return;}
+  const rows=group.items.map(function(entry){
+    const item=entry.item,homeTeam=item?.teams?.home||{},awayTeam=item?.teams?.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
+    const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
+    const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
+    const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary" data-batbot-league-fixture="'+entry.index+'">Recevoir mon pronostic</button>';
+    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",home,homeTeam.country_code||homeTeam.countryCode),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",away,awayTeam.country_code||awayTeam.countryCode);
+    return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
-  if(status)status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Compétitions disponibles</div><div class="professional-status-body">'+sorted.length+' compétition(s) et '+all.length+' rencontre(s) chargées depuis SportAPI.ai.</div></div>';
+  list.innerHTML='<button type="button" class="btn secondary" id="batbotLeagueBack">← Tous les championnats</button><div class="batbot-league-group-title">'+(group.logo?renderBatBotTeamFlag(group.logo,group.name):'🏆')+' <span>'+escapeHtml(group.name)+'</span></div>'+rows;
+  const back=list.querySelector('#batbotLeagueBack');if(back)back.addEventListener('click',function(){window.batBotSelectedLeagueKey="";renderBatBotLeagueFixtures(all);});
   list.querySelectorAll('[data-batbot-league-fixture]').forEach(function(button){button.addEventListener('click',function(){const item=window.batBotDailyFixtures?.[Number(button.dataset.batbotLeagueFixture)];if(!item)return;analyzeFootballMatch(item.teams?.home?.name||"",item.teams?.away?.name||"",item.teams?.home?.id,item.teams?.away?.id,item);});});
+  if(status)status.innerHTML='<div class="professional-status success">'+group.items.length+' match(s) dans ce championnat.</div>';
 }
-
 function translateFootballStatus(value){
   const raw=String(value||"").trim();
   const key=raw.toLowerCase().replace(/[._-]+/g," ").replace(/\s+/g," ");
@@ -3756,8 +3788,8 @@ function normalizeFootballClientMatch(match,index){
   const league=match?.league||match?.competition||{};
   const homeId=homeObj.id??match?.home_id??match?.home_team_id??match?.homeTeam?.id??match?.home_team_data?.id??null;
   const awayId=awayObj.id??match?.away_id??match?.away_team_id??match?.awayTeam?.id??match?.away_team_data?.id??null;
-  const homeLogo=homeObj.logo||homeObj.image||homeObj.crest||homeObj.flag||match?.home_logo||match?.home_team_logo||match?.homeTeam?.logo||match?.homeTeam?.image||match?.home_team_data?.logo||match?.fixture?.teams?.home?.logo||null;
-  const awayLogo=awayObj.logo||awayObj.image||awayObj.crest||awayObj.flag||match?.away_logo||match?.away_team_logo||match?.awayTeam?.logo||match?.awayTeam?.image||match?.away_team_data?.logo||match?.fixture?.teams?.away?.logo||null;
+  const homeLogo=homeObj.logo||homeObj.image||homeObj.crest||homeObj.flag||homeObj.logo_url||homeObj.logoUrl||homeObj.image_url||homeObj.imageUrl||homeObj.badge||match?.home_logo||match?.home_team_logo||match?.homeTeam?.logo||match?.homeTeam?.image||match?.home_team_data?.logo||match?.fixture?.teams?.home?.logo||match?.teams?.home?.logo_url||match?.teams?.home?.image_url||null;
+  const awayLogo=awayObj.logo||awayObj.image||awayObj.crest||awayObj.flag||awayObj.logo_url||awayObj.logoUrl||awayObj.image_url||awayObj.imageUrl||awayObj.badge||match?.away_logo||match?.away_team_logo||match?.awayTeam?.logo||match?.awayTeam?.image||match?.away_team_data?.logo||match?.fixture?.teams?.away?.logo||match?.teams?.away?.logo_url||match?.teams?.away?.image_url||null;
   return {
     ...match,
     fixture:{...(match?.fixture||{}),id:match?.fixture?.id??match?.id??null,date,status:{short,long:translateFootballStatus(displayStatus)}},
@@ -3788,9 +3820,9 @@ async function loadFootballFixtures(selectedDate){
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion aux données sportives</strong><small>Récupération des rencontres du '+escapeHtml(date)+'…</small></div></div>';
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des matchs</strong><small>Veuillez patienter…</small></div></div>';
   box.classList.remove("hidden");
-  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement en cours</strong><small>Les données de SportAPI.ai sont en cours de récupération…</small></div></div>';
+  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des matchs</strong><small>Veuillez patienter…</small></div></div>';
 
   try{
     await ensureFootballAccess();
@@ -3800,19 +3832,20 @@ async function loadFootballFixtures(selectedDate){
 
     const rawFixtures=Array.isArray(d?.response)?d.response:[];
     const fixtures=rawFixtures.map(normalizeFootballClientMatch);
+    window.batBotVisibleFixtureCount=20;
     window.batBotDailyFixturesLoadedDate=date;
     renderFootballFixtures(fixtures,date);
     if(fixtures.length){
-      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Données SportAPI.ai reçues</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) disponible(s) pour le "+escapeHtml(date)+".</div></div>";
+      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs actualisés</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) chargée(s).</div></div>";
     }else{
-      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Données sportives connectées, mais aucun match reçu</div><div class="professional-status-body">SportAPI.ai a répondu avec 0 rencontre pour cette date.</div></div>';
+      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est disponible pour cette date.</div></div>';
     }
   }catch(e){
     window.batBotDailyFixtures=[];
     window.batBotDailyFixturesLoadedDate="";
     renderBatBotLeagueFixtures([]);
-    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Données sportives indisponibles</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
-    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion non disponible</div><div class="professional-status-body">SportAPI.ai n’a pas pu fournir les rencontres pour le '+escapeHtml(date)+'.</div></div>';
+    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs indisponibles</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
+    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs indisponibles</div><div class="professional-status-body">Impossible de charger les rencontres pour le moment.</div></div>';
   }finally{
     if(button)button.disabled=false;
   }
@@ -3826,7 +3859,7 @@ async function loadFootballLive(){
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Connexion aux données en direct</strong><small>Recherche des rencontres actuellement en cours…</small></div></div>';
+  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement du direct</strong><small>Recherche des matchs en cours…</small></div></div>';
   box.classList.remove("hidden");
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Direct en cours</strong><small>Actualisation automatique toutes les 15 secondes pendant cette vue.</small></div></div>';
 
@@ -3839,12 +3872,13 @@ async function loadFootballLive(){
       if(!response.ok||d?.ok===false)throw new Error(d?.error||"Impossible de récupérer les matchs en direct.");
       const rawFixtures=Array.isArray(d?.response)?d.response:[];
       const fixtures=rawFixtures.map(normalizeFootballClientMatch).filter(function(item){return isLiveFixture(item);});
+      window.batBotVisibleFixtureCount=20;
       renderFootballFixtures(fixtures,"en direct");
       status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"Aucune rencontre en cours n’est actuellement signalée.")+'</div></div>';
     }catch(e){
       window.batBotLiveRefreshTimer=null;
       box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs en direct.")+'</div></div>';
-      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Service de données en direct indisponible</div><div class="professional-status-body">La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
+      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
     }
   };
   await refresh();
@@ -5365,8 +5399,7 @@ document.addEventListener("keydown",function(event){
     if(oldLauncher)oldLauncher.remove();
 
     const configs={
-      analyses:{title:'Analyses & IA',icon:'fa-solid fa-magnifying-glass-chart',subtitle:'Matchs et compétitions disponibles',items:[
-        ['Matchs du jour','fa-solid fa-futbol','dailyMatches'],
+      analyses:{title:'Analyses & IA',icon:'fa-solid fa-magnifying-glass-chart',subtitle:'Explore les championnats disponibles',items:[
         ['Ligues & championnats','fa-solid fa-trophy','leagues']
       ]},
       finances:{title:'Finances',icon:'fa-solid fa-wallet',subtitle:'Paiements et historique des transactions',items:[
@@ -6030,7 +6063,7 @@ document.addEventListener("keydown",function(event){
       const isLive=verified&&isLiveFixture(fixture);
 
       if(!verified){
-        lines.push("⚠️ Rencontre non confirmée par SportAPI.ai — aucun pronostic.");
+        lines.push("⚠️ Rencontre non confirmée — aucun pronostic.");
         lines.push("");
         return;
       }
@@ -6255,7 +6288,7 @@ document.addEventListener("keydown",function(event){
       }else if(!verified){
 
         html+='<div class="batbot-ticket-insufficient-note">'+
-          '⚠️ Cette rencontre n’a pas été confirmée par SportAPI.ai. Aucun pronostic n’est généré.'+
+          '⚠️ Cette rencontre n’a pas pu être confirmée. Aucun pronostic n’est généré.'+
         '</div>';
 
       }else{
