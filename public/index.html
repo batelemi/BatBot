@@ -3671,9 +3671,10 @@ function renderBatBotCompetitionEmblem(value){
   if (!url || !/^https:\/\//i.test(url)) return "";
   try {
     const parsed = new URL(url);
-    if (parsed.hostname !== "crests.football-data.org") return "";
-    if (!/\.(png|svg|webp|jpe?g)$/i.test(parsed.pathname)) return "";
-    return '<img src="' + escapeHtml(url) + '" alt="" loading="lazy" ' +
+    // SportAPI.ai reste la source prioritaire : accepter ses URL HTTPS même
+    // lorsque le chemin ne se termine pas par .png/.svg ou un autre suffixe.
+    if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password) return "";
+    return '<img src="' + escapeHtml(url) + '" alt="" loading="lazy" referrerpolicy="no-referrer" ' +
       'style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px" ' +
       'onerror="this.style.display=\'none\'">';
   } catch (_) {
@@ -3813,7 +3814,11 @@ function normalizeFootballClientMatch(match,index){
       home:{...homeObj,id:homeId==null?null:String(homeId),name:homeName,logo:homeLogo},
       away:{...awayObj,id:awayId==null?null:String(awayId),name:awayName,logo:awayLogo}
     },
-    league:{...(typeof league==="object"?league:{}),name:league?.name||match?.league_name||match?.competition?.name||(typeof match?.competition==="string"?match.competition:null)||"Compétition"},
+    league:{
+      ...(typeof league==="object"?league:{}),
+      name:league?.name||match?.league_name||match?.competition?.name||(typeof match?.competition==="string"?match.competition:null)||"Compétition",
+      emblem:league?.emblem||league?.logo||league?.image||league?.crest||league?.logo_url||league?.logoUrl||league?.image_url||league?.imageUrl||match?.league_emblem||match?.competition_emblem||match?.league_logo||match?.competition_logo||null
+    },
     goals:{home:homeScore===null?null:Number(homeScore),away:awayScore===null?null:Number(awayScore)},
     sportapi:match?.sportapi||{},
     eligibility:{finished,cancelled:blocked,live,scheduled,canAnalyze:scheduled||live}

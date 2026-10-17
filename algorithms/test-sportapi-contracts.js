@@ -83,6 +83,25 @@ assert.equal(objectNames.teams.away.name, 'ASEC Mimosas');
 assert.equal(objectNames.teams.home.logo, 'https://example.test/africa.png');
 assert.equal(objectNames.teams.away.logo, 'https://example.test/asec.png');
 
+// Les variantes de champs visuels et l'emblème de compétition sont conservés.
+const visualVariants = normalizeFixture({
+  id: 104,
+  date: '2026-10-16T22:00:00Z',
+  status: 'NS',
+  teams: {
+    home: { id: 61, name: 'Home Club', crest: 'https://cdn.sportapi.test/home' },
+    away: { id: 62, name: 'Away Club', image_url: 'https://cdn.sportapi.test/away.webp' }
+  },
+  competition: {
+    id: 8,
+    name: 'Example League',
+    emblem: 'https://cdn.sportapi.test/competition'
+  }
+});
+assert.equal(visualVariants.teams.home.logo, 'https://cdn.sportapi.test/home');
+assert.equal(visualVariants.teams.away.logo, 'https://cdn.sportapi.test/away.webp');
+assert.equal(visualVariants.league.emblem, 'https://cdn.sportapi.test/competition');
+
 function historyFor(teamId) {
   return Array.from({ length: 6 }, (_, index) => {
     const isHome = index % 2 === 0;
