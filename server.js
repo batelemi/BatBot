@@ -9,10 +9,6 @@ const crypto = require("crypto");
 const { analyzeSportApiMatches } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
 const { fetchVisualsForFixture } = require("./algorithms/football-visuals-service");
-const {
-  searchTeamLogo,
-  searchCompetitionLogo
-} = require("./algorithms/api-football-visuals-service");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -2250,26 +2246,11 @@ async function getSportApiFixturesCached(date, statusFilter = "") {
       const away = item?.teams?.away || {};
       const league = item?.league || {};
 
-      const existingVisuals = await fetchVisualsForFixture(
+      const visuals = await fetchVisualsForFixture(
         league.name,
         home.name,
         away.name
       );
-
-      let apiHomeLogo = null;
-      let apiAwayLogo = null;
-      let apiCompetitionLogo = null;
-
-      if (process.env.API_FOOTBALL_KEY) {
-        [apiHomeLogo, apiAwayLogo, apiCompetitionLogo] =
-          await Promise.all([
-            home.logo ? Promise.resolve(null) : searchTeamLogo(home.name),
-            away.logo ? Promise.resolve(null) : searchTeamLogo(away.name),
-            league.emblem
-              ? Promise.resolve(null)
-              : searchCompetitionLogo(league.name)
-          ]);
-      }
 
       return {
         ...item,
@@ -2277,17 +2258,16 @@ async function getSportApiFixturesCached(date, statusFilter = "") {
           ...item.teams,
           home: {
             ...home,
-            logo: home.logo || apiHomeLogo || existingVisuals.homeLogo || null
+            logo: home.logo || visuals.homeLogo || null
           },
           away: {
             ...away,
-            logo: away.logo || apiAwayLogo || existingVisuals.awayLogo || null
+            logo: away.logo || visuals.awayLogo || null
           }
         },
         league: {
           ...league,
-          emblem: league.emblem || apiCompetitionLogo ||
-            existingVisuals.competitionLogo || null
+          emblem: league.emblem || visuals.competitionLogo || null
         }
       };
     } catch (_) {
