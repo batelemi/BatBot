@@ -3713,7 +3713,7 @@ function renderBatBotLeagueFixtures(fixtures){
   const groups=new Map();
   all.forEach(function(item,index){
     const league=item?.league||{};const name=league.name||"Autres compétitions";const country=league.country||league.area||"";const key=String(league.id||"")+"|"+country+"|"+name;
-    if(!groups.has(key))groups.set(key,{key,name,country,logo:league.logo||league.image||league.logo_url||league.logoUrl||"",items:[]});
+    if(!groups.has(key))groups.set(key,{key,name,country,logo:league.logo||league.emblem||league.image||league.logo_url||league.logoUrl||"",items:[]});
     groups.get(key).items.push({item,index});
   });
   const sorted=Array.from(groups.values()).sort((a,b)=>(a.name).localeCompare(b.name,"fr"));
