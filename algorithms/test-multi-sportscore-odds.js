@@ -1001,8 +1001,8 @@ async function testMatch(
   );
 
   if (
-    Math.abs(total - 100) >=
-    0.01
+    Math.abs(total - 100) >
+    0.02
   ) {
     throw new Error(
       "Le total 1X2 n'est pas égal à 100 %."

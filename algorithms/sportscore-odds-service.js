@@ -972,7 +972,9 @@ function getMatchStatusValue(match) {
 
 function isLiveMatch(match) {
   const status = cleanText(getMatchStatusValue(match));
-  return /(^|\b)(live|in progress|1h|2h|ht|half time|halftime|1st half|2nd half|first half|second half|extra time|et|penalty|penalties|shootout)(\b|$)/.test(status);
+  // Une mention générique de tirs au but ne prouve pas que le match
+  // est encore en cours. Les statuts ambigus seront bloqués plus bas.
+  return /(^|\b)(live|in progress|1h|2h|ht|half time|halftime|1st half|2nd half|first half|second half|extra time|et)(\b|$)/.test(status);
 }
 
 function normalizeFixture(match) {
@@ -1024,6 +1026,25 @@ function normalizeFixture(match) {
     home_logo: match?.home_logo || match?.home?.logo || null,
     away_logo: match?.away_logo || match?.away?.logo || null
   };
+}
+
+function isEligibleCurrentFixture(match) {
+  const normalized = normalizeFixture(match);
+  if (!normalized?.home || !normalized?.away) return false;
+
+  // Une rencontre terminée ne doit jamais servir à une nouvelle analyse.
+  if (isFinished(normalized)) return false;
+
+  // Un match explicitement en direct est admissible.
+  if (isLiveMatch(normalized)) return true;
+
+  // Sinon, accepter uniquement un statut reconnu et une date future.
+  const status = cleanText(normalized.status);
+  const explicitlyUpcoming =
+    /(^|\b)(ns|scheduled|not started|upcoming|fixture|timed)(\b|$)/.test(status);
+
+  return explicitlyUpcoming &&
+    getMatchTimestamp(normalized) > Date.now();
 }
 
 function fixtureMatchesTeams(match, homeTeam, awayTeam) {
@@ -1186,20 +1207,27 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
     return null;
   }
 
-  // Priorité : direct > à venir > rencontre terminée la plus récente.
-  const ordered = [...unique.values()].sort((a, b) => {
+  // Ne conserver que les rencontres vérifiées comme à venir ou en direct.
+  // Les rencontres terminées et les statuts ambigus ne doivent jamais
+  // devenir la fixture utilisée pour produire de nouvelles probabilités.
+  const eligible = [...unique.values()].filter(
+    isEligibleCurrentFixture
+  );
+
+  if (!eligible.length) {
+    fixtureCache.set(cacheKey, {
+      fixture: null,
+      expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
+    });
+    return null;
+  }
+
+  // Priorité : direct, puis rencontre à venir la plus proche.
+  const ordered = eligible.sort((a, b) => {
     const liveDiff = Number(isLiveMatch(b)) - Number(isLiveMatch(a));
     if (liveDiff) return liveDiff;
 
-    const ta = getMatchTimestamp(a);
-    const tb = getMatchTimestamp(b);
-    const now = Date.now();
-    const aUpcoming = ta > now;
-    const bUpcoming = tb > now;
-
-    if (aUpcoming !== bUpcoming) return Number(bUpcoming) - Number(aUpcoming);
-    if (aUpcoming && bUpcoming) return ta - tb;
-    return tb - ta;
+    return getMatchTimestamp(a) - getMatchTimestamp(b);
   });
 
   if (!ordered.length) {
@@ -1215,6 +1243,15 @@ async function fetchCurrentFixture(homeTeam, awayTeam) {
 
   if (detail && fixtureMatchesTeams(detail, homeTeam, awayTeam)) {
     fixture = normalizeFixture({ ...ordered[0], ...detail });
+  }
+
+  // Les détails peuvent remplacer le statut initial : valider à nouveau.
+  if (!isEligibleCurrentFixture(fixture)) {
+    fixtureCache.set(cacheKey, {
+      fixture: null,
+      expiresAt: Date.now() + FIXTURE_CACHE_TTL_MS
+    });
+    return null;
   }
 
   fixtureCache.set(cacheKey, {
@@ -1685,14 +1722,46 @@ async function analyzeOne(homeName, awayName, providedFixture = null) {
 
   const fixture = providedFixture || fetchedFixture;
 
-  // Règle fondamentale : une affiche saisie manuellement doit d'abord
-  // être vérifiée comme rencontre réelle dans SportScore. Sans fixture
-  // correspondante, aucune statistique ni probabilité ne doit être produite.
+  // Une fixture doit être vérifiée comme rencontre à venir ou en direct.
+  // Les statuts terminés ou ambigus ne doivent jamais produire de probabilités.
+  if (!fixture || !isEligibleCurrentFixture(fixture)) {
+    const rejectedFixture = fixture ? normalizeFixture(fixture) : null;
+    const finished = rejectedFixture && isFinished(rejectedFixture);
+
+    return {
+      match: `${homeName} vs ${awayName}`,
+      fixture: rejectedFixture,
+      ready: false,
+      sufficientData: false,
+      recommendation: finished ? "Match terminé" : "Match non vérifié",
+      reason: finished
+        ? "Cette rencontre est déjà terminée. Aucune nouvelle probabilité n’est produite."
+        : "La rencontre n’a pas un statut SportScore confirmé comme à venir ou en direct. Aucune probabilité n’est produite.",
+      data_quality: finished ? "vérifiée" : "non vérifiée",
+      homeTeam: {
+        name: homeTeam.name,
+        slug: homeTeam.slug,
+        flag: homeTeamFlag
+      },
+      awayTeam: {
+        name: awayTeam.name,
+        slug: awayTeam.slug,
+        flag: awayTeamFlag
+      },
+      stats: {
+        home: buildTeamStats(homeMatchesInitial, homeTeam),
+        away: buildTeamStats(awayMatchesInitial, awayTeam)
+      }
+    };
+  }
+
+  // Une fixture manquante ou non admissible est rejetée avant l'analyse.
   if (!fixture) {
     return {
       match: `${homeName} vs ${awayName}`,
       fixture: null,
       ready: false,
+      sufficientData: false,
       recommendation: "Match non vérifié",
       reason:
         "Cette rencontre n’a pas été retrouvée dans les données réelles SportScore. Aucune analyse statistique n’est produite.",
@@ -1729,6 +1798,7 @@ async function analyzeOne(homeName, awayName, providedFixture = null) {
       match: `${homeName} vs ${awayName}`,
       fixture,
       ready: false,
+      sufficientData: false,
       recommendation: "Analyse insuffisante",
       reason:
         `${homeTeam.name}: seulement ${homeMatches.length} matchs historiques vérifiables.`,
@@ -1755,6 +1825,7 @@ async function analyzeOne(homeName, awayName, providedFixture = null) {
       match: `${homeName} vs ${awayName}`,
       fixture,
       ready: false,
+      sufficientData: false,
       recommendation: "Analyse insuffisante",
       reason:
         `${awayTeam.name}: seulement ${awayMatches.length} matchs historiques vérifiables.`,
@@ -1784,6 +1855,7 @@ if (isFinished(normalizedFixture)) {
     match: `${homeName} vs ${awayName}`,
     fixture: normalizedFixture,
     ready: false,
+    sufficientData: false,
     recommendation: "Match terminé",
     reason: "Cette rencontre est déjà terminée. Le résultat réel est affiché sans générer de probabilités ni de choix de pari.",
     data_quality: "vérifiée",
@@ -1817,6 +1889,7 @@ const homeStats = buildTeamStats(homeMatches, homeTeam);
       match: `${homeName} vs ${awayName}`,
       fixture,
       ready: false,
+      sufficientData: false,
       recommendation: "Analyse insuffisante",
       reason:
         odds.reason || "Données statistiques insuffisantes.",
@@ -2024,6 +2097,7 @@ async function analyzeSportScoreMatches(matches) {
     models: results.map(result =>
       result.model || {
         ready: false,
+        sufficientData: false,
         recommendation:
           result.recommendation || "Analyse insuffisante",
         reason:
@@ -2047,5 +2121,6 @@ module.exports = {
   searchTeam,
   cleanText,
   calculateTeamMatchScore,
-  findFixtureByInputNames
+  findFixtureByInputNames,
+  isEligibleCurrentFixture
 };
