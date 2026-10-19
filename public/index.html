@@ -945,7 +945,7 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
 @media(prefers-reduced-motion:reduce){.batbot-ui-icon{animation:none!important}}
 
 
-/* BATBOT V3 — accueil centré sur les matchs, analyse liée aux rencontres SportAPI.ai */
+/* BATBOT V3 — accueil centré sur les matchs, analyse liée aux rencontres SportScore */
 #batbotHomeShortcuts{display:none!important}
 #batbotAIModal .ai-match-fields,#batbotAIModal #smartDriveAIButton{display:none!important}
 #batbotDailyMatchesCard .section-kicker{color:#6EE7A0;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase}
@@ -1629,7 +1629,7 @@ PSG vs Marseille"></textarea>
     <div class="notice"><strong>3. Analyse</strong><br><br>L’analyse utilise les informations disponibles sur le match pour présenter les statistiques et les éléments disponibles.</div>
       <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
     <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
-    <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportAPI.ai</strong>. BATBOT utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
+    <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportScore</strong>. BATBOT utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
     </details>
   </div>
 
@@ -2998,6 +2998,9 @@ function renderBatBotAIResult(raw,modelData){
     if(model.ready!==true||model.sufficientData!==true){
       match.probabilities=[];
       match.options=[];
+      match.bestScore="";
+      match.most_likely_score=null;
+      match.mostLikelyScore=null;
       match.recommendation=model.recommendation||"Analyse insuffisante";
       match.reason=model.reason||"Données insuffisantes pour produire une estimation numérique fiable.";
       match.data_quality="limitée";
@@ -3477,7 +3480,7 @@ async function submitBatBotAI(){
     });
 
     window.batBotLastEvidence={
-      source:d?.source||"SportAPI.ai",
+      source:d?.source||"SportScore",
       generatedAt:d?.generatedAt||new Date().toISOString(),
       matches:serverMatches.map(function(item,index){
         const stats=item?.stats||{};
@@ -3667,19 +3670,28 @@ function footballFixtureScore(item){
 }
 function showFinishedFootballMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=footballFixtureScore(item),when=formatFootballDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
 function renderBatBotCompetitionEmblem(value){
-  const url = String(value || "").trim();
-  if (!url || !/^https:\/\//i.test(url)) return "";
-  try {
-    const parsed = new URL(url);
-    // SportAPI.ai reste la source prioritaire : accepter ses URL HTTPS même
-    // lorsque le chemin ne se termine pas par .png/.svg ou un autre suffixe.
-    if (parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password) return "";
-    return '<img src="' + escapeHtml(url) + '" alt="" loading="lazy" referrerpolicy="no-referrer" ' +
-      'style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px" ' +
-      'onerror="this.style.display=\'none\'">';
-  } catch (_) {
-    return "";
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  let safeSource = "";
+
+  // Chemins locaux limités au dossier des emblèmes de compétitions.
+  if (/^\/assets\/competitions\/[a-zA-Z0-9._/-]+\.(?:png|jpe?g|webp|svg)$/i.test(raw) &&
+      !raw.includes("..") && !raw.includes("//")) {
+    safeSource = raw;
+  } else {
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol === "https:" && parsed.hostname &&
+          !parsed.username && !parsed.password) {
+        safeSource = raw;
+      }
+    } catch (_) {}
   }
+
+  if (!safeSource) return "";
+  return '<img src="' + escapeHtml(safeSource) + '" alt="" loading="lazy" referrerpolicy="no-referrer" ' +
+    'style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px" ' +
+    'onerror="this.style.display=\'none\'">';
 }
 
 function renderFootballFixtures(fixtures,checkedDate){
@@ -3816,6 +3828,7 @@ function normalizeFootballClientMatch(match,index){
     },
     league:{
       ...(typeof league==="object"?league:{}),
+      id:(league?.id??match?.league_id??match?.competition_id??null)==null?null:String(league?.id??match?.league_id??match?.competition_id),
       name:league?.name||match?.league_name||match?.competition?.name||(typeof match?.competition==="string"?match.competition:null)||"Compétition",
       emblem:league?.emblem||league?.logo||league?.image||league?.crest||league?.logo_url||league?.logoUrl||league?.image_url||league?.imageUrl||match?.league_emblem||match?.competition_emblem||match?.league_logo||match?.competition_logo||null
     },
@@ -6102,6 +6115,13 @@ document.addEventListener("keydown",function(event){
       }
 
 
+      if(match?.ready!==true||match?.sufficientData!==true){
+        lines.push(isLive?"🔴 En direct":"🟢 À venir");
+        lines.push("⚠️ Analyse insuffisante — aucun pronostic.");
+        lines.push("");
+        return;
+      }
+
       if(isLive){
         lines.push("🔴 En direct");
       }else{
@@ -6243,9 +6263,10 @@ document.addEventListener("keydown",function(event){
               ?"À venir"
               :"Informations insuffisantes"));
 
-      const selected=getSelectedOption(match);
-      const predictedScore=getProbableScore(match);
-      const exactScore=getExactScoreOption(match);
+      const modelReady=match?.ready===true&&match?.sufficientData===true;
+      const selected=modelReady?getSelectedOption(match):null;
+      const predictedScore=modelReady?getProbableScore(match):"";
+      const exactScore=modelReady?getExactScoreOption(match):null;
 
       const currentHome=num(fixture?.goals?.home);
       const currentAway=num(fixture?.goals?.away);
@@ -6310,6 +6331,12 @@ document.addEventListener("keydown",function(event){
 
         html+='<div class="batbot-ticket-insufficient-note">'+
           '⚠️ Cette rencontre n’a pas pu être confirmée. Aucun pronostic n’est généré.'+
+        '</div>';
+
+      }else if(!modelReady){
+
+        html+='<div class="batbot-ticket-insufficient-note">'+
+          '⚠️ Analyse insuffisante — aucun pronostic n’est généré.'+
         '</div>';
 
       }else{
@@ -6439,8 +6466,9 @@ document.addEventListener("keydown",function(event){
       const verified=hasVerifiedFixture(fixture);
       const live=verified&&isLiveFixture(fixture);
       const finished=verified&&!live&&isFinishedFixture(fixture);
-      const selected=verified&&!finished?getSelectedOption(match):null;
-      const score=verified&&!finished?getProbableScore(match):"";
+      const modelReady=match?.ready===true&&match?.sufficientData===true;
+      const selected=verified&&!finished&&modelReady?getSelectedOption(match):null;
+      const score=verified&&!finished&&modelReady?getProbableScore(match):"";
 
       ctx.fillStyle="#102235";
       ctx.font="900 25px Arial";
@@ -6465,6 +6493,11 @@ document.addEventListener("keydown",function(event){
         ctx.fillStyle="#b45309";
         ctx.font="bold 20px Arial";
         ctx.fillText("RENCONTRE NON VERIFIEE — AUCUN PRONOSTIC",50,y);
+        y+=38;
+      }else if(!modelReady){
+        ctx.fillStyle="#b45309";
+        ctx.font="bold 20px Arial";
+        ctx.fillText("ANALYSE INSUFFISANTE — AUCUN PRONOSTIC",50,y);
         y+=38;
       }
 

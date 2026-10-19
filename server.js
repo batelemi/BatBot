@@ -6,8 +6,8 @@ const bcrypt = require("bcryptjs");
 const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
 const path = require("path");
 const crypto = require("crypto");
-const { analyzeSportApiMatches } = require("./algorithms/sportapi-odds-service");
-const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
+const { analyzeSportScoreMatches } = require("./algorithms/sportscore-odds-service");
+const { fetchSportScoreFixtures } = require("./algorithms/sportscore-fixtures-service");
 const { fetchVisualsForFixture } = require("./algorithms/football-visuals-service");
 
 const app = express();
@@ -1949,6 +1949,7 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       "SELECT * FROM users WHERE id=$1",
       [req.session.userId]
     );
+
     const premiumActive = !!(
       currentUser &&
       currentUser.premium_until &&
@@ -1963,7 +1964,7 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
     }
 
     const matches = Array.isArray(req.body.matches)
-      ? req.body.matches
+      ? req.body.matches.slice(0, 2)
       : [];
 
     if (!matches.length) {
@@ -1973,65 +1974,129 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       });
     }
 
-    // Refuser les fixtures dont le statut ne permet pas une analyse.
-    // Les analyses manuelles sans fixture restent autorisées.
-    const allowedFixtureStatuses = new Set([
-      "NS", "SCHEDULED", "NOT_STARTED", "TIMED", "UPCOMING", "FIXTURE",
-      "LIVE", "1H", "2H", "HT", "ET", "IN_PLAY", "IN_PROGRESS",
-      "FIRST_HALF", "SECOND_HALF", "HALF_TIME", "HALFTIME",
-      "EXTRA_TIME", "PENALTIES", "PAUSED"
-    ]);
-
-    for (const match of matches) {
-      if (match?.fixture == null) continue;
-
-      const fixture = match.fixture;
-      const rawStatus =
-        fixture?.fixture?.status?.short ||
-        fixture?.fixture?.status?.long ||
-        fixture?.status?.short ||
-        fixture?.status?.long ||
-        (typeof fixture?.status === "string" ? fixture.status : "") ||
-        fixture?.status_code ||
-        fixture?.state ||
-        "";
-
-      const status = String(rawStatus)
+    const normalizeTeamName = (value) =>
+      String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/\b(fc|cf|sc|ac|afc|club)\b/g, " ")
+        .replace(/[^a-z0-9]+/g, " ")
         .trim()
-        .toUpperCase()
-        .replaceAll(" ", "_")
-        .replaceAll("-", "_")
-        .replaceAll(".", "_");
+        .replace(/\s+/g, " ");
 
-      if (!allowedFixtureStatuses.has(status)) {
+    const verifiedMatches = [];
+
+    for (const item of matches) {
+      const home = String(item?.home || "").trim();
+      const away = String(item?.away || "").trim();
+      const rawMatch = String(
+        item?.match || item?.text || item?.input || ""
+      ).trim();
+
+      // L'interface peut transmettre une affiche brute sans séparateur.
+      // Le moteur la résout, puis vérifie la rencontre avant les probabilités.
+      if (!home || !away) {
+        if (rawMatch && !item?.fixture) {
+          verifiedMatches.push({ match: rawMatch });
+          continue;
+        }
+
         return res.status(400).json({
           ok: false,
-          error: "Analyse refusée : statut du match inconnu ou non autorisé.",
-          status: status || "UNKNOWN"
+          source: "SportScore",
+          error: "Saisissez les deux équipes ou une affiche complète à identifier."
         });
+      }
+
+      const submitted = item?.fixture || null;
+
+      // Une fixture fournie par le navigateur doit être vérifiée
+      // dans la liste officielle récupérée côté serveur.
+      if (submitted) {
+        const submittedFixture =
+          submitted?.fixture && submitted?.teams
+            ? submitted
+            : null;
+
+        const fixtureHome =
+          submittedFixture?.teams?.home?.name ||
+          submitted?.home ||
+          home;
+
+        const fixtureAway =
+          submittedFixture?.teams?.away?.name ||
+          submitted?.away ||
+          away;
+
+        const fixtureDate =
+          submittedFixture?.fixture?.date ||
+          submitted?.fixture?.date ||
+          submitted?.date ||
+          "";
+
+        const date = /^\d{4}-\d{2}-\d{2}/.test(String(fixtureDate))
+          ? String(fixtureDate).slice(0, 10)
+          : currentAbidjanDate();
+
+        const data = await fetchSportScoreFixtures(date, "");
+        const fixtures = Array.isArray(data?.fixtures) ? data.fixtures : [];
+
+        const actual = fixtures.find((candidate) => {
+          const candidateHome = candidate?.teams?.home?.name || "";
+          const candidateAway = candidate?.teams?.away?.name || "";
+          return (
+            normalizeTeamName(candidateHome) === normalizeTeamName(fixtureHome) &&
+            normalizeTeamName(candidateAway) === normalizeTeamName(fixtureAway) &&
+            normalizeTeamName(candidateHome) === normalizeTeamName(home) &&
+            normalizeTeamName(candidateAway) === normalizeTeamName(away)
+          );
+        });
+
+        if (!actual) {
+          return res.status(400).json({
+            ok: false,
+            source: "SportScore",
+            error: "Ce match n'a pas pu être vérifié dans les fixtures SportScore. Actualisez la liste et réessayez."
+          });
+        }
+
+        const actualStatus = String(
+          actual?.fixture?.status?.short || "UNKNOWN"
+        ).toUpperCase();
+
+        if (!["NS", "LIVE"].includes(actualStatus)) {
+          return res.status(400).json({
+            ok: false,
+            source: "SportScore",
+            status: actualStatus,
+            error: "L'analyse est limitée aux matchs à venir ou en direct vérifiés."
+          });
+        }
+
+        verifiedMatches.push({
+          home: actual.teams.home.name,
+          away: actual.teams.away.name,
+          fixture: actual
+        });
+      } else {
+        // Le moteur doit retrouver et vérifier lui-même toute saisie
+        // manuelle avant de produire des probabilités.
+        verifiedMatches.push({ home, away });
       }
     }
 
-    const validFixtures = matches
-      .map(item => item?.fixture)
-      .filter(fixture => fixture?.teams?.home?.id && fixture?.teams?.away?.id);
+    const analysis = await analyzeSportScoreMatches(verifiedMatches);
 
-    if (!validFixtures.length) {
-      return res.status(400).json({
-        ok: false,
-        source: "SportAPI.ai",
-        error: "Sélectionnez un match proposé par SportAPI.ai avec les identifiants réels des deux équipes. Une saisie manuelle seule ne permet pas de récupérer un historique fiable."
-      });
-    }
-
-    const analysis = await analyzeSportApiMatches(validFixtures);
-    return res.json({ ok: true, source: "SportAPI.ai", ...analysis });
+    return res.json({
+      ok: true,
+      source: "SportScore",
+      ...analysis
+    });
   } catch (error) {
-    console.error("SportAPI.ai odds analysis:", error.message);
-
+    console.error("SportScore odds analysis:", error.message);
     return res.status(502).json({
       ok: false,
-      source: "SportAPI.ai",
+      source: "SportScore",
       error: "Impossible de calculer l'analyse statistique des cotes.",
       details: error.message
     });
@@ -2212,35 +2277,46 @@ app.get("/api/football/access", requireUser, async (req, res) => {
       "SELECT * FROM users WHERE id=$1",
       [req.session.userId]
     );
-    const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
+    const premiumActive = !!(
+      currentUser &&
+      currentUser.premium_until &&
+      new Date(currentUser.premium_until) > new Date()
+    );
+
     if (!premiumActive) {
-      return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux données football." });
+      return res.status(403).json({
+        ok: false,
+        error: "Un abonnement Premium actif est nécessaire pour accéder aux données football."
+      });
     }
-    return res.json({ ok: true, source: "SportAPI.ai", access: true });
+
+    return res.json({ ok: true, source: "SportScore", access: true });
   } catch (error) {
-    return res.status(500).json({ ok: false, error: "Vérification de l'accès football indisponible." });
+    return res.status(500).json({
+      ok: false,
+      error: "Vérification de l'accès football indisponible."
+    });
   }
 });
 
+const sportScoreFixturesCache = new Map();
+const SPORT_SCORE_FIXTURES_CACHE_TTL = 30 * 1000;
 
-const sportApiFixturesCache = new Map();
-const SPORTAPI_FIXTURES_CACHE_TTL = 30 * 1000;
-
-async function getSportApiFixturesCached(date, statusFilter = "") {
+async function getSportScoreFixturesCached(date, statusFilter = "") {
   const key = `${date}:${statusFilter || "all"}`;
-  const cached = sportApiFixturesCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return { ...cached.value, cached: true };
+  const cached = sportScoreFixturesCache.get(key);
 
-  const apiResult = await fetchSportApiFixtures(date);
-  const statusMap = { live: "LIVE", finished: "FT", upcoming: "NS" };
-  const requiredStatus = statusMap[statusFilter];
-  const allFixtures = Array.isArray(apiResult?.fixtures) ? apiResult.fixtures : [];
-  const filteredFixtures = requiredStatus
-    ? allFixtures.filter(item => item?.fixture?.status?.short === requiredStatus)
-    : allFixtures;
+  if (cached && cached.expiresAt > Date.now()) {
+    return { ...cached.value, cached: true };
+  }
 
-  // Complément visuel facultatif : ne modifie jamais les statuts ou scores.
-  const fixtures = await Promise.all(filteredFixtures.map(async item => {
+  const apiResult = await fetchSportScoreFixtures(date, statusFilter);
+  const rawFixtures = Array.isArray(apiResult?.fixtures)
+    ? apiResult.fixtures
+    : [];
+
+  // Enrichissement visuel facultatif : ne modifie ni le statut ni le score.
+  const fixtures = await Promise.all(rawFixtures.map(async (item) => {
     try {
       const home = item?.teams?.home || {};
       const away = item?.teams?.away || {};
@@ -2256,14 +2332,8 @@ async function getSportApiFixturesCached(date, statusFilter = "") {
         ...item,
         teams: {
           ...item.teams,
-          home: {
-            ...home,
-            logo: home.logo || visuals.homeLogo || null
-          },
-          away: {
-            ...away,
-            logo: away.logo || visuals.awayLogo || null
-          }
+          home: { ...home, logo: home.logo || visuals.homeLogo || null },
+          away: { ...away, logo: away.logo || visuals.awayLogo || null }
         },
         league: {
           ...league,
@@ -2276,13 +2346,18 @@ async function getSportApiFixturesCached(date, statusFilter = "") {
   }));
 
   const value = {
-    source: "SportAPI.ai",
+    source: "SportScore",
     date,
     count: fixtures.length,
-    updated: new Date().toISOString(),
+    updated: apiResult?.updated || new Date().toISOString(),
     fixtures
   };
-  sportApiFixturesCache.set(key, { value, expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL });
+
+  sportScoreFixturesCache.set(key, {
+    value,
+    expiresAt: Date.now() + SPORT_SCORE_FIXTURES_CACHE_TTL
+  });
+
   return { ...value, cached: false };
 }
 
@@ -2315,7 +2390,7 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       ? requestedStatus
       : "";
 
-    const data = await getSportApiFixturesCached(date, statusFilter);
+    const data = await getSportScoreFixturesCached(date, statusFilter);
 
     return res.json({
       ok: true,
@@ -2327,10 +2402,11 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       response: data.fixtures
     });
   } catch (error) {
-    console.error("SportAPI.ai fixtures:", error.message);
+    console.error("SportScore fixtures:", error.message);
     return res.status(error.status || 502).json({
       ok: false,
-      error: "Impossible de récupérer les matchs SportAPI.ai."
+      source: "SportScore",
+      error: "Impossible de récupérer les matchs SportScore."
     });
   }
 });
@@ -2356,7 +2432,7 @@ app.get("/api/football/live", requireUser, async (req, res) => {
     }
 
     const date = currentAbidjanDate();
-    const data = await getSportApiFixturesCached(date, "live");
+    const data = await getSportScoreFixturesCached(date, "live");
 
     return res.json({
       ok: true,
@@ -2369,20 +2445,21 @@ app.get("/api/football/live", requireUser, async (req, res) => {
       response: data.fixtures
     });
   } catch (error) {
-    console.error("SportAPI.ai live:", error.message);
+    console.error("SportScore live:", error.message);
     return res.status(error.status || 502).json({
       ok: false,
-      error: "Impossible de récupérer les matchs en direct SportAPI.ai."
+      source: "SportScore",
+      error: "Impossible de récupérer les matchs en direct SportScore."
     });
   }
 });
 
 app.get("/api/football/status", requireUser, async (_req, res) => {
-  res.json({
+  return res.json({
     ok: true,
-    source: "SportAPI.ai",
-    api_key_required: true,
-    message: "SportAPI.ai est l’unique source de données football de BATBOT."
+    source: "SportScore",
+    api_key_required: false,
+    message: "SportScore est la source football configurée pour BATBOT."
   });
 });
 
