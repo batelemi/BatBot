@@ -3559,7 +3559,7 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
   input1.value=homeName+" vs "+awayName;
   input2.value="";
   const realHomeId=String(homeId||"").trim(),realAwayId=String(awayId||"").trim();
-  if(!realHomeId||!realAwayId){showToast("Les informations de cette rencontre sont incomplètes. Impossible de lancer une analyse fiable.","error");return;}
+  if(!homeName||!awayName||(!fixture&&(!realHomeId||!realAwayId))){showToast("Les informations de cette rencontre sont incomplètes. Impossible de lancer une analyse fiable.","error");return;}
   window.batBotSelectedIds={home:realHomeId,away:realAwayId};
   window.batBotSelectedFixtures=fixture?[fixture]:[];
   window.batBotSelectedIds2={home:"",away:""};
@@ -3815,8 +3815,8 @@ function normalizeFootballClientMatch(match,index){
   const awayScore=match?.goals?.away??match?.away_score??match?.score?.fulltime?.away??null;
   const date=match?.fixture?.date||match?.kickoff_utc||match?.datetime||match?.date||null;
   const league=match?.league||match?.competition||{};
-  const homeId=homeObj.id??match?.home_id??match?.home_team_id??match?.homeTeam?.id??match?.home_team_data?.id??null;
-  const awayId=awayObj.id??match?.away_id??match?.away_team_id??match?.awayTeam?.id??match?.away_team_data?.id??null;
+  const homeId=homeObj.id??match?.home_id??match?.home_team_id??match?.homeTeam?.id??match?.home_team_data?.id??homeObj.slug??match?.sportscore?.homeSlug??null;
+  const awayId=awayObj.id??match?.away_id??match?.away_team_id??match?.awayTeam?.id??match?.away_team_data?.id??awayObj.slug??match?.sportscore?.awaySlug??null;
   const homeLogo=homeObj.logo||homeObj.image||homeObj.crest||homeObj.flag||homeObj.logo_url||homeObj.logoUrl||homeObj.image_url||homeObj.imageUrl||homeObj.badge||match?.home_logo||match?.home_team_logo||match?.homeTeam?.logo||match?.homeTeam?.image||match?.home_team_data?.logo||match?.fixture?.teams?.home?.logo||match?.teams?.home?.logo_url||match?.teams?.home?.image_url||null;
   const awayLogo=awayObj.logo||awayObj.image||awayObj.crest||awayObj.flag||awayObj.logo_url||awayObj.logoUrl||awayObj.image_url||awayObj.imageUrl||awayObj.badge||match?.away_logo||match?.away_team_logo||match?.awayTeam?.logo||match?.awayTeam?.image||match?.away_team_data?.logo||match?.fixture?.teams?.away?.logo||match?.teams?.away?.logo_url||match?.teams?.away?.image_url||null;
   return {
