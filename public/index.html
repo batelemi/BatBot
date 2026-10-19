@@ -3114,17 +3114,21 @@ function renderBatBotAIResult(raw,modelData){
       "Équipe 2";
 
     const homeFlag=
+      evidence?.homeTeam?.logo||
+      fixture?.teams?.home?.logo||
       evidence?.homeTeam?.flag||
       fixture?.teams?.home?.flag||
+      fixture?.home?.logo||
       fixture?.home?.flag||
-      fixture?.teams?.home?.logo||
       "";
 
     const awayFlag=
+      evidence?.awayTeam?.logo||
+      fixture?.teams?.away?.logo||
       evidence?.awayTeam?.flag||
       fixture?.teams?.away?.flag||
+      fixture?.away?.logo||
       fixture?.away?.flag||
-      fixture?.teams?.away?.logo||
       "";
 
     const status=
