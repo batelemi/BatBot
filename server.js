@@ -2223,32 +2223,164 @@ app.get("/api/football/access", requireUser, async (req, res) => {
 
 
 const sportApiFixturesCache = new Map();
+const sportApiFixturesInFlight = new Map();
 const SPORTAPI_FIXTURES_CACHE_TTL = 30 * 1000;
+let sportApiPersistentCacheReady = false;
 
-async function getSportApiFixturesCached(date, statusFilter = "") {
-  const key = `${date}:${statusFilter || "all"}`;
-  const cached = sportApiFixturesCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return { ...cached.value, cached: true };
+async function initializeSportApiFixturesCache() {
+  try {
+    await pgQuery(`
+      CREATE TABLE IF NOT EXISTS sportapi_fixtures_cache (
+        fixture_date DATE PRIMARY KEY,
+        fixtures JSONB NOT NULL,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    sportApiPersistentCacheReady = true;
+    console.log("BatBot: cache PostgreSQL SportAPI.ai prêt.");
+  } catch (error) {
+    sportApiPersistentCacheReady = false;
+    console.error(
+      "BatBot: cache PostgreSQL indisponible, cache mémoire conservé:",
+      error.message
+    );
+  }
+}
 
-  const apiResult = await fetchSportApiFixtures(date);
+function filterSportApiFixtures(value, statusFilter, cached) {
   const statusMap = { live: "LIVE", finished: "FT", upcoming: "NS" };
   const requiredStatus = statusMap[statusFilter];
-  const allFixtures = Array.isArray(apiResult?.fixtures) ? apiResult.fixtures : [];
-  const filteredFixtures = requiredStatus
+  const allFixtures = Array.isArray(value.fixtures) ? value.fixtures : [];
+  const fixtures = requiredStatus
     ? allFixtures.filter(item => item?.fixture?.status?.short === requiredStatus)
     : allFixtures;
 
-  const fixtures = filteredFixtures;
-
-  const value = {
+  return {
     source: "SportAPI.ai",
-    date,
+    date: value.date,
     count: fixtures.length,
-    updated: new Date().toISOString(),
+    updated: value.updated,
+    cached: Boolean(cached),
+    stale: Boolean(value.stale),
     fixtures
   };
-  sportApiFixturesCache.set(key, { value, expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL });
-  return { ...value, cached: false };
+}
+
+async function loadSportApiFixturesByDate(date) {
+  const memory = sportApiFixturesCache.get(date);
+  if (memory && memory.expiresAt > Date.now()) {
+    return { ...memory.value, cached: true };
+  }
+
+  const pending = sportApiFixturesInFlight.get(date);
+  if (pending) {
+    const value = await pending;
+    return { ...value, cached: true };
+  }
+
+  const request = (async () => {
+    let persisted = null;
+
+    if (sportApiPersistentCacheReady) {
+      try {
+        persisted = await pgGet(
+          "SELECT fixtures, fetched_at FROM sportapi_fixtures_cache WHERE fixture_date=$1::date",
+          [date]
+        );
+      } catch (error) {
+        console.error("BatBot: lecture du cache SportAPI PostgreSQL:", error.message);
+      }
+    }
+
+    if (persisted && Array.isArray(persisted.fixtures)) {
+      const updated = new Date(persisted.fetched_at).toISOString();
+      const age = Date.now() - new Date(persisted.fetched_at).getTime();
+      const value = {
+        source: "SportAPI.ai",
+        date,
+        updated,
+        fixtures: persisted.fixtures,
+        stale: false
+      };
+
+      if (age >= 0 && age < SPORTAPI_FIXTURES_CACHE_TTL) {
+        sportApiFixturesCache.set(date, {
+          value,
+          expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL
+        });
+        return { ...value, cached: true };
+      }
+    }
+
+    try {
+      const apiResult = await fetchSportApiFixtures(date);
+      if (!Array.isArray(apiResult?.fixtures)) {
+        throw new Error("Réponse SportAPI.ai sans liste valide de matchs.");
+      }
+
+      const value = {
+        source: "SportAPI.ai",
+        date,
+        updated: new Date().toISOString(),
+        fixtures: apiResult.fixtures,
+        stale: false
+      };
+
+      sportApiFixturesCache.set(date, {
+        value,
+        expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL
+      });
+
+      if (sportApiPersistentCacheReady) {
+        try {
+          await pgQuery(
+            `INSERT INTO sportapi_fixtures_cache (fixture_date, fixtures, fetched_at)
+             VALUES ($1::date, $2::jsonb, NOW())
+             ON CONFLICT (fixture_date)
+             DO UPDATE SET fixtures=EXCLUDED.fixtures, fetched_at=NOW()`,
+            [date, JSON.stringify(value.fixtures)]
+          );
+        } catch (error) {
+          console.error("BatBot: écriture du cache SportAPI PostgreSQL:", error.message);
+        }
+      }
+
+      return { ...value, cached: false };
+    } catch (error) {
+      if (persisted && Array.isArray(persisted.fixtures)) {
+        return {
+          source: "SportAPI.ai",
+          date,
+          updated: new Date(persisted.fetched_at).toISOString(),
+          fixtures: persisted.fixtures,
+          cached: true,
+          stale: true,
+          refreshError: error
+        };
+      }
+      throw error;
+    }
+  })();
+
+  sportApiFixturesInFlight.set(date, request);
+  try {
+    return await request;
+  } finally {
+    if (sportApiFixturesInFlight.get(date) === request) {
+      sportApiFixturesInFlight.delete(date);
+    }
+  }
+}
+
+async function getSportApiFixturesCached(date, statusFilter = "") {
+  const value = await loadSportApiFixturesByDate(date);
+
+  // Ne jamais présenter une ancienne copie comme des matchs actuellement en direct.
+  if (statusFilter === "live" && value.stale) {
+    throw value.refreshError || new Error("Les données des matchs en direct sont périmées.");
+  }
+
+  return filterSportApiFixtures(value, statusFilter, value.cached);
 }
 
 app.get("/api/football/fixtures", requireUser, async (req, res) => {
@@ -2289,6 +2421,7 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       results_count: data.fixtures.length,
       updated: data.updated,
       cached: data.cached,
+      stale: Boolean(data.stale),
       response: data.fixtures
     });
   } catch (error) {
@@ -2331,6 +2464,7 @@ app.get("/api/football/live", requireUser, async (req, res) => {
       results_count: data.fixtures.length,
       updated: data.updated,
       cached: data.cached,
+      stale: Boolean(data.stale),
       response: data.fixtures
     });
   } catch (error) {
@@ -2363,6 +2497,7 @@ async function startServer() {
   try {
     await initializeSettings();
     await initializeBookmakers();
+    await initializeSportApiFixturesCache();
 
     server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`BatBot démarré sur le port ${PORT}`);
