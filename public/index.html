@@ -3842,10 +3842,11 @@ function renderBatBotCompetitionEmblem(value,name,large){
   const raw=String(value||"").trim();
   const local=batBotLocalCompetitionLogoUrl(name);
   let src="";
-  if(raw && /^https:\/\//i.test(raw)){
+  if(raw && (/^https:\/\//i.test(raw)||/^\/\//.test(raw))){
     try{
-      const parsed=new URL(raw);
-      if(parsed.protocol==="https:"&&parsed.hostname&&!parsed.username&&!parsed.password)src=raw;
+      const candidate=/^\/\//.test(raw)?"https:"+raw:raw;
+      const parsed=new URL(candidate);
+      if(parsed.protocol==="https:"&&parsed.hostname&&!parsed.username&&!parsed.password)src=candidate;
     }catch(_){}
   }else if(raw && /^\/football-logos\/competitions\/[A-Za-z0-9_-]+\.svg$/.test(raw)){
     src=raw;
