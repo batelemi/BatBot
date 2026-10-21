@@ -1283,16 +1283,12 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
       <div class="batbot-wordmark" aria-label="BATBOT">
         <span class="brand-bat">BAT</span><span class="brand-ball" aria-hidden="true"><i class="fa-solid fa-futbol"></i></span><span class="brand-bot">BOT</span>
       </div>
-      <span class="batbot-header-subtitle">Analyse sportive intelligente</span>
+      <span class="batbot-header-subtitle">ÇA SORT</span>
     </div>
     <span id="profileBadge" class="batbot-header-badge">Membre BatBot</span>
   </header>
 
-  <div id="userBox" class="user-box">👤 Compte connecté</div>
-  <div class="profile-status-grid" aria-label="Statuts du compte">
-    <div class="status-card premium-status-card"><div class="status-icon"><i class="fa-solid fa-gem" aria-hidden="true"></i></div><div><span>Statut Premium</span><strong id="premiumStatusText" class="status-value">Non actif</strong></div></div>
-    <div class="status-card ai-status-card"><div class="status-icon"><i class="fa-solid fa-robot" aria-hidden="true"></i></div><div><span>Statut IA</span><strong id="aiStatusText" class="status-value">Non active</strong></div></div>
-  </div>
+
 
 
 
@@ -2045,9 +2041,10 @@ function showDashboard(user){
   document.getElementById("admin").classList.add("hidden");
 
   user=user||{};
-  updateProfileStatuses(user);
+  window.batBotCurrentUser=user;
   const username=user.username||user.name||"";
-  const badge=user.badge||(user.is_subscribed||user.subscribed||user.subscription_active?"Membre premium":"Membre BatBot");
+  const isPremium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+  const badge=isPremium?"Membre premium":"Membre BatBot";
 
   // Le message de bienvenue est temporaire : il apparaît à l'ouverture du tableau de bord.
   if(username){
@@ -2057,13 +2054,6 @@ function showDashboard(user){
       const latestToast=welcomeToast.lastElementChild;
       if(latestToast)latestToast.classList.add("batbot-welcome-toast");
     }
-  }
-
-  const userBox=document.getElementById("userBox");
-  if(userBox){
-    userBox.innerHTML="👤 Compte connecté"+
-      (username?"<br><strong>"+escapeHtml(username)+"</strong>":"")+
-      (user.phone?"<br><span class=\"muted\">"+escapeHtml(user.phone)+"</span>":"");
   }
 
   const profileBadge=document.getElementById("profileBadge");
@@ -3719,6 +3709,11 @@ async function submitBatBotAI(){
 }
 
 function analyzeFootballMatch(home,away,homeId,awayId,fixture){
+  const currentUser=window.batBotCurrentUser||{};
+  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
+    showToast("Abonnement Premium requis. Ouvrez Plus ou Finances pour consulter les options d’abonnement.","error");
+    return;
+  }
   if(fixture){if(isFinishedFixture(fixture)){showFinishedFootballMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}}
   const input1=document.getElementById("aiMatch1");
   const input2=document.getElementById("aiMatch2");
@@ -3738,6 +3733,11 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
 }
 
 function analyzeFirstTwoFootballMatches(){
+  const currentUser=window.batBotCurrentUser||{};
+  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
+    showToast("Abonnement Premium requis pour recevoir un pronostic. Consultez les options dans Finances.","error");
+    return;
+  }
   const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
   const candidates=fixtures.filter(isAnalyzableFixture).slice(0,2),first=candidates[0],second=candidates[1];
   const home1=first?.teams?.home?.name||"",away1=first?.teams?.away?.name||"",home2=second?.teams?.home?.name||"",away2=second?.teams?.away?.name||"";
@@ -4240,7 +4240,7 @@ function renderBatBotReceipt(x,options={}){
   const username=String(
     x.username||
     options.username||
-    document.querySelector("#userBox strong")?.textContent||
+    (window.batBotCurrentUser?.username||window.batBotCurrentUser?.name)||
     "Utilisateur"
   );
   const reference=String(x.reference||"—");
@@ -5303,11 +5303,11 @@ async function refreshCurrentUserSilently(){
     const r=await fetch("/api/me",{credentials:"same-origin",cache:"no-store"});
     const d=await readApiResponse(r);
     if(!r.ok||!d.user)return;
-    updateProfileStatuses(d.user);
+    window.batBotCurrentUser=d.user;
     const badge=d.user.is_subscribed||d.user.subscribed||d.user.subscription_active;
     const el=document.getElementById("profileBadge");
     if(el){
-      el.textContent="🏅 "+(badge?"Membre premium":"Membre BatBot");
+      el.textContent=badge?"Membre premium":"Membre BatBot";
       el.classList.toggle("badge-blue",Boolean(badge));
     }
   }catch(e){console.warn("USER_SYNC:",e);}
@@ -5507,8 +5507,7 @@ document.addEventListener("keydown",function(event){
 (function(){
   function setupBatBotNavigation(){
     const dashboard=document.getElementById('dashboard');
-    const statusGrid=dashboard&&dashboard.querySelector('.profile-status-grid');
-    if(!dashboard||!statusGrid||dashboard.dataset.batbotNavigationReady==='1')return;
+    if(!dashboard||dashboard.dataset.batbotNavigationReady==='1')return;
     dashboard.dataset.batbotNavigationReady='1';
 
     const findCard=function(matcher){
@@ -5528,7 +5527,13 @@ document.addEventListener("keydown",function(event){
         return matcher(text,el);
       })||null;
     };
+    const profileCard=document.createElement('section');
+    profileCard.className='card hidden';
+    profileCard.id='batbotMemberProfileCard';
+    dashboard.appendChild(profileCard);
+
     const cards={
+      profile:()=>profileCard,
       messages:()=>findCard(t=>t.includes('Messages')),
       predictions:()=>document.getElementById('publicMemberPredictionsCard'),
       publishPrediction:()=>document.getElementById('memberPredictionsSection'),
@@ -5614,6 +5619,7 @@ document.addEventListener("keydown",function(event){
         ['Nos groupes','fa-solid fa-users','groups']
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
+        ['Mon profil','fa-solid fa-user','profile'],
         ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
         ['Contacter un agent','fa-solid fa-headset','contact'],
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
@@ -5648,6 +5654,16 @@ document.addEventListener("keydown",function(event){
           if(item[2]==='ai'){
             openBatBotAIFromMenu();
             return;
+          }
+          if(item[2]==='profile'){
+            const user=window.batBotCurrentUser||{};
+            const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+            profileCard.innerHTML=
+              '<div class="section-kicker">Mon compte</div>'+
+              '<h2>Mon profil</h2>'+
+              '<p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p>'+
+              '<p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p>'+
+              '<p>Abonnement : <strong>'+ (premium?'Premium actif':'Membre BatBot') +'</strong></p>';
           }
           const card=cards[item[2]]();
           openModal(card,item[0]);

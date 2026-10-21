@@ -2205,20 +2205,8 @@ function currentAbidjanDate() {
 }
 
 
-app.get("/api/football/access", requireUser, async (req, res) => {
-  try {
-    const currentUser = await pgGet(
-      "SELECT * FROM users WHERE id=$1",
-      [req.session.userId]
-    );
-    const premiumActive = !!(currentUser && currentUser.premium_until && new Date(currentUser.premium_until) > new Date());
-    if (!premiumActive) {
-      return res.status(403).json({ ok: false, error: "Un abonnement Premium actif est nécessaire pour accéder aux données football." });
-    }
-    return res.json({ ok: true, source: "SportAPI.ai", access: true });
-  } catch (error) {
-    return res.status(500).json({ ok: false, error: "Vérification de l'accès football indisponible." });
-  }
+app.get("/api/football/access", requireUser, async (_req, res) => {
+  return res.json({ ok: true, source: "SportAPI.ai", access: true });
 });
 
 
@@ -2385,24 +2373,6 @@ async function getSportApiFixturesCached(date, statusFilter = "") {
 
 app.get("/api/football/fixtures", requireUser, async (req, res) => {
   try {
-    const currentUser = await pgGet(
-      "SELECT * FROM users WHERE id=$1",
-      [req.session.userId]
-    );
-
-    const premiumActive = !!(
-      currentUser &&
-      currentUser.premium_until &&
-      new Date(currentUser.premium_until) > new Date()
-    );
-
-    if (!premiumActive) {
-      return res.status(403).json({
-        ok: false,
-        error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs."
-      });
-    }
-
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || ""))
       ? String(req.query.date)
       : currentAbidjanDate();
@@ -2435,24 +2405,6 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
 
 app.get("/api/football/live", requireUser, async (req, res) => {
   try {
-    const currentUser = await pgGet(
-      "SELECT * FROM users WHERE id=$1",
-      [req.session.userId]
-    );
-
-    const premiumActive = !!(
-      currentUser &&
-      currentUser.premium_until &&
-      new Date(currentUser.premium_until) > new Date()
-    );
-
-    if (!premiumActive) {
-      return res.status(403).json({
-        ok: false,
-        error: "Un abonnement Premium actif est nécessaire pour accéder aux matchs en direct."
-      });
-    }
-
     const date = currentAbidjanDate();
     const data = await getSportApiFixturesCached(date, "live");
 
