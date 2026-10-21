@@ -1511,7 +1511,7 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
       </div>
     </div>
 
-    <label class="payment-field payment-offer-field"><span class="muted">Offre payée</span><select id="paymentOffer" class="payment-offer-select" aria-label="Offre payée"><option value="Analyse du jour">Analyse du jour — 500 F</option><option value="Premium 7 jours">Premium — 1 000 F / 7 jours</option><option value="Premium + IA 7 jours">Premium + IA — 1 000 F / 7 jours</option></select></label>
+    <label class="payment-field payment-offer-field"><span class="muted">Offre payée</span><select id="paymentOffer" class="payment-offer-select" aria-label="Offre payée"><option value="Premium 7 jours">Premium 7 jours — 1 000 FCFA</option><option value="Premium 14 jours">Premium 14 jours — 2 000 FCFA</option><option value="Premium 21 jours">Premium 21 jours — 3 000 FCFA</option></select></label>
     <label class="payment-field payment-operator-field"><span class="muted">Opérateur utilisé</span><select id="paymentOperator" class="payment-operator-select" aria-label="Opérateur utilisé"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option><option>Wave</option></select></label>
     <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
     <label><span class="muted">Référence de transaction</span><input id="paymentReference" maxlength="120" placeholder="Référence du paiement"></label>
@@ -2375,12 +2375,21 @@ function sendPaymentWhatsApp(){if(!SERVICE_FLAGS.whatsapp)return showStatus("pay
 
 function updatePaymentOfferStyle(){
   const select=document.getElementById('paymentOffer');
+  const amountInput=document.getElementById('paymentAmount');
   if(!select)return;
   const value=select.value;
+  const amounts={
+    'Premium 7 jours':1000,
+    'Premium 14 jours':2000,
+    'Premium 21 jours':3000
+  };
+  if(amountInput){
+    amountInput.value=amounts[value]||'';
+  }
   select.classList.remove('offer-analysis','offer-premium','offer-premium-ia');
-  if(value==='Analyse du jour')select.classList.add('offer-analysis');
-  else if(value==='Premium 7 jours')select.classList.add('offer-premium');
-  else if(value==='Premium + IA 7 jours')select.classList.add('offer-premium-ia');
+  if(Object.prototype.hasOwnProperty.call(amounts,value)){
+    select.classList.add('offer-premium');
+  }
 }
 
 function updatePaymentOperatorStyle(){
