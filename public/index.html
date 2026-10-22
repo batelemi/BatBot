@@ -986,9 +986,31 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
   background:linear-gradient(135deg,#012169 0 45%,#FFFFFF 45% 55%,#C8102E 55% 70%,#012169 70% 100%);
 }
 .batbot-team-crest.batbot-crest-club .batbot-team-crest-fallback{
-  color:#FFFFFF;
-  background:linear-gradient(135deg,#087EBD,#102B49 75%);
+  color:var(--batbot-fallback-text,#FFFFFF);
+  background:var(--batbot-fallback-bg,linear-gradient(135deg,#087EBD,#102B49 75%));
 }
+.batbot-team-crest.batbot-club-arsenal .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#EF0107 0 50%,#FFFFFF 50%);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-chelsea .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#034694,#0A67C2);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-manchester-city .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#6CABDD,#1C2C5B);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-manchester-united .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#DA291C,#8A1538);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-juventus .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(90deg,#111111 0 50%,#FFFFFF 50%);--batbot-fallback-text:#E32636}
+.batbot-team-crest.batbot-club-real-madrid .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#FFFFFF,#FEBE10);--batbot-fallback-text:#17449B}
+.batbot-team-crest.batbot-club-barcelona .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#004D98 0 50%,#A50044 50%);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-bayern .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#DC052D,#0066B2);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-borussia-dortmund .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#FDE100,#111111);--batbot-fallback-text:#111111}
+.batbot-team-crest.batbot-club-liverpool .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#C8102E,#8B0000);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-psg .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#004170,#DA291C);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-inter .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#0068A8,#111111);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-ac-milan .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(90deg,#FB090B 0 50%,#111111 50%);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-ajax .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#D2122E,#FFFFFF);--batbot-fallback-text:#111111}
+.batbot-team-crest.batbot-club-benfica .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#E83030,#FFFFFF);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-sporting .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#008C45,#FFFFFF);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-al-fateh .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#F4C542,#111111);--batbot-fallback-text:#111111}
+.batbot-team-crest.batbot-club-al-shabab .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#FFFFFF,#D71920);--batbot-fallback-text:#111111}
+.batbot-team-crest.batbot-club-al-ahli .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#006B45,#FFFFFF);--batbot-fallback-text:#FFFFFF}
+.batbot-team-crest.batbot-club-al-khaleej .batbot-team-crest-fallback{--batbot-fallback-bg:linear-gradient(135deg,#008C72,#FFFFFF);--batbot-fallback-text:#FFFFFF}
+.batbot-predict-btn{color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;font-weight:1000!important;text-shadow:0 1px 2px rgba(0,0,0,.18)!important}
+
 .batbot-predict-btn{
   background:linear-gradient(120deg,#18E0D0 0%,#168BFF 55%,#655CFF 100%)!important;
   color:#FFFFFF!important;
@@ -3152,7 +3174,29 @@ function renderBatBotTeamFlag(value,teamName,countryCode){
     .slice(0,2).map(part=>part[0]).join("").toUpperCase();
   const fallback=/^[A-Z]{2}$/.test(code)?code:(initials||"⚽");
   const countryClass=/^[A-Z]{2}$/.test(code)?" batbot-crest-country-"+code.toLowerCase():"";
-  const clubClass=countryClass?"":" batbot-crest-club";
+  const clubKey=batBotNormalizeLogoName(teamName);
+  const clubAliases={
+    "arsenal":"arsenal","arsenal fc":"arsenal",
+    "chelsea":"chelsea","chelsea fc":"chelsea",
+    "manchester city":"manchester-city","man city":"manchester-city",
+    "manchester united":"manchester-united","man utd":"manchester-united","man united":"manchester-united",
+    "juventus":"juventus","juve":"juventus",
+    "real madrid":"real-madrid",
+    "barcelona":"barcelona","fc barcelona":"barcelona","barca":"barcelona",
+    "bayern":"bayern","bayern munich":"bayern","bayern munchen":"bayern",
+    "borussia dortmund":"borussia-dortmund","bvb":"borussia-dortmund",
+    "liverpool":"liverpool","liverpool fc":"liverpool",
+    "paris saint germain":"psg","paris sg":"psg","psg":"psg",
+    "inter":"inter","inter milan":"inter","internazionale":"inter",
+    "ac milan":"ac-milan","milan":"ac-milan",
+    "ajax":"ajax","afc ajax":"ajax",
+    "benfica":"benfica","sl benfica":"benfica",
+    "sporting":"sporting","sporting cp":"sporting","sporting lisbon":"sporting",
+    "al fateh":"al-fateh","al shabab":"al-shabab",
+    "al ahli":"al-ahli","al-ahli":"al-ahli","al khaleej":"al-khaleej","al-khaleej":"al-khaleej"
+  };
+  const clubId=clubAliases[clubKey]||"";
+  const clubClass=countryClass?"":" batbot-crest-club"+(clubId?" batbot-club-"+clubId:"");
   const crestClass=countryClass||clubClass;
   const local=batBotLocalTeamLogoUrl(teamName);
   const looksLikeImage=/^(https?:)?\/\//i.test(raw)||raw.startsWith("/")
