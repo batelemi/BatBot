@@ -957,6 +957,47 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
 #footballResults .batbot-team-crest{width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex:0 0 42px;border-radius:50%;background:#f8fafc;border:1px solid rgba(255,255,255,.22);box-shadow:0 3px 10px rgba(0,0,0,.22);overflow:hidden}
 #footballResults .batbot-team-crest img{display:block;width:100%;height:100%;object-fit:contain;padding:3px}
 #footballResults .batbot-team-crest-fallback{display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:20px;color:#102235}
+/* Secours colore uniquement lorsque le logo est absent */
+.batbot-team-crest-fallback{
+  border-radius:inherit;
+  font-weight:1000;
+  letter-spacing:-.5px;
+  text-shadow:0 1px 2px rgba(0,0,0,.22);
+}
+.batbot-team-crest.batbot-crest-country-ci .batbot-team-crest-fallback{
+  color:#102235;
+  background:linear-gradient(90deg,#F77F00 0 33.33%,#FFFFFF 33.33% 66.66%,#009A44 66.66% 100%);
+}
+.batbot-team-crest.batbot-crest-country-gh .batbot-team-crest-fallback{
+  color:#FFFFFF;
+  background:linear-gradient(180deg,#CE1126 0 33.33%,#FCD116 33.33% 66.66%,#006B3F 66.66% 100%);
+}
+.batbot-team-crest.batbot-crest-country-ng .batbot-team-crest-fallback{
+  color:#FFFFFF;
+  background:linear-gradient(90deg,#008751 0 33.33%,#FFFFFF 33.33% 66.66%,#008751 66.66% 100%);
+}
+.batbot-team-crest.batbot-crest-country-fr .batbot-team-crest-fallback,
+.batbot-team-crest.batbot-crest-country-it .batbot-team-crest-fallback{
+  color:#FFFFFF;
+  background:linear-gradient(90deg,#168447 0 33.33%,#FFFFFF 33.33% 66.66%,#E63946 66.66% 100%);
+}
+.batbot-team-crest.batbot-crest-country-gb .batbot-team-crest-fallback{
+  color:#FFFFFF;
+  background:linear-gradient(135deg,#012169 0 45%,#FFFFFF 45% 55%,#C8102E 55% 70%,#012169 70% 100%);
+}
+.batbot-team-crest.batbot-crest-club .batbot-team-crest-fallback{
+  color:#FFFFFF;
+  background:linear-gradient(135deg,#087EBD,#102B49 75%);
+}
+.batbot-predict-btn{
+  background:linear-gradient(120deg,#18E0D0 0%,#168BFF 55%,#655CFF 100%)!important;
+  color:#FFFFFF!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  box-shadow:0 4px 0 #07558C,0 8px 18px rgba(24,139,255,.30)!important;
+  text-shadow:0 1px 3px rgba(0,0,0,.30)!important;
+}
+.batbot-predict-btn:active{filter:brightness(.92)}
+
 #footballResults .batbot-fixture-vs{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#263b4c;border:2px solid #21c58d;color:#fff;font-size:11px;font-weight:1000}
 #footballResults .batbot-fixture-meta{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-top:12px;color:#b8c8d7;font-size:11px}
 #footballResults .batbot-fixture-status{padding:4px 8px;border-radius:999px;background:rgba(33,197,93,.12);color:#9af0bf;font-weight:900}
@@ -3109,13 +3150,16 @@ function renderBatBotTeamFlag(value,teamName,countryCode){
     ? String.fromCodePoint(...[...code].map(ch=>127397+ch.charCodeAt(0))) : "";
   const initials=String(teamName||"").trim().split(/\s+/).filter(Boolean)
     .slice(0,2).map(part=>part[0]).join("").toUpperCase();
-  const fallback=countryFlag||initials||"⚽";
+  const fallback=/^[A-Z]{2}$/.test(code)?code:(initials||"⚽");
+  const countryClass=/^[A-Z]{2}$/.test(code)?" batbot-crest-country-"+code.toLowerCase():"";
+  const clubClass=countryClass?"":" batbot-crest-club";
+  const crestClass=countryClass||clubClass;
   const local=batBotLocalTeamLogoUrl(teamName);
   const looksLikeImage=/^(https?:)?\/\//i.test(raw)||raw.startsWith("/")
     ||raw.startsWith("data:image/")||/\.(png|jpe?g|webp|svg|gif)([?#].*)?$/i.test(raw);
   if(looksLikeImage){
     const src=/^\/\//.test(raw)?"https:"+raw:raw;
-    return '<span class="batbot-team-crest"><img src="'+escapeHtml(src)
+    return '<span class="batbot-team-crest'+crestClass+'"><img src="'+escapeHtml(src)
       +'" alt="'+escapeHtml(teamName||"")+'" loading="lazy" referrerpolicy="no-referrer"'
       +(local?' data-local-fallback="'+escapeHtml(local)+'"':'')
       +' onerror="if(this.dataset.localFallback&&!this.dataset.localFallbackTried){this.dataset.localFallbackTried=\'1\';this.src=this.dataset.localFallback;}else{this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';}">'
@@ -3123,13 +3167,13 @@ function renderBatBotTeamFlag(value,teamName,countryCode){
       +escapeHtml(fallback)+'</span></span>';
   }
   if(local){
-    return '<span class="batbot-team-crest"><img src="'+escapeHtml(local)
+    return '<span class="batbot-team-crest'+crestClass+'"><img src="'+escapeHtml(local)
       +'" alt="'+escapeHtml(teamName||"")+'" loading="lazy"'
       +' onerror="this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\'">'
       +'<span class="batbot-team-crest-fallback" aria-hidden="true" style="display:none">'
       +escapeHtml(fallback)+'</span></span>';
   }
-  return '<span class="batbot-team-crest" aria-label="'+escapeHtml(teamName||"Équipe")+'">'
+  return '<span class="batbot-team-crest'+crestClass+'" aria-label="'+escapeHtml(teamName||"Équipe")+'">'
     +'<span class="batbot-team-crest-fallback" style="display:flex">'
     +escapeHtml(fallback)+'</span></span>';
 }
@@ -3923,7 +3967,7 @@ function renderBatBotLeagueFixtures(fixtures){
     const item=entry.item,homeTeam=item?.teams?.home||{},awayTeam=item?.teams?.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
     const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
     const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
-    const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary" data-batbot-league-fixture="'+entry.index+'">Recevoir mon pronostic</button>';
+    const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">Recevoir mon pronostic</button>';
     const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",home,homeTeam.country_code||homeTeam.countryCode),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",away,awayTeam.country_code||awayTeam.countryCode);
     return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
