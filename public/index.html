@@ -1508,7 +1508,7 @@ button.batbot-predict-btn *,
   </div>
 
   <div id="loginBox" class="card hidden">
-    <button class="btn secondary back-button" type="button" onclick="showRegister()">← Retour</button>
+    <button class="btn secondary back-button" type="button" onclick="showRegister()" aria-label="Retour à l'inscription" title="Retour à l'inscription">×</button>
     <h2>🔐 Connexion</h2>
 
     <input id="loginUsername" type="text" autocomplete="username" autocapitalize="none"
@@ -1544,7 +1544,7 @@ button.batbot-predict-btn *,
       💬 Contacter l'administrateur sur WhatsApp
     </a>
 
-    <button class="btn secondary" type="button" onclick="hideForgot()">← Retour à la connexion</button>
+    <button class="btn secondary" type="button" onclick="hideForgot()" aria-label="Retour à la connexion" title="Retour à la connexion">×</button>
   </div>
 
   <div id="changePasswordBox" class="card password-change-card hidden">
@@ -1814,7 +1814,7 @@ button.batbot-predict-btn *,
           <div><b>6.</b><span>Après le paiement, revenez dans BATBOT PRO, indiquez le montant payé et saisissez votre référence de transaction.</span></div>
           <div><b>7.</b><span>Appuyez sur <strong>Enregistrer la référence</strong>, puis envoyez votre preuve sur WhatsApp si nécessaire.</span></div>
         </div>
-        <button class="btn secondary conditions-close-button" type="button">← Retour au paiement</button>
+        <button class="btn secondary conditions-close-button" type="button" aria-label="Retour au paiement" title="Retour au paiement">×</button>
       </div>
     </div>
 
@@ -1831,7 +1831,7 @@ button.batbot-predict-btn *,
       <div class="payment-window-inner">
         <div class="payment-window-head">
           <strong id="paymentWindowTitle">Paiement</strong>
-          <button id="paymentWindowClose" class="btn secondary payment-window-close" type="button">← Retour</button>
+          <button id="paymentWindowClose" class="btn secondary payment-window-close" type="button" aria-label="Fermer et revenir au paiement" title="Fermer et revenir au paiement">×</button>
         </div>
         <div id="paymentWindowBody" class="payment-window-body"></div>
       </div>
@@ -3931,7 +3931,7 @@ async function submitBatBotAI(){
     return;
   }
   try{
-    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Analyse BATBOT en cours</strong><small>Veuillez patienter quelques instants.</small></div></div>');
+    setBatBotAIModalStatus('<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Pronostic BATBOT en cours</strong><small>Veuillez patienter quelques instants.</small></div></div>');
     if(button)button.disabled=true;
 
     const matches=[];
@@ -4423,8 +4423,8 @@ async function loadFootballFixtures(selectedDate){
     window.batBotDailyFixtures=[];
     window.batBotDailyFixturesLoadedDate="";
     renderBatBotLeagueFixtures([]);
-    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs indisponibles</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs.")+'</div></div>';
-    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs indisponibles</div><div class="professional-status-body">Impossible de charger les rencontres pour le moment.</div></div>';
+    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion indisponible</div><div class="professional-status-body">Impossible de charger les rencontres. Vérifiez votre connexion puis réessayez.</div></div>';
+    status.innerHTML="";
   }finally{
     if(button)button.disabled=false;
   }
@@ -5882,6 +5882,36 @@ document.addEventListener("keydown",function(event){
   .public-option-modal-body>.card,.public-option-modal-body>section.card,.public-option-modal-body>.deposit-space,.public-option-modal-body>.partners-space{margin:0;width:100%;min-width:0;}
   .public-option-modal-body .card{max-width:100%;}
   .public-option-modal-body .btn{position:relative;z-index:1;pointer-events:auto;}
+  /* Fenêtres sociales : compactes sur mobile, sans titre répété en en-tête */
+  .public-option-modal.public-option-modal-social{padding:8px;}
+  .public-option-modal-social .public-option-modal-inner{
+    width:min(420px,100%);max-height:80vh;padding:12px;border-radius:18px;
+  }
+  .public-option-modal-social .public-option-modal-head{
+    padding:0;margin:0;min-height:0;background:none;
+  }
+  .public-option-modal-social .public-option-modal-head strong{display:none;}
+  .public-option-modal-social .public-option-modal-close{
+    margin-left:auto;width:38px;height:38px;min-height:38px;padding:0;
+    display:inline-flex;align-items:center;justify-content:center;font-size:0;
+  }
+  .public-option-modal-social .public-option-modal-close::before{
+    content:"×";font-size:28px;line-height:1;
+  }
+  .public-option-modal-social .public-option-modal-body>.card{
+    padding:12px;margin:0;border-radius:15px;
+  }
+  .public-option-modal-social .public-option-modal-body .social-contact-icons{
+    gap:22px;margin-top:14px;margin-bottom:18px;
+  }
+  .public-option-modal-social .public-option-modal-body .social-contact-icon{
+    position:relative;margin-bottom:18px;flex:0 0 44px;
+  }
+  .public-option-modal-social .public-option-modal-body .social-contact-icon::after{
+    content:attr(title);position:absolute;top:48px;left:50%;
+    transform:translateX(-50%);font-size:12px;font-weight:800;
+    line-height:1.2;color:#fff;white-space:nowrap;
+  }
   .public-option-modal-body input,.public-option-modal-body textarea,.public-option-modal-body select{pointer-events:auto;}
   @media(max-width:520px){
     .public-option-modal{padding:8px;}
@@ -5977,7 +6007,7 @@ document.addEventListener("keydown",function(event){
     modal.className='public-option-modal hidden';
     modal.setAttribute('role','dialog');
     modal.setAttribute('aria-modal','true');
-    modal.innerHTML='<div class="public-option-modal-inner"><div class="public-option-modal-head"><strong id="publicOptionModalTitle">Option</strong><button type="button" class="btn secondary public-option-modal-close">← Retour</button></div><div class="public-option-modal-body"></div></div>';
+    modal.innerHTML='<div class="public-option-modal-inner"><div class="public-option-modal-head"><strong id="publicOptionModalTitle">Option</strong><button type="button" class="btn secondary public-option-modal-close" aria-label="Fermer" title="Fermer">×</button></div><div class="public-option-modal-body"></div></div>';
     document.body.appendChild(modal);
     const title=modal.querySelector('#publicOptionModalTitle');
     const body=modal.querySelector('.public-option-modal-body');
@@ -6029,6 +6059,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       button.addEventListener('click',function(){
         const key=button.dataset.openPublicOption;
         const label=key==='contact'?'Contacter un agent':'Nos groupes';
+        modal.classList.toggle('public-option-modal-social',key==='contact'||key==='groups');
         openModal(cards[key](),label);
       });
     });
