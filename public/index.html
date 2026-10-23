@@ -1389,6 +1389,14 @@ button.batbot-predict-btn *,
   }
 </style>
 
+
+<style id="batbot-finished-match-refinements">
+  .ai-finished-match .ai-result-title{font-size:20px;line-height:1.4;font-weight:850;color:#f3f8ff;margin-bottom:16px}
+  .ai-finished-match .ai-evidence-card{border:1px solid rgba(69,190,235,.24);border-radius:18px;background:linear-gradient(145deg,rgba(19,54,83,.94),rgba(8,27,47,.98));padding:18px;margin-top:12px;line-height:1.8}
+  .ai-finished-match .ai-finished-score{font-size:clamp(36px,9vw,48px);font-weight:900;letter-spacing:2px;text-align:center;color:#eaf7ff;padding:14px 0 4px}
+  .ai-finished-match .ai-finished-notice{color:#d8e8f5;font-weight:650;line-height:1.65}
+</style>
+
 </head>
 
 <body>
@@ -1561,8 +1569,8 @@ button.batbot-predict-btn *,
   </section>
 
   <section class="card" id="memberPredictionsSection">
-    <div class="section-kicker">Communauté BatBot</div>
-    <h2>📢 Pronostics des membres</h2>
+    <div class="section-kicker">Communauté BATBOT PRO</div>
+    <h2>⚽ Pronostics des membres</h2>
     <p class="muted">Choisissez un match et publiez votre pronostic pour la communauté.</p>
 
     <div class="notice">🎫 Publiez uniquement des pronostics réels, effectivement joués chez un bookmaker. Pas de pronostics inventés : respectez la communauté BATBOT.</div>
@@ -1594,11 +1602,7 @@ button.batbot-predict-btn *,
     <button id="publishMemberPredictionButton" class="btn green" type="button" onclick="publishMemberPrediction()">📢 Publier mon pronostic</button>
     <div id="memberPredictionStatus" class="status"></div>
 
-    <div style="margin-top:18px">
-      <h3>🌍 Pronostics publiés par la communauté</h3>
-      <p class="muted">Les dernières publications sont visibles ici par tous les membres connectés.</p>
 
-    </div>
   </section>
 
   <div id="batbotAIModal" class="batbot-ai-modal" aria-hidden="true">
@@ -1824,9 +1828,9 @@ PSG vs Marseille"></textarea>
   </section>
 
   <section class="card batbot-public-predictions-card" id="publicMemberPredictionsCard">
-    <div class="section-kicker">Communauté BatBot</div>
-    <h2>📢 Pronostics des membres</h2>
-    <p class="muted">Les derniers pronostics publiés par la communauté.</p>
+    <div class="section-kicker">Communauté BATBOT PRO</div>
+    <h2>⚽ Pronostics des membres</h2>
+    <p class="muted">Retrouvez les pronostics partagés par les membres.</p>
     <div id="publicMemberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications…</small></div></div></div>
   </section>
 
@@ -4110,7 +4114,27 @@ function footballFixtureScore(item){
   }
   return "";
 }
-function showFinishedFootballMatch(item){const home=item?.teams?.home?.name||"Équipe 1",away=item?.teams?.away?.name||"Équipe 2",competition=item?.league?.name||"Compétition",score=footballFixtureScore(item),when=formatFootballDateTime(item?.fixture?.date);setBatBotAIModalResult('<div class="ai-match-result"><div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div><div class="ai-evidence-card"><strong>🏆 '+escapeHtml(competition)+'</strong><br>📅 '+escapeHtml(when)+'<br>📌 Statut : <strong>Terminé</strong><br><div style="font-size:34px;font-weight:900;text-align:center;margin-top:14px">'+(score?escapeHtml(score):"Score indisponible")+'</div></div><div class="ai-evidence-card">Ce match est déjà terminé. BATBOT affiche le résultat disponible mais ne calcule aucune probabilité pour un match terminé.</div></div>');setBatBotAIModalStatus('<div class="professional-status"><div class="professional-status-head">📊 Résultat du match</div><div class="professional-status-body">Aucune analyse probabiliste n’est lancée pour une rencontre terminée.</div></div>');openBatBotAIModal();}
+function showFinishedFootballMatch(item){
+  const home=item?.teams?.home?.name||"Équipe 1";
+  const away=item?.teams?.away?.name||"Équipe 2";
+  const competition=item?.league?.name||"Compétition";
+  const score=footballFixtureScore(item);
+  const when=formatFootballDateTime(item?.fixture?.date);
+  setBatBotAIModalStatus("");
+  setBatBotAIModalResult(
+    '<div class="ai-match-result ai-finished-match">'+
+      '<div class="ai-result-title">⚽ '+escapeHtml(home)+' — '+escapeHtml(away)+'</div>'+
+      '<div class="ai-evidence-card">'+
+        '<strong>🏆 '+escapeHtml(competition)+'</strong><br>'+
+        '📅 '+escapeHtml(when)+'<br>'+
+        '📌 Statut : <strong>Terminé</strong>'+
+        '<div class="ai-finished-score">'+(score?escapeHtml(score):"Score indisponible")+'</div>'+
+      '</div>'+
+      '<div class="ai-evidence-card ai-finished-notice">Ce match est terminé. Aucun pronostic n’est disponible pour cette rencontre sur BATBOT PRO.</div>'+
+    '</div>'
+  );
+  openBatBotAIModal();
+}
 
 function renderBatBotCompetitionEmblem(value,name,large){
   const raw=String(value||"").trim();
@@ -4336,7 +4360,7 @@ async function loadFootballLive(){
   status.className="status";
   status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement du direct</strong><small>Recherche des matchs en cours…</small></div></div>';
   box.classList.remove("hidden");
-  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Direct en cours</strong><small>Actualisation automatique toutes les 15 secondes pendant cette vue.</small></div></div>';
+  box.innerHTML="";
 
   const refresh=async function(){
     try{
@@ -4960,7 +4984,7 @@ async function loadMemberPredictions(){
     const predictions=Array.isArray(data.predictions)?data.predictions:[];
     const html=predictions.length
       ?predictions.map(x=>renderMemberPredictionCard(x,false)).join("")
-      :'<div class="professional-status"><div class="professional-status-head">🌱 Aucun pronostic publié pour le moment</div><div class="professional-status-body">Les analyses et pronostics des membres apparaîtront ici dès qu’une publication sera partagée dans la communauté.</div></div>';
+      :'<div class="professional-status"><div class="professional-status-head">⚽ Aucun pronostic publié pour le moment</div><div class="professional-status-body">Les pronostics des membres apparaîtront ici dès qu’un membre publiera un pronostic.</div></div>';
     renderAll(html);
   }catch(error){
     console.error("MEMBER PREDICTIONS:",error);
