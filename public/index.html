@@ -3993,7 +3993,7 @@ function renderFootballFixtures(fixtures,checkedDate){
     let action="";
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
     else if(blocked||!isAnalyzableFixture(item))action='<div class="muted" style="margin-top:12px">⚠️ Match non analysable : '+escapeHtml(status)+'</div>';
-    else action='<button type="button" class="btn primary" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
+    else action='<button type="button" class="btn primary batbot-predict-btn" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     const country=league.country||league.area||"";
     const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
     return '<div class="match-card"><div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
