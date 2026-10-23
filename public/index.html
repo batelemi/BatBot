@@ -1020,6 +1020,17 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
 }
 .batbot-predict-btn:active{filter:brightness(.92)}
 
+/* Correctif de lisibilite du bouton de pronostic */
+button.batbot-predict-btn,
+button.batbot-predict-btn *,
+.batbot-league-match button.batbot-predict-btn,
+.batbot-league-match button.batbot-predict-btn *{
+  color:#FFFFFF!important;
+  -webkit-text-fill-color:#FFFFFF!important;
+  opacity:1!important;
+}
+
+
 #footballResults .batbot-fixture-vs{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#263b4c;border:2px solid #21c58d;color:#fff;font-size:11px;font-weight:1000}
 #footballResults .batbot-fixture-meta{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-top:12px;color:#b8c8d7;font-size:11px}
 #footballResults .batbot-fixture-status{padding:4px 8px;border-radius:999px;background:rgba(33,197,93,.12);color:#9af0bf;font-weight:900}
@@ -3197,13 +3208,22 @@ function renderBatBotTeamFlag(value,teamName,countryCode){
   };
   const clubId=clubAliases[clubKey]||"";
   const clubClass=countryClass?"":" batbot-crest-club"+(clubId?" batbot-club-"+clubId:"");
+  // Couleur stable dérivée du nom pour les équipes sans identité reconnue.
+  let teamHash=0;
+  for(let i=0;i<clubKey.length;i++){
+    teamHash=((teamHash<<5)-teamHash+clubKey.charCodeAt(i))|0;
+  }
+  const teamHue=Math.abs(teamHash)%360;
+  const teamFallbackStyle=(!countryClass&&!clubId)
+    ?' style="--batbot-fallback-bg:linear-gradient(135deg,hsl('+teamHue+',78%,43%),hsl('+((teamHue+32)%360)+',72%,25%));--batbot-fallback-text:#FFFFFF"'
+    :"";
   const crestClass=countryClass||clubClass;
   const local=batBotLocalTeamLogoUrl(teamName);
   const looksLikeImage=/^(https?:)?\/\//i.test(raw)||raw.startsWith("/")
     ||raw.startsWith("data:image/")||/\.(png|jpe?g|webp|svg|gif)([?#].*)?$/i.test(raw);
   if(looksLikeImage){
     const src=/^\/\//.test(raw)?"https:"+raw:raw;
-    return '<span class="batbot-team-crest'+crestClass+'"><img src="'+escapeHtml(src)
+    return '<span class="batbot-team-crest'+crestClass+'"'+teamFallbackStyle+'><img src="'+escapeHtml(src)
       +'" alt="'+escapeHtml(teamName||"")+'" loading="lazy" referrerpolicy="no-referrer"'
       +(local?' data-local-fallback="'+escapeHtml(local)+'"':'')
       +' onerror="if(this.dataset.localFallback&&!this.dataset.localFallbackTried){this.dataset.localFallbackTried=\'1\';this.src=this.dataset.localFallback;}else{this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';}">'
@@ -3211,13 +3231,13 @@ function renderBatBotTeamFlag(value,teamName,countryCode){
       +escapeHtml(fallback)+'</span></span>';
   }
   if(local){
-    return '<span class="batbot-team-crest'+crestClass+'"><img src="'+escapeHtml(local)
+    return '<span class="batbot-team-crest'+crestClass+'"'+teamFallbackStyle+'><img src="'+escapeHtml(local)
       +'" alt="'+escapeHtml(teamName||"")+'" loading="lazy"'
       +' onerror="this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\'">'
       +'<span class="batbot-team-crest-fallback" aria-hidden="true" style="display:none">'
       +escapeHtml(fallback)+'</span></span>';
   }
-  return '<span class="batbot-team-crest'+crestClass+'" aria-label="'+escapeHtml(teamName||"Équipe")+'">'
+  return '<span class="batbot-team-crest'+crestClass+'"'+teamFallbackStyle+' aria-label="'+escapeHtml(teamName||"Équipe")+'">'
     +'<span class="batbot-team-crest-fallback" style="display:flex">'
     +escapeHtml(fallback)+'</span></span>';
 }
