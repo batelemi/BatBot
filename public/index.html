@@ -1047,6 +1047,70 @@ button.batbot-predict-btn *,
 @media(max-width:420px){#footballResults .batbot-team-crest{width:36px;height:36px;flex-basis:36px}#footballResults .batbot-fixture-team{font-size:12px}#footballResults .batbot-fixture-vs{width:30px;height:30px}.batbot-league-match{grid-template-columns:minmax(0,1fr)}.batbot-league-match .btn{width:100%}}
 
 
+
+/* BATBOT — correction commune des emblèmes et noms sur mobile */
+#footballResults .batbot-fixture-team,
+.batbot-league-match-teams>span{
+  min-width:0;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+#footballResults .batbot-team-crest,
+.batbot-league-match-teams .batbot-team-crest{
+  width:42px;
+  height:42px;
+  min-width:42px;
+  min-height:42px;
+  max-width:42px;
+  max-height:42px;
+  flex:0 0 42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  box-sizing:border-box;
+  border-radius:50%;
+}
+#footballResults .batbot-team-crest img,
+.batbot-league-match-teams .batbot-team-crest img{
+  display:block;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  padding:3px;
+  box-sizing:border-box;
+}
+#footballResults .batbot-team-crest-fallback,
+.batbot-league-match-teams .batbot-team-crest-fallback{
+  width:100%;
+  height:100%;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  font-size:14px;
+  font-weight:900;
+  line-height:1;
+  box-sizing:border-box;
+}
+.batbot-league-match-teams>span{
+  line-height:1.35;
+  text-align:center;
+}
+@media(max-width:420px){
+  #footballResults .batbot-team-crest,
+  .batbot-league-match-teams .batbot-team-crest{
+    width:38px;
+    height:38px;
+    min-width:38px;
+    min-height:38px;
+    max-width:38px;
+    max-height:38px;
+    flex-basis:38px;
+  }
+}
+
 /* BATBOT — grille des championnats et matchs verticaux */
 .batbot-league-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:12px}
 .batbot-league-tile{min-width:0;min-height:145px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px 10px;border:1px solid rgba(83,207,255,.25);border-radius:17px;background:linear-gradient(145deg,#142d43,#091827);color:#fff;text-align:center;font:inherit;cursor:pointer}
