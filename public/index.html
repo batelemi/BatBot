@@ -6051,7 +6051,6 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         ['Pronostics publiés par les membres','fa-solid fa-bullhorn','predictions'],
         ['Publier un pronostic','fa-solid fa-square-pen','publishPrediction'],
         // Les messages sont accessibles depuis la cloche de l'en-tête.
-        ['Nos groupes','fa-solid fa-users','groups']
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
@@ -6231,21 +6230,21 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     function renderSheet(key){
       const configs={
         members:{title:'Membres',icon:'fa-solid fa-users',subtitle:'Comptes et accès des membres BatBot',items:[
-          [0,'👥 Membres inscrits','fa-solid fa-users']
+          [0,'Membres inscrits','fa-solid fa-users']
         ]},
         community:{title:'Communauté',icon:'fa-solid fa-comments',subtitle:'Messages et pronostics de la communauté',items:[
-          [2,'🔔 Gestion des messages','fa-solid fa-bell'],
-          [3,'📢 Gestion des pronostics','fa-solid fa-bullhorn']
+          [2,'Gestion des messages','fa-solid fa-bell'],
+          [3,'Gestion des pronostics','fa-solid fa-bullhorn']
         ]},
         finance:{title:'Abonnement',icon:'fa-solid fa-wallet',subtitle:'Demandes de paiement à vérifier',items:[
-          [4,'💳 Demandes de paiement manuel','fa-solid fa-wallet']
+          [4,'Demandes de paiement manuel','fa-solid fa-wallet']
         ]},
         more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Configuration et outils administrateur',items:[
-          [1,'⚙️ Paramètres modifiables','fa-solid fa-sliders'],
-          [5,'🏆 Gestion des bookmakers','fa-solid fa-chart-column'],
-          [6,'🎁 Gestion des coupons','fa-solid fa-gift'],
-          [7,'🔑 Demandes de mot de passe','fa-solid fa-key'],
-          [8,'📊 Probabilités du jour','fa-solid fa-chart-pie']
+          [1,'Paramètres modifiables','fa-solid fa-sliders'],
+          [5,'Gestion des bookmakers','fa-solid fa-chart-column'],
+          [6,'Gestion des coupons','fa-solid fa-gift'],
+          [7,'Demandes de mot de passe','fa-solid fa-key'],
+          [8,'Probabilités du jour','fa-solid fa-chart-pie']
         ]}
       };
       const cfg=configs[key];
@@ -7438,7 +7437,16 @@ if ("serviceWorker" in navigator) {
     scan(document.body);
     const observer=new MutationObserver(records=>{
       for(const record of records){
-        if(record.type==='childList') record.addedNodes.forEach(node=>{if(node.nodeType===Node.TEXT_NODE) convertTextNode(node); else if(node.nodeType===Node.ELEMENT_NODE && !node.matches('.batbot-ui-icon')) scan(node);});
+        if(record.type!=='childList') continue;
+        record.addedNodes.forEach(node=>{
+          if(node.nodeType===Node.TEXT_NODE){
+            const parent=node.parentElement;
+            if(!parent || parent.closest('script,style,textarea,input,select,option,code,pre,[data-no-icon-convert],.batbot-ui-icon,.batbot-admin-bottom-nav,.batbot-admin-nav-sheet')) return;
+            convertTextNode(node);
+          }else if(node.nodeType===Node.ELEMENT_NODE && !node.matches('.batbot-ui-icon')){
+            scan(node);
+          }
+        });
       }
     });
     observer.observe(document.body,{subtree:true,childList:true});
