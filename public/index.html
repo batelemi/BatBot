@@ -1115,10 +1115,10 @@ button.batbot-predict-btn *,
 .batbot-league-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:12px}
 .batbot-league-tile{min-width:0;min-height:145px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px 10px;border:1px solid rgba(83,207,255,.25);border-radius:17px;background:linear-gradient(145deg,#142d43,#091827);color:#fff;text-align:center;font:inherit;cursor:pointer}
 .batbot-league-tile:active{border-color:#ff414b;background:linear-gradient(145deg,#321719,#101722)}
-.batbot-league-tile-logo{width:54px;height:54px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f8fafc;overflow:hidden}
-.batbot-league-tile-logo .batbot-team-crest{width:54px;height:54px;border:0;box-shadow:none}
+.batbot-league-tile-logo{width:54px;height:54px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(145deg,#173d5b,#091a2b);border:1px solid rgba(83,207,255,.28);box-shadow:0 5px 14px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.08);overflow:hidden}
+.batbot-league-tile-logo .batbot-team-crest{width:54px;height:54px;border:0;box-shadow:none;background:transparent}
 .batbot-league-tile-logo img{width:100%;height:100%;object-fit:contain;padding:5px}
-.batbot-league-logo-fallback{font-size:27px}
+.batbot-league-logo-fallback{width:54px;height:54px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:25px;color:#f5c542;background:linear-gradient(145deg,#173d5b,#091a2b);border:1px solid rgba(83,207,255,.28);box-shadow:0 5px 14px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.08)}
 .batbot-league-tile strong{font-size:13px;line-height:1.3}
 .batbot-league-tile small{font-size:10px;color:#a9bfd2;line-height:1.3}
 .batbot-league-match{display:flex;flex-direction:column;gap:9px;padding:13px 0;border-top:1px solid rgba(83,207,255,.16)}
@@ -1325,6 +1325,70 @@ button.batbot-predict-btn *,
   }
 </style>
 
+
+<style id="batbot-navigation-refinements">
+  .batbot-league-intro {
+    margin: 6px 0 10px !important;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    line-height: 1.35;
+  }
+  .batbot-league-intro .professional-status-head {
+    margin-bottom: 4px;
+  }
+  .batbot-league-intro .professional-status-body {
+    line-height: 1.4;
+  }
+  @media (max-width: 420px) {
+    .batbot-league-intro {
+      padding: 9px 10px !important;
+      margin-bottom: 8px !important;
+    }
+  }
+</style>
+
+
+<style id="batbot-live-button-indicator">
+  #batbotDailyMatchesCard #footballLiveButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #batbotDailyMatchesCard #footballLiveButton .batbot-live-indicator {
+    display: inline-block;
+    flex: 0 0 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #8995a5;
+    box-shadow: none;
+  }
+  #batbotDailyMatchesCard #footballLiveButton[data-live-state="live"] .batbot-live-indicator {
+    background: #ff3030;
+    box-shadow: 0 0 8px rgba(255,48,48,.8);
+    animation: batbotLivePulse 1.2s ease-in-out infinite;
+  }
+  #batbotDailyMatchesCard #footballLiveButton[data-live-state="none"] .batbot-live-indicator {
+    background: #8b98a8;
+    box-shadow: none;
+    animation: none;
+  }
+  #batbotDailyMatchesCard #footballLiveButton[data-live-state="error"] .batbot-live-indicator {
+    background: #d49a36;
+    box-shadow: none;
+    animation: none;
+  }
+  @keyframes batbotLivePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .35; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #batbotDailyMatchesCard #footballLiveButton .batbot-live-indicator {
+      animation: none !important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -1483,7 +1547,7 @@ button.batbot-predict-btn *,
     <label for="footballDate" class="muted">Date des rencontres</label>
     <input type="date" id="footballDate" style="margin:6px 0 10px">
     <button type="button" class="btn primary" id="footballLoadButton" onclick="loadFootballFixtures(document.getElementById('footballDate').value)">🔎 Charger les matchs</button>
-    <button type="button" class="btn secondary" id="footballLiveButton" onclick="loadFootballLive()">🔴 Voir les matchs en direct</button><button type="button" class="btn secondary" id="footballTodayButton" onclick="loadFootballFixtures(getAbidjanDate(0))">Aujourd’hui</button>
+    <button type="button" class="btn secondary" id="footballLiveButton" data-live-state="unknown" onclick="loadFootballLive()"><span class="batbot-live-indicator" aria-hidden="true"></span> Voir les matchs en direct</button><button type="button" class="btn secondary" id="footballTodayButton" onclick="loadFootballFixtures(getAbidjanDate(0))">Aujourd’hui</button>
     <div id="footballStatus" class="status" aria-live="polite"></div>
     <div id="footballResults" class="hidden" aria-live="polite"></div>
   </section>
@@ -1609,7 +1673,7 @@ button.batbot-predict-btn *,
     </div>
     <a id="wavePremiumButton" class="btn wave" hidden
       href=""
-      target="_blank" rel="noopener noreferrer"> Souscrire 7 jours — 1 000 F</a>
+      target="_blank" rel="noopener noreferrer"> Souscrire un abonnement</a>
     <div class="payment-confirm">
       📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
     </div>
@@ -1632,7 +1696,7 @@ button.batbot-predict-btn *,
           <img src="/wave.png" alt="" aria-hidden="true"> Payer 500 F avec Wave
         </a>
         <a id="waveMobilePremiumButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
-          <img src="/wave.png" alt="" aria-hidden="true"> Souscrire 7 jours — 1 000 F
+          <img src="/wave.png" alt="" aria-hidden="true"> Souscrire un abonnement
         </a>
       </div>
     </div>
@@ -4115,7 +4179,7 @@ function renderBatBotLeagueFixtures(fixtures){
       return '<button type="button" class="batbot-league-tile" data-batbot-open-league="'+escapeHtml(group.key)+'"><span class="batbot-league-tile-logo">'+logo+'</span><strong>'+escapeHtml(group.name)+'</strong><small>'+escapeHtml(group.country||"Compétition")+' · '+group.items.length+' match(s)</small></button>';
     }).join('')+'</div>';
     list.querySelectorAll('[data-batbot-open-league]').forEach(function(button){button.addEventListener('click',function(){window.batBotSelectedLeagueKey=button.dataset.batbotOpenLeague;renderBatBotLeagueFixtures(all);});});
-    if(status)status.innerHTML='<div class="professional-status success"><div class="professional-status-head">Championnats disponibles</div><div class="professional-status-body">Choisissez une compétition pour consulter ses matchs.</div></div>';
+    if(status)status.innerHTML='<div class="professional-status success batbot-league-intro"><div class="professional-status-head">Championnats disponibles</div><div class="professional-status-body">Choisissez un championnat pour découvrir ses rencontres et demander un pronostic.</div></div>';
     return;
   }
   const group=sorted.find(function(item){return item.key===selected;});
@@ -4231,7 +4295,7 @@ async function loadFootballFixtures(selectedDate){
   if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des matchs</strong><small>Veuillez patienter…</small></div></div>';
+  status.innerHTML="";
   box.classList.remove("hidden");
   box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des matchs</strong><small>Veuillez patienter…</small></div></div>';
 
@@ -4283,10 +4347,17 @@ async function loadFootballLive(){
       if(!response.ok||d?.ok===false)throw new Error(d?.error||"Impossible de récupérer les matchs en direct.");
       const rawFixtures=Array.isArray(d?.response)?d.response:[];
       const fixtures=rawFixtures.map(normalizeFootballClientMatch).filter(function(item){return isLiveFixture(item);});
+      if(button){
+        button.dataset.liveState=fixtures.length?"live":"none";
+        button.setAttribute("aria-label",fixtures.length
+          ? "Voir les matchs en direct : "+fixtures.length+" rencontre(s) en cours"
+          : "Voir les matchs en direct : aucune rencontre en cours signalée");
+      }
       window.batBotVisibleFixtureCount=20;
       renderFootballFixtures(fixtures,"en direct");
       status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"Aucune rencontre en cours n’est actuellement signalée.")+'</div></div>';
     }catch(e){
+      if(button)button.dataset.liveState="error";
       window.batBotLiveRefreshTimer=null;
       box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs en direct.")+'</div></div>';
       status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
@@ -5815,10 +5886,10 @@ document.addEventListener("keydown",function(event){
     if(oldLauncher)oldLauncher.remove();
 
     const configs={
-      analyses:{title:'Analyses & IA',icon:'fa-solid fa-magnifying-glass-chart',subtitle:'Explore les championnats disponibles',items:[
+      analyses:{title:'Ligues',icon:'fa-solid fa-trophy',subtitle:'Explorez les ligues et championnats',items:[
         ['Ligues & championnats','fa-solid fa-trophy','leagues']
       ]},
-      finances:{title:'Finances',icon:'fa-solid fa-wallet',subtitle:'Paiements et historique des transactions',items:[
+      finances:{title:'Abonnement',icon:'fa-solid fa-wallet',subtitle:'Abonnement, paiements et transactions',items:[
         ['Dépôts & paiements','fa-solid fa-wallet','payments'],
         ['Mes transactions','fa-solid fa-file-invoice-dollar','transactions']
       ]},
@@ -5899,8 +5970,8 @@ document.addEventListener("keydown",function(event){
     nav.setAttribute('aria-label','Navigation principale BatBot');
     nav.innerHTML=''
       +'<button type="button" class="batbot-nav-item active" data-tab="home" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Accueil</span></button>'
-      +'<button type="button" class="batbot-nav-item" data-tab="analyses"><i class="fa-solid fa-brain" aria-hidden="true"></i><span>Analyses</span></button>'
-      +'<button type="button" class="batbot-nav-item" data-tab="finances"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Finances</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="analyses"><i class="fa-solid fa-trophy" aria-hidden="true"></i><span>Ligues</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="finances"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Abonnement</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="community"><i class="fa-solid fa-comments" aria-hidden="true"></i><span>Communauté</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="more"><i class="fa-solid fa-gear" aria-hidden="true"></i><span>Plus</span></button>';
     document.body.appendChild(nav);
