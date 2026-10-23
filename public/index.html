@@ -1012,11 +1012,12 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
 .batbot-predict-btn{color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;font-weight:1000!important;text-shadow:0 1px 2px rgba(0,0,0,.18)!important}
 
 .batbot-predict-btn{
-  background:linear-gradient(120deg,#18E0D0 0%,#168BFF 55%,#655CFF 100%)!important;
+  background:linear-gradient(115deg,#124C7A 0%,#1267A5 45%,#168BFF 100%)!important;
   color:#FFFFFF!important;
-  border:1px solid rgba(255,255,255,.22)!important;
-  box-shadow:0 4px 0 #07558C,0 8px 18px rgba(24,139,255,.30)!important;
-  text-shadow:0 1px 3px rgba(0,0,0,.30)!important;
+  -webkit-text-fill-color:#FFFFFF!important;
+  border:1px solid rgba(72,217,255,.65)!important;
+  box-shadow:0 4px 0 #07365B,0 8px 18px rgba(0,126,220,.28)!important;
+  text-shadow:0 1px 3px rgba(0,0,0,.45)!important;
 }
 .batbot-predict-btn:active{filter:brightness(.92)}
 
@@ -4031,7 +4032,7 @@ function renderBatBotLeagueFixtures(fixtures){
     const item=entry.item,homeTeam=item?.teams?.home||{},awayTeam=item?.teams?.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
     const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
     const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
-    const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">Recevoir mon pronostic</button>';
+    const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">🎯 Recevoir mon prono</button>';
     const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",home,homeTeam.country_code||homeTeam.countryCode),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",away,awayTeam.country_code||awayTeam.countryCode);
     return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
