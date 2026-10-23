@@ -1294,6 +1294,37 @@ button.batbot-predict-btn *,
 @media(max-width:420px){#batbotDailyMatchesCard{padding:11px}#footballResults .match-card{padding:10px!important}#footballResults .match-title{font-size:13px!important}}
 </style>
 
+
+<style id="batbot-ticket-clean-modal">
+  #batbotTicketModal {
+    padding: 12px;
+    background: rgba(2, 12, 27, .94);
+    backdrop-filter: blur(9px);
+  }
+  #batbotTicketModal .ai-ticket-panel {
+    width: min(520px, 100%);
+    max-height: 92vh;
+    overflow: auto;
+    margin: auto;
+  }
+  #batbotTicketModal .ai-ticket-paper {
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(185, 200, 211, .85);
+    box-shadow: 0 16px 46px rgba(0, 0, 0, .32);
+  }
+  #batbotTicketModal .ai-ticket-head {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+  #batbotTicketModal .ai-ticket-paper:before {
+    color: rgba(13, 54, 83, .045);
+  }
+  #batbotTicketModal .ai-ticket-close {
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .16);
+  }
+</style>
+
 </head>
 
 <body>
@@ -1533,10 +1564,7 @@ button.batbot-predict-btn *,
       </div>
       <div id="batbotTicketContent"></div>
     </div>
-    <div class="ai-ticket-actions">
-      <button type="button" class="btn primary" onclick="copyBatBotTicket()">📋 Copier le ticket</button>
-      <button type="button" class="btn secondary" onclick="downloadBatBotTicket()">⬇️ Télécharger</button>
-    </div>
+
   </div>
 </div>
 
