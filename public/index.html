@@ -1527,10 +1527,11 @@ button.batbot-predict-btn *,
       </div>
       <div class="batbot-header-meta">
         <span id="headerPremiumStatus" class="header-premium-status is-inactive">Premium non activé</span>
-        <span class="batbot-header-subtitle">ÇA SORT DÈH !</span>
+
       </div>
     </div>
-    <span id="profileBadge" class="batbot-header-badge">Membre BATBOT PRO</span>
+
+    <button id="headerProfileButton" class="header-profile-button" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><i class="fa-solid fa-user" aria-hidden="true"></i><span>Profil</span></button>
   </header>
 
 
@@ -1647,17 +1648,17 @@ button.batbot-predict-btn *,
       </button>
     </div>
   <div id="waveDayCard" class="card payment-card payment-window-source">
-    <h2>💳 Analyse du jour</h2>
+    <h2>Offre quotidienne désactivée</h2>
     <div class="payment-price">
       <strong>500 F</strong>
-      <span>Paiement pour recevoir l'analyse du jour</span>
+      <span>Offre quotidienne désactivée</span>
     </div>
     <div class="notice">
-      📌 Effectuez le paiement de <strong>500 F</strong> avant d'envoyer votre demande d'analyse.
+      Cette offre quotidienne n'est plus proposée.
     </div>
     <a id="waveDayButton" class="btn wave" hidden
       href=""
-      target="_blank" rel="noopener noreferrer"> Payer 500 F avec Wave</a>
+      target="_blank" rel="noopener noreferrer"> Payer avec Wave</a>
     <div class="payment-confirm">
       ✅ Paiement manuel. Après le paiement, revenez dans l'application et envoyez vos matchs à analyser.
     </div>
@@ -1671,7 +1672,7 @@ button.batbot-predict-btn *,
       <span>Accès pendant 7 jours</span>
     </div>
     <div class="notice">
-      🏅 Avec l'abonnement, vous n'avez pas besoin de payer <strong>500 F</strong> chaque jour pendant les 7 jours.
+      🏅 Profitez de vos pronostics pendant toute la durée de votre abonnement.
       <br><br>
       Votre profil reçoit également un <strong>badge bleu</strong>.
     </div>
@@ -1697,7 +1698,7 @@ button.batbot-predict-btn *,
       </div>
       <div class="wave-mobile-payment-actions">
         <a id="waveMobileDayButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
-          <img src="/wave.png" alt="" aria-hidden="true"> Payer 500 F avec Wave
+          <img src="/wave.png" alt="" aria-hidden="true"> Payer avec Wave
         </a>
         <a id="waveMobilePremiumButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
           <img src="/wave.png" alt="" aria-hidden="true"> Souscrire un abonnement
@@ -1776,9 +1777,9 @@ button.batbot-predict-btn *,
 
 
   <div class="card">
-    <h2><img src="logo.png" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> Demander une analyse</h2>
+    <h2><img src="logo.png" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> Demander un pronostic</h2>
     <p class="muted">
-      Après votre paiement de <strong>500 F</strong>, envoyez les différents noms des matchs que vous souhaitez faire analyser.
+      Choisissez un abonnement Premium, puis envoyez les noms des matchs ou une capture d’écran pour demander vos pronostics.
     </p>
 
     <div class="range">
@@ -1789,7 +1790,7 @@ button.batbot-predict-btn *,
     <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
 
     <label>
-      <span class="muted">Écrire les matchs à analyser</span>
+      <span class="muted">Écrire les matchs à pronostiquer</span>
       <textarea id="matches" placeholder="Exemple :
 Real Madrid vs FC Barcelone
 PSG vs Marseille"></textarea>
@@ -1879,9 +1880,9 @@ PSG vs Marseille"></textarea>
     <h2>📋 Conditions d'utilisation</h2>
     <details>
       <summary>🔎 Cliquez ici pour lire les conditions</summary>
-    <div class="notice"><strong>1. Paiement quotidien</strong><br><br>Le client paie <strong>500 F</strong> pour recevoir l'analyse du jour.</div>
-    <div class="notice"><strong>2. Abonnement</strong><br><br>L'abonnement coûte <strong>1 000 F pour 7 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
-    <div class="notice"><strong>3. Analyse</strong><br><br>L’analyse utilise les informations disponibles sur le match pour présenter les statistiques et les éléments disponibles.</div>
+    <div class="notice"><strong>1. Abonnements Premium</strong><br><br>Les abonnements Premium sont proposés à <strong>1 000 FCFA pour 7 jours</strong>, <strong>2 000 FCFA pour 14 jours</strong> et <strong>3 000 FCFA pour 21 jours</strong>.</div>
+    <div class="notice"><strong>2. Abonnement</strong><br><br>Les tarifs Premium sont de <strong>1 000 FCFA pour 7 jours</strong>, <strong>2 000 FCFA pour 14 jours</strong> et <strong>3 000 FCFA pour 21 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
+    <div class="notice"><strong>3. Analyse</strong><br><br>Les pronostics s’appuient sur les statistiques et les informations disponibles sur les matchs. Ils sont transmis après réception et traitement de votre demande.</div>
       <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
     <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
     <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportAPI.ai</strong>. BATBOT PRO utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
@@ -1891,9 +1892,9 @@ PSG vs Marseille"></textarea>
   <div class="card">
     <h2>ℹ️ Comment ça fonctionne ?</h2>
     <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Créez votre compte</strong><span>Inscrivez-vous avec votre nom d'utilisateur et votre mot de passe.</span></div></div>
-    <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Payez 500 F ou abonnez-vous</strong><span>Choisissez le paiement du jour à 500 F ou l'abonnement 7 jours à 1 000 F.</span></div></div>
+    <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Choisissez votre abonnement Premium</strong><span>Choisissez l'abonnement Premium de 7, 14 ou 21 jours selon votre besoin.</span></div></div>
     <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d'écran.</span></div></div>
-    <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez votre analyse</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
+    <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez vos pronostics</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
   </div>
 
   <button class="btn danger batbot-nav-only" type="button" onclick="logout()">🚪 Se déconnecter</button>
@@ -5563,10 +5564,10 @@ function applyServiceVisibility(data){
   const wave1000=SERVICE_FLAGS.wave1000&&Boolean(data.wave1000);
   ['waveDayButton','waveMobileDayButton'].forEach(id=>assignLink(document.getElementById(id),'wave500',wave500?data.wave500:''));
   ['wavePremiumButton','waveMobilePremiumButton'].forEach(id=>assignLink(document.getElementById(id),'wave1000',wave1000?data.wave1000:''));
-  setVisible(document.getElementById('waveDayCard'),wave500);
+  setVisible(document.getElementById('waveDayCard'),false);
   setVisible(document.getElementById('wavePremiumCard'),wave1000);
   const mobileWave=document.querySelector('.wave-mobile-payment-block');
-  setVisible(mobileWave,wave500||wave1000);
+  setVisible(mobileWave,wave1000);
   const operatorKeys={'Orange Money':'orangeMoney','MTN Money':'mtnMoney','Moov Money':'moovMoney'};
   document.querySelectorAll('#paymentOperator option').forEach(option=>{const key=operatorKeys[option.value];if(key)option.disabled=!SERVICE_FLAGS[key];else if(option.value==='Wave')option.disabled=!(SERVICE_FLAGS.wave500||SERVICE_FLAGS.wave1000);});
   const paymentOperator=document.getElementById('paymentOperator');
@@ -5702,6 +5703,10 @@ document.addEventListener("keydown",function(event){
     box-shadow:0 8px 24px rgba(0,0,0,.22);
     backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   }
+  #dashboard .batbot-header-brand{min-width:0;flex:1 1 auto;}
+  #dashboard .header-profile-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 13px;border:1px solid rgba(83,207,255,.45);border-radius:12px;background:rgba(0,191,255,.12);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
+  #dashboard .header-profile-button i{color:#53cfff;font-size:16px;}
+  #dashboard .header-profile-button:focus-visible{outline:2px solid #53cfff;outline-offset:3px;}
   #dashboard .batbot-wordmark{
     display:inline-flex;align-items:center;gap:2px;min-width:0;
     font-size:clamp(25px,7vw,32px);font-weight:1000;line-height:1;
@@ -5869,7 +5874,7 @@ document.addEventListener("keydown",function(event){
       publishPrediction:()=>document.getElementById('memberPredictionsSection'),
       payments:()=>findCard(t=>t.includes('Dépôts & paiements')),
       transactions:()=>document.getElementById('myTransactionsCard'),
-      analysisRequest:()=>findCard(t=>t.includes('Demander une analyse')),
+      analysisRequest:()=>findCard(t=>t.includes('Demander un pronostic')),
       dailyMatches:()=>document.getElementById('batbotDailyMatchesCard'),
       leagues:()=>document.getElementById('batbotLeaguesCard'),
       daily:()=>findCard(t=>t.includes('Probabilités des matchs du jour')),
@@ -5927,6 +5932,8 @@ document.addEventListener("keydown",function(event){
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
     }
+    function openMemberProfile(){const user=window.batBotCurrentUser||{};const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);profileCard.innerHTML='<div class="section-kicker">Mon compte</div><h2>Mon profil</h2><p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p><p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p><p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';openModal(profileCard,'Mon profil');}
+    document.getElementById('headerProfileButton')?.addEventListener('click',openMemberProfile);
     closeButton.addEventListener('click',closeModal);
     modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
     document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.classList.contains('hidden'))closeModal();});
@@ -5949,7 +5956,7 @@ document.addEventListener("keydown",function(event){
         ['Nos groupes','fa-solid fa-users','groups']
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
-        ['Mon profil','fa-solid fa-user','profile'],
+        ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
         ['Contacter un agent','fa-solid fa-headset','contact'],
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
