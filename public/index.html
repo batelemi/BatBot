@@ -1157,49 +1157,50 @@ button.batbot-predict-btn *,
 .batbot-league-match-teams b{color:#53CFFF;font-size:11px}
 .batbot-league-match .btn{width:100%;margin:0}
 
-/* Réseaux sociaux : logos seuls sous les matchs */
+/* Rangée compacte : réseaux, assistance et groupes */
+#batbotSocialFooter {
+  display: block;
+  margin: 8px 0 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
 #batbotSocialFooter .social-grid {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 22px;
-  padding: 10px 0;
+  gap: 12px;
+  padding: 4px 0;
 }
 #batbotSocialFooter .social-icon-link {
+  box-sizing: border-box;
   display: inline-flex;
+  flex: 0 0 44px;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
-  min-height: 54px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,.22);
+  box-shadow: 0 2px 7px rgba(0,0,0,.18);
+  cursor: pointer;
   transition: transform .18s ease;
+  -webkit-tap-highlight-color: transparent;
 }
-#batbotSocialFooter .social-icon-link[hidden] {
-  display: none !important;
-}
-#batbotSocialFooter .social-icon-link:active {
-  transform: scale(.94);
-}
-#batbotSocialFooter .social-icon-link svg {
-  width: 29px;
-  height: 29px;
-}
-#batbotSocialFooter .social-tiktok {
-  color: white;
-  background: #050505;
-}
-#batbotSocialFooter .social-facebook {
-  color: white;
-  background: #1877F2;
-}
-#batbotSocialFooter .social-instagram {
-  color: white;
-  background: linear-gradient(135deg,#833AB4,#E1306C,#FCAF45);
-}
-
+#batbotSocialFooter .social-icon-link[hidden] { display:none !important; }
+#batbotSocialFooter .social-icon-link:active { transform:scale(.94); }
+#batbotSocialFooter .social-icon-link svg { width:23px;height:23px; }
+#batbotSocialFooter .social-tiktok {color:white;background:#050505;}
+#batbotSocialFooter .social-facebook {color:white;background:#1877F2;}
+#batbotSocialFooter .social-instagram {color:white;background:linear-gradient(135deg,#833AB4,#E1306C,#FCAF45);}
+#batbotSocialFooter .social-support {color:white;background:#168B72;}
+#batbotSocialFooter .social-groups {color:white;background:#5267D9;}
 </style>
 
 <style id="batbot-admin-navigation-style">
@@ -1607,13 +1608,15 @@ button.batbot-predict-btn *,
     <div id="footballStatus" class="status" aria-live="polite"></div>
     <div id="footballResults" class="hidden" aria-live="polite"></div>
   </section>
-  <section class="card batbot-social-footer" id="batbotSocialFooter">
-    <div class="social-grid">
-      <a class="social-icon-link social-tiktok" data-service="tiktok" aria-label="tiktok" title="tiktok" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.6 6.1a5.7 5.7 0 0 1-3.5-3.3V2h-3.8v13.2a2.6 2.6 0 1 1-2.6-2.6c.4 0 .8.1 1.1.2V9a6.3 6.3 0 1 0 5.3 6.2V8.5a9.2 9.2 0 0 0 4.2 1.1V5.8c-.3.1-.5.2-.7.3Z"/></svg></a>
-      <a class="social-icon-link social-facebook" data-service="facebook" aria-label="facebook" title="facebook" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 21v-8.2h2.8l.4-3.2h-3.2V7.5c0-.9.3-1.6 1.6-1.6h1.7V3.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V21h3.4Z"/></svg></a>
-      <a class="social-icon-link social-instagram" data-service="instagram" aria-label="instagram" title="instagram" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="17.7" cy="6.6" r="1.3" fill="currentColor"/></svg></a>
-    </div>
-  </section>
+  <section class="batbot-social-footer" id="batbotSocialFooter" aria-label="Réseaux sociaux et assistance">
+  <div class="social-grid">
+    <a class="social-icon-link social-tiktok" data-service="tiktok" aria-label="TikTok" title="TikTok" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.6 6.1a5.7 5.7 0 0 1-3.5-3.3V2h-3.8v13.2a2.6 2.6 0 1 1-2.6-2.6c.4 0 .8.1 1.1.2V9a6.3 6.3 0 1 0 5.3 6.2V8.5a9.2 9.2 0 0 0 4.2 1.1V5.8c-.3.1-.5.2-.7.3Z"/></svg></a>
+    <a class="social-icon-link social-facebook" data-service="facebook" aria-label="Facebook" title="Facebook" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 21v-8.2h2.8l.4-3.2h-3.2V7.5c0-.9.3-1.6 1.6-1.6h1.7V3.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V21h3.4Z"/></svg></a>
+    <a class="social-icon-link social-instagram" data-service="instagram" aria-label="Instagram" title="Instagram" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="17.7" cy="6.6" r="1.3" fill="currentColor"/></svg></a>
+    <button type="button" class="social-icon-link social-support" data-open-public-option="contact" aria-label="Assistance" title="Assistance"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v-2a8 8 0 0 1 16 0v2M4 13H3a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v-6H4Zm16 0h1a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2v-6h1ZM18 19a6 6 0 0 1-6 3h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="social-icon-link social-groups" data-open-public-option="groups" aria-label="Groupes" title="Groupes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</section>
 
   <section class="card hidden" id="batbotLeaguesCard" aria-label="Matchs par ligue">
     <div class="section-kicker">Compétitions disponibles</div>
@@ -5985,6 +5988,13 @@ document.addEventListener("keydown",function(event){
     }
     function openMemberProfile(){const user=window.batBotCurrentUser||{};const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);profileCard.innerHTML='<div class="section-kicker">Mon compte</div><h2>Mon profil</h2><p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p><p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p><p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';openModal(profileCard,'Mon profil');}
     document.getElementById('headerProfileButton')?.addEventListener('click',openMemberProfile);
+    document.querySelectorAll('#batbotSocialFooter [data-open-public-option]').forEach(function(button){
+      button.addEventListener('click',function(){
+        const key=button.dataset.openPublicOption;
+        const label=key==='contact'?'Contacter un agent':'Nos groupes';
+        openModal(cards[key](),label);
+      });
+    });
     closeButton.addEventListener('click',closeModal);
     modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
     document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.classList.contains('hidden'))closeModal();});
