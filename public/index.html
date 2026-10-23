@@ -1778,16 +1778,7 @@ button.batbot-predict-btn *,
 
   <div class="card">
     <h2><img src="logo.png" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> Demander un pronostic</h2>
-    <p class="muted">
-      Choisissez un abonnement Premium, puis envoyez les noms des matchs ou une capture d’écran pour demander vos pronostics.
-    </p>
 
-    <div class="range">
-      <div class="range-box"><strong>2</strong><span>Cote minimum</span></div>
-      <div class="range-box"><strong>10</strong><span>Cote maximum</span></div>
-    </div>
-
-    <div class="notice">📌 Les analyses sont disponibles uniquement de <strong>cote 2</strong> à <strong>cote 10</strong>.</div>
 
     <label>
       <span class="muted">Écrire les matchs à pronostiquer</span>
@@ -1806,7 +1797,6 @@ PSG vs Marseille"></textarea>
     <button id="sendAnalysisWhatsAppButton" class="btn whatsapp" hidden type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
     <button id="sendAnalysisTelegramButton" class="btn telegram" hidden type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
     <div id="analysisStatus" class="status"></div>
-    <div class="payment-processing-note">⏱️ <strong>Délai de traitement</strong><br>Les demandes d’analyse envoyées au service BATBOT PRO ne sont pas traitées instantanément. Le délai habituel est d’environ <strong>5 à 7 minutes</strong>, et peut exceptionnellement atteindre <strong>10 minutes ou plus</strong> selon le nombre de demandes en cours. Le résultat est transmis à l’utilisateur dès que l’analyse est terminée.</div>
   </div>
 
 
@@ -2545,32 +2535,53 @@ function createWhatsAppUrl(message){
   return phone?"https://wa.me/"+phone+"?text="+encodeURIComponent(message):"";
 }
 
-function sendAnalysisWhatsApp(){
-  if(!SERVICE_FLAGS.whatsapp)return showStatus("analysisStatus","Le service WhatsApp est temporairement désactivé.","error");
-  const matches=document.getElementById("matches").value.trim();
-  const capture=document.getElementById("capture");
-  const button=document.getElementById("sendAnalysisWhatsAppButton");
-  if(!matches&&(!capture||capture.files.length===0))return showStatus("analysisStatus","📋 Votre demande est incomplète. Ajoutez au moins un match ou sélectionnez une capture avant de continuer.","error");
-  if(button?.disabled)return;
-  setBatBotButtonLoading("sendAnalysisWhatsAppButton",true,"Ouverture de WhatsApp…");
-  let message="Bonjour BATBOT PRO 👋\n\nJe souhaite faire analyser mes matchs.\n\nPaiement effectué pour l'analyse.\n\n";
-  if(matches)message+="Match(s) à analyser :\n"+matches+"\n\n";
-  if(capture&&capture.files.length>0)message+="📷 Je vais également envoyer ma capture dans cette conversation WhatsApp.\n\n";
-  message+="Merci.";
-  window.open(createWhatsAppUrl(message),"_blank");
-  setTimeout(()=>{setBatBotButtonLoading("sendAnalysisWhatsAppButton",false,"💬 WhatsApp — Envoyer ma demande");showStatus("analysisStatus","💬 WhatsApp est prêt. Vérifiez votre message puis envoyez votre demande et votre capture si nécessaire.","success");},650);
+async function shareAnalysisRequest(platform,message,file){
+  if(file){
+    if(!navigator.share || !navigator.canShare || !navigator.canShare({files:[file]})){
+      showStatus("analysisStatus","Le partage de capture n’est pas pris en charge. Ouvrez la conversation et joignez l’image manuellement.","error");
+      const url=platform==="whatsapp"?createWhatsAppUrl(message):TELEGRAM_CONTACT;
+      if(url)window.open(url,"_blank");
+      return;
+    }
+    try{
+      await navigator.share({title:"Demande de pronostic BATBOT PRO",text:message,files:[file]});
+      showStatus("analysisStatus","Menu de partage ouvert. Choisissez "+(platform==="whatsapp"?"WhatsApp":"Telegram")+" puis le destinataire.","success");
+    }catch(error){
+      if(error.name!=="AbortError")showStatus("analysisStatus","Le partage a échoué. Joignez la capture manuellement dans la conversation.","error");
+    }
+    return;
+  }
+  const url=platform==="whatsapp"?createWhatsAppUrl(message):TELEGRAM_CONTACT+"?text="+encodeURIComponent(message);
+  if(url)window.open(url,"_blank");
+  showStatus("analysisStatus","Message préparé. Vérifiez-le puis envoyez votre demande.","success");
 }
 
-function sendAnalysisTelegram(){
+async function sendAnalysisWhatsApp(){
+  if(!SERVICE_FLAGS.whatsapp)return showStatus("analysisStatus","Le service WhatsApp est temporairement désactivé.","error");
+  const matches=document.getElementById("matches").value.trim();
+  const input=document.getElementById("capture");
+  const file=input&&input.files&&input.files.length?input.files[0]:null;
+  const button=document.getElementById("sendAnalysisWhatsAppButton");
+  if(!matches&&!file)return showStatus("analysisStatus","Ajoutez au moins un match ou sélectionnez une capture.","error");
+  if(button?.disabled)return;
+  setBatBotButtonLoading("sendAnalysisWhatsAppButton",true,"Préparation du partage…");
+  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite faire analyser mes matchs.\n\nPaiement effectué pour l'analyse.\n\n"+(matches?"Match(s) à analyser :\n"+matches+"\n\n":"")+(file?"📷 Capture jointe.\n\n":"")+"Merci.";
+  try{await shareAnalysisRequest("whatsapp",message,file);}
+  finally{setBatBotButtonLoading("sendAnalysisWhatsAppButton",false,"💬 WhatsApp — Envoyer ma demande");}
+}
+
+async function sendAnalysisTelegram(){
   if(!SERVICE_FLAGS.telegram)return showStatus("analysisStatus","Le service Telegram est temporairement désactivé.","error");
   const matches=document.getElementById("matches").value.trim();
+  const input=document.getElementById("capture");
+  const file=input&&input.files&&input.files.length?input.files[0]:null;
   const button=document.getElementById("sendAnalysisTelegramButton");
-  if(!matches){window.open(TELEGRAM_CONTACT,"_blank");showStatus("analysisStatus","✈️ Telegram est prêt. Envoyez votre demande au service BATBOT PRO.","success");return;}
+  if(!matches&&!file)return showStatus("analysisStatus","Ajoutez au moins un match ou sélectionnez une capture.","error");
   if(button?.disabled)return;
-  setBatBotButtonLoading("sendAnalysisTelegramButton",true,"Ouverture de Telegram…");
-  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite faire analyser ce(s) match(s) :\n\n"+matches+"\n\nPaiement effectué.";
-  window.open(TELEGRAM_CONTACT+"?text="+encodeURIComponent(message),"_blank");
-  setTimeout(()=>{setBatBotButtonLoading("sendAnalysisTelegramButton",false,"✈️ Telegram — Envoyer ma demande");showStatus("analysisStatus","✈️ Telegram est prêt. Vérifiez votre message puis envoyez votre demande.","success");},650);
+  setBatBotButtonLoading("sendAnalysisTelegramButton",true,"Préparation du partage…");
+  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite faire analyser mes matchs.\n\n"+(matches?"Match(s) à analyser :\n"+matches+"\n\n":"")+(file?"📷 Capture jointe.\n\n":"")+"Paiement effectué.";
+  try{await shareAnalysisRequest("telegram",message,file);}
+  finally{setBatBotButtonLoading("sendAnalysisTelegramButton",false,"✈️ Telegram — Envoyer ma demande");}
 }
 
 function showFileName(){
@@ -4176,7 +4187,7 @@ function renderFootballFixtures(fixtures,checkedDate){
     const date=formatFootballDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateFootballStatus(f.status?.long||f.status?.short||"Programmé"),score=footballFixtureScore(item);
     let action="";
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
-    else if(blocked||!isAnalyzableFixture(item))action='<div class="muted" style="margin-top:12px">⚠️ Match non analysable : '+escapeHtml(status)+'</div>';
+    else if(blocked||!isAnalyzableFixture(item))action='<div class="muted" style="margin-top:12px">⚠️ Aucun pronostic disponible pour ce match.</div>';
     else action='<button type="button" class="btn primary batbot-predict-btn" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     const country=league.country||league.area||"";
     const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
