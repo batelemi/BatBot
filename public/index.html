@@ -1404,6 +1404,27 @@ button.batbot-predict-btn *,
 </style>
 
 
+
+<style id="batbot-leagues-premium-live-fixes">
+  #batbotLeaguesCard > h2 { margin-bottom: 12px; }
+  #batbotLeaguesCard > #batbotLeagueStatus { margin-top: 0; }
+  #batbotLeaguesCard .batbot-league-intro { margin-top: 0; }
+  #dashboard .header-premium-verified-badge {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #1877F2;
+    color: #fff;
+    font-size: 10px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.2);
+  }
+  #dashboard .header-premium-verified-badge.hidden { display: none; }
+</style>
+
 <style id="batbot-live-button-indicator">
   #batbotDailyMatchesCard #footballLiveButton {
     display: inline-flex;
@@ -1592,7 +1613,7 @@ button.batbot-predict-btn *,
     <i class="fa-solid fa-bell" aria-hidden="true"></i>
     <span id="headerNotificationsDot" class="header-notifications-dot hidden" aria-hidden="true"></span>
   </button>
-  <button id="headerProfileButton" class="header-profile-button" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><i class="fa-solid fa-user" aria-hidden="true"></i><span>Profil</span></button>
+  <button id="headerProfileButton" class="header-profile-button" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><i class="fa-solid fa-user" aria-hidden="true"></i><span>Profil</span><span id="headerPremiumVerifiedBadge" class="header-premium-verified-badge hidden" role="img" aria-label="Abonnement Premium actif" title="Abonnement Premium actif"><i class="fa-solid fa-check" aria-hidden="true"></i></span></button>
 </div>
   </header>
 
@@ -1638,7 +1659,6 @@ button.batbot-predict-btn *,
   <section class="card hidden" id="batbotLeaguesCard" aria-label="Matchs par ligue">
     <div class="section-kicker">Compétitions disponibles</div>
     <h2>🏆 Ligues & championnats</h2>
-    <p class="muted">Choisissez un championnat pour découvrir ses rencontres et demander un pronostic.</p>
     <div id="batbotLeagueStatus" class="status" aria-live="polite"></div>
     <div id="batbotLeagueList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des compétitions</strong><small>Les ligues disponibles seront affichées ici.</small></div></div></div>
   </section>
@@ -3108,6 +3128,8 @@ function registerAdminTitleTap(){
 }
 function updateProfileStatuses(user){
   const premium=Boolean(user&&(user.is_subscribed||user.subscribed||user.subscription_active));
+  const verifiedBadge=document.getElementById("headerPremiumVerifiedBadge");
+  if(verifiedBadge)verifiedBadge.classList.toggle("hidden",!premium);
   const aiActive=premium && Boolean(user&&user.ai_active);
   const p=document.getElementById("premiumStatusText");
   const a=document.getElementById("aiStatusText");
@@ -4166,6 +4188,20 @@ function isFinishedFixture(item){
   const timestamp=date?new Date(date).getTime():NaN;
   return Boolean(score)&&Number.isFinite(timestamp)&&timestamp<(Date.now()-2*60*1000);
 }
+function updateFootballLiveIndicatorFromLoadedFixtures(){
+  const button=document.getElementById("footballLiveButton");
+  if(!button)return;
+  const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
+  const liveCount=fixtures.filter(isLiveFixture).length;
+  if(liveCount>0){
+    button.dataset.liveState="live";
+    button.setAttribute("aria-label","Voir les matchs en direct : "+liveCount+" rencontre(s) en cours");
+  }else if(window.batBotDailyFixturesLoadedDate){
+    button.dataset.liveState="none";
+    button.setAttribute("aria-label","Voir les matchs en direct : aucune rencontre en cours signalée");
+  }
+}
+
 function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|in play|in_play|first half|first_half|second half|second_half|half time|half_time|halftime|mi temps|1re mi temps|2e mi temps|1st half|2nd half|1h|2h|ht|extra time|extra_time|et|penalties|penalty|pen|paused)(\b|$)/i.test(fixtureStatusKey(item));}
 function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard|unknown|not known|tbd/i.test(fixtureStatusKey(item));}
 function isAnalyzableFixture(item){
@@ -4414,6 +4450,7 @@ async function loadFootballFixtures(selectedDate){
     window.batBotVisibleFixtureCount=20;
     window.batBotDailyFixturesLoadedDate=date;
     renderFootballFixtures(fixtures,date);
+    updateFootballLiveIndicatorFromLoadedFixtures();
     if(fixtures.length){
       status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs actualisés</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) chargée(s).</div></div>";
     }else{
@@ -5718,6 +5755,7 @@ function startBatBotLiveSync(){
         refreshCurrentUserSilently(),
         refreshPublicServiceSettings()
       ]);
+      updateFootballLiveIndicatorFromLoadedFixtures();
       // Ne pas recharger toute l'administration automatiquement : cela
       // recréait les champs et effaçait le numéro pendant la saisie.
       if(document.getElementById("adminPanel") && !document.getElementById("adminPanel").classList.contains("hidden")){
