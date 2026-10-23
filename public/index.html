@@ -1156,6 +1156,50 @@ button.batbot-predict-btn *,
 
 .batbot-league-match-teams b{color:#53CFFF;font-size:11px}
 .batbot-league-match .btn{width:100%;margin:0}
+
+/* Réseaux sociaux : logos seuls sous les matchs */
+#batbotSocialFooter .social-grid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 10px 0;
+}
+#batbotSocialFooter .social-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  min-height: 54px;
+  border-radius: 50%;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,.22);
+  transition: transform .18s ease;
+}
+#batbotSocialFooter .social-icon-link[hidden] {
+  display: none !important;
+}
+#batbotSocialFooter .social-icon-link:active {
+  transform: scale(.94);
+}
+#batbotSocialFooter .social-icon-link svg {
+  width: 29px;
+  height: 29px;
+}
+#batbotSocialFooter .social-tiktok {
+  color: white;
+  background: #050505;
+}
+#batbotSocialFooter .social-facebook {
+  color: white;
+  background: #1877F2;
+}
+#batbotSocialFooter .social-instagram {
+  color: white;
+  background: linear-gradient(135deg,#833AB4,#E1306C,#FCAF45);
+}
+
 </style>
 
 <style id="batbot-admin-navigation-style">
@@ -1563,6 +1607,13 @@ button.batbot-predict-btn *,
     <div id="footballStatus" class="status" aria-live="polite"></div>
     <div id="footballResults" class="hidden" aria-live="polite"></div>
   </section>
+  <section class="card batbot-social-footer" id="batbotSocialFooter">
+    <div class="social-grid">
+      <a class="social-icon-link social-tiktok" data-service="tiktok" aria-label="tiktok" title="tiktok" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.6 6.1a5.7 5.7 0 0 1-3.5-3.3V2h-3.8v13.2a2.6 2.6 0 1 1-2.6-2.6c.4 0 .8.1 1.1.2V9a6.3 6.3 0 1 0 5.3 6.2V8.5a9.2 9.2 0 0 0 4.2 1.1V5.8c-.3.1-.5.2-.7.3Z"/></svg></a>
+      <a class="social-icon-link social-facebook" data-service="facebook" aria-label="facebook" title="facebook" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 21v-8.2h2.8l.4-3.2h-3.2V7.5c0-.9.3-1.6 1.6-1.6h1.7V3.1c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8V21h3.4Z"/></svg></a>
+      <a class="social-icon-link social-instagram" data-service="instagram" aria-label="instagram" title="instagram" hidden href="" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="17.7" cy="6.6" r="1.3" fill="currentColor"/></svg></a>
+    </div>
+  </section>
 
   <section class="card hidden" id="batbotLeaguesCard" aria-label="Matchs par ligue">
     <div class="section-kicker">Compétitions disponibles</div>
@@ -1851,18 +1902,7 @@ PSG vs Marseille"></textarea>
 
 
 
-  <div class="card">
-    <h2>📱 Nos réseaux sociaux</h2>
-    <p class="muted">Suivez BATBOT PRO sur nos réseaux sociaux.</p>
-    <div class="social-grid">
-      <a class="btn social-btn" data-service="tiktok" hidden style="background:#000;color:white;box-shadow:0 6px 0 #333;"
-        href="" target="_blank" rel="noopener noreferrer">🎵 TikTok</a>
-      <a class="btn social-btn" data-service="facebook" hidden style="background:#1877F2;color:white;box-shadow:0 6px 0 #0A4A9A;"
-        href="" target="_blank" rel="noopener noreferrer">🔵 Facebook</a>
-      <a class="btn social-btn" data-service="instagram" hidden style="background:linear-gradient(145deg,#E1306C,#833AB4);color:white;box-shadow:0 6px 0 #54206F;"
-        href="" target="_blank" rel="noopener noreferrer">📸 Instagram</a>
-    </div>
-  </div>
+
 
 
 
@@ -2565,7 +2605,7 @@ async function sendAnalysisWhatsApp(){
   if(!matches&&!file)return showStatus("analysisStatus","Ajoutez au moins un match ou sélectionnez une capture.","error");
   if(button?.disabled)return;
   setBatBotButtonLoading("sendAnalysisWhatsAppButton",true,"Préparation du partage…");
-  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite faire analyser mes matchs.\n\nPaiement effectué pour l'analyse.\n\n"+(matches?"Match(s) à analyser :\n"+matches+"\n\n":"")+(file?"📷 Capture jointe.\n\n":"")+"Merci.";
+  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite recevoir un pronostic sur ces matchs.\n\n"+(matches?matches+"\n\n":"")+"Merci.";
   try{await shareAnalysisRequest("whatsapp",message,file);}
   finally{setBatBotButtonLoading("sendAnalysisWhatsAppButton",false,"💬 WhatsApp — Envoyer ma demande");}
 }
@@ -2579,7 +2619,7 @@ async function sendAnalysisTelegram(){
   if(!matches&&!file)return showStatus("analysisStatus","Ajoutez au moins un match ou sélectionnez une capture.","error");
   if(button?.disabled)return;
   setBatBotButtonLoading("sendAnalysisTelegramButton",true,"Préparation du partage…");
-  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite faire analyser mes matchs.\n\n"+(matches?"Match(s) à analyser :\n"+matches+"\n\n":"")+(file?"📷 Capture jointe.\n\n":"")+"Paiement effectué.";
+  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite recevoir un pronostic sur ces matchs.\n\n"+(matches?matches+"\n\n":"")+"Merci.";
   try{await shareAnalysisRequest("telegram",message,file);}
   finally{setBatBotButtonLoading("sendAnalysisTelegramButton",false,"✈️ Telegram — Envoyer ma demande");}
 }
@@ -2589,7 +2629,7 @@ function showFileName(){
   const fileName=document.getElementById("fileName");
 
   if(input&&input.files&&input.files.length>0){
-    fileName.innerHTML='<span class="batbot-spinner" aria-hidden="true"></span> Capture sélectionnée : '+escapeHtml(input.files[0].name);
+    fileName.textContent='Capture sélectionnée : '+input.files[0].name;
   }else{
     fileName.textContent="";
   }
@@ -5587,7 +5627,7 @@ function applyServiceVisibility(data){
   document.querySelectorAll('.payment-number.mtn-network').forEach(el=>setVisible(el,SERVICE_FLAGS.mtnMoney));
   document.querySelectorAll('.payment-number.moov-network').forEach(el=>setVisible(el,SERVICE_FLAGS.moovMoney));
   document.querySelectorAll('[data-service]').forEach(el=>{const key=el.dataset.service; if(['whatsapp','telegram','whatsappGroup','telegramGroup','tiktok','facebook','instagram'].includes(key)){if(key==='whatsapp')assignLink(el,key,createWhatsAppUrl("Bonjour BATBOT PRO 👋\n\nJe souhaite contacter un agent."));else if(key==='telegram')assignLink(el,key,TELEGRAM_CONTACT);else assignLink(el,key,data[key]);}});
-  const socialGrid=document.querySelector('.social-grid');
+  const socialGrid=document.querySelector('#batbotSocialFooter .social-grid');
   setVisible(socialGrid?.closest('.card'),Boolean(socialGrid&&Array.from(socialGrid.querySelectorAll('a')).some(link=>!link.hidden)));
   const waButton=document.getElementById('sendAnalysisWhatsAppButton');setVisible(waButton,SERVICE_FLAGS.whatsapp);
   const tgButton=document.getElementById('sendAnalysisTelegramButton');setVisible(tgButton,SERVICE_FLAGS.telegram);
@@ -5892,7 +5932,7 @@ document.addEventListener("keydown",function(event){
       partners:()=>findCard(t=>t.includes('Partenaires authentifiés')),
       groups:()=>findCard(t=>t.includes('Nos groupes')),
       contact:()=>findCard(t=>t.includes('Contacter un agent')),
-      social:()=>findCard(t=>t.includes('Nos réseaux sociaux')),
+
       terms:()=>findCard(t=>t.includes("Conditions d'utilisation")),
       how:()=>findCard(t=>t.includes('Comment ça fonctionne'))
     };
@@ -5971,7 +6011,7 @@ document.addEventListener("keydown",function(event){
         ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
         ['Contacter un agent','fa-solid fa-headset','contact'],
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
-        ['Nos réseaux sociaux','fa-solid fa-globe','social'],
+
         ["Conditions d'utilisation",'fa-solid fa-file-contract','terms']
       ]}
     };
@@ -6069,7 +6109,7 @@ document.addEventListener("keydown",function(event){
     Object.keys(cards).forEach(function(key){const card=cards[key]();if(card)card.classList.add('hidden');});
     const dailyMatchesCard=document.getElementById("batbotDailyMatchesCard");
     const messagesCard=document.getElementById("batbotMessagesCard");
-    if(dailyMatchesCard){dailyMatchesCard.classList.remove("hidden");if(messagesCard&&dailyMatchesCard.parentNode===messagesCard.parentNode)messagesCard.parentNode.insertBefore(dailyMatchesCard,messagesCard);}
+    if(dailyMatchesCard){dailyMatchesCard.classList.remove("hidden");if(messagesCard&&dailyMatchesCard.parentNode===messagesCard.parentNode)messagesCard.parentNode.insertBefore(dailyMatchesCard,messagesCard);const socialFooter=document.getElementById("batbotSocialFooter");if(socialFooter&&dailyMatchesCard.parentNode)dailyMatchesCard.parentNode.insertBefore(socialFooter,dailyMatchesCard.nextSibling);}
     const observer=new MutationObserver(function(){
       const visible=!dashboard.classList.contains('hidden');
       nav.classList.toggle('hidden',!visible);
