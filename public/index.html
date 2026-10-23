@@ -1576,7 +1576,13 @@ button.batbot-predict-btn *,
       </div>
     </div>
 
-    <button id="headerProfileButton" class="header-profile-button" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><i class="fa-solid fa-user" aria-hidden="true"></i><span>Profil</span></button>
+    <div class="batbot-header-actions">
+  <button id="headerNotificationsButton" class="header-notifications-button" type="button" aria-label="Consulter les messages" title="Messages">
+    <i class="fa-solid fa-bell" aria-hidden="true"></i>
+    <span id="headerNotificationsDot" class="header-notifications-dot hidden" aria-hidden="true"></span>
+  </button>
+  <button id="headerProfileButton" class="header-profile-button" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><i class="fa-solid fa-user" aria-hidden="true"></i><span>Profil</span></button>
+</div>
   </header>
 
 
@@ -4678,6 +4684,12 @@ function renderBatBotMessages(items){
   if(!box)return;
   const unread=items.filter(x=>!x.is_read).length;
   if(badge){badge.textContent=String(unread);badge.classList.toggle("hidden",unread===0);}
+  const notificationDot=document.getElementById("headerNotificationsDot");
+  if(notificationDot){
+    notificationDot.classList.toggle("hidden",unread===0);
+    const button=document.getElementById("headerNotificationsButton");
+    if(button)button.setAttribute("aria-label",unread ? "Consulter les messages non lus" : "Consulter les messages");
+  }
   box.innerHTML=items.length?'<div class="batbot-message-list">'+items.map(x=>`<div class="batbot-message-item ${x.is_read?'':'unread'}"><div class="batbot-message-title">${escapeHtml(x.title)}</div><div class="batbot-message-date">${escapeHtml(formatPaymentDateTime(x.created_at))}${x.is_read?'':' • Nouveau'}</div><div class="batbot-message-body">${escapeHtml(x.body)}</div></div>`).join("")+'</div>':'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun message</div><div class="professional-status-body">Les annonces importantes de BatBot apparaîtront ici.</div></div>';
 }
 
@@ -5758,7 +5770,12 @@ document.addEventListener("keydown",function(event){
     backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   }
   #dashboard .batbot-header-brand{min-width:0;flex:1 1 auto;}
-  #dashboard .header-profile-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 13px;border:1px solid rgba(83,207,255,.45);border-radius:12px;background:rgba(0,191,255,.12);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
+  #dashboard .batbot-header-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+#dashboard .header-notifications-button{position:relative;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:1px solid rgba(83,207,255,.35);border-radius:12px;background:rgba(0,191,255,.10);color:#fff;font-size:18px;cursor:pointer}
+#dashboard .header-notifications-button:focus-visible{outline:2px solid #53cfff;outline-offset:3px}
+#dashboard .header-notifications-dot{position:absolute;top:5px;right:5px;width:10px;height:10px;border:2px solid #10243A;border-radius:50%;background:#EF4444}
+#dashboard .header-notifications-dot.hidden{display:none}
+#dashboard .header-profile-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 13px;border:1px solid rgba(83,207,255,.45);border-radius:12px;background:rgba(0,191,255,.12);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
   #dashboard .header-profile-button i{color:#53cfff;font-size:16px;}
   #dashboard .header-profile-button:focus-visible{outline:2px solid #53cfff;outline-offset:3px;}
   #dashboard .batbot-wordmark{
@@ -5988,6 +6005,10 @@ document.addEventListener("keydown",function(event){
     }
     function openMemberProfile(){const user=window.batBotCurrentUser||{};const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);profileCard.innerHTML='<div class="section-kicker">Mon compte</div><h2>Mon profil</h2><p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p><p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p><p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';openModal(profileCard,'Mon profil');}
     document.getElementById('headerProfileButton')?.addEventListener('click',openMemberProfile);
+document.getElementById('headerNotificationsButton')?.addEventListener('click',function(){
+  openModal(cards.messages(),'Messages');
+  loadBatBotMessages();
+});
     document.querySelectorAll('#batbotSocialFooter [data-open-public-option]').forEach(function(button){
       button.addEventListener('click',function(){
         const key=button.dataset.openPublicOption;
@@ -6013,13 +6034,13 @@ document.addEventListener("keydown",function(event){
       community:{title:'Communauté',icon:'fa-solid fa-comments',subtitle:'Publications et échanges des membres',items:[
         ['Pronostics publiés par les membres','fa-solid fa-bullhorn','predictions'],
         ['Publier un pronostic','fa-solid fa-square-pen','publishPrediction'],
-        ['Messages','fa-solid fa-comments','messages'],
+        // Les messages sont accessibles depuis la cloche de l'en-tête.
         ['Nos groupes','fa-solid fa-users','groups']
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
-        ['Contacter un agent','fa-solid fa-headset','contact'],
+        // L'assistance reste accessible depuis l'icône dédiée sous les matchs.
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
 
         ["Conditions d'utilisation",'fa-solid fa-file-contract','terms']
