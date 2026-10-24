@@ -1,6 +1,5 @@
-const CACHE = "batbot-v4";
+const CACHE = "batbot-v5";
 const ASSETS = [
-  "/",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png"
@@ -57,11 +56,6 @@ self.addEventListener("fetch", event => {
     fetch(request).catch(async () => {
       const cached = await caches.match(request);
       if (cached) return cached;
-
-      if (request.mode === "navigate") {
-        const home = await caches.match("/");
-        if (home) return home;
-      }
 
       return Response.error();
     })

@@ -2462,7 +2462,24 @@ app.get("/api/football/status", requireUser, async (_req, res) => {
   });
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+// Toujours revalider la page et le service worker pour éviter une ancienne interface.
+app.get("/", (_req, res) => {
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/sw.js", (_req, res) => {
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.sendFile(path.join(__dirname, "public", "sw.js"));
+});
+
+app.use(express.static(path.join(__dirname, "public"), {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith("index.html") || filePath.endsWith("sw.js")) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    }
+  }
+}));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
