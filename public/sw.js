@@ -1,5 +1,6 @@
-const CACHE = "batbot-v5";
+const CACHE = "batbot-v6";
 const ASSETS = [
+  "/offline.html",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png"
@@ -8,8 +9,14 @@ const ASSETS = [
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE).then(async cache => {
+      const offlineResponse = await fetch("/offline.html", { cache: "no-cache" });
+      if (!offlineResponse.ok) {
+        throw new Error("BATBOT : impossible de charger la page hors connexion.");
+      }
+      await cache.put("/offline.html", offlineResponse);
+
       await Promise.all(
-        ASSETS.map(async url => {
+        ASSETS.filter(url => url !== "/offline.html").map(async url => {
           try {
             const response = await fetch(url, { cache: "no-cache" });
             if (response.ok) {
@@ -54,6 +61,11 @@ self.addEventListener("fetch", event => {
   // Réseau d'abord : ne pas bloquer les mises à jour du site.
   event.respondWith(
     fetch(request).catch(async () => {
+      if (request.mode === "navigate") {
+        const offlinePage = await caches.match("/offline.html");
+        if (offlinePage) return offlinePage;
+      }
+
       const cached = await caches.match(request);
       if (cached) return cached;
 

@@ -2480,7 +2480,10 @@ async function login(){
 
   }catch(error){
     console.error("LOGIN:",error);
-    showStatus("loginStatus","Erreur serveur.","error");
+    const message = !navigator.onLine
+      ? "Connexion Internet indisponible. Vérifiez votre connexion et réessayez."
+      : "Impossible de contacter le serveur. Réessayez plus tard.";
+    showStatus("loginStatus",message,"error");
   }finally{
     setLoading("loginButton",false,"🚀 Se connecter");
   }
