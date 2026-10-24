@@ -2316,7 +2316,10 @@ async function changePassword(){
     setTimeout(function(){showDashboard(data.user||data);},700);
   }catch(error){
     console.error("PASSWORD CHANGE:",error);
-    showStatus("changePasswordStatus","Impossible de contacter le serveur.","error");
+    const message = !navigator.onLine
+      ? "Connexion Internet indisponible. Vérifiez votre connexion et réessayez."
+      : "Impossible de contacter le serveur. Réessayez plus tard.";
+    showStatus("changePasswordStatus",message,"error");
   }finally{
     setLoading("changePasswordButton",false,"🔒 Enregistrer mon nouveau mot de passe");
   }
@@ -2434,7 +2437,10 @@ async function register(){
 
   }catch(error){
     console.error("REGISTER:",error);
-    showStatus("registerStatus","Impossible de contacter le serveur.","error");
+    const message = !navigator.onLine
+      ? "Connexion Internet indisponible. Vérifiez votre connexion et réessayez."
+      : "Impossible de contacter le serveur. Réessayez plus tard.";
+    showStatus("registerStatus",message,"error");
   }finally{
     setLoading("registerButton",false,"✨ Créer mon compte");
   }
