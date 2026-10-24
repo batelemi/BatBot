@@ -1474,6 +1474,106 @@ button.batbot-predict-btn *,
   .ai-finished-match .ai-finished-notice{color:#d8e8f5;font-weight:650;line-height:1.65}
 </style>
 
+
+<style id="batbot-live-3d-pitch">
+#batbotLiveCard .batbot-live-visual{
+  margin:18px 0;padding:14px;border-radius:20px;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 0%,#173b55 0%,#081522 72%);
+  border:1px solid rgba(105,190,220,.22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 14px 30px rgba(0,0,0,.25);
+}
+#batbotLiveCard .batbot-live-visual-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:12px;font-size:12px;font-weight:800;letter-spacing:.7px;
+}
+#batbotLiveCard .batbot-live-tag{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 9px;
+  border:1px solid rgba(255,74,74,.3);border-radius:999px;
+  background:rgba(190,30,40,.15);color:#ff7777;font-size:10px;
+}
+#batbotLiveCard .batbot-live-tag:before{
+  content:"";width:7px;height:7px;border-radius:50%;background:#ff4444;
+  box-shadow:0 0 9px #ff4444;animation:batbot3dLivePulse 1.3s infinite;
+}
+#batbotLiveCard .batbot-live-scoreboard{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+  padding:12px 10px;margin-bottom:10px;border-radius:14px;
+  background:linear-gradient(110deg,rgba(255,255,255,.07),rgba(255,255,255,.025));
+  border:1px solid rgba(255,255,255,.08);text-align:center;
+}
+#batbotLiveCard .batbot-live-team{font-size:12px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}
+#batbotLiveCard .batbot-live-score{
+  font-size:25px;font-weight:950;letter-spacing:2px;color:#fff;
+  text-shadow:0 2px 12px rgba(0,0,0,.45);white-space:nowrap;
+}
+#batbotLiveCard .batbot-live-score-note{
+  margin-top:4px;font-size:9px;color:#b5c8d5;letter-spacing:1px;
+}
+#batbotLiveCard .batbot-live-pitch-stage{
+  position:relative;perspective:850px;padding:8px 2px 18px;
+}
+#batbotLiveCard .batbot-live-pitch{
+  position:relative;isolation:isolate;overflow:hidden;aspect-ratio:1.24 / 1;
+  border:2px solid rgba(235,255,239,.9);border-radius:5px;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 8.33%,transparent 8.33% 16.66%),
+    repeating-linear-gradient(0deg,#167844 0%,#167844 12.5%,#1b8b4c 12.5%,#1b8b4c 25%);
+  box-shadow:0 15px 0 #07502f,0 22px 26px rgba(0,0,0,.48),inset 0 0 30px rgba(0,0,0,.16);
+  transform:rotateX(27deg) scale(.96);transform-origin:center center;
+}
+#batbotLiveCard .batbot-live-pitch:before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.11) 48%,transparent 68%);
+}
+#batbotLiveCard .batbot-live-pitch-lines{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+#batbotLiveCard .batbot-live-player{
+  position:absolute;z-index:3;width:clamp(18px,5.2vw,25px);height:clamp(18px,5.2vw,25px);
+  display:flex;align-items:center;justify-content:center;border-radius:50%;
+  border:2px solid rgba(255,255,255,.95);color:#fff;font-size:9px;font-weight:900;
+  box-shadow:0 3px 7px rgba(0,0,0,.45),inset 0 1px 2px rgba(255,255,255,.45);
+  transform:translate(-50%,-50%);text-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+#batbotLiveCard .batbot-live-player.blue{
+  background:radial-gradient(circle at 30% 25%,#6fe4ff,#0879d5 60%,#06458b);
+}
+#batbotLiveCard .batbot-live-player.red{
+  background:radial-gradient(circle at 30% 25%,#ffb0a4,#e33b46 60%,#8d1523);
+}
+#batbotLiveCard .batbot-live-ball{
+  position:absolute;z-index:4;left:48%;top:53%;width:11px;height:11px;
+  border:1px solid #ddd;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff 0 20%,#d9e0e5 25% 48%,#202932 53% 63%,#fff 68%);
+  box-shadow:0 3px 5px rgba(0,0,0,.55);
+  animation:batbot3dBallMove 4.8s ease-in-out infinite alternate;
+}
+#batbotLiveCard .batbot-live-pitch-caption{
+  display:flex;justify-content:center;flex-wrap:wrap;gap:14px;margin-top:3px;
+  color:#d4e5ed;font-size:10px;
+}
+#batbotLiveCard .batbot-live-legend{display:inline-flex;align-items:center;gap:6px}
+#batbotLiveCard .batbot-live-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+#batbotLiveCard .batbot-live-disclaimer{
+  margin:12px 0 0;color:#b6c7d2;font-size:10px;line-height:1.5;text-align:center;
+}
+@keyframes batbot3dBallMove{
+  0%{left:25%;top:58%}
+  25%{left:42%;top:38%}
+  50%{left:63%;top:54%}
+  75%{left:72%;top:32%}
+  100%{left:52%;top:62%}
+}
+@keyframes batbot3dLivePulse{50%{opacity:.4;box-shadow:0 0 2px #ff4444}}
+@media(max-width:380px){
+  #batbotLiveCard .batbot-live-visual{padding:10px}
+  #batbotLiveCard .batbot-live-pitch{transform:rotateX(24deg) scale(.96)}
+  #batbotLiveCard .batbot-live-team{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+  #batbotLiveCard .batbot-live-tag:before,
+  #batbotLiveCard .batbot-live-ball{animation:none!important}
+}
+</style>
+
 </head>
 
 <body>
@@ -1630,6 +1730,85 @@ button.batbot-predict-btn *,
     <div id="batbotMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des dernières informations…</small></div></div></div>
   </section>
 
+
+  <section class="card hidden" id="batbotLiveCard" aria-label="BATBOT LIVE">
+    <div class="section-kicker">BATBOT LIVE • Football en direct</div>
+    <h2>🔴 BATBOT LIVE</h2>
+    <p class="muted">Retrouvez les rencontres en cours et les possibilités de diffusion officielle.</p>
+
+<div class="batbot-live-visual" aria-label="Visualisation illustrative du terrain de football">
+  <div class="batbot-live-visual-head">
+    <span>⚽ LIVE MATCH CENTER</span>
+    <span class="batbot-live-tag">LIVE</span>
+  </div>
+  <div class="batbot-live-scoreboard">
+    <div class="batbot-live-team" id="batbotLiveHomeName">Sélectionnez un match</div>
+    <div>
+      <div class="batbot-live-score" id="batbotLiveScore">— : —</div>
+      <div class="batbot-live-score-note" id="batbotLiveScoreNote">EN ATTENTE D’UN MATCH</div>
+    </div>
+    <div class="batbot-live-team" id="batbotLiveAwayName">Match en direct</div>
+  </div>
+  <div class="batbot-live-pitch-stage">
+    <div class="batbot-live-pitch">
+      <svg class="batbot-live-pitch-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <g fill="none" stroke="rgba(255,255,255,.9)" stroke-width=".65">
+          <rect x="1" y="1" width="98" height="98"/>
+          <path d="M50 1 V99"/>
+          <circle cx="50" cy="50" r="12"/>
+          <circle cx="50" cy="50" r=".8" fill="white"/>
+          <rect x="1" y="25" width="17" height="50"/>
+          <rect x="1" y="38" width="7" height="24"/>
+          <rect x="82" y="25" width="17" height="50"/>
+          <rect x="92" y="38" width="7" height="24"/>
+          <path d="M18 39 A12 12 0 0 1 18 61"/>
+          <path d="M82 39 A12 12 0 0 0 82 61"/>
+          <path d="M1 8 A7 7 0 0 0 8 1"/>
+          <path d="M92 1 A7 7 0 0 0 99 8"/>
+          <path d="M1 92 A7 7 0 0 1 8 99"/>
+          <path d="M92 99 A7 7 0 0 1 99 92"/>
+        </g>
+      </svg>
+      <span class="batbot-live-player blue" style="left:8%;top:50%">1</span>
+      <span class="batbot-live-player blue" style="left:23%;top:24%">2</span>
+      <span class="batbot-live-player blue" style="left:23%;top:43%">4</span>
+      <span class="batbot-live-player blue" style="left:23%;top:64%">5</span>
+      <span class="batbot-live-player blue" style="left:23%;top:82%">3</span>
+      <span class="batbot-live-player blue" style="left:40%;top:18%">7</span>
+      <span class="batbot-live-player blue" style="left:40%;top:39%">6</span>
+      <span class="batbot-live-player blue" style="left:40%;top:64%">8</span>
+      <span class="batbot-live-player blue" style="left:40%;top:84%">11</span>
+      <span class="batbot-live-player blue" style="left:60%;top:36%">9</span>
+      <span class="batbot-live-player blue" style="left:60%;top:68%">10</span>
+      <span class="batbot-live-player red" style="left:92%;top:50%">1</span>
+      <span class="batbot-live-player red" style="left:77%;top:24%">2</span>
+      <span class="batbot-live-player red" style="left:77%;top:43%">4</span>
+      <span class="batbot-live-player red" style="left:77%;top:64%">5</span>
+      <span class="batbot-live-player red" style="left:77%;top:82%">3</span>
+      <span class="batbot-live-player red" style="left:60%;top:17%">7</span>
+      <span class="batbot-live-player red" style="left:60%;top:49%">6</span>
+      <span class="batbot-live-player red" style="left:60%;top:84%">8</span>
+      <span class="batbot-live-player red" style="left:48%;top:28%">11</span>
+      <span class="batbot-live-player red" style="left:48%;top:72%">9</span>
+      <span class="batbot-live-player red" style="left:83%;top:50%">10</span>
+      <span class="batbot-live-ball" aria-hidden="true"></span>
+    </div>
+  </div>
+  <div class="batbot-live-pitch-caption">
+    <span class="batbot-live-legend"><i style="background:#168ce8"></i> Domicile</span>
+    <span class="batbot-live-legend"><i style="background:#e94750"></i> Extérieur</span>
+  </div>
+  <p class="batbot-live-disclaimer">Animation illustrative : positions des joueurs et ballon non issues d’un suivi réel.</p>
+</div>
+
+    <div class="professional-status">
+      <div class="professional-status-head">📺 Diffusions vidéo</div>
+      <div class="professional-status-body">Les vidéos seront proposées uniquement lorsque leur disponibilité et les conditions d’accès auront été vérifiées. Pour le moment, cette rubrique affiche les matchs en direct.</div>
+    </div>
+    <button type="button" class="btn primary" id="batbotLiveLoadButton" onclick="loadBatBotLiveSection()">🔄 Actualiser les matchs en direct</button>
+    <div id="batbotLiveStatus" class="status" aria-live="polite"></div>
+    <div id="batbotLiveResults" class="hidden" aria-live="polite"></div>
+  </section>
 
   <section class="card hidden" id="batbotDailyMatchesCard">
     <div class="section-kicker">Football • Données en direct</div>
@@ -4476,6 +4655,73 @@ async function loadFootballFixtures(selectedDate){
   }
 }
 
+function selectBatBotLiveFixture(index){
+  const item=window.batBotLiveFixtures?.[Number(index)];
+  if(!item)return;
+  const home=document.getElementById("batbotLiveHomeName");
+  const away=document.getElementById("batbotLiveAwayName");
+  const scoreNode=document.getElementById("batbotLiveScore");
+  const note=document.getElementById("batbotLiveScoreNote");
+  if(!home||!away||!scoreNode||!note)return;
+  home.textContent=item.teams?.home?.name||"Équipe domicile";
+  away.textContent=item.teams?.away?.name||"Équipe extérieure";
+  scoreNode.textContent=footballFixtureScore(item)||"— : —";
+  note.textContent=String(item.fixture?.status?.long||item.fixture?.status?.short||"EN DIRECT").toUpperCase();
+}
+
+async function loadBatBotLiveSection(){
+  const status=document.getElementById("batbotLiveStatus");
+  const box=document.getElementById("batbotLiveResults");
+  const button=document.getElementById("batbotLiveLoadButton");
+  if(!status||!box)return;
+  if(button)button.disabled=true;
+  box.classList.remove("hidden");
+  status.innerHTML='<div class="professional-status loading"><div class="professional-status-head">🔄 Chargement du direct</div><div class="professional-status-body">Recherche des rencontres en cours…</div></div>';
+  box.innerHTML="";
+  try{
+    await ensureFootballAccess();
+    const response=await fetch("/api/football/live",{
+      credentials:"same-origin",
+      headers:{Accept:"application/json"},
+      cache:"no-store"
+    });
+    const data=await readApiResponse(response);
+    if(!response.ok||data?.ok===false){
+      throw new Error(data?.error||"Impossible de récupérer les matchs en direct.");
+    }
+    const raw=Array.isArray(data?.response)?data.response:[];
+    const fixtures=raw.map(normalizeFootballClientMatch).filter(isLiveFixture);
+    window.batBotLiveFixtures=fixtures;
+    if(!fixtures.length){
+      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match en direct</div><div class="professional-status-body">Aucune rencontre en cours n’est actuellement signalée par la source sportive.</div></div>';
+      box.innerHTML='<div class="professional-status"><div class="professional-status-body">Réessayez plus tard. Les liens vidéo officiels seront affichés ici uniquement après vérification de leur disponibilité.</div></div>';
+      return;
+    }
+    status.innerHTML='<div class="professional-status success"><div class="professional-status-head">🔴 '+fixtures.length+' rencontre(s) en direct</div><div class="professional-status-body">Scores et statuts fournis par le service sportif. La vidéo n’est pas incluse automatiquement.</div></div>';
+    box.innerHTML=fixtures.map(function(item,index){
+      const teams=item.teams||{},home=teams.home||{},away=teams.away||{},league=item.league||{};
+      const score=footballFixtureScore(item);
+      const time=formatFootballDateTime(item.fixture?.date);
+      const competition=(league.country?league.country+" · ":"")+(league.name||"Compétition");
+      return '<div class="match-card">'
+        +'<div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+escapeHtml(competition)+'</span></div>'
+        +'<div class="batbot-fixture-teams"><div class="batbot-fixture-team"><span>'+escapeHtml(home.name||"Équipe 1")+'</span></div>'
+        +'<span class="batbot-fixture-vs">VS</span>'
+        +'<div class="batbot-fixture-team"><span>'+escapeHtml(away.name||"Équipe 2")+'</span></div></div>'
+        +'<div class="batbot-fixture-meta"><span class="batbot-fixture-status">🔴 En direct</span>'
+        +(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'
+        +'<p class="muted">'+escapeHtml(time)+'</p>'
+        +'<button type="button" class="btn primary" onclick="selectBatBotLiveFixture('+index+')">Voir sur le terrain</button>'
+        +'<div class="professional-status"><div class="professional-status-body">Diffusion vidéo officielle non vérifiée pour cette rencontre.</div></div>'
+        +'</div>';
+    }).join("");
+  }catch(error){
+    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+escapeHtml(error?.message||"Impossible de charger les rencontres.")+'</div></div>';
+  }finally{
+    if(button)button.disabled=false;
+  }
+}
+
 async function loadFootballLive(){
   const status=document.getElementById("footballStatus");
   const box=document.getElementById("footballResults");
@@ -6040,6 +6286,7 @@ document.addEventListener("keydown",function(event){
       transactions:()=>document.getElementById('myTransactionsCard'),
       analysisRequest:()=>findCard(t=>t.includes('Demander un pronostic')),
       dailyMatches:()=>document.getElementById('batbotDailyMatchesCard'),
+      batbotLive:()=>document.getElementById('batbotLiveCard'),
       leagues:()=>document.getElementById('batbotLeaguesCard'),
       daily:()=>findCard(t=>t.includes('Probabilités des matchs du jour')),
       partners:()=>findCard(t=>t.includes('Partenaires authentifiés')),
@@ -6131,6 +6378,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         // Les messages sont accessibles depuis la cloche de l'en-tête.
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
+        ['BATBOT LIVE','fa-solid fa-tv','batbotLive'],
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
         // L'assistance reste accessible depuis l'icône dédiée sous les matchs.
@@ -6182,6 +6430,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
           if(item[2]==='dailyMatches')loadFootballFixtures(getAbidjanDate(0));
           if(item[2]==='leagues')loadFootballFixtures(getAbidjanDate(0));
           if(item[2]==='predictions')loadMemberPredictions();
+          if(item[2]==='batbotLive')loadBatBotLiveSection();
         });
         actions.appendChild(button);
       });
