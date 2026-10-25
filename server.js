@@ -1,6 +1,10 @@
+// PostgreSQL hébergé exige SSL si aucun réglage explicite n'est fourni.
+if (process.env.DATABASE_URL && !process.env.PGSSL) {
+  process.env.PGSSL = "require";
+}
+
 const express = require("express");
 const session = require("express-session");
-const SQLiteStore = require("connect-sqlite3")(session);
 const { createPostgresSessionStore } = require("./database/postgres-session");
 const bcrypt = require("bcryptjs");
 const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
@@ -205,7 +209,11 @@ function requireAdmin(req, res, next) {
 const postgresSession = createPostgresSessionStore();
 const sessionStore = postgresSession
   ? postgresSession.store
-  : new SQLiteStore({ db: "sessions.sqlite", dir: __dirname });
+  : (() => {
+      // Charger SQLite uniquement si PostgreSQL n'est pas configuré.
+      const SQLiteStore = require("connect-sqlite3")(session);
+      return new SQLiteStore({ db: "sessions.sqlite", dir: __dirname });
+    })();
 
 if (postgresSession) {
   console.log("BatBot sessions: PostgreSQL partagé activé.");
@@ -2058,10 +2066,17 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       const date = typeof rawDate === "string" ? rawDate.slice(0, 10) : "";
       const home = String(fixture?.teams?.home?.name || item?.homeTeam?.name || "").trim();
       const away = String(fixture?.teams?.away?.name || item?.awayTeam?.name || "").trim();
-      const pick = String(model?.recommendation || item?.recommendation || "").trim().toUpperCase();
+      const pick = String(
+        model?.recommendationCode || item?.recommendationCode || ""
+      ).trim().toUpperCase();
+      const allowedPicks = new Set([
+        "1", "X", "2", "1X", "X2", "12",
+        "OVER15", "OVER25", "OVER35", "UNDER25", "UNDER35",
+        "BTTS_YES", "BTTS_NO"
+      ]);
       if (item?.ready !== true || item?.sufficientData !== true ||
           model?.ready !== true || model?.sufficientData !== true ||
-          !["1","X","2"].includes(pick) || id == null ||
+          !allowedPicks.has(pick) || id == null ||
           !/^\d{4}-\d{2}-\d{2}$/.test(date) || !home || !away) continue;
       await pgQuery(
         `INSERT INTO ai_prediction_history
@@ -2113,8 +2128,21 @@ app.get("/api/football/ai-history", requireUser, async (req, res) => {
         console.log("BATBOT_HISTORY_STEP: mise_a_jour_scores");
         await pgQuery(
           `UPDATE ai_prediction_history SET final_home_score=$1::INTEGER, final_away_score=$2::INTEGER,
-           status=CASE WHEN (main_pick='1' AND $1::INTEGER>$2::INTEGER) OR (main_pick='X' AND $1::INTEGER=$2::INTEGER)
-             OR (main_pick='2' AND $1::INTEGER<$2::INTEGER) THEN 'validated' ELSE 'not_validated' END,
+           status=CASE
+             WHEN (main_pick='1' AND $1::INTEGER>$2::INTEGER)
+               OR (main_pick='X' AND $1::INTEGER=$2::INTEGER)
+               OR (main_pick='2' AND $1::INTEGER<$2::INTEGER)
+               OR (main_pick='1X' AND $1::INTEGER>=$2::INTEGER)
+               OR (main_pick='X2' AND $1::INTEGER<=$2::INTEGER)
+               OR (main_pick='12' AND $1::INTEGER<>$2::INTEGER)
+               OR (main_pick='OVER15' AND ($1::INTEGER+$2::INTEGER)>=2)
+               OR (main_pick='OVER25' AND ($1::INTEGER+$2::INTEGER)>=3)
+               OR (main_pick='OVER35' AND ($1::INTEGER+$2::INTEGER)>=4)
+               OR (main_pick='UNDER25' AND ($1::INTEGER+$2::INTEGER)<=2)
+               OR (main_pick='UNDER35' AND ($1::INTEGER+$2::INTEGER)<=3)
+               OR (main_pick='BTTS_YES' AND $1::INTEGER>=1 AND $2::INTEGER>=1)
+               OR (main_pick='BTTS_NO' AND ($1::INTEGER=0 OR $2::INTEGER=0))
+             THEN 'validated' ELSE 'not_validated' END,
            settled_at=NOW()
            WHERE id=$3 AND user_id=$4 AND status='pending'`,
           [home, away, row.id, req.session.userId]
@@ -2332,6 +2360,38 @@ async function initializeAiPredictionHistory() {
     settled_at TIMESTAMPTZ,
     source TEXT NOT NULL DEFAULT 'SportAPI.ai'
   )`);
+  await pgQuery(`
+    DO $$
+    DECLARE item RECORD;
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'ai_prediction_history'::regclass
+          AND conname = 'ai_prediction_history_main_pick_all_markets_check'
+      ) THEN
+        FOR item IN
+          SELECT conname
+          FROM pg_constraint
+          WHERE conrelid = 'ai_prediction_history'::regclass
+            AND contype = 'c'
+            AND pg_get_constraintdef(oid) ILIKE '%main_pick%'
+        LOOP
+          EXECUTE format(
+            'ALTER TABLE ai_prediction_history DROP CONSTRAINT %I',
+            item.conname
+          );
+        END LOOP;
+
+        ALTER TABLE ai_prediction_history
+          ADD CONSTRAINT ai_prediction_history_main_pick_all_markets_check
+          CHECK (main_pick IN (
+            '1','X','2','1X','X2','12',
+            'OVER15','OVER25','OVER35','UNDER25','UNDER35',
+            'BTTS_YES','BTTS_NO'
+          ));
+      END IF;
+    END $$;
+  `);
   await pgQuery(`CREATE INDEX IF NOT EXISTS ai_prediction_history_user_created_idx
     ON ai_prediction_history (user_id, created_at DESC)`);
   await pgQuery(`CREATE INDEX IF NOT EXISTS ai_prediction_history_pending_idx

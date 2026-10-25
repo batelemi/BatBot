@@ -3434,12 +3434,26 @@ function closeBatBotTicketModal(){
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden","true");
 }
+function selectBatBotRecommendation(match){
+  if(!match)return null;
+  const options=Array.isArray(match.options)?match.options:[];
+  const code=String(match.recommendationCode||match.model?.recommendationCode||"").trim().toUpperCase();
+  const recommendation=String(match.recommendation||match.model?.recommendation||"").trim().toLowerCase();
+  if(code){
+    const byCode=options.find(o=>String(o?.code||"").trim().toUpperCase()===code);
+    if(byCode)return byCode;
+  }
+  return recommendation
+    ? options.find(o=>String(o?.name||"").trim().toLowerCase()===recommendation)||null
+    : null;
+}
+
 function buildBatBotTicketText(data){
   const lines=["BATBOT PRO — TICKET DE PRONOSTICS",""];
   (data?.matches||[]).forEach(function(match,index){
     lines.push((index+1)+". "+(match.name||"Match"));
     lines.push("Choix : "+(match.recommendation||"—"));
-    const pick=(match.options||[]).find(o=>String(o.name||"").toLowerCase()===String(match.recommendation||"").toLowerCase());
+    const pick=selectBatBotRecommendation(match);
     if(pick)lines.push("Probabilité : "+formatPercent(pick.probability));
     const probs=(match.probabilities||[]).map(function(p){return (p.label||"")+" "+formatPercent(p.value);}).join(" • ");
     if(probs)lines.push("1/X/2 : "+probs);
@@ -3453,7 +3467,7 @@ function renderBatBotTicket(data){
   const box=document.getElementById("batbotTicketContent"); if(!box)return;
   let html=""; const matches=Array.isArray(data?.matches)?data.matches:[];
   matches.forEach(function(match,index){
-    const pick=(match.options||[]).find(o=>String(o.name||"").toLowerCase()===String(match.recommendation||"").toLowerCase());
+    const pick=selectBatBotRecommendation(match);
     const probs=(match.probabilities||[]).map(function(p){return '<span class="ai-ticket-row"><span>'+escapeHtml(p.label||"")+'</span><strong class="ai-ticket-prob">'+escapeHtml(formatPercent(p.value))+'</strong></span>';}).join("");
     html+='<div class="ai-ticket-match">'+
       '<div class="ai-ticket-match-name">⚽ '+escapeHtml(match.name||("Match "+(index+1)))+'</div>'+
@@ -3478,7 +3492,7 @@ function downloadBatBotTicket(){
   ctx.fillStyle="#0b2c48";ctx.font="900 34px Arial";ctx.fillText("BATBOT PRO",48,58);ctx.font="600 18px Arial";ctx.fillStyle="#52687a";ctx.fillText("TICKET DE PRONOSTICS • BATBOT PRO",48,92);
   ctx.strokeStyle="#8295a5";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,116);ctx.lineTo(width-48,116);ctx.stroke();ctx.setLineDash([]);
   let y=headH;
-  matches.forEach((match,index)=>{ctx.fillStyle="#102235";ctx.font="900 23px Arial";ctx.fillText((index+1)+". "+String(match.name||"Match"),48,y);y+=38;const pick=(match.options||[]).find(o=>String(o.name||"").toLowerCase()===String(match.recommendation||"").toLowerCase());ctx.font="700 18px Arial";ctx.fillText("Choix : "+String(pick?.name||"Analyse insuffisante"),48,y);if(pick){ctx.fillStyle="#087548";ctx.fillText("Probabilité : "+formatPercent(pick.probability),520,y);ctx.fillStyle="#102235";}y+=34;const probs=(match.probabilities||[]).map(p=>String(p.label||"")+" "+formatPercent(p.value)).join("   •   ");ctx.font="600 17px Arial";ctx.fillStyle="#52687a";ctx.fillText("1 / X / 2 : "+probs,48,y);y+=28;ctx.fillText("Qualité des données : "+String(match.data_quality||"—"),48,y);y+=35;ctx.strokeStyle="#a5b4bf";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(width-48,y);ctx.stroke();ctx.setLineDash([]);y+=28;});
+  matches.forEach((match,index)=>{ctx.fillStyle="#102235";ctx.font="900 23px Arial";ctx.fillText((index+1)+". "+String(match.name||"Match"),48,y);y+=38;const pick=selectBatBotRecommendation(match);ctx.font="700 18px Arial";ctx.fillText("Choix : "+String(pick?.name||"Analyse insuffisante"),48,y);if(pick){ctx.fillStyle="#087548";ctx.fillText("Probabilité : "+formatPercent(pick.probability),520,y);ctx.fillStyle="#102235";}y+=34;const probs=(match.probabilities||[]).map(p=>String(p.label||"")+" "+formatPercent(p.value)).join("   •   ");ctx.font="600 17px Arial";ctx.fillStyle="#52687a";ctx.fillText("1 / X / 2 : "+probs,48,y);y+=28;ctx.fillText("Qualité des données : "+String(match.data_quality||"—"),48,y);y+=35;ctx.strokeStyle="#a5b4bf";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(width-48,y);ctx.stroke();ctx.setLineDash([]);y+=28;});
   c.toBlob(function(blob){if(!blob){showToast("Téléchargement impossible.","error");return;}const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="batbot-ticket.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);showToast("Ticket PNG téléchargé.","success");},"image/png");
 }
 function openBatBotAIModal(){
@@ -3803,6 +3817,7 @@ function renderBatBotAIResult(raw,modelData){
             :(probability>=70?"Élevée":probability>=50?"Intermédiaire":"Faible");
 
         return {
+          code:p.code||ai.code||"",
           name:p.name,
           probability:formatPercent(p.probability),
           risk:probabilityLevel,
@@ -4238,6 +4253,7 @@ async function submitBatBotAI(){
         sufficientData:model.sufficientData===true&&item?.sufficientData!==false&&serverModels[index]?.sufficientData!==false,
         probabilities:repairBatBotOneXTwo(model.probabilities||[],model.expected_goals||item?.odds?.expectedGoals),
         options:Array.isArray(model.options)?model.options:[],
+        recommendationCode:model.recommendationCode||item?.recommendationCode||null,
         recommendation:model.recommendation||item?.recommendation||"Analyse insuffisante",
         reason:model.reason||item?.reason||"Données statistiques insuffisantes.",
         data_quality:model.data_quality||item?.data_quality||"limitée",
@@ -6474,9 +6490,20 @@ document.addEventListener("keydown",function(event){
         const statusColor=validated?'#38BDF8':failed?'#F87171':'#FBBF24';
         const statusBg=validated?'rgba(14,165,233,.13)':failed?'rgba(239,68,68,.12)':'rgba(245,158,11,.12)';
         const mark=validated?'✓':failed?'×':'◷';
-        const pickLabel=row.main_pick==='1'?'Victoire domicile':
-          row.main_pick==='X'?'Match nul':
-          row.main_pick==='2'?'Victoire extérieur':'Pronostic principal';
+        const marketLabels={
+          '1':'Victoire domicile','X':'Match nul','2':'Victoire extérieur',
+          '1X':'Double chance 1X','X2':'Double chance X2','12':'Double chance 12',
+          'OVER15':'Plus de 1,5 but','OVER25':'Plus de 2,5 buts',
+          'OVER35':'Plus de 3,5 buts','UNDER25':'Moins de 2,5 buts',
+          'UNDER35':'Moins de 3,5 buts','BTTS_YES':'Les deux équipes marquent : oui',
+          'BTTS_NO':'Les deux équipes marquent : non'
+        };
+        const pickLabel=marketLabels[row.main_pick]||'Pronostic principal';
+        const marketShortLabel={
+          'OVER15':'+1,5','OVER25':'+2,5','OVER35':'+3,5',
+          'UNDER25':'-2,5','UNDER35':'-3,5',
+          'BTTS_YES':'BTTS OUI','BTTS_NO':'BTTS NON'
+        }[row.main_pick]||row.main_pick||'—';
         const date=row.created_at?
           new Date(row.created_at).toLocaleString():'';
         return '<article style="position:relative;overflow:hidden;margin:12px 0;border:1px solid rgba(125,211,252,.25);border-radius:18px;background:linear-gradient(145deg,rgba(20,54,83,.98),rgba(10,30,51,.98));color:#F1F7FD;box-shadow:0 8px 24px rgba(0,0,0,.15)">'+
@@ -6494,7 +6521,7 @@ document.addEventListener("keydown",function(event){
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:12px;border-radius:12px;background:rgba(4,17,31,.35)">'+
               '<div><div style="font-size:10px;letter-spacing:1px;color:#9DBBD4">PRONOSTIC PRINCIPAL</div>'+
               '<div style="font-size:13px;font-weight:700;margin-top:5px">'+escapeHtml(pickLabel)+'</div></div>'+
-              '<div style="display:grid;place-items:center;min-width:43px;height:43px;border-radius:12px;background:rgba(125,211,252,.13);border:1px solid rgba(125,211,252,.35);font-size:22px;font-weight:900;color:#7DD3FC">'+escapeHtml(row.main_pick||'—')+'</div></div>'+
+              '<div style="display:grid;place-items:center;min-width:43px;height:43px;border-radius:12px;background:rgba(125,211,252,.13);border:1px solid rgba(125,211,252,.35);font-size:22px;font-weight:900;color:#7DD3FC">'+escapeHtml(marketShortLabel)+'</div></div>'+
             '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:13px;font-size:12px">'+
               '<span style="color:#9DBBD4">Score final</span><strong style="text-align:right">'+escapeHtml(score)+'</strong></div>'+
             (validated?'<div style="display:flex;justify-content:center;margin:16px 0 2px"><div style="padding:7px 15px;border:3px double #38BDF8;border-radius:7px;color:#38BDF8;font-size:14px;font-weight:1000;letter-spacing:2px;transform:rotate(-3deg)">✓ BATBOT PRO · VALIDÉ</div></div>':'')+
@@ -6889,6 +6916,14 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
     const map={
       "12":"🛡️ Une des deux équipes gagne",
+      "OVER15":"⚽ Plus de 1,5 but",
+      "OVER25":"⚽ Plus de 2,5 buts",
+      "OVER35":"⚽ Plus de 3,5 buts",
+      "UNDER15":"⚽ Moins de 1,5 but",
+      "UNDER25":"⚽ Moins de 2,5 buts",
+      "UNDER35":"⚽ Moins de 3,5 buts",
+      "BTTS_YES":"🎯 Les deux équipes marquent : oui",
+      "BTTS_NO":"🎯 Les deux équipes marquent : non",
       "BTTS":"🎯 Les deux équipes marquent",
       "BTTS OUI":"🎯 Les deux équipes marquent",
       "BTTS (LES DEUX ÉQUIPES MARQUENT)":"🎯 Les deux équipes marquent",
@@ -6932,14 +6967,32 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
   }
 
   function getSelectedOption(match){
-    const recommendation=String(match && match.recommendation || "").trim().toLowerCase();
-    const options=Array.isArray(match && match.options)?match.options:[];
+    if(!match)return null;
+    const options=Array.isArray(match.options)?match.options:[];
+    const code=String(
+      match.recommendationCode ||
+      match.model?.recommendationCode ||
+      ""
+    ).trim().toUpperCase();
+    const recommendation=String(
+      match.recommendation ||
+      match.model?.recommendation ||
+      ""
+    ).trim().toLowerCase();
 
-    if(!recommendation)return null;
+    if(code){
+      const byCode=options.find(function(option){
+        return String(option && option.code || "").trim().toUpperCase()===code;
+      });
+      if(byCode)return byCode;
+    }
 
-    return options.find(function(option){
-      return String(option && option.name || "").trim().toLowerCase()===recommendation;
-    }) || null;
+    if(recommendation){
+      return options.find(function(option){
+        return String(option && option.name || "").trim().toLowerCase()===recommendation;
+      }) || null;
+    }
+    return null;
   }
 
   function getComplementaryOptions(match){

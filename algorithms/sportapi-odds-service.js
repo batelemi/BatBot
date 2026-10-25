@@ -166,12 +166,15 @@ async function fetchTeamHistory(teamId, apiKey) {
   return matches;
 }
 
+const MIN_RECOMMENDATION_PROBABILITY = 60;
+
 function makeModel(odds, homeStats, awayStats, homeName, awayName) {
   if (!odds?.sufficientData) {
     return {
       ready: false,
       sufficientData: false,
       recommendation: 'Analyse insuffisante',
+      recommendationCode: null,
       reason: odds?.reason || `Au moins ${MIN_MATCHES} matchs terminés avec score vérifiable sont nécessaires pour chaque équipe.`,
       probabilities: [],
       options: [],
@@ -180,34 +183,65 @@ function makeModel(odds, homeStats, awayStats, homeName, awayName) {
   }
 
   const probabilities = [
-    { label: '1', value: odds.oneXTwo.home.probability },
-    { label: 'X', value: odds.oneXTwo.draw.probability },
-    { label: '2', value: odds.oneXTwo.away.probability }
+    { label: '1', value: odds.oneXTwo?.home?.probability },
+    { label: 'X', value: odds.oneXTwo?.draw?.probability },
+    { label: '2', value: odds.oneXTwo?.away?.probability }
+  ].map(item => ({ ...item, value: Number(item.value) }));
+
+  const definitions = [
+    { code: '1', name: '1', probability: odds.oneXTwo?.home?.probability },
+    { code: 'X', name: 'X', probability: odds.oneXTwo?.draw?.probability },
+    { code: '2', name: '2', probability: odds.oneXTwo?.away?.probability },
+    { code: '1X', name: '1X', probability: odds.markets?.['1X']?.probability },
+    { code: 'X2', name: 'X2', probability: odds.markets?.['X2']?.probability },
+    { code: '12', name: '12', probability: odds.markets?.['12']?.probability },
+    { code: 'OVER15', name: 'Over 1.5', probability: odds.markets?.over15?.probability },
+    { code: 'OVER25', name: 'Over 2.5', probability: odds.markets?.over25?.probability },
+    { code: 'OVER35', name: 'Over 3.5', probability: odds.markets?.over35?.probability },
+    { code: 'UNDER25', name: 'Under 2.5', probability: odds.markets?.under25?.probability },
+    { code: 'UNDER35', name: 'Under 3.5', probability: odds.markets?.under35?.probability },
+    { code: 'BTTS_YES', name: 'BTTS Oui', probability: odds.markets?.bttsYes?.probability },
+    { code: 'BTTS_NO', name: 'BTTS Non', probability: odds.markets?.bttsNo?.probability }
   ];
-  const options = [
-    { name: '1', probability: odds.oneXTwo.home.probability },
-    { name: 'X', probability: odds.oneXTwo.draw.probability },
-    { name: '2', probability: odds.oneXTwo.away.probability },
-    { name: 'Over 1.5', probability: odds.markets.over15.probability },
-    { name: 'Over 2.5', probability: odds.markets.over25.probability },
-    { name: 'Over 3.5', probability: odds.markets.over35.probability },
-    { name: 'Under 2.5', probability: odds.markets.under25.probability },
-    { name: 'Under 3.5', probability: odds.markets.under35.probability },
-    { name: 'BTTS Oui', probability: odds.markets.bttsYes.probability },
-    { name: 'BTTS Non', probability: odds.markets.bttsNo.probability }
-  ].map(item => ({
-    ...item,
-    risk: item.probability >= 70 ? 'faible' : item.probability >= 55 ? 'modéré' : 'élevé',
-    reason: 'Probabilité calculée par le moteur Poisson v3 à partir de l’historique SportAPI.ai vérifié.'
-  }));
-  const best = probabilities.reduce((current, item) => !current || item.value > current.value ? item : current, null);
+
+  const options = definitions
+    .filter(item =>
+      item.probability !== null &&
+      item.probability !== undefined &&
+      Number.isFinite(Number(item.probability)) &&
+      Number(item.probability) >= 0 &&
+      Number(item.probability) <= 100
+    )
+    .map(item => {
+      const probability = Number(item.probability);
+      return {
+        ...item,
+        probability,
+        risk: probability >= 75 ? 'faible' :
+              probability >= 60 ? 'modéré' : 'élevé',
+        reason: 'Probabilité calculée par le moteur Poisson v3 à partir de l’historique SportAPI.ai vérifié.'
+      };
+    });
+
+  const eligible = options.filter(
+    item => item.probability >= MIN_RECOMMENDATION_PROBABILITY
+  );
+
+  const best = eligible.reduce(
+    (current, item) =>
+      !current || item.probability > current.probability ? item : current,
+    null
+  );
 
   return {
     ready: true,
     sufficientData: true,
     model: odds.model,
-    recommendation: best?.label || 'Analyse insuffisante',
-    reason: `Le modèle Poisson v3 compare ${homeName} à domicile et ${awayName} à l’extérieur à partir de l’historique terminé fourni par SportAPI.ai.`,
+    recommendation: best?.name || 'Aucun marché suffisamment fiable',
+    recommendationCode: best?.code || null,
+    reason: best
+      ? `Le marché ${best.name} a la probabilité calculée la plus élevée parmi les marchés évalués atteignant le seuil de ${MIN_RECOMMENDATION_PROBABILITY} %. Analyse Poisson v3 fondée sur l’historique terminé de SportAPI.ai pour ${homeName} à domicile et ${awayName} à l’extérieur.`
+      : `Aucun marché évalué n’atteint le seuil minimal de ${MIN_RECOMMENDATION_PROBABILITY} %. Aucun pronostic principal n’est recommandé.`,
     probabilities,
     options,
     expected_goals: odds.expectedGoals,
@@ -217,7 +251,6 @@ function makeModel(odds, homeStats, awayStats, homeName, awayName) {
     data_quality: 'bonne'
   };
 }
-
 async function analyzeSportApiMatches(fixtures, options = {}) {
   if (!Array.isArray(fixtures) || !fixtures.length) throw new Error('Aucun match SportAPI.ai à analyser.');
   const apiKey = options.apiKey || process.env.SPORTAPI_KEY;
@@ -261,6 +294,7 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
       ready: model.ready === true,
       sufficientData: model.sufficientData === true,
       recommendation: model.recommendation,
+      recommendationCode: model.recommendationCode || null,
       reason: model.reason,
       data_quality: model.data_quality,
       homeTeam: {
@@ -296,5 +330,6 @@ module.exports = {
   collectTeamStats,
   isFinishedMatch,
   extractHistoryMatches,
-  readScore
+  readScore,
+  makeModel,
 };
