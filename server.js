@@ -2049,6 +2049,27 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
     }
 
     const analysis = await analyzeSportApiMatches(validFixtures);
+    // Conserver chaque analyse exploitable comme un événement historique distinct.
+    for (const item of (Array.isArray(analysis.matches) ? analysis.matches : [])) {
+      const model = item?.model || {};
+      const fixture = item?.fixture || {};
+      const id = fixture?.fixture?.id ?? fixture?.id;
+      const rawDate = fixture?.fixture?.date ?? fixture?.date;
+      const date = typeof rawDate === "string" ? rawDate.slice(0, 10) : "";
+      const home = String(fixture?.teams?.home?.name || item?.homeTeam?.name || "").trim();
+      const away = String(fixture?.teams?.away?.name || item?.awayTeam?.name || "").trim();
+      const pick = String(model?.recommendation || item?.recommendation || "").trim().toUpperCase();
+      if (item?.ready !== true || item?.sufficientData !== true ||
+          model?.ready !== true || model?.sufficientData !== true ||
+          !["1","X","2"].includes(pick) || id == null ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(date) || !home || !away) continue;
+      await pgQuery(
+        `INSERT INTO ai_prediction_history
+          (user_id, fixture_id, fixture_date, home_team, away_team, league_name, main_pick)
+         VALUES ($1,$2,$3::date,$4,$5,$6,$7)`,
+        [req.session.userId, String(id), date, home, away, String(fixture?.league?.name || ""), pick]
+      );
+    }
     return res.json({ ok: true, source: "SportAPI.ai", ...analysis });
   } catch (error) {
     console.error("SportAPI.ai odds analysis:", error.message);
@@ -2059,6 +2080,55 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       error: "Impossible de calculer l'analyse statistique des cotes.",
       details: error.message
     });
+  }
+});
+
+
+app.get("/api/football/ai-history", requireUser, async (req, res) => {
+  try {
+    const pending = await pgAll(
+      `SELECT id, fixture_id, fixture_date FROM ai_prediction_history
+       WHERE user_id=$1 AND status='pending' ORDER BY fixture_date ASC LIMIT 200`,
+      [req.session.userId]
+    );
+    const dateOf = value => value instanceof Date
+      ? value.toISOString().slice(0,10) : String(value).slice(0,10);
+    const dates = [...new Set(pending.map(r => dateOf(r.fixture_date))
+      .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
+    for (const date of dates) {
+      let fresh;
+      try { fresh = await fetchSportApiFixtures(date); }
+      catch (error) {
+        console.warn("BATBOT historique : résultat non vérifié pour", date, error.message);
+        continue;
+      }
+      const fixtures = Array.isArray(fresh?.fixtures) ? fresh.fixtures : [];
+      for (const row of pending) {
+        if (dateOf(row.fixture_date) !== date) continue;
+        const match = fixtures.find(f => String(f?.fixture?.id ?? "") === String(row.fixture_id));
+        const status = String(match?.fixture?.status?.short || "").toUpperCase();
+        const home = match?.goals?.home, away = match?.goals?.away;
+        if (status !== "FT" || !Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0) continue;
+        await pgQuery(
+          `UPDATE ai_prediction_history SET final_home_score=$1, final_away_score=$2,
+           status=CASE WHEN (main_pick='1' AND $1>$2) OR (main_pick='X' AND $1=$2)
+             OR (main_pick='2' AND $1<$2) THEN 'validated' ELSE 'not_validated' END,
+           settled_at=NOW()
+           WHERE id=$3 AND user_id=$4 AND status='pending'`,
+          [home, away, row.id, req.session.userId]
+        );
+      }
+    }
+    const history = await pgAll(
+      `SELECT id, fixture_id, fixture_date, home_team, away_team, league_name, main_pick,
+       status, final_home_score, final_away_score, created_at, settled_at
+       FROM ai_prediction_history WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,
+      [req.session.userId]
+    );
+    return res.json({ok:true, history});
+  } catch (error) {
+    console.error("BATBOT historique IA:", error.message);
+    return res.status(500).json({ok:false,error:"Impossible de charger l'historique des pronostics."});
   }
 });
 
@@ -2239,6 +2309,31 @@ const sportApiFixturesCache = new Map();
 const sportApiFixturesInFlight = new Map();
 const SPORTAPI_FIXTURES_CACHE_TTL = 30 * 1000;
 let sportApiPersistentCacheReady = false;
+
+
+async function initializeAiPredictionHistory() {
+  await pgQuery(`CREATE TABLE IF NOT EXISTS ai_prediction_history (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    fixture_id TEXT NOT NULL,
+    fixture_date DATE NOT NULL,
+    home_team TEXT NOT NULL,
+    away_team TEXT NOT NULL,
+    league_name TEXT NOT NULL DEFAULT '',
+    main_pick TEXT NOT NULL CHECK (main_pick IN ('1','X','2')),
+    status TEXT NOT NULL DEFAULT 'pending'
+      CHECK (status IN ('pending','validated','not_validated')),
+    final_home_score INTEGER,
+    final_away_score INTEGER,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    settled_at TIMESTAMPTZ,
+    source TEXT NOT NULL DEFAULT 'SportAPI.ai'
+  )`);
+  await pgQuery(`CREATE INDEX IF NOT EXISTS ai_prediction_history_user_created_idx
+    ON ai_prediction_history (user_id, created_at DESC)`);
+  await pgQuery(`CREATE INDEX IF NOT EXISTS ai_prediction_history_pending_idx
+    ON ai_prediction_history (fixture_id, fixture_date) WHERE status='pending'`);
+}
 
 async function initializeSportApiFixturesCache() {
   try {
@@ -2492,6 +2587,7 @@ async function startServer() {
     await initializeSettings();
     await initializeBookmakers();
     await initializeSportApiFixturesCache();
+    await initializeAiPredictionHistory();
 
     server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`BatBot démarré sur le port ${PORT}`);

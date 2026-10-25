@@ -6343,7 +6343,27 @@ document.addEventListener("keydown",function(event){
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
     }
-    function openMemberProfile(){const user=window.batBotCurrentUser||{};const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);profileCard.innerHTML='<div class="section-kicker">Mon compte</div><h2>Mon profil</h2><p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p><p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p><p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';openModal(profileCard,'Mon profil');}
+
+    async function loadAiPredictionHistory(){
+      const target=document.getElementById('batbotAiPredictionHistory'); if(!target)return;
+      target.innerHTML='<p>Chargement de ton historique…</p>';
+      try{
+        const r=await fetch('/api/football/ai-history',{credentials:'same-origin',cache:'no-store'});
+        const d=await r.json(); if(!r.ok||!d?.ok)throw new Error(d?.error||'Chargement impossible.');
+        const rows=Array.isArray(d.history)?d.history:[];
+        if(!rows.length){target.innerHTML='<p>Aucun pronostic IA enregistré pour le moment.</p>';return;}
+        target.innerHTML=rows.map(row=>{
+          const status=row.status==='validated'?'Pronostic validé':row.status==='not_validated'?'Pronostic non validé':'En attente du résultat';
+          const score=Number.isInteger(row.final_home_score)&&Number.isInteger(row.final_away_score)?row.final_home_score+' - '+row.final_away_score:'Score final non confirmé';
+          return '<article class="card" style="margin:10px 0;padding:12px"><strong>'+escapeHtml(row.home_team||'Domicile')+' – '+escapeHtml(row.away_team||'Extérieur')+'</strong>'+
+            (row.league_name?'<p>'+escapeHtml(row.league_name)+'</p>':'')+
+            '<p>Pronostic principal : <strong>'+escapeHtml(row.main_pick||'—')+'</strong></p><p>Résultat : '+escapeHtml(score)+'</p>'+
+            '<p><strong>'+escapeHtml(status)+'</strong></p><small>'+escapeHtml(row.created_at?new Date(row.created_at).toLocaleString():'')+'</small></article>';
+        }).join('');
+      }catch(e){target.innerHTML='<p>Historique indisponible : '+escapeHtml(e.message||'erreur réseau')+'</p>';}
+    }
+
+    function openMemberProfile(){const user=window.batBotCurrentUser||{};const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);profileCard.innerHTML='<div class="section-kicker">Mon compte</div><h2>Mon profil</h2><p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p><p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p><p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';profileCard.innerHTML+='<hr><h3>Mon historique IA</h3><div id=\"batbotAiPredictionHistory\"><p>Chargement…</p></div>';openModal(profileCard,'Mon profil');loadAiPredictionHistory();}
     document.getElementById('headerProfileButton')?.addEventListener('click',openMemberProfile);
 document.getElementById('headerNotificationsButton')?.addEventListener('click',function(){
   openModal(cards.messages(),'Messages');
