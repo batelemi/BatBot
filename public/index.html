@@ -6457,7 +6457,7 @@ document.addEventListener("keydown",function(event){
         target.innerHTML='<div style="padding:22px 16px;text-align:center;border:1px solid rgba(125,211,252,.2);border-radius:16px">'+
           '<div style="font-size:30px;margin-bottom:8px">🎟️</div>'+
           '<strong>Aucun pronostic enregistré</strong>'+
-          '<p style="margin-bottom:0;opacity:.75">Tes prochains pronostics IA apparaîtront ici.</p></div>';
+          '<p style="margin-bottom:0;opacity:.75">Retrouve tes pronostics validés ou non validés dans l’historique ici.</p></div>';
         return;
       }
 
@@ -6517,11 +6517,11 @@ document.addEventListener("keydown",function(event){
       closeModal();
       aiHistoryCard.innerHTML=
         '<div class="section-kicker">BATBOT PRO</div>'+
-        '<h2 style="margin-top:5px">Mes historiques de pronostics</h2>'+
-        '<p style="opacity:.75">Retrouve tes tickets IA et leurs résultats.</p>'+
+        '<h2 style="margin-top:5px">Historique des pronostics</h2>'+
+        '<p style="opacity:.75">Retrouve tes pronostics validés ou non validés dans l’historique ici.</p>'+
         '<div id="batbotAiPredictionHistory"><p>Chargement…</p></div>'+
         '<div style="margin-top:12px"><button type="button" class="btn secondary" id="batbotAiHistoryBack">← Retour au profil</button></div>';
-      openModal(aiHistoryCard,'Mes historiques de pronostics');
+      openModal(aiHistoryCard,'Historique des pronostics');
       document.getElementById('batbotAiHistoryBack')?.addEventListener('click',()=>{
         closeModal();
         openMemberProfile();
@@ -6540,7 +6540,7 @@ document.addEventListener("keydown",function(event){
         '<p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>'+
         '<hr><div style="display:flex;align-items:center;gap:12px;padding:14px 0">'+
           '<div style="display:grid;place-items:center;flex:0 0 44px;height:44px;border-radius:13px;background:rgba(56,189,248,.12);color:#7DD3FC;font-size:22px">🎟️</div>'+
-          '<div style="flex:1;min-width:0"><strong>Mes historiques de pronostics</strong>'+
+          '<div style="flex:1;min-width:0"><strong>Historique des pronostics</strong>'+
           '<div style="font-size:12px;opacity:.72;margin-top:4px">Consulter mes tickets et résultats</div></div>'+
         '</div><button type="button" class="btn secondary" id="batbotOpenAiHistory" style="width:100%">Voir mes historiques →</button>';
       openModal(profileCard,'Mon profil');

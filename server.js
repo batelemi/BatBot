@@ -2086,6 +2086,7 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
 
 app.get("/api/football/ai-history", requireUser, async (req, res) => {
   try {
+    console.log("BATBOT_HISTORY_STEP: lecture_pending");
     const pending = await pgAll(
       `SELECT id, fixture_id, fixture_date FROM ai_prediction_history
        WHERE user_id=$1 AND status='pending' ORDER BY fixture_date ASC LIMIT 200`,
@@ -2109,16 +2110,18 @@ app.get("/api/football/ai-history", requireUser, async (req, res) => {
         const status = String(match?.fixture?.status?.short || "").toUpperCase();
         const home = match?.goals?.home, away = match?.goals?.away;
         if (status !== "FT" || !Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0) continue;
+        console.log("BATBOT_HISTORY_STEP: mise_a_jour_scores");
         await pgQuery(
-          `UPDATE ai_prediction_history SET final_home_score=$1, final_away_score=$2,
-           status=CASE WHEN (main_pick='1' AND $1>$2) OR (main_pick='X' AND $1=$2)
-             OR (main_pick='2' AND $1<$2) THEN 'validated' ELSE 'not_validated' END,
+          `UPDATE ai_prediction_history SET final_home_score=$1::INTEGER, final_away_score=$2::INTEGER,
+           status=CASE WHEN (main_pick='1' AND $1::INTEGER>$2::INTEGER) OR (main_pick='X' AND $1::INTEGER=$2::INTEGER)
+             OR (main_pick='2' AND $1::INTEGER<$2::INTEGER) THEN 'validated' ELSE 'not_validated' END,
            settled_at=NOW()
            WHERE id=$3 AND user_id=$4 AND status='pending'`,
           [home, away, row.id, req.session.userId]
         );
       }
     }
+    console.log("BATBOT_HISTORY_STEP: lecture_finale");
     const history = await pgAll(
       `SELECT id, fixture_id, fixture_date, home_team, away_team, league_name, main_pick,
        status, final_home_score, final_away_score, created_at, settled_at
@@ -2127,7 +2130,7 @@ app.get("/api/football/ai-history", requireUser, async (req, res) => {
     );
     return res.json({ok:true, history});
   } catch (error) {
-    console.error("BATBOT historique IA:", error.message);
+    console.error("BATBOT_HISTORY_ERROR:", error.message, error.code || "NO_SQL_CODE", error.position || "NO_SQL_POSITION");
     return res.status(500).json({ok:false,error:"Impossible de charger l'historique des pronostics."});
   }
 });
