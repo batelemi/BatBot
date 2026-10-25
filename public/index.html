@@ -1475,6 +1475,53 @@ button.batbot-predict-btn *,
 </style>
 
 
+<style id="batbot-live-match-card-pitch">
+#footballResults .match-card.batbot-match-live-pitch{
+  isolation:isolate;overflow:hidden!important;position:relative;
+  background:linear-gradient(145deg,#102b46,#071a2d)!important;
+  border-color:rgba(83,207,255,.3)!important;
+}
+#footballResults .batbot-match-pitch-bg{
+  position:absolute;inset:0;z-index:0;overflow:hidden;
+  pointer-events:none;opacity:.23;
+}
+#footballResults .batbot-match-pitch-surface{
+  position:absolute;inset:7% 3%;overflow:hidden;border:1px solid rgba(220,240,255,.7);
+  border-radius:8px;
+  background:repeating-linear-gradient(90deg,rgba(64,137,157,.22) 0 12.5%,rgba(10,47,68,.2) 12.5% 25%);
+  transform:perspective(650px) rotateX(5deg) scale(1.03);
+}
+#footballResults .batbot-match-pitch-surface>svg{
+  position:absolute;inset:0;width:100%;height:100%;
+}
+#footballResults .batbot-match-player{
+  position:absolute;z-index:2;width:clamp(10px,3vw,17px);height:clamp(10px,3vw,17px);
+  display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.9);
+  border-radius:50%;font:800 7px Arial,sans-serif;font-style:normal;color:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.45);transform:translate(-50%,-50%);
+}
+#footballResults .batbot-match-player.blue{background:radial-gradient(circle at 30% 25%,#64d9ff,#0879d5 70%,#06458b)}
+#footballResults .batbot-match-player.red{background:radial-gradient(circle at 30% 25%,#ffaaa4,#d83249 70%,#80172c)}
+#footballResults .batbot-match-ball{
+  position:absolute;z-index:3;left:48%;top:53%;width:8px;height:8px;border-radius:50%;
+  border:1px solid #d9e4ed;background:radial-gradient(circle at 35% 30%,#fff 0 25%,#aab9c8 45%,#172738 60%,#fff 70%);
+  box-shadow:0 2px 4px rgba(0,0,0,.65);animation:batbotMatchBallMove 5s ease-in-out infinite alternate;
+}
+#footballResults .match-card.batbot-match-live-pitch>.batbot-fixture-league,
+#footballResults .match-card.batbot-match-live-pitch>.batbot-fixture-teams,
+#footballResults .match-card.batbot-match-live-pitch>.batbot-fixture-meta,
+#footballResults .match-card.batbot-match-live-pitch>.btn,
+#footballResults .match-card.batbot-match-live-pitch>.muted{
+  position:relative;z-index:1;
+}
+@keyframes batbotMatchBallMove{
+  0%{left:24%;top:60%}25%{left:42%;top:37%}
+  50%{left:63%;top:55%}75%{left:74%;top:32%}100%{left:52%;top:64%}
+}
+@media(prefers-reduced-motion:reduce){
+  #footballResults .batbot-match-ball{animation:none}
+}
+</style>
 <style id="batbot-live-3d-pitch">
 #batbotLiveCard .batbot-live-visual{
   margin:18px 0;padding:14px;border-radius:20px;overflow:hidden;
@@ -4464,6 +4511,37 @@ function renderBatBotCompetitionEmblem(value,name,large){
     +' onerror="if(this.dataset.localFallback&&!this.dataset.localFallbackTried){this.dataset.localFallbackTried=\'1\';this.src=this.dataset.localFallback;}else{this.onerror=null;this.style.display=\'none\';}"></span>';
 }
 
+function renderBatBotLivePitchBackground(){
+  return '<div class="batbot-match-pitch-bg" aria-hidden="true"><div class="batbot-match-pitch-surface">'+
+    '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><g fill="none" stroke="rgba(210,235,255,.72)" stroke-width=".65">'+
+    '<rect x="1" y="1" width="98" height="98"/><path d="M50 1V99"/><circle cx="50" cy="50" r="12"/><circle cx="50" cy="50" r=".8" fill="white"/>'+
+    '<rect x="1" y="25" width="17" height="50"/><rect x="1" y="38" width="7" height="24"/><rect x="82" y="25" width="17" height="50"/><rect x="92" y="38" width="7" height="24"/>'+
+    '</g></svg>'+
+    '<i class="batbot-match-player blue" style="left:8%;top:50%">1</i>'+
+    '<i class="batbot-match-player blue" style="left:23%;top:24%">2</i>'+
+    '<i class="batbot-match-player blue" style="left:23%;top:43%">4</i>'+
+    '<i class="batbot-match-player blue" style="left:23%;top:64%">5</i>'+
+    '<i class="batbot-match-player blue" style="left:23%;top:82%">3</i>'+
+    '<i class="batbot-match-player blue" style="left:40%;top:18%">7</i>'+
+    '<i class="batbot-match-player blue" style="left:40%;top:39%">6</i>'+
+    '<i class="batbot-match-player blue" style="left:40%;top:64%">8</i>'+
+    '<i class="batbot-match-player blue" style="left:40%;top:84%">11</i>'+
+    '<i class="batbot-match-player blue" style="left:60%;top:36%">9</i>'+
+    '<i class="batbot-match-player blue" style="left:60%;top:68%">10</i>'+
+    '<i class="batbot-match-player red" style="left:92%;top:50%">1</i>'+
+    '<i class="batbot-match-player red" style="left:77%;top:24%">2</i>'+
+    '<i class="batbot-match-player red" style="left:77%;top:43%">4</i>'+
+    '<i class="batbot-match-player red" style="left:77%;top:64%">5</i>'+
+    '<i class="batbot-match-player red" style="left:77%;top:82%">3</i>'+
+    '<i class="batbot-match-player red" style="left:60%;top:17%">7</i>'+
+    '<i class="batbot-match-player red" style="left:60%;top:49%">6</i>'+
+    '<i class="batbot-match-player red" style="left:60%;top:84%">8</i>'+
+    '<i class="batbot-match-player red" style="left:48%;top:28%">11</i>'+
+    '<i class="batbot-match-player red" style="left:48%;top:72%">9</i>'+
+    '<i class="batbot-match-player red" style="left:83%;top:50%">10</i>'+
+    '<i class="batbot-match-ball"></i></div></div>';
+}
+
 function renderFootballFixtures(fixtures,checkedDate){
   const box=document.getElementById("footballResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
   renderBatBotLeagueFixtures(window.batBotDailyFixtures);
@@ -4480,7 +4558,7 @@ function renderFootballFixtures(fixtures,checkedDate){
     else action='<button type="button" class="btn primary batbot-predict-btn" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     const country=league.country||league.area||"";
     const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
-    return '<div class="match-card"><div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
+    return '<div class="match-card'+(live?' batbot-match-live-pitch':'')+'">'+(live?renderBatBotLivePitchBackground():'')+'<div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
   }).join("")+(fixtures.length>visibleCount?'<button type="button" class="btn secondary" id="batbotShowMoreFixtures" style="width:100%;margin-top:10px">Voir plus de matchs · '+(fixtures.length-visibleCount)+' restants</button>':"");
   const moreButton=box.querySelector("#batbotShowMoreFixtures");if(moreButton)moreButton.addEventListener("click",function(){window.batBotVisibleFixtureCount=visibleCount+20;renderFootballFixtures(fixtures,checkedDate);});
   box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedFootballMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeFootballMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
@@ -6344,26 +6422,130 @@ document.addEventListener("keydown",function(event){
       document.body.style.overflow='hidden';
     }
 
+    const aiHistoryCard=document.createElement('section');
+    aiHistoryCard.className='card hidden';
+    aiHistoryCard.id='batbotAiPredictionHistoryCard';
+    dashboard.appendChild(aiHistoryCard);
+
+    let aiHistoryRows=[];
+    let aiHistoryVisible=5;
+
     async function loadAiPredictionHistory(){
-      const target=document.getElementById('batbotAiPredictionHistory'); if(!target)return;
-      target.innerHTML='<p>Chargement de ton historique…</p>';
+      const target=document.getElementById('batbotAiPredictionHistory');
+      if(!target)return;
+      target.innerHTML='<p>Chargement de tes historiques…</p>';
       try{
-        const r=await fetch('/api/football/ai-history',{credentials:'same-origin',cache:'no-store'});
-        const d=await r.json(); if(!r.ok||!d?.ok)throw new Error(d?.error||'Chargement impossible.');
-        const rows=Array.isArray(d.history)?d.history:[];
-        if(!rows.length){target.innerHTML='<p>Aucun pronostic IA enregistré pour le moment.</p>';return;}
-        target.innerHTML=rows.map(row=>{
-          const status=row.status==='validated'?'Pronostic validé':row.status==='not_validated'?'Pronostic non validé':'En attente du résultat';
-          const score=Number.isInteger(row.final_home_score)&&Number.isInteger(row.final_away_score)?row.final_home_score+' - '+row.final_away_score:'Score final non confirmé';
-          return '<article class="card" style="margin:10px 0;padding:12px"><strong>'+escapeHtml(row.home_team||'Domicile')+' – '+escapeHtml(row.away_team||'Extérieur')+'</strong>'+
-            (row.league_name?'<p>'+escapeHtml(row.league_name)+'</p>':'')+
-            '<p>Pronostic principal : <strong>'+escapeHtml(row.main_pick||'—')+'</strong></p><p>Résultat : '+escapeHtml(score)+'</p>'+
-            '<p><strong>'+escapeHtml(status)+'</strong></p><small>'+escapeHtml(row.created_at?new Date(row.created_at).toLocaleString():'')+'</small></article>';
-        }).join('');
-      }catch(e){target.innerHTML='<p>Historique indisponible : '+escapeHtml(e.message||'erreur réseau')+'</p>';}
+        const r=await fetch('/api/football/ai-history',{
+          credentials:'same-origin',cache:'no-store'
+        });
+        const d=await r.json();
+        if(!r.ok||!d?.ok)throw new Error(d?.error||'Chargement impossible.');
+        aiHistoryRows=Array.isArray(d.history)?d.history:[];
+        aiHistoryVisible=5;
+        renderAiPredictionHistory();
+      }catch(e){
+        target.innerHTML='<p>Historique indisponible : '+
+          escapeHtml(e.message||'erreur réseau')+'</p>';
+      }
     }
 
-    function openMemberProfile(){const user=window.batBotCurrentUser||{};const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);profileCard.innerHTML='<div class="section-kicker">Mon compte</div><h2>Mon profil</h2><p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p><p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p><p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';profileCard.innerHTML+='<hr><h3>Mon historique IA</h3><div id=\"batbotAiPredictionHistory\"><p>Chargement…</p></div>';openModal(profileCard,'Mon profil');loadAiPredictionHistory();}
+    function renderAiPredictionHistory(){
+      const target=document.getElementById('batbotAiPredictionHistory');
+      if(!target)return;
+
+      if(!aiHistoryRows.length){
+        target.innerHTML='<div style="padding:22px 16px;text-align:center;border:1px solid rgba(125,211,252,.2);border-radius:16px">'+
+          '<div style="font-size:30px;margin-bottom:8px">🎟️</div>'+
+          '<strong>Aucun pronostic enregistré</strong>'+
+          '<p style="margin-bottom:0;opacity:.75">Tes prochains pronostics IA apparaîtront ici.</p></div>';
+        return;
+      }
+
+      const shown=aiHistoryRows.slice(0,aiHistoryVisible);
+      target.innerHTML=shown.map(row=>{
+        const validated=row.status==='validated';
+        const failed=row.status==='not_validated';
+        const pending=!validated&&!failed;
+        const score=Number.isInteger(row.final_home_score)&&
+          Number.isInteger(row.final_away_score)
+          ?row.final_home_score+' - '+row.final_away_score
+          :'En attente de confirmation officielle';
+        const statusLabel=validated?'VALIDÉ':failed?'NON VALIDÉ':'EN ATTENTE';
+        const statusColor=validated?'#38BDF8':failed?'#F87171':'#FBBF24';
+        const statusBg=validated?'rgba(14,165,233,.13)':failed?'rgba(239,68,68,.12)':'rgba(245,158,11,.12)';
+        const mark=validated?'✓':failed?'×':'◷';
+        const pickLabel=row.main_pick==='1'?'Victoire domicile':
+          row.main_pick==='X'?'Match nul':
+          row.main_pick==='2'?'Victoire extérieur':'Pronostic principal';
+        const date=row.created_at?
+          new Date(row.created_at).toLocaleString():'';
+        return '<article style="position:relative;overflow:hidden;margin:12px 0;border:1px solid rgba(125,211,252,.25);border-radius:18px;background:linear-gradient(145deg,rgba(20,54,83,.98),rgba(10,30,51,.98));color:#F1F7FD;box-shadow:0 8px 24px rgba(0,0,0,.15)">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 14px;border-bottom:1px dashed rgba(148,184,211,.28)">'+
+            '<div><div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:#7DD3FC">BATBOT PRO</div>'+
+            '<div style="font-size:10px;letter-spacing:1px;opacity:.65;margin-top:3px">TICKET DE PRONOSTIC</div></div>'+
+            '<span style="display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border-radius:999px;background:'+statusBg+';color:'+statusColor+';font-size:10px;font-weight:900;white-space:nowrap">'+
+              '<span style="font-size:15px">'+mark+'</span>'+statusLabel+'</span></div>'+
+          '<div style="padding:14px">'+
+            (row.league_name?'<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#9DBBD4;margin-bottom:12px">'+escapeHtml(row.league_name)+'</div>':'')+
+            '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px">'+
+              '<div style="min-width:0;text-align:center;font-weight:800;overflow-wrap:anywhere">'+escapeHtml(row.home_team||'Domicile')+'</div>'+
+              '<div style="font-size:11px;font-weight:800;color:#8CAFCB">VS</div>'+
+              '<div style="min-width:0;text-align:center;font-weight:800;overflow-wrap:anywhere">'+escapeHtml(row.away_team||'Extérieur')+'</div></div>'+
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:12px;border-radius:12px;background:rgba(4,17,31,.35)">'+
+              '<div><div style="font-size:10px;letter-spacing:1px;color:#9DBBD4">PRONOSTIC PRINCIPAL</div>'+
+              '<div style="font-size:13px;font-weight:700;margin-top:5px">'+escapeHtml(pickLabel)+'</div></div>'+
+              '<div style="display:grid;place-items:center;min-width:43px;height:43px;border-radius:12px;background:rgba(125,211,252,.13);border:1px solid rgba(125,211,252,.35);font-size:22px;font-weight:900;color:#7DD3FC">'+escapeHtml(row.main_pick||'—')+'</div></div>'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:13px;font-size:12px">'+
+              '<span style="color:#9DBBD4">Score final</span><strong style="text-align:right">'+escapeHtml(score)+'</strong></div>'+
+            (validated?'<div style="display:flex;justify-content:center;margin:16px 0 2px"><div style="padding:7px 15px;border:3px double #38BDF8;border-radius:7px;color:#38BDF8;font-size:14px;font-weight:1000;letter-spacing:2px;transform:rotate(-3deg)">✓ BATBOT PRO · VALIDÉ</div></div>':'')+
+            '<div style="margin-top:13px;padding-top:10px;border-top:1px dashed rgba(148,184,211,.24);display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9DBBD4;font-size:10px">'+
+              '<span>'+escapeHtml(date)+'</span><span>'+ (pending?'RÉSULTAT À CONFIRMER':validated?'RÉSULTAT CORRECT':'RÉSULTAT INCORRECT')+'</span></div>'+
+          '</div></article>';
+      }).join('');
+
+      if(aiHistoryVisible<aiHistoryRows.length){
+        target.innerHTML+='<div style="text-align:center;padding:8px 0 14px"><button type="button" class="btn secondary" id="batbotAiHistoryMore">Voir plus ('+
+          (aiHistoryRows.length-aiHistoryVisible)+' restants)</button></div>';
+        target.querySelector('#batbotAiHistoryMore')?.addEventListener('click',()=>{
+          aiHistoryVisible+=5;
+          renderAiPredictionHistory();
+        });
+      }
+    }
+
+    function openMemberHistory(){
+      closeModal();
+      aiHistoryCard.innerHTML=
+        '<div class="section-kicker">BATBOT PRO</div>'+
+        '<h2 style="margin-top:5px">Mes historiques de pronostics</h2>'+
+        '<p style="opacity:.75">Retrouve tes tickets IA et leurs résultats.</p>'+
+        '<div id="batbotAiPredictionHistory"><p>Chargement…</p></div>'+
+        '<div style="margin-top:12px"><button type="button" class="btn secondary" id="batbotAiHistoryBack">← Retour au profil</button></div>';
+      openModal(aiHistoryCard,'Mes historiques de pronostics');
+      document.getElementById('batbotAiHistoryBack')?.addEventListener('click',()=>{
+        closeModal();
+        openMemberProfile();
+      });
+      loadAiPredictionHistory();
+    }
+
+    function openMemberProfile(){
+      const user=window.batBotCurrentUser||{};
+      const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
+      profileCard.innerHTML=
+        '<div class="section-kicker">Mon compte</div>'+
+        '<h2>Mon profil</h2>'+
+        '<p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p>'+
+        '<p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p>'+
+        '<p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>'+
+        '<hr><div style="display:flex;align-items:center;gap:12px;padding:14px 0">'+
+          '<div style="display:grid;place-items:center;flex:0 0 44px;height:44px;border-radius:13px;background:rgba(56,189,248,.12);color:#7DD3FC;font-size:22px">🎟️</div>'+
+          '<div style="flex:1;min-width:0"><strong>Mes historiques de pronostics</strong>'+
+          '<div style="font-size:12px;opacity:.72;margin-top:4px">Consulter mes tickets et résultats</div></div>'+
+        '</div><button type="button" class="btn secondary" id="batbotOpenAiHistory" style="width:100%">Voir mes historiques →</button>';
+      openModal(profileCard,'Mon profil');
+      document.getElementById('batbotOpenAiHistory')?.addEventListener('click',openMemberHistory);
+    }
     document.getElementById('headerProfileButton')?.addEventListener('click',openMemberProfile);
 document.getElementById('headerNotificationsButton')?.addEventListener('click',function(){
   openModal(cards.messages(),'Messages');
@@ -6398,7 +6580,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         // Les messages sont accessibles depuis la cloche de l'en-tête.
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
-        ['BATBOT LIVE','fa-solid fa-tv','batbotLive'],
+
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
         // L'assistance reste accessible depuis l'icône dédiée sous les matchs.
