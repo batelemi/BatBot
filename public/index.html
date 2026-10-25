@@ -6403,6 +6403,10 @@ document.addEventListener("keydown",function(event){
     let active=null;
 
     function closeModal(){
+      if(aiHistoryRefreshTimer){
+        clearInterval(aiHistoryRefreshTimer);
+        aiHistoryRefreshTimer=null;
+      }
       if(!active){
         // Une rubrique indisponible peut ouvrir la modale sans carte active.
         modal.classList.add('hidden');
@@ -6445,11 +6449,15 @@ document.addEventListener("keydown",function(event){
 
     let aiHistoryRows=[];
     let aiHistoryVisible=5;
+    let aiHistoryRefreshTimer=null;
+    let aiHistoryLoading=false;
 
-    async function loadAiPredictionHistory(){
+    async function loadAiPredictionHistory(options={}){
       const target=document.getElementById('batbotAiPredictionHistory');
-      if(!target)return;
-      target.innerHTML='<p>Chargement de tes historiques…</p>';
+      if(!target||aiHistoryLoading)return;
+      const silent=options.silent===true;
+      aiHistoryLoading=true;
+      if(!silent)target.innerHTML='<p>Chargement de tes historiques…</p>';
       try{
         const r=await fetch('/api/football/ai-history',{
           credentials:'same-origin',cache:'no-store'
@@ -6457,11 +6465,18 @@ document.addEventListener("keydown",function(event){
         const d=await r.json();
         if(!r.ok||!d?.ok)throw new Error(d?.error||'Chargement impossible.');
         aiHistoryRows=Array.isArray(d.history)?d.history:[];
-        aiHistoryVisible=5;
+        if(!silent)aiHistoryVisible=5;
         renderAiPredictionHistory();
       }catch(e){
-        target.innerHTML='<p>Historique indisponible : '+
-          escapeHtml(e.message||'erreur réseau')+'</p>';
+        if(!silent){
+          target.innerHTML='<p>Historique indisponible : '+
+            escapeHtml(e.message||'erreur réseau')+'</p>';
+        }else{
+          console.warn('BATBOT : actualisation de l’historique impossible.',
+            e.message||'erreur réseau');
+        }
+      }finally{
+        aiHistoryLoading=false;
       }
     }
 
@@ -6524,7 +6539,7 @@ document.addEventListener("keydown",function(event){
               '<div style="display:grid;place-items:center;min-width:43px;height:43px;border-radius:12px;background:rgba(125,211,252,.13);border:1px solid rgba(125,211,252,.35);font-size:22px;font-weight:900;color:#7DD3FC">'+escapeHtml(marketShortLabel)+'</div></div>'+
             '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:13px;font-size:12px">'+
               '<span style="color:#9DBBD4">Score final</span><strong style="text-align:right">'+escapeHtml(score)+'</strong></div>'+
-            (validated?'<div style="display:flex;justify-content:center;margin:16px 0 2px"><div style="padding:7px 15px;border:3px double #38BDF8;border-radius:7px;color:#38BDF8;font-size:14px;font-weight:1000;letter-spacing:2px;transform:rotate(-3deg)">✓ BATBOT PRO · VALIDÉ</div></div>':'')+
+            (validated?'<div style="display:flex;justify-content:center;margin:16px 0 2px"><div style="padding:7px 15px;border:3px double #38BDF8;border-radius:7px;color:#38BDF8;font-size:14px;font-weight:1000;letter-spacing:2px;transform:rotate(-3deg)">✓ PRONOSTIC VALIDÉ</div></div>':'')+
             '<div style="margin-top:13px;padding-top:10px;border-top:1px dashed rgba(148,184,211,.24);display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9DBBD4;font-size:10px">'+
               '<span>'+escapeHtml(date)+'</span><span>'+ (pending?'RÉSULTAT À CONFIRMER':validated?'RÉSULTAT CORRECT':'RÉSULTAT INCORRECT')+'</span></div>'+
           '</div></article>';
@@ -6553,7 +6568,13 @@ document.addEventListener("keydown",function(event){
         closeModal();
         openMemberProfile();
       });
+      if(aiHistoryRefreshTimer)clearInterval(aiHistoryRefreshTimer);
       loadAiPredictionHistory();
+      aiHistoryRefreshTimer=setInterval(()=>{
+        if(active===aiHistoryCard&&!modal.classList.contains('hidden')&&!document.hidden){
+          loadAiPredictionHistory({silent:true});
+        }
+      },30000);
     }
 
     function openMemberProfile(){
