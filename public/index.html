@@ -1522,6 +1522,47 @@ button.batbot-predict-btn *,
   #footballResults .batbot-match-ball{animation:none}
 }
 </style>
+<style id="batbot-match-status-photo-backgrounds">
+#footballResults .match-card.batbot-match-upcoming,
+#footballResults .match-card.batbot-match-finished{
+  isolation:isolate;
+  position:relative;
+  overflow:hidden!important;
+  background:#071421!important;
+}
+#footballResults .match-card.batbot-match-upcoming::before,
+#footballResults .match-card.batbot-match-finished::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-size:cover;
+  background-repeat:no-repeat;
+  background-position:center;
+}
+#footballResults .match-card.batbot-match-upcoming::before{
+  background-image:linear-gradient(100deg,rgba(3,12,22,.76),rgba(3,12,22,.49) 52%,rgba(3,12,22,.76)),url('/images/matchs-programmes.jpg');
+  background-position:center 57%;
+}
+#footballResults .match-card.batbot-match-finished::before{
+  background-image:linear-gradient(100deg,rgba(3,12,22,.80),rgba(3,12,22,.53) 52%,rgba(3,12,22,.80)),url('/images/matchs-termines.jpg');
+  background-position:center 58%;
+}
+#footballResults .match-card.batbot-match-upcoming>.batbot-fixture-league,
+#footballResults .match-card.batbot-match-upcoming>.batbot-fixture-teams,
+#footballResults .match-card.batbot-match-upcoming>.batbot-fixture-meta,
+#footballResults .match-card.batbot-match-upcoming>.btn,
+#footballResults .match-card.batbot-match-upcoming>.muted,
+#footballResults .match-card.batbot-match-finished>.batbot-fixture-league,
+#footballResults .match-card.batbot-match-finished>.batbot-fixture-teams,
+#footballResults .match-card.batbot-match-finished>.batbot-fixture-meta,
+#footballResults .match-card.batbot-match-finished>.btn,
+#footballResults .match-card.batbot-match-finished>.muted{
+  position:relative;
+  z-index:1;
+}
+</style>
 <style id="batbot-live-3d-pitch">
 #batbotLiveCard .batbot-live-visual{
   margin:18px 0;padding:14px;border-radius:20px;overflow:hidden;
@@ -4574,7 +4615,8 @@ function renderFootballFixtures(fixtures,checkedDate){
     else action='<button type="button" class="btn primary batbot-predict-btn" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     const country=league.country||league.area||"";
     const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
-    return '<div class="match-card'+(live?' batbot-match-live-pitch':'')+'">'+(live?renderBatBotLivePitchBackground():'')+'<div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
+    const cardClass=live?' batbot-match-live-pitch':finished?' batbot-match-finished':(!blocked&&isAnalyzableFixture(item)?' batbot-match-upcoming':'');
+    return '<div class="match-card'+cardClass+'">'+(live?renderBatBotLivePitchBackground():'')+'<div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
   }).join("")+(fixtures.length>visibleCount?'<button type="button" class="btn secondary" id="batbotShowMoreFixtures" style="width:100%;margin-top:10px">Voir plus de matchs · '+(fixtures.length-visibleCount)+' restants</button>':"");
   const moreButton=box.querySelector("#batbotShowMoreFixtures");if(moreButton)moreButton.addEventListener("click",function(){window.batBotVisibleFixtureCount=visibleCount+20;renderFootballFixtures(fixtures,checkedDate);});
   box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedFootballMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeFootballMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
