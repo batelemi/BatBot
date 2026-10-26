@@ -2078,12 +2078,43 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
           model?.ready !== true || model?.sufficientData !== true ||
           !allowedPicks.has(pick) || id == null ||
           !/^\d{4}-\d{2}-\d{2}$/.test(date) || !home || !away) continue;
-      await pgQuery(
-        `INSERT INTO ai_prediction_history
-          (user_id, fixture_id, fixture_date, home_team, away_team, league_name, main_pick)
-         VALUES ($1,$2,$3::date,$4,$5,$6,$7)`,
-        [req.session.userId, String(id), date, home, away, String(fixture?.league?.name || ""), pick]
-      );
+      const historyClient = await pool.connect();
+      try {
+        await historyClient.query("BEGIN");
+        const historyKey = [
+          "ai_prediction_history",
+          req.session.userId,
+          String(id),
+          date,
+          pick
+        ].join(":");
+        await historyClient.query(
+          "SELECT pg_advisory_xact_lock(hashtext($1))",
+          [historyKey]
+        );
+        await historyClient.query(
+          `INSERT INTO ai_prediction_history
+            (user_id, fixture_id, fixture_date, home_team, away_team, league_name, main_pick)
+           SELECT $1,$2,$3::date,$4,$5,$6,$7
+           WHERE NOT EXISTS (
+             SELECT 1
+             FROM ai_prediction_history
+             WHERE user_id=$1
+               AND fixture_id=$2
+               AND fixture_date=$3::date
+               AND main_pick=$7
+           )`,
+          [req.session.userId, String(id), date, home, away, String(fixture?.league?.name || ""), pick]
+        );
+        await historyClient.query("COMMIT");
+      } catch (historyError) {
+        try {
+          await historyClient.query("ROLLBACK");
+        } catch (_) {}
+        throw historyError;
+      } finally {
+        historyClient.release();
+      }
     }
     return res.json({ ok: true, source: "SportAPI.ai", ...analysis });
   } catch (error) {
@@ -2153,7 +2184,16 @@ app.get("/api/football/ai-history", requireUser, async (req, res) => {
     const history = await pgAll(
       `SELECT id, fixture_id, fixture_date, home_team, away_team, league_name, main_pick,
        status, final_home_score, final_away_score, created_at, settled_at
-       FROM ai_prediction_history WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,
+       FROM (
+         SELECT DISTINCT ON (fixture_id, fixture_date, main_pick)
+           id, fixture_id, fixture_date, home_team, away_team, league_name, main_pick,
+           status, final_home_score, final_away_score, created_at, settled_at
+         FROM ai_prediction_history
+         WHERE user_id=$1
+         ORDER BY fixture_id, fixture_date, main_pick,
+           (status <> 'pending') DESC, created_at ASC, id ASC
+       ) AS deduplicated
+       ORDER BY created_at DESC LIMIT 100`,
       [req.session.userId]
     );
     return res.json({ok:true, history});
