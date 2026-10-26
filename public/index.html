@@ -7158,6 +7158,84 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     return findOptionByType(match,/^Score exact\s+/i);
   }
 
+  function getCompatibleProbableScore(match){
+    const score = getProbableScore(match);
+    if(!score) return "";
+
+    const parsed = String(score).match(/^\s*(\d+)\s*[-:]\s*(\d+)\s*$/);
+    if(!parsed) return "";
+
+    const home = Number(parsed[1]);
+    const away = Number(parsed[2]);
+    const total = home + away;
+    const option = getSelectedOption(match);
+
+    if(!option) return score;
+
+    const code = String(option.code || match?.recommendationCode || "")
+      .trim().toUpperCase();
+    const name = String(option.name || match?.recommendation || "")
+      .trim().toUpperCase();
+
+    const market = code || name;
+
+    if(
+      market === "OVER15" || /^(OVER 1\.5|PLUS DE 1[,.]5)/.test(market)
+    ){
+      return total >= 2 ? score : "";
+    }
+
+    if(
+      market === "OVER25" || /^(OVER 2\.5|PLUS DE 2[,.]5)/.test(market)
+    ){
+      return total >= 3 ? score : "";
+    }
+
+    if(
+      market === "OVER35" || /^(OVER 3\.5|PLUS DE 3[,.]5)/.test(market)
+    ){
+      return total >= 4 ? score : "";
+    }
+
+    if(
+      market === "UNDER15" || /^(UNDER 1\.5|MOINS DE 1[,.]5)/.test(market)
+    ){
+      return total <= 1 ? score : "";
+    }
+
+    if(
+      market === "UNDER25" || /^(UNDER 2\.5|MOINS DE 2[,.]5)/.test(market)
+    ){
+      return total <= 2 ? score : "";
+    }
+
+    if(
+      market === "UNDER35" || /^(UNDER 3\.5|MOINS DE 3[,.]5)/.test(market)
+    ){
+      return total <= 3 ? score : "";
+    }
+
+    if(market === "BTTS_YES" || /BTTS.*(YES|OUI)|LES DEUX ÉQUIPES MARQUENT.*OUI/.test(market)){
+      return home > 0 && away > 0 ? score : "";
+    }
+
+    if(market === "BTTS_NO" || /BTTS.*(NO|NON)|LES DEUX ÉQUIPES MARQUENT.*NON/.test(market)){
+      return home === 0 || away === 0 ? score : "";
+    }
+
+    if(["1","X","2"].includes(market)){
+      if(market === "1") return home > away ? score : "";
+      if(market === "X") return home === away ? score : "";
+      if(market === "2") return away > home ? score : "";
+    }
+
+    if(market === "1X") return home >= away ? score : "";
+    if(market === "X2") return away >= home ? score : "";
+    if(market === "12") return home !== away ? score : "";
+
+    return score;
+  }
+
   function getProbableScore(match){
     const raw=match && (
       match.bestScore ??
@@ -7342,7 +7420,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       }
 
       const selected=getSelectedOption(match);
-      const predictedScore=getProbableScore(match);
+      const predictedScore=getCompatibleProbableScore(match);
       const exactScore=getExactScoreOption(match);
 
       lines.push("");
@@ -7477,7 +7555,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
               :"Informations insuffisantes"));
 
       const selected=getSelectedOption(match);
-      const predictedScore=getProbableScore(match);
+      const predictedScore=getCompatibleProbableScore(match);
       const exactScore=getExactScoreOption(match);
 
       const currentHome=num(fixture?.goals?.home);
