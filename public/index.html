@@ -1468,10 +1468,36 @@ button.batbot-predict-btn *,
 
 
 <style id="batbot-finished-match-refinements">
-  .ai-finished-match .ai-result-title{font-size:20px;line-height:1.4;font-weight:850;color:#f3f8ff;margin-bottom:16px}
-  .ai-finished-match .ai-evidence-card{border:1px solid rgba(69,190,235,.24);border-radius:18px;background:linear-gradient(145deg,rgba(19,54,83,.94),rgba(8,27,47,.98));padding:18px;margin-top:12px;line-height:1.8}
-  .ai-finished-match .ai-finished-score{font-size:clamp(36px,9vw,48px);font-weight:900;letter-spacing:2px;text-align:center;color:#eaf7ff;padding:14px 0 4px}
-  .ai-finished-match .ai-finished-notice{color:#d8e8f5;font-weight:650;line-height:1.65}
+  #batbotAIModal .ai-finished-match{
+    position:relative;isolation:isolate;overflow:hidden;border-radius:18px;
+    padding:12px;background:#071421;
+  }
+  #batbotAIModal .ai-finished-match::before{
+    content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background-image:linear-gradient(110deg,rgba(3,16,28,.86),rgba(3,27,42,.72),rgba(3,16,28,.88)),url('/images/stade-matchs-termines.jpg');
+    background-size:cover;background-position:center 55%;background-repeat:no-repeat;
+  }
+  #batbotAIModal .ai-finished-match .ai-result-title{
+    font-size:20px;line-height:1.4;font-weight:850;color:#f3f8ff;margin-bottom:16px
+  }
+  #batbotAIModal .ai-finished-match .ai-evidence-card{
+    border:1px solid rgba(69,190,235,.24);border-radius:18px;
+    background:rgba(8,27,47,.78);padding:18px;margin-top:12px;line-height:1.8
+  }
+  #batbotAIModal .ai-finished-match .ai-finished-score{
+    font-size:clamp(36px,9vw,48px);font-weight:900;letter-spacing:2px;
+    text-align:center;color:#eaf7ff;padding:14px 0 4px
+  }
+  #batbotAIModal .ai-finished-match .ai-finished-notice{
+    color:#d8e8f5;font-weight:650;line-height:1.65
+  }
+  #batbotAIModal .ai-finished-match .ai-finished-score::before{
+    content:"✓ MATCH TERMINÉ";display:block;width:max-content;max-width:100%;
+    box-sizing:border-box;margin:0 auto 12px;padding:7px 14px;
+    border:1px solid rgba(74,222,128,.6);border-radius:999px;
+    background:rgba(22,101,52,.9);color:#dcfce7;
+    font-size:12px;line-height:1.4;letter-spacing:.8px
+  }
 </style>
 
 
@@ -1546,7 +1572,7 @@ button.batbot-predict-btn *,
   background-position:center 57%;
 }
 #footballResults .match-card.batbot-match-finished::before{
-  background-image:linear-gradient(100deg,rgba(3,12,22,.80),rgba(3,12,22,.53) 52%,rgba(3,12,22,.80)),url('/images/matchs-termines-nouveau.jpg');
+  background-image:linear-gradient(100deg,rgba(3,12,22,.80),rgba(3,12,22,.53) 52%,rgba(3,12,22,.80)),url('/images/stade-matchs-termines.jpg');
   background-position:center 58%;
 }
 #footballResults .match-card.batbot-match-upcoming>.batbot-fixture-league,
@@ -1561,6 +1587,27 @@ button.batbot-predict-btn *,
 #footballResults .match-card.batbot-match-finished>.muted{
   position:relative;
   z-index:1;
+}
+
+/* BATBOT_FINISHED_STATUS_BADGE_V1 */
+#footballResults .match-card.batbot-match-finished .batbot-fixture-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  max-width:100%;
+  padding:6px 11px;
+  margin:5px 0;
+  border:1px solid rgba(74,222,128,.65);
+  border-radius:999px;
+  background:rgba(22,101,52,.94);
+  color:#dcfce7;
+  font-size:11px;
+  line-height:1.4;
+  font-weight:900;
+  letter-spacing:.5px;
+  text-transform:uppercase;
+  box-shadow:0 2px 8px rgba(0,0,0,.22);
 }
 </style>
 <style id="batbot-live-3d-pitch">
@@ -1705,9 +1752,9 @@ button.batbot-predict-btn *,
 }
 #batbotAiPredictionHistory .batbot-ai-history-validated::before{
   background-image:linear-gradient(
-    110deg,rgba(3,24,19,.83),rgba(4,38,28,.68),rgba(3,24,19,.84)
-  ),url('/images/pronostics-valides.jpg');
-  background-position:center 42%;
+    110deg,rgba(3,40,20,.78),rgba(4,65,30,.62),rgba(3,40,20,.80)
+  ),url('/images/stade-tickets-valides.jpg');
+  background-position:center 57%;
 }
 #batbotAiPredictionHistory .batbot-ai-history-failed::before{
   background-image:linear-gradient(
