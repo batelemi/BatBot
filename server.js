@@ -23,6 +23,15 @@ function normalizeSecurityAnswer(value) {
   return String(value || "").normalize("NFKC").trim().toLocaleLowerCase("fr");
 }
 
+async function initializeUserProfile() {
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT");
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT");
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS city TEXT");
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT");
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT");
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_id TEXT NOT NULL DEFAULT 'avatar-01'");
+}
+
 async function initializeSecurityQuestions() {
   await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS security_question TEXT");
   await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS security_answer_hash TEXT");
@@ -189,7 +198,13 @@ function userView(user) {
     id: user.id,
     username: user.username,
     name: user.username,
-    phone: user.phone,
+    full_name: user.full_name || "",
+    phone: user.phone || "",
+    country: user.country || "",
+    city: user.city || "",
+    email: user.email || "",
+    bio: user.bio || "",
+    avatar_id: /^avatar-(0[1-9]|10)$/.test(String(user.avatar_id || "")) ? user.avatar_id : "avatar-01",
     premium_until: user.premium_until,
     premium_started_at: user.premium_started_at || null,
     ai_until: user.ai_until || null,
@@ -641,6 +656,67 @@ app.get("/api/password-reset/status", async (req, res) => {
     res.status(500).json({
       error: "Impossible de vérifier la demande de récupération."
     });
+  }
+});
+
+const ALLOWED_PROFILE_AVATARS = new Set(Array.from({ length: 10 }, (_, i) => `avatar-${String(i + 1).padStart(2, "0")}`));
+
+app.put("/api/profile", requireUser, async (req, res) => {
+  const fullName = String(req.body.full_name || "").trim();
+  const country = String(req.body.country || "").trim();
+  const city = String(req.body.city || "").trim();
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const phone = String(req.body.phone || "").trim();
+  const bio = String(req.body.bio || "").trim();
+  const avatarId = String(req.body.avatar_id || "avatar-01").trim();
+
+  if (fullName.length > 100 || country.length > 80 || city.length > 80 ||
+      email.length > 254 || phone.length > 30 || bio.length > 240) {
+    return res.status(400).json({ error: "Un ou plusieurs champs dépassent la longueur autorisée." });
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: "L’adresse e-mail n’est pas valide." });
+  }
+  if (!ALLOWED_PROFILE_AVATARS.has(avatarId)) {
+    return res.status(400).json({ error: "Cet avatar n’est pas autorisé." });
+  }
+
+  try {
+    const result = await pgQuery(
+      `UPDATE users
+       SET full_name=$1, country=$2, city=$3, email=$4, phone=$5, bio=$6, avatar_id=$7
+       WHERE id=$8 AND disabled=false`,
+      [fullName, country, city, email, phone, bio, avatarId, req.session.userId]
+    );
+    if (!result.rowCount) return res.status(403).json({ error: "Compte indisponible." });
+    const user = await pgGet("SELECT * FROM users WHERE id=$1", [req.session.userId]);
+    return res.json({ message: "Profil enregistré.", user: userView(user) });
+  } catch (error) {
+    console.error("profile update PostgreSQL:", error);
+    return res.status(500).json({ error: "Impossible d’enregistrer le profil pour le moment." });
+  }
+});
+
+app.post("/api/profile/password", requireUser, async (req, res) => {
+  const currentPassword = String(req.body.current_password || "");
+  const password = String(req.body.password || "");
+  const confirmation = String(req.body.confirm_password || "");
+  if (password.length < 6) return res.status(400).json({ error: "Le nouveau mot de passe doit contenir au moins 6 caractères." });
+  if (password !== confirmation) return res.status(400).json({ error: "Les deux nouveaux mots de passe ne correspondent pas." });
+  if (currentPassword.length < 1) return res.status(400).json({ error: "Saisissez votre mot de passe actuel." });
+
+  try {
+    const user = await pgGet("SELECT * FROM users WHERE id=$1", [req.session.userId]);
+    if (!user || user.disabled) return res.status(403).json({ error: "Compte indisponible." });
+    if (user.must_change_password) return res.status(400).json({ error: "Terminez d’abord la procédure de changement de mot de passe temporaire." });
+    if (!user.password_hash || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+      return res.status(400).json({ error: "Le mot de passe actuel est incorrect." });
+    }
+    await pgQuery("UPDATE users SET password_hash=$1 WHERE id=$2", [bcrypt.hashSync(password, 12), user.id]);
+    return res.json({ message: "Mot de passe modifié avec succès." });
+  } catch (error) {
+    console.error("profile password PostgreSQL:", error);
+    return res.status(500).json({ error: "Impossible de modifier le mot de passe pour le moment." });
   }
 });
 
@@ -2818,6 +2894,7 @@ async function startServer() {
   try {
     await initializeSettings();
     await initializeSecurityQuestions();
+    await initializeUserProfile();
     await initializeBookmakers();
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();

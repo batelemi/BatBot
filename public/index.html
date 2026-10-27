@@ -1857,14 +1857,14 @@ button.batbot-predict-btn *,
   <div id="forgotBox" class="card hidden">
     <h2>🔑 Mot de passe oublié</h2>
     <p class="muted">
-      Entrez votre nom d'utilisateur pour envoyer une demande de réinitialisation au service BATBOT PRO.
+      Entrez votre nom d'utilisateur pour retrouver votre question secrète et choisir un nouveau mot de passe. Si votre compte n'a pas encore de question secrète, la récupération manuelle reste disponible.
     </p>
 
     <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
       placeholder="Votre nom d'utilisateur">
 
     <button id="forgotButton" class="btn primary" type="button" onclick="submitForgotPassword()">
-      📩 Envoyer la demande
+      🔎 Retrouver ma question secrète
     </button>
 
     <div id="forgotStatus" class="status"></div>
@@ -2912,7 +2912,7 @@ async function submitForgotPassword(){
   if(!username)
     return showStatus("forgotStatus","Entrez votre nom d'utilisateur.","error");
 
-  setLoading("forgotButton",true,"📩 Envoyer la demande");
+  setLoading("forgotButton",true,"🔎 Retrouver ma question secrète");
 
   try{
     const response=await fetch("/api/password-reset",{
@@ -2962,7 +2962,7 @@ async function submitForgotPassword(){
     console.error("FORGOT:",error);
     showStatus("forgotStatus","Impossible de contacter le serveur.","error");
   }finally{
-    setLoading("forgotButton",false,"📩 Envoyer la demande");
+    setLoading("forgotButton",false,"🔎 Retrouver ma question secrète");
   }
 }
 
@@ -6587,6 +6587,39 @@ document.addEventListener("keydown",function(event){
     .batbot-nav-sheet{width:min(100% - 32px,680px);}
     .batbot-nav-actions{grid-template-columns:repeat(3,1fr);}
   }
+
+
+.batbot-profile{color:#eaf4ff}
+.batbot-profile-hero{display:flex;align-items:center;gap:13px;padding:14px;border:1px solid rgba(83,207,255,.22);border-radius:18px;background:linear-gradient(135deg,rgba(15,45,72,.95),rgba(8,24,42,.95));margin:10px 0 14px}
+.batbot-profile-avatar{width:72px;height:72px;border-radius:50%;border:2px solid #48c9f4;background:#102c45;object-fit:cover;flex:0 0 auto}
+.batbot-profile-name{font-size:18px;font-weight:850;margin:0 0 5px;overflow-wrap:anywhere}
+.batbot-profile-sub{font-size:12px;opacity:.78;margin:0 0 8px}
+.batbot-profile-id{font-size:12px;color:#9de8ff}
+.batbot-profile-status{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(83,207,255,.13);border:1px solid rgba(83,207,255,.3)}
+.batbot-profile-status.inactive{color:#cbd5e1;background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.25)}
+.batbot-profile-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}
+.batbot-profile-action{display:flex;align-items:center;gap:9px;text-align:left;padding:12px;border-radius:13px;border:1px solid rgba(83,207,255,.24);background:rgba(13,37,59,.8);color:#f4f9ff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.batbot-profile-action i{color:#53cfff;font-size:17px}
+.batbot-profile-section{border:1px solid rgba(120,170,210,.19);border-radius:14px;margin:9px 0;background:rgba(6,22,38,.52);overflow:hidden}
+.batbot-profile-section summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:14px;font-weight:800;font-size:13px}
+.batbot-profile-section summary::-webkit-details-marker{display:none}
+.batbot-profile-section summary i{color:#53cfff;width:18px;text-align:center}
+.batbot-profile-section summary:after{content:"＋";margin-left:auto;color:#70d9ff;font-size:17px}
+.batbot-profile-section[open] summary:after{content:"−"}
+.batbot-profile-fields{padding:0 13px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.batbot-profile-fields .full{grid-column:1/-1}
+.batbot-profile-fields label{display:block;font-size:11px;font-weight:750;color:#b9d2e7;margin-bottom:5px}
+.batbot-profile-fields input,.batbot-profile-fields textarea{width:100%;box-sizing:border-box;border:1px solid rgba(120,170,210,.3);border-radius:10px;background:#081a2b;color:#f2f8ff;padding:11px;font:inherit;font-size:13px;min-width:0}
+.batbot-profile-fields textarea{resize:vertical;min-height:72px}
+.batbot-avatar-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;padding:0 12px 12px}
+.batbot-avatar-choice{min-width:0;padding:5px;border-radius:12px;border:2px solid transparent;background:rgba(120,170,210,.1);color:#eaf4ff;font-size:10px;font-weight:750;cursor:pointer}
+.batbot-avatar-choice img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:50%;margin-bottom:4px}
+.batbot-avatar-choice.selected{border-color:#35c9ff;background:rgba(53,201,255,.15);box-shadow:0 0 0 2px rgba(53,201,255,.1)}
+.batbot-profile-save{width:100%;margin:10px 0 2px}
+.batbot-profile-message{font-size:12px;margin:8px 0;min-height:16px}
+.batbot-profile-message.error{color:#ff9e9e}.batbot-profile-message.success{color:#83edba}
+@media(max-width:390px){.batbot-profile-fields{grid-template-columns:1fr}.batbot-profile-fields .full{grid-column:auto}.batbot-avatar-grid{gap:4px}.batbot-avatar-choice{font-size:9px;padding:3px}.batbot-profile-avatar{width:62px;height:62px}}
+
 </style>
 
 <script id="batbot-public-options-script">
@@ -6825,16 +6858,100 @@ document.addEventListener("keydown",function(event){
 
     function openMemberProfile(){
       const user=window.batBotCurrentUser||{};
+      const avatarId=/^avatar-(0[1-9]|10)$/.test(String(user.avatar_id||''))?user.avatar_id:'avatar-01';
       const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
-      profileCard.innerHTML=
-        '<div class="section-kicker">Mon compte</div>'+
-        '<h2>Mon profil</h2>'+
-        '<p>ID BATBOT : <strong>'+escapeHtml('BATBOT-'+String(user.id||''))+'</strong></p>'+
-        '<p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p>'+
-        '<p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p>'+
-        '<p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';
+      const avatarSrc=id=>'/avatars/'+id+'.svg';
+      const avatarNames=['Amaya','Nadia','Aïcha','Mariam','Lina','Koffi','Yao','Malik','Idriss','David'];
+      profileCard.innerHTML=`
+        <div class="batbot-profile">
+          <div class="section-kicker">MON ESPACE PERSONNEL</div>
+          <div class="batbot-profile-hero">
+            <img class="batbot-profile-avatar" id="batbotProfileAvatarPreview" src="${avatarSrc(avatarId)}" alt="Avatar du profil">
+            <div style="min-width:0;flex:1">
+              <h2 class="batbot-profile-name">${escapeHtml(user.full_name||user.username||'Membre BATBOT')}</h2>
+              <p class="batbot-profile-sub">@${escapeHtml(user.username||'membre')}</p>
+              <div class="batbot-profile-id">ID du compte : <strong>${escapeHtml('BATBOT-'+String(user.id||''))}</strong></div>
+              <div style="margin-top:8px"><span class="batbot-profile-status ${premium?'':'inactive'}"><i class="fa-solid ${premium?'fa-circle-check':'fa-circle-minus'}"></i>${premium?'Premium actif':'Premium non actif'}</span></div>
+            </div>
+          </div>
+          <div class="batbot-profile-actions">
+            <button type="button" class="batbot-profile-action" id="batbotOpenAvatar"><i class="fa-solid fa-user-astronaut"></i><span>Changer d’avatar</span></button>
+            <button type="button" class="batbot-profile-action" id="batbotOpenPassword"><i class="fa-solid fa-shield-halved"></i><span>Sécurité du compte</span></button>
+          </div>
+          <details class="batbot-profile-section" open>
+            <summary><i class="fa-solid fa-id-card"></i>Informations personnelles</summary>
+            <div class="batbot-profile-fields">
+              <div class="full"><label for="batbotProfileFullName">Nom complet</label><input id="batbotProfileFullName" maxlength="100" value="${escapeHtml(user.full_name||'')}" placeholder="Votre nom complet"></div>
+              <div><label for="batbotProfileCountry">Pays</label><input id="batbotProfileCountry" maxlength="80" value="${escapeHtml(user.country||'')}" placeholder="Ex. Côte d’Ivoire"></div>
+              <div><label for="batbotProfileCity">Ville</label><input id="batbotProfileCity" maxlength="80" value="${escapeHtml(user.city||'')}" placeholder="Ex. Abidjan"></div>
+              <div class="full"><label for="batbotProfileEmail">Adresse e-mail (facultatif)</label><input id="batbotProfileEmail" type="email" maxlength="254" value="${escapeHtml(user.email||'')}" placeholder="vous@exemple.com" autocomplete="email"></div>
+              <div class="full"><label for="batbotProfilePhone">Téléphone (facultatif)</label><input id="batbotProfilePhone" type="tel" maxlength="30" value="${escapeHtml(user.phone||'')}" placeholder="Votre numéro de téléphone" autocomplete="tel"></div>
+              <div class="full"><label for="batbotProfileBio">Petite biographie (facultatif)</label><textarea id="batbotProfileBio" maxlength="240" placeholder="Quelques mots sur vous…">${escapeHtml(user.bio||'')}</textarea></div>
+            </div>
+          </details>
+          <details class="batbot-profile-section" id="batbotAvatarSection">
+            <summary><i class="fa-solid fa-face-smile"></i>Choisir parmi 10 avatars</summary>
+            <p style="font-size:11px;opacity:.75;padding:0 13px;margin:0 0 10px">5 avatars féminins et 5 masculins. Les photos personnelles ne peuvent pas être importées.</p>
+            <div class="batbot-avatar-grid">${avatarNames.map((name,index)=>{const id='avatar-'+String(index+1).padStart(2,'0');return `<button type="button" class="batbot-avatar-choice ${id===avatarId?'selected':''}" data-avatar-id="${id}" aria-pressed="${id===avatarId}"><img src="${avatarSrc(id)}" alt=""><span>${name}</span></button>`;}).join('')}</div>
+          </details>
+          <details class="batbot-profile-section" id="batbotPasswordSection">
+            <summary><i class="fa-solid fa-lock"></i>Changer le mot de passe</summary>
+            <div class="batbot-profile-fields">
+              <div class="full"><label for="batbotCurrentPassword">Mot de passe actuel</label><input id="batbotCurrentPassword" type="password" autocomplete="current-password" placeholder="Mot de passe actuel"></div>
+              <div><label for="batbotNewPassword">Nouveau mot de passe</label><input id="batbotNewPassword" type="password" minlength="6" autocomplete="new-password" placeholder="6 caractères minimum"></div>
+              <div><label for="batbotConfirmPassword">Confirmer</label><input id="batbotConfirmPassword" type="password" minlength="6" autocomplete="new-password" placeholder="Répéter le mot de passe"></div>
+              <div class="full"><button type="button" class="btn secondary batbot-profile-save" id="batbotChangePassword">Mettre à jour le mot de passe</button></div>
+            </div>
+          </details>
+          <p id="batbotProfileMessage" class="batbot-profile-message" role="status" aria-live="polite"></p>
+          <button type="button" class="btn primary batbot-profile-save" id="batbotSaveProfile"><i class="fa-solid fa-floppy-disk"></i> Enregistrer mon profil</button>
+        </div>`;
       openModal(profileCard,'Mon profil');
-
+      let selectedAvatar=avatarId;
+      const message=profileCard.querySelector('#batbotProfileMessage');
+      const setMessage=(text,type='')=>{message.textContent=text;message.className='batbot-profile-message '+type;};
+      profileCard.querySelector('#batbotOpenAvatar').addEventListener('click',()=>{const section=profileCard.querySelector('#batbotAvatarSection');section.open=!section.open;section.scrollIntoView({behavior:'smooth',block:'nearest'});});
+      profileCard.querySelector('#batbotOpenPassword').addEventListener('click',()=>{const section=profileCard.querySelector('#batbotPasswordSection');section.open=true;section.scrollIntoView({behavior:'smooth',block:'nearest'});});
+      profileCard.querySelectorAll('[data-avatar-id]').forEach(button=>button.addEventListener('click',()=>{
+        selectedAvatar=button.dataset.avatarId;
+        profileCard.querySelectorAll('[data-avatar-id]').forEach(item=>{const active=item.dataset.avatarId===selectedAvatar;item.classList.toggle('selected',active);item.setAttribute('aria-pressed',String(active));});
+        profileCard.querySelector('#batbotProfileAvatarPreview').src=avatarSrc(selectedAvatar);
+        setMessage('Avatar sélectionné. Enregistre le profil pour confirmer.');
+      }));
+      profileCard.querySelector('#batbotSaveProfile').addEventListener('click',async()=>{
+        const button=profileCard.querySelector('#batbotSaveProfile');button.disabled=true;setMessage('Enregistrement en cours…');
+        try{
+          const response=await fetch('/api/profile',{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            full_name:profileCard.querySelector('#batbotProfileFullName').value,country:profileCard.querySelector('#batbotProfileCountry').value,
+            city:profileCard.querySelector('#batbotProfileCity').value,email:profileCard.querySelector('#batbotProfileEmail').value,
+            phone:profileCard.querySelector('#batbotProfilePhone').value,bio:profileCard.querySelector('#batbotProfileBio').value,avatar_id:selectedAvatar
+          })});
+          const data=await readApiResponse(response);if(!response.ok)throw new Error(data.error||'Enregistrement impossible.');
+          window.batBotCurrentUser=data.user||window.batBotCurrentUser;
+          updateProfileStatuses(window.batBotCurrentUser);
+          setMessage(data.message||'Profil enregistré avec succès.','success');
+          const savedUser=window.batBotCurrentUser;
+          const name=profileCard.querySelector('.batbot-profile-name');
+          const avatar=profileCard.querySelector('#batbotProfileAvatarPreview');
+          const account=profileCard.querySelector('.batbot-profile-id');
+          if(name)name.textContent=savedUser.full_name||savedUser.username||'Membre BATBOT';
+          if(avatar)avatar.src=avatarSrc(savedUser.avatar_id||selectedAvatar);
+          if(account)account.innerHTML='ID du compte : <strong>'+escapeHtml('BATBOT-'+String(savedUser.id||''))+'</strong>';
+        }catch(error){setMessage(error.message||'Erreur pendant l’enregistrement.','error');}
+        finally{const current=profileCard.querySelector('#batbotSaveProfile');if(current)current.disabled=false;}
+      });
+      profileCard.querySelector('#batbotChangePassword').addEventListener('click',async()=>{
+        const button=profileCard.querySelector('#batbotChangePassword');
+        const current=profileCard.querySelector('#batbotCurrentPassword').value,password=profileCard.querySelector('#batbotNewPassword').value,confirmation=profileCard.querySelector('#batbotConfirmPassword').value;
+        button.disabled=true;setMessage('Vérification en cours…');
+        try{
+          const response=await fetch('/api/profile/password',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:current,password,confirm_password:confirmation})});
+          const data=await readApiResponse(response);if(!response.ok)throw new Error(data.error||'Modification impossible.');
+          ['#batbotCurrentPassword','#batbotNewPassword','#batbotConfirmPassword'].forEach(selector=>{const field=profileCard.querySelector(selector);if(field)field.value='';});
+          setMessage(data.message||'Mot de passe modifié avec succès.','success');
+        }catch(error){setMessage(error.message||'Erreur pendant le changement du mot de passe.','error');}
+        finally{button.disabled=false;}
+      });
     }
     document.getElementById('headerProfileButton')?.addEventListener('click',openMemberProfile);
 document.getElementById('headerNotificationsButton')?.addEventListener('click',function(){
@@ -6913,15 +7030,8 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
             return;
           }
           if(item[2]==='profile'){
-            const user=window.batBotCurrentUser||{};
-            const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
-            profileCard.innerHTML=
-              '<div class="section-kicker">Mon compte</div>'+
-              '<h2>Mon profil</h2>'+
-        '<p>ID BATBOT : <strong>'+escapeHtml('BATBOT-'+String(user.id||''))+'</strong></p>'+
-              '<p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p>'+
-              '<p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p>'+
-              '<p>Abonnement : <strong>'+ (premium?'Premium actif':'Membre BATBOT PRO') +'</strong></p>';
+            openMemberProfile();
+            return;
           }
           const card=cards[item[2]]();
           openModal(card,item[0]);
