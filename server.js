@@ -10,6 +10,34 @@ const bcrypt = require("bcryptjs");
 const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
 const path = require("path");
 const crypto = require("crypto");
+
+const SECURITY_QUESTIONS = [
+  "Quel est le prénom de votre meilleur ami d’enfance ?",
+  "Dans quelle ville êtes-vous né(e) ?",
+  "Quel était le surnom que l’on vous donnait enfant ?",
+  "Quel est le prénom de votre premier enseignant ?",
+  "Quel est le nom de votre premier animal de compagnie ?"
+];
+
+function normalizeSecurityAnswer(value) {
+  return String(value || "").normalize("NFKC").trim().toLocaleLowerCase("fr");
+}
+
+async function initializeSecurityQuestions() {
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS security_question TEXT");
+  await pgQuery("ALTER TABLE users ADD COLUMN IF NOT EXISTS security_answer_hash TEXT");
+  await pgQuery(`
+    CREATE TABLE IF NOT EXISTS security_recovery_attempts (
+      username_key TEXT NOT NULL,
+      ip_key TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      locked_until TIMESTAMPTZ,
+      PRIMARY KEY (username_key, ip_key)
+    )
+  `);
+}
+
 const { analyzeSportApiMatches } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
 
@@ -241,17 +269,26 @@ app.get("/api/health", (req, res) => {
 app.post("/api/register", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
+  const securityQuestion = String(req.body.security_question || "");
+  const securityAnswer = normalizeSecurityAnswer(req.body.security_answer);
 
   if (!username || password.length < 6) {
     return res.status(400).json({
       error: "Nom d'utilisateur et mot de passe valides requis (6 caractères minimum)."
     });
   }
+  if (!SECURITY_QUESTIONS.includes(securityQuestion)) {
+    return res.status(400).json({ error: "Choisissez une question secrète valide." });
+  }
+  if (securityAnswer.length < 2 || securityAnswer.length > 100) {
+    return res.status(400).json({ error: "La réponse secrète doit contenir entre 2 et 100 caractères." });
+  }
 
   try {
     const result = await pgQuery(
-      "INSERT INTO users(username,phone,password_hash) VALUES($1,$2,$3) RETURNING id",
-      [username, "", bcrypt.hashSync(password, 12)]
+      `INSERT INTO users(username,phone,password_hash,security_question,security_answer_hash)
+       VALUES($1,$2,$3,$4,$5) RETURNING id`,
+      [username, "", bcrypt.hashSync(password, 12), securityQuestion, bcrypt.hashSync(securityAnswer, 12)]
     );
 
     const user = await pgGet(
@@ -280,10 +317,10 @@ app.post("/api/login", async (req, res) => {
   const password = String(req.body.password || "");
 
   try {
-    const user = await pgGet(
-      "SELECT * FROM users WHERE username=$1",
-      [username]
-    );
+    const idMatch = username.match(/^BATBOT-(\d+)$/i);
+    const user = idMatch
+      ? await pgGet("SELECT * FROM users WHERE id=$1", [idMatch[1]])
+      : await pgGet("SELECT * FROM users WHERE username=$1", [username]);
 
     if (!user || user.disabled) {
       return res.status(401).json({ error: "Identifiants incorrects ou compte désactivé." });
@@ -359,12 +396,20 @@ app.post("/api/password-reset", async (req, res) => {
 
   try {
     const user = await pgGet(
-      "SELECT id, disabled FROM users WHERE username=$1",
+      "SELECT id, disabled, security_question, security_answer_hash FROM users WHERE username=$1",
       [username]
     );
 
     if (!user || user.disabled) {
       return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
+    }
+
+    if (user.security_question && user.security_answer_hash) {
+      return res.json({
+        mode: "security_question",
+        question: user.security_question,
+        message: "Répondez à votre question secrète pour choisir un nouveau mot de passe."
+      });
     }
 
     let request = await pgGet(
@@ -395,6 +440,90 @@ app.post("/api/password-reset", async (req, res) => {
   } catch (error) {
     console.error("password-reset PostgreSQL:", error);
     res.status(500).json({ error: "Impossible d'enregistrer la demande de récupération." });
+  }
+});
+
+app.post("/api/password-reset/security", async (req, res) => {
+  const username = String(req.body.username || "").trim();
+  const answer = normalizeSecurityAnswer(req.body.security_answer);
+  const password = String(req.body.password || "");
+  const confirmation = String(req.body.confirm_password || "");
+  const ipKey = String(req.ip || req.socket?.remoteAddress || "unknown").slice(0, 100);
+  const usernameKey = username.normalize("NFKC").toLocaleLowerCase("fr").slice(0, 100);
+
+  if (!username || answer.length < 2 || answer.length > 100) {
+    return res.status(400).json({ error: "Saisissez votre nom d'utilisateur et votre réponse secrète." });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Le nouveau mot de passe doit contenir au moins 6 caractères." });
+  }
+  if (password !== confirmation) {
+    return res.status(400).json({ error: "Les deux mots de passe ne correspondent pas." });
+  }
+
+  try {
+    const attempts = await pgGet(
+      "SELECT attempts, locked_until FROM security_recovery_attempts WHERE username_key=$1 AND ip_key=$2",
+      [usernameKey, ipKey]
+    );
+    if (attempts?.locked_until && new Date(attempts.locked_until) > new Date()) {
+      return res.status(429).json({ error: "Trop de tentatives. Réessayez dans 15 minutes." });
+    }
+
+    const user = await pgGet(
+      "SELECT id, disabled, security_question, security_answer_hash FROM users WHERE username=$1",
+      [username]
+    );
+    if (!user || user.disabled || !user.security_question || !user.security_answer_hash) {
+      return res.status(400).json({ error: "Impossible de vérifier cette réponse. Vérifiez les informations ou contactez l'administrateur." });
+    }
+
+    const validAnswer = bcrypt.compareSync(answer, user.security_answer_hash);
+    if (!validAnswer) {
+      await pgQuery(`
+        INSERT INTO security_recovery_attempts(username_key,ip_key,attempts,window_started_at,locked_until)
+        VALUES($1,$2,1,NOW(),NULL)
+        ON CONFLICT(username_key,ip_key) DO UPDATE SET
+          attempts = CASE
+            WHEN security_recovery_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN 1
+            ELSE security_recovery_attempts.attempts + 1
+          END,
+          window_started_at = CASE
+            WHEN security_recovery_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN NOW()
+            ELSE security_recovery_attempts.window_started_at
+          END,
+          locked_until = CASE
+            WHEN (CASE
+              WHEN security_recovery_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN 1
+              ELSE security_recovery_attempts.attempts + 1
+            END) >= 5 THEN NOW() + INTERVAL '15 minutes'
+            ELSE NULL
+          END
+      `, [usernameKey, ipKey]);
+      return res.status(401).json({ error: "Réponse secrète incorrecte." });
+    }
+
+    await pgQuery(
+      "UPDATE security_recovery_attempts SET attempts=0, window_started_at=NOW(), locked_until=NULL WHERE username_key=$1 AND ip_key=$2",
+      [usernameKey, ipKey]
+    );
+
+    await pgQuery(`
+      UPDATE users
+      SET password_hash=$1, must_change_password=false,
+          temporary_password_hash=NULL, temporary_password_expires_at=NULL
+      WHERE id=$2
+    `, [bcrypt.hashSync(password, 12), user.id]);
+
+    await pgQuery(
+      "UPDATE password_resets SET status='cancelled', resolved_at=NOW() WHERE user_id=$1 AND status='pending'",
+      [user.id]
+    );
+
+    res.json({ message: "Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter." });
+  } catch (error) {
+    console.error("password-reset security PostgreSQL:", error);
+    res.status(500).json({ error: "Impossible de réinitialiser le mot de passe pour le moment." });
   }
 });
 
@@ -2688,6 +2817,7 @@ let server;
 async function startServer() {
   try {
     await initializeSettings();
+    await initializeSecurityQuestions();
     await initializeBookmakers();
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();
