@@ -1826,6 +1826,16 @@ button.batbot-predict-btn *,
       <option value="Quel était le surnom que l’on vous donnait enfant ?">Surnom pendant l’enfance</option>
       <option value="Quel est le prénom de votre premier enseignant ?">Prénom de votre premier enseignant</option>
       <option value="Quel est le nom de votre premier animal de compagnie ?">Nom de votre premier animal de compagnie</option>
+      <option value="Quel était ton jouet préféré quand tu étais enfant ?">Ton jouet préféré pendant l’enfance</option>
+      <option value="Quel est ton club de football préféré ?">Ton club de football préféré</option>
+      <option value="Quelle est ton équipe nationale préférée ?">Ton équipe nationale préférée</option>
+      <option value="Quel pays rêves-tu de visiter ?">Le pays que tu rêves de visiter</option>
+      <option value="Quel est ton joueur de football préféré ?">Ton joueur de football préféré</option>
+      <option value="Quel est ton plat préféré ?">Ton plat préféré</option>
+      <option value="Quelle est ta voiture préférée ?">Ta voiture préférée</option>
+      <option value="Quelle voiture rêves-tu de posséder ?">La voiture que tu rêves de posséder</option>
+      <option value="Quel prénom aimerais-tu donner à ton futur fils ?">Le prénom que tu aimerais donner à ton futur fils</option>
+      <option value="Quel prénom aimerais-tu donner à ta future fille ?">Le prénom que tu aimerais donner à ta future fille</option>
     </select>
     <input id="registerSecurityAnswer" type="text" autocomplete="off" maxlength="100"
       placeholder="Votre réponse secrète (à retenir)">
@@ -1857,7 +1867,7 @@ button.batbot-predict-btn *,
   <div id="forgotBox" class="card hidden">
     <h2>🔑 Mot de passe oublié</h2>
     <p class="muted">
-      Entrez votre nom d'utilisateur pour retrouver votre question secrète et choisir un nouveau mot de passe. Si votre compte n'a pas encore de question secrète, la récupération manuelle reste disponible.
+      Entrez votre nom d'utilisateur pour retrouver votre question secrète et choisir un nouveau mot de passe. Si aucune question secrète n’est enregistrée pour votre compte, vous pourrez contacter l’administrateur.
     </p>
 
     <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
@@ -2929,6 +2939,29 @@ async function submitForgotPassword(){
       return;
     }
 
+    if(data.mode==="contact_admin"){
+      stopPasswordResetPolling();
+      sessionStorage.removeItem("batbot_password_reset_token");
+      sessionStorage.removeItem("batbot_password_reset_username");
+      document.getElementById("securityRecoveryBox")?.classList.add("hidden");
+      document.getElementById("forgotTemporaryBox")?.classList.add("hidden");
+
+      const whatsappButton=document.getElementById("forgotWhatsApp");
+      const message="Bonjour, je souhaite récupérer mon compte BATBOT. Nom d’utilisateur : "+username+". Aucune question secrète n’est enregistrée sur mon compte.";
+      const whatsappUrl=createWhatsAppUrl(message);
+
+      if(whatsappButton){
+        if(whatsappUrl){
+          whatsappButton.href=whatsappUrl;
+          whatsappButton.classList.remove("hidden");
+        }else{
+          whatsappButton.classList.add("hidden");
+        }
+      }
+      showStatus("forgotStatus",data.message||"Contactez l’administrateur pour récupérer votre compte.","error");
+      return;
+    }
+
     if(data.mode==="security_question"){
       stopPasswordResetPolling();
       sessionStorage.removeItem("batbot_password_reset_token");
@@ -3026,7 +3059,7 @@ function renderPasswordResetDelivery(state){
   if(state.status==="pending"){
     box.classList.remove("hidden");
     box.classList.add("pending");
-    box.innerHTML='<div class="password-reset-delivery-title">⏳ Demande reçue</div><div class="password-reset-meta">Votre demande a bien été envoyée au service BATBOT PRO. Veuillez patienter pendant le traitement. Dès que votre mot de passe temporaire sera prêt, il apparaîtra automatiquement ici.</div>';
+    box.innerHTML='<div class="password-reset-delivery-title">ℹ️ Récupération du compte</div><div class="password-reset-meta">Si aucune question secrète n’est enregistrée pour votre compte, contactez l’administrateur sur WhatsApp.</div>';
     return;
   }
 
@@ -6606,16 +6639,20 @@ document.addEventListener("keydown",function(event){
 .batbot-profile-section summary i{color:#53cfff;width:18px;text-align:center}
 .batbot-profile-section summary:after{content:"＋";margin-left:auto;color:#70d9ff;font-size:17px}
 .batbot-profile-section[open] summary:after{content:"−"}
-.batbot-profile-fields{padding:0 13px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.batbot-profile-fields .full{grid-column:1/-1}
+.batbot-profile-fields{padding:0 13px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0}
+.batbot-profile-fields .full{grid-column:1/-1;min-width:0}
 .batbot-profile-fields label{display:block;font-size:11px;font-weight:750;color:#b9d2e7;margin-bottom:5px}
-.batbot-profile-fields input,.batbot-profile-fields textarea{width:100%;box-sizing:border-box;border:1px solid rgba(120,170,210,.3);border-radius:10px;background:#081a2b;color:#f2f8ff;padding:11px;font:inherit;font-size:13px;min-width:0}
+.batbot-profile-fields input,.batbot-profile-fields textarea{display:block;width:100%;max-width:100%;box-sizing:border-box;border:1px solid rgba(120,170,210,.3);border-radius:10px;background:#081a2b;color:#f2f8ff;padding:11px;font:inherit;font-size:13px;min-width:0}
 .batbot-profile-fields textarea{resize:vertical;min-height:72px}
+.batbot-profile-fields input#batbotNewPassword,.batbot-profile-fields input#batbotConfirmPassword{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.batbot-profile-fields:has(#batbotNewPassword),.batbot-profile-fields:has(#batbotConfirmPassword){grid-template-columns:minmax(0,1fr)}
+.batbot-profile-fields:has(#batbotNewPassword) .full,.batbot-profile-fields:has(#batbotConfirmPassword) .full{grid-column:1}
+
 .batbot-avatar-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;padding:0 12px 12px}
 .batbot-avatar-choice{min-width:0;padding:5px;border-radius:12px;border:2px solid transparent;background:rgba(120,170,210,.1);color:#eaf4ff;font-size:10px;font-weight:750;cursor:pointer}
 .batbot-avatar-choice img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:50%;margin-bottom:4px}
 .batbot-avatar-choice.selected{border-color:#35c9ff;background:rgba(53,201,255,.15);box-shadow:0 0 0 2px rgba(53,201,255,.1)}
-.batbot-profile-save{width:100%;margin:10px 0 2px}
+.batbot-profile-save{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:10px 0 2px;padding:12px 14px;line-height:1.35;text-align:center;white-space:normal}
 .batbot-profile-message{font-size:12px;margin:8px 0;min-height:16px}
 .batbot-profile-message.error{color:#ff9e9e}.batbot-profile-message.success{color:#83edba}
 @media(max-width:390px){.batbot-profile-fields{grid-template-columns:1fr}.batbot-profile-fields .full{grid-column:auto}.batbot-avatar-grid{gap:4px}.batbot-avatar-choice{font-size:9px;padding:3px}.batbot-profile-avatar{width:62px;height:62px}}
@@ -6861,7 +6898,7 @@ document.addEventListener("keydown",function(event){
       const avatarId=/^avatar-(0[1-9]|10)$/.test(String(user.avatar_id||''))?user.avatar_id:'avatar-01';
       const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
       const avatarSrc=id=>'/avatars/'+id+'.svg';
-      const avatarNames=['Amaya','Nadia','Aïcha','Mariam','Lina','Koffi','Yao','Malik','Idriss','David'];
+      const avatarNames=['Sandra','Bernice','Aïcha','Béné','Ariel','Wisdom','Donald','Lamine','Alfred','Gilbert'];
       profileCard.innerHTML=`
         <div class="batbot-profile">
           <div class="section-kicker">MON ESPACE PERSONNEL</div>

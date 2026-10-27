@@ -16,7 +16,17 @@ const SECURITY_QUESTIONS = [
   "Dans quelle ville êtes-vous né(e) ?",
   "Quel était le surnom que l’on vous donnait enfant ?",
   "Quel est le prénom de votre premier enseignant ?",
-  "Quel est le nom de votre premier animal de compagnie ?"
+  "Quel est le nom de votre premier animal de compagnie ?",
+  "Quel était ton jouet préféré quand tu étais enfant ?",
+  "Quel est ton club de football préféré ?",
+  "Quelle est ton équipe nationale préférée ?",
+  "Quel pays rêves-tu de visiter ?",
+  "Quel est ton joueur de football préféré ?",
+  "Quel est ton plat préféré ?",
+  "Quelle est ta voiture préférée ?",
+  "Quelle voiture rêves-tu de posséder ?",
+  "Quel prénom aimerais-tu donner à ton futur fils ?",
+  "Quel prénom aimerais-tu donner à ta future fille ?"
 ];
 
 function normalizeSecurityAnswer(value) {
@@ -427,34 +437,13 @@ app.post("/api/password-reset", async (req, res) => {
       });
     }
 
-    let request = await pgGet(
-      "SELECT id, delivery_token, status FROM password_resets WHERE user_id=$1 AND status='pending' ORDER BY id DESC LIMIT 1",
-      [user.id]
-    );
-
-    if (!request) {
-      const deliveryToken = crypto.randomBytes(32).toString("hex");
-      const result = await pgQuery(
-        "INSERT INTO password_resets(user_id,delivery_token) VALUES($1,$2) RETURNING id,delivery_token,status",
-        [user.id, deliveryToken]
-      );
-      request = result.rows[0];
-    } else if (!request.delivery_token) {
-      request.delivery_token = crypto.randomBytes(32).toString("hex");
-      await pgQuery(
-        "UPDATE password_resets SET delivery_token=$1 WHERE id=$2",
-        [request.delivery_token, request.id]
-      );
-    }
-
-    res.json({
-      message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.",
-      request_id: request.id,
-      request_token: request.delivery_token
+    return res.json({
+      mode: "contact_admin",
+      message: "Aucune question secrète n’est enregistrée pour ce compte. Contactez l’administrateur sur WhatsApp pour récupérer votre accès."
     });
   } catch (error) {
     console.error("password-reset PostgreSQL:", error);
-    res.status(500).json({ error: "Impossible d'enregistrer la demande de récupération." });
+    res.status(500).json({ error: "Impossible d’enregistrer la récupération." });
   }
 });
 
@@ -548,7 +537,7 @@ app.post("/api/forgot-password", async (req, res) => {
 
   try {
     const user = await pgGet(
-      "SELECT id, disabled FROM users WHERE username=$1",
+      "SELECT id, disabled, security_question, security_answer_hash FROM users WHERE username=$1",
       [username]
     );
 
@@ -556,34 +545,21 @@ app.post("/api/forgot-password", async (req, res) => {
       return res.status(404).json({ error: "Utilisateur introuvable avec ces informations." });
     }
 
-    let existing = await pgGet(
-      "SELECT id, delivery_token FROM password_resets WHERE user_id=$1 AND status='pending' ORDER BY id DESC LIMIT 1",
-      [user.id]
-    );
-
-    if (!existing) {
-      const deliveryToken = crypto.randomBytes(32).toString("hex");
-      const result = await pgQuery(
-        "INSERT INTO password_resets(user_id,delivery_token) VALUES($1,$2) RETURNING id,delivery_token",
-        [user.id, deliveryToken]
-      );
-      existing = result.rows[0];
-    } else if (!existing.delivery_token) {
-      existing.delivery_token = crypto.randomBytes(32).toString("hex");
-      await pgQuery(
-        "UPDATE password_resets SET delivery_token=$1 WHERE id=$2",
-        [existing.delivery_token, existing.id]
-      );
+    if (user.security_question && user.security_answer_hash) {
+      return res.json({
+        mode: "security_question",
+        question: user.security_question,
+        message: "Répondez à votre question secrète pour choisir un nouveau mot de passe."
+      });
     }
 
-    res.json({
-      message: "Demande bien envoyée au service BatBot. Veuillez patienter pendant le traitement ; votre mot de passe temporaire apparaîtra automatiquement ici dès qu’il sera prêt.",
-      request_id: existing.id,
-      request_token: existing.delivery_token
+    return res.json({
+      mode: "contact_admin",
+      message: "Aucune question secrète n’est enregistrée pour ce compte. Contactez l’administrateur sur WhatsApp pour récupérer votre accès."
     });
   } catch (error) {
     console.error("forgot-password PostgreSQL:", error);
-    res.status(500).json({ error: "Impossible d'enregistrer la demande de récupération." });
+    res.status(500).json({ error: "Impossible d’enregistrer la récupération." });
   }
 });
 
