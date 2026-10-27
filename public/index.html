@@ -6712,11 +6712,10 @@ document.addEventListener("keydown",function(event){
         '<h2 style="margin-top:5px">Historique des pronostics</h2>'+
         '<p style="opacity:.75">Retrouve tes pronostics validés ou non validés dans l’historique ici.</p>'+
         '<div id="batbotAiPredictionHistory"><p>Chargement…</p></div>'+
-        '<div style="margin-top:12px"><button type="button" class="btn secondary" id="batbotAiHistoryBack">← Retour au profil</button></div>';
+        '<div style="margin-top:12px"><button type="button" class="btn secondary" id="batbotAiHistoryBack">← Retour au menu Plus</button></div>';
       openModal(aiHistoryCard,'Historique des pronostics');
       document.getElementById('batbotAiHistoryBack')?.addEventListener('click',()=>{
         closeModal();
-        openMemberProfile();
       });
       if(aiHistoryRefreshTimer)clearInterval(aiHistoryRefreshTimer);
       loadAiPredictionHistory();
@@ -6735,14 +6734,9 @@ document.addEventListener("keydown",function(event){
         '<h2>Mon profil</h2>'+
         '<p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p>'+
         '<p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p>'+
-        '<p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>'+
-        '<hr><div style="display:flex;align-items:center;gap:12px;padding:14px 0">'+
-          '<div style="display:grid;place-items:center;flex:0 0 44px;height:44px;border-radius:13px;background:rgba(56,189,248,.12);color:#7DD3FC;font-size:22px">🎟️</div>'+
-          '<div style="flex:1;min-width:0"><strong>Historique des pronostics</strong>'+
-          '<div style="font-size:12px;opacity:.72;margin-top:4px">Consulter mes tickets et résultats</div></div>'+
-        '</div><button type="button" class="btn secondary" id="batbotOpenAiHistory" style="width:100%">Voir mes historiques →</button>';
+        '<p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';
       openModal(profileCard,'Mon profil');
-      document.getElementById('batbotOpenAiHistory')?.addEventListener('click',openMemberHistory);
+
     }
     document.getElementById('headerProfileButton')?.addEventListener('click',openMemberProfile);
 document.getElementById('headerNotificationsButton')?.addEventListener('click',function(){
@@ -6780,6 +6774,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
 
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
+        ['Historique des pronostics','fa-solid fa-ticket','memberHistory'],
         ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
         // L'assistance reste accessible depuis l'icône dédiée sous les matchs.
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
@@ -6811,7 +6806,11 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         button.addEventListener('click',function(){
           // Garder le menu parent ouvert derrière la fenêtre enfant :
           // Retour Android ferme d'abord l'enfant, puis révèle ce menu.
-          if(item[2]==='ai'){
+          if(item[2]==='memberHistory'){
+        openMemberHistory();
+        return;
+      }
+      if(item[2]==='ai'){
             openBatBotAIFromMenu();
             return;
           }
