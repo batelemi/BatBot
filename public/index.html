@@ -6732,6 +6732,7 @@ document.addEventListener("keydown",function(event){
       profileCard.innerHTML=
         '<div class="section-kicker">Mon compte</div>'+
         '<h2>Mon profil</h2>'+
+        '<p>ID BATBOT : <strong>'+escapeHtml('BATBOT-'+String(user.id||''))+'</strong></p>'+
         '<p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p>'+
         '<p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p>'+
         '<p>Abonnement : <strong>'+(premium?'Premium actif':'Membre BATBOT PRO')+'</strong></p>';
@@ -6820,6 +6821,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
             profileCard.innerHTML=
               '<div class="section-kicker">Mon compte</div>'+
               '<h2>Mon profil</h2>'+
+        '<p>ID BATBOT : <strong>'+escapeHtml('BATBOT-'+String(user.id||''))+'</strong></p>'+
               '<p>Nom d’utilisateur : <strong>'+escapeHtml(user.username||user.name||'Non renseigné')+'</strong></p>'+
               '<p>Téléphone : <strong>'+escapeHtml(user.phone||'Non renseigné')+'</strong></p>'+
               '<p>Abonnement : <strong>'+ (premium?'Premium actif':'Membre BATBOT PRO') +'</strong></p>';
