@@ -3963,7 +3963,25 @@ function batBotLocalCompetitionLogoUrl(name){
     "2 bundesliga": "competitions/Bundesliga.svg",
     "serie a": "competitions/Serie_A.svg",
     "ligue 1": "competitions/Ligue_1.svg",
-    "ligue 1 mcdonalds": "competitions/Ligue_1.svg"
+    "ligue 1 mcdonalds": "competitions/Ligue_1.svg",
+    "indian super league": "competitions/Indian_Super_League.svg",
+    "isl": "competitions/Indian_Super_League.svg",
+    "liga 1 peru": "competitions/Liga_1_Peru.svg",
+    "peruvian liga 1": "competitions/Liga_1_Peru.svg",
+    "dfb pokal": "competitions/DFB_Pokal.svg",
+    "dfb cup": "competitions/DFB_Pokal.svg",
+    "italian serie b": "competitions/Serie_B.svg",
+    "serie b": "competitions/Serie_B.svg",
+    "liga nacional guatemala": "competitions/Liga_Nacional_Guatemala.png",
+    "guatemalan liga nacional": "competitions/Liga_Nacional_Guatemala.png",
+    "national league": "competitions/English_National_League.png",
+    "english national league": "competitions/English_National_League.png",
+    "vanarama national league": "competitions/English_National_League.png",
+    "lowland league": "competitions/Scottish_Lowland_League.svg",
+    "scottish lowland league": "competitions/Scottish_Lowland_League.svg",
+    "lowland football league": "competitions/Scottish_Lowland_League.svg",
+    "lowland league cup": "competitions/Lowland_League_Cup.png",
+    "scottish lowland league cup": "competitions/Lowland_League_Cup.png"
   };
   return map[key] ? "/football-logos/" + map[key] : "";
 }
@@ -4796,7 +4814,7 @@ function renderBatBotCompetitionEmblem(value,name,large){
       const parsed=new URL(candidate);
       if(parsed.protocol==="https:"&&parsed.hostname&&!parsed.username&&!parsed.password)src=candidate;
     }catch(_){}
-  }else if(raw && /^\/football-logos\/competitions\/[A-Za-z0-9_-]+\.svg$/.test(raw)){
+  }else if(raw && /^\/football-logos\/competitions\/[A-Za-z0-9_-]+\.(?:svg|png)$/i.test(raw)){
     src=raw;
   }
   if(!src)src=local;
