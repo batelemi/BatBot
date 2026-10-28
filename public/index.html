@@ -3967,7 +3967,7 @@ function batBotLocalCompetitionLogoUrl(name){
   };
   return map[key] ? "/football-logos/" + map[key] : "";
 }
-function renderBatBotTeamFlag(value,teamName,countryCode){
+function renderBatBotTeamFlag(value,teamName,countryCode,teamId){
   const raw=String(value||"").trim();
   const code=(String(countryCode||"").trim().toUpperCase()||footballCountryCodeForTeam(teamName));
   const countryFlag=/^[A-Z]{2}$/.test(code)
@@ -4011,9 +4011,13 @@ function renderBatBotTeamFlag(value,teamName,countryCode){
   const crestClass=countryClass||clubClass;
   const local=batBotLocalTeamLogoUrl(teamName);
   const looksLikeImage=/^(https?:)?\/\//i.test(raw)||raw.startsWith("/")
-    ||raw.startsWith("data:image/")||/\.(png|jpe?g|webp|svg|gif)([?#].*)?$/i.test(raw);
-  if(looksLikeImage){
-    const src=/^\/\//.test(raw)?"https:"+raw:raw;
+    ||raw.startsWith("data:image/");
+  const hasTeamId=/^\d{1,10}$/.test(String(teamId||"")) && Number(teamId)>0;
+  const isBareLogoFile=/^[^/\\\\?#]+\.(png|jpe?g|webp|svg|gif)$/i.test(raw);
+  if(looksLikeImage || hasTeamId){
+    const src=looksLikeImage && !isBareLogoFile
+      ? (/^\/\//.test(raw)?"https:"+raw:raw)
+      : (hasTeamId ? "/api/football/teams/"+encodeURIComponent(String(teamId))+"/logo" : "");
     return '<span class="batbot-team-crest'+crestClass+'"'+teamFallbackStyle+'><img src="'+escapeHtml(src)
       +'" alt="'+escapeHtml(teamName||"")+'" loading="lazy" referrerpolicy="no-referrer"'
       +(local?' data-local-fallback="'+escapeHtml(local)+'"':'')
@@ -4844,7 +4848,7 @@ function renderFootballFixtures(fixtures,checkedDate){
   const visibleCount=Math.min(fixtures.length,Number(window.batBotVisibleFixtureCount)||20);
   box.innerHTML=fixtures.slice(0,visibleCount).map(function(item,index){
     const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
-    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.logo_url||homeTeam.image_url||"",homeTeam.name,homeTeam.country_code||homeTeam.countryCode||homeTeam.country),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.logo_url||awayTeam.image_url||"",awayTeam.name,awayTeam.country_code||awayTeam.countryCode||awayTeam.country);
+    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.logo_url||homeTeam.image_url||"",homeTeam.name,homeTeam.country_code||homeTeam.countryCode||homeTeam.country,homeTeam.id),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.logo_url||awayTeam.image_url||"",awayTeam.name,awayTeam.country_code||awayTeam.countryCode||awayTeam.country,awayTeam.id);
     const competitionEmblem=renderBatBotCompetitionEmblem(league.emblem||league.logo||league.image||league.logo_url||league.logoUrl,league.name);
     const date=formatFootballDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateFootballStatus(f.status?.long||f.status?.short||"Programmé"),score=footballFixtureScore(item);
     let action="";
@@ -4891,7 +4895,7 @@ function renderBatBotLeagueFixtures(fixtures){
     const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
     const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
     const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">🎯 Recevoir mon prono</button>';
-    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",home,homeTeam.country_code||homeTeam.countryCode),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",away,awayTeam.country_code||awayTeam.countryCode);
+    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",home,homeTeam.country_code||homeTeam.countryCode,homeTeam.id),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",away,awayTeam.country_code||awayTeam.countryCode,awayTeam.id);
     return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
   list.innerHTML='<button type="button" class="btn secondary" id="batbotLeagueBack">← Tous les championnats</button><div class="batbot-league-group-title">'+(renderBatBotCompetitionEmblem(group.logo,group.name,true)||'🏆')+' <span>'+escapeHtml(group.name)+'</span></div>'+rows;

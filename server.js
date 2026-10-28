@@ -2841,6 +2841,103 @@ app.get("/api/football/status", requireUser, async (_req, res) => {
   });
 });
 
+
+// Logos SportAPI.ai : proxy authentifié, sans exposer la clé au navigateur.
+const sportApiTeamLogoCache = new Map();
+const SPORTAPI_TEAM_LOGO_TTL = 6 * 60 * 60 * 1000;
+
+app.get("/api/football/teams/:teamId/logo", requireUser, async (req, res) => {
+  const teamId = String(req.params.teamId || "");
+
+  if (!/^\d{1,10}$/.test(teamId) || Number(teamId) < 1) {
+    return res.status(400).json({ ok: false, error: "Identifiant de club invalide." });
+  }
+
+  const now = Date.now();
+  const cached = sportApiTeamLogoCache.get(teamId);
+
+  if (cached && cached.expiresAt > now) {
+    res.set("Content-Type", cached.contentType);
+    res.set("Cache-Control", "private, max-age=21600");
+    res.set("X-Content-Type-Options", "nosniff");
+    return res.status(200).send(cached.body);
+  }
+
+  const apiKey = process.env.SPORTAPI_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ ok: false, error: "Service de logos indisponible." });
+  }
+
+  try {
+    const upstream = await fetch(
+      `https://sportapi.ai/api/teams/${teamId}/logo`,
+      {
+        headers: {
+          "X-Api-Key": apiKey,
+          "Accept": "image/png,image/svg+xml,image/webp,image/jpeg"
+        },
+        signal: AbortSignal.timeout(15000)
+      }
+    );
+
+    if (!upstream.ok) {
+      return res.status(upstream.status === 404 ? 404 : 502).json({
+        ok: false,
+        error: "Logo indisponible auprès de SportAPI.ai."
+      });
+    }
+
+    const contentType = String(upstream.headers.get("content-type") || "")
+      .split(";")[0].trim().toLowerCase();
+
+    const allowedTypes = new Set([
+      "image/png",
+      "image/svg+xml",
+      "image/webp",
+      "image/jpeg"
+    ]);
+
+    if (!allowedTypes.has(contentType)) {
+      return res.status(502).json({
+        ok: false,
+        error: "Format de logo non pris en charge."
+      });
+    }
+
+    const body = Buffer.from(await upstream.arrayBuffer());
+
+    if (!body.length || body.length > 2 * 1024 * 1024) {
+      return res.status(502).json({
+        ok: false,
+        error: "Taille de logo invalide."
+      });
+    }
+
+    // Évite une croissance illimitée du cache en mémoire.
+    if (sportApiTeamLogoCache.size >= 500) {
+      const firstKey = sportApiTeamLogoCache.keys().next().value;
+      if (firstKey !== undefined) sportApiTeamLogoCache.delete(firstKey);
+    }
+
+    sportApiTeamLogoCache.set(teamId, {
+      body,
+      contentType,
+      expiresAt: Date.now() + SPORTAPI_TEAM_LOGO_TTL
+    });
+
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "private, max-age=21600");
+    res.set("X-Content-Type-Options", "nosniff");
+    return res.status(200).send(body);
+  } catch (error) {
+    console.error("Logo SportAPI.ai indisponible:", error.message);
+    return res.status(502).json({
+      ok: false,
+      error: "Impossible de récupérer le logo du club."
+    });
+  }
+});
+
 // Toujours revalider la page et le service worker pour éviter une ancienne interface.
 app.get("/", (_req, res) => {
   res.set("Cache-Control", "no-cache, no-store, must-revalidate");
