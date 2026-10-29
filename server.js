@@ -3340,7 +3340,7 @@ app.get("/api/affiliate/me", requireUser, async (req, res) => {
       [req.session.userId]
     );
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const baseUrl = "https://batbot.pro";
     res.json({
       referral_code: profile.referral_code,
       referral_link: `${baseUrl}/?ref=${encodeURIComponent(profile.referral_code)}`,

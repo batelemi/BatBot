@@ -1890,6 +1890,8 @@ button.batbot-predict-btn *,
       <button class="eye" type="button" onclick="togglePassword('registerPassword2',this)">👁</button>
     </div>
 
+    <label for="registerReferralCode" class="muted">Code de parrainage (facultatif)</label>
+    <input id="registerReferralCode" type="text" autocomplete="off" autocapitalize="characters" maxlength="64" placeholder="Saisir le code du parrain si tu en as un">
     <label for="registerSecurityQuestion" class="muted">Question secrète pour récupérer votre compte</label>
     <select id="registerSecurityQuestion" autocomplete="off">
       <option value="">Choisir une question secrète</option>
@@ -2893,15 +2895,18 @@ async function register(){
   const password2=document.getElementById("registerPassword2").value;
   const securityQuestion=document.getElementById("registerSecurityQuestion").value;
   const securityAnswer=document.getElementById("registerSecurityAnswer").value.trim();
-  const referralCode=(function(){
-    try{
-      return String(new URLSearchParams(window.location.search).get("ref")||"")
-        .trim()
-        .toUpperCase();
-    }catch(_){
+  const referralInput=document.getElementById("registerReferralCode");
+  const referralFromUrl=(function(){
+    try {
+      return String(new URLSearchParams(window.location.search).get("ref")||"").trim().toUpperCase();
+    } catch(_) {
       return "";
     }
   })();
+  if(referralInput && !referralInput.value.trim() && referralFromUrl) {
+    referralInput.value=referralFromUrl;
+  }
+  const referralCode=String((referralInput && referralInput.value)||"").trim().toUpperCase();
 
   if(!username||!password||!password2||!securityQuestion||!securityAnswer)
     return showStatus("registerStatus","Remplissez tous les champs, y compris la question et la réponse secrètes.","error");
@@ -7191,7 +7196,7 @@ document.addEventListener("keydown",function(event){
           <div class="full"><label for="affiliateAccount">ID du compte BATBOT</label><input id="affiliateAccount" maxlength="64" required value="BATBOT-${safe(window.batBotCurrentUser?.id || '')}"></div>
           <div class="full"><button class="btn primary batbot-profile-save" id="affiliateSubmit" type="submit">Envoyer la demande</button></div>
           <p class="full" id="affiliateMessage" role="status" aria-live="polite"></p>
-          <p class="full">Ne communique jamais ton code PIN Mobile Money. Traitement annoncé : 1 à 72 heures.</p>
+          <p class="full">Traitement annoncé : 1 à 72 heures.</p>
         </form>
       </details>
       <details class="batbot-profile-section">
