@@ -296,6 +296,9 @@ app.post("/api/register", async (req, res) => {
   const password = String(req.body.password || "");
   const securityQuestion = String(req.body.security_question || "");
   const securityAnswer = normalizeSecurityAnswer(req.body.security_answer);
+  const referralCode = String(req.body.referral_code || "")
+    .trim()
+    .toUpperCase();
 
   if (!username || password.length < 6) {
     return res.status(400).json({
@@ -306,37 +309,104 @@ app.post("/api/register", async (req, res) => {
     return res.status(400).json({ error: "Choisissez une question secrète valide." });
   }
   if (securityAnswer.length < 2 || securityAnswer.length > 100) {
-    return res.status(400).json({ error: "La réponse secrète doit contenir entre 2 et 100 caractères." });
+    return res.status(400).json({
+      error: "La réponse secrète doit contenir entre 2 et 100 caractères."
+    });
   }
 
+  const client = await pool.connect();
   try {
-    const result = await pgQuery(
-      `INSERT INTO users(username,phone,password_hash,security_question,security_answer_hash)
-       VALUES($1,$2,$3,$4,$5) RETURNING id`,
-      [username, "", bcrypt.hashSync(password, 12), securityQuestion, bcrypt.hashSync(securityAnswer, 12)]
+    await client.query("BEGIN");
+
+    let referrerId = null;
+    if (referralCode) {
+      const referrer = await client.query(
+        `SELECT user_id FROM affiliate_profiles
+         WHERE referral_code = $1`,
+        [referralCode]
+      );
+
+      if (referrer.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          error: "Ce code de parrainage est invalide."
+        });
+      }
+      referrerId = Number(referrer.rows[0].user_id);
+    }
+
+    const result = await client.query(
+      `INSERT INTO users(
+         username, phone, password_hash, security_question, security_answer_hash
+       )
+       VALUES($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [
+        username,
+        "",
+        bcrypt.hashSync(password, 12),
+        securityQuestion,
+        bcrypt.hashSync(securityAnswer, 12)
+      ]
     );
+
+    const userId = Number(result.rows[0].id);
+    let profileCreated = false;
+
+    for (let attempt = 0; attempt < 8 && !profileCreated; attempt++) {
+      const ownReferralCode =
+        "BAT" + crypto.randomBytes(6).toString("hex").toUpperCase();
+
+      try {
+        const profile = await client.query(
+          `INSERT INTO affiliate_profiles(
+             user_id, referral_code, referred_by_user_id
+           )
+           VALUES($1, $2, $3)
+           ON CONFLICT DO NOTHING
+           RETURNING user_id`,
+          [userId, ownReferralCode, referrerId]
+        );
+
+        profileCreated = profile.rowCount === 1;
+      } catch (error) {
+        if (error.code !== "23505") throw error;
+      }
+    }
+
+    if (!profileCreated) {
+      throw new Error("Impossible de créer le profil de parrainage du nouveau compte.");
+    }
+
+    await client.query("COMMIT");
 
     const user = await pgGet(
       "SELECT * FROM users WHERE id=$1",
-      [result.rows[0].id]
+      [userId]
     );
 
-    req.session.userId = Number(user.id);
-
+    req.session.userId = userId;
     res.status(201).json({
       message: "Compte créé avec succès.",
       user: userView(user)
     });
   } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {}
+
     if (error && error.code === "23505") {
-      return res.status(409).json({ error: "Ce nom d'utilisateur existe déjà." });
+      return res.status(409).json({
+        error: "Ce nom d'utilisateur existe déjà."
+      });
     }
 
     console.error("register PostgreSQL:", error);
     res.status(500).json({ error: "Impossible de créer le compte." });
+  } finally {
+    client.release();
   }
 });
-
 app.post("/api/login", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
@@ -1153,6 +1223,15 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
         [now.toISOString(), until, request.user_id]
       );
 
+      // Enregistre le paiement et sa commission dans la même transaction.
+      await recordAffiliateConfirmedPayment(
+        client,
+        request,
+        offer,
+        amount,
+        now.toISOString()
+      );
+
       if (/ia/i.test(request.offer)) {
         await client.query(
           "UPDATE users SET ai_started_at=$1, ai_until=$2 WHERE id=$3",
@@ -1183,6 +1262,278 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
     res.status(409).json({
       error: error.message || "Demande déjà traitée."
     });
+  } finally {
+    client.release();
+  }
+});
+
+
+// Demande de retrait : réservation atomique des commissions disponibles.
+app.post("/api/affiliate/withdrawals", requireUser, async (req, res) => {
+  const commissionType = String(req.body.commission_type || "");
+  const paymentMethod = String(req.body.payment_method || "");
+  const paymentNumber = String(req.body.payment_number || "").trim();
+  const accountId = String(req.body.batbot_account_id || "").trim();
+  const amount = Number(req.body.amount);
+  const allowedTypes = ["first_purchase_20", "renewal_10"];
+  const allowedMethods = ["Wave", "Orange Money", "MTN Money", "Moov Money"];
+
+  if (
+    !allowedTypes.includes(commissionType) ||
+    !allowedMethods.includes(paymentMethod) ||
+    !Number.isSafeInteger(amount) ||
+    amount < 3000 ||
+    !/^[0-9+() .-]{8,24}$/.test(paymentNumber) ||
+    !/^[A-Za-z0-9_-]{1,64}$/.test(accountId)
+  ) {
+    return res.status(400).json({
+      error: "Informations de retrait invalides. Minimum : 3 000 FCFA."
+    });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const profile = await client.query(
+      "SELECT user_id FROM affiliate_profiles WHERE user_id=$1 FOR UPDATE",
+      [req.session.userId]
+    );
+    if (profile.rowCount !== 1) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Profil de parrainage introuvable." });
+    }
+
+    const commissions = await client.query(
+      `SELECT id, commission_amount
+         FROM affiliate_commissions
+        WHERE affiliate_user_id=$1
+          AND commission_type=$2
+          AND status='available'
+        ORDER BY created_at, id
+        FOR UPDATE`,
+      [req.session.userId, commissionType]
+    );
+
+    let selected = [];
+    let total = 0;
+    for (const row of commissions.rows) {
+      if (total + Number(row.commission_amount) > amount) continue;
+      selected.push(row);
+      total += Number(row.commission_amount);
+      if (total === amount) break;
+    }
+
+    if (total !== amount) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: "Le solde disponible ne permet pas ce retrait exact."
+      });
+    }
+
+    const withdrawal = await client.query(
+      `INSERT INTO affiliate_withdrawals
+         (affiliate_user_id, commission_type, amount, payment_method,
+          payment_number, batbot_account_id, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+       RETURNING id, amount, commission_type, payment_method, status, created_at`,
+      [req.session.userId, commissionType, amount, paymentMethod, paymentNumber, accountId]
+    );
+
+    for (const row of selected) {
+      const reserved = await client.query(
+        `UPDATE affiliate_commissions
+            SET status='reserved'
+          WHERE id=$1 AND status='available'`,
+        [row.id]
+      );
+      if (reserved.rowCount !== 1) {
+        throw new Error("Une commission n'est plus disponible.");
+      }
+
+      await client.query(
+        `INSERT INTO affiliate_withdrawal_commissions
+           (withdrawal_id, commission_id, amount)
+         VALUES ($1, $2, $3)`,
+        [withdrawal.rows[0].id, row.id, row.commission_amount]
+      );
+    }
+
+    await client.query("COMMIT");
+    res.status(201).json({ withdrawal: withdrawal.rows[0] });
+  } catch (error) {
+    try { await client.query("ROLLBACK"); } catch (_) {}
+    console.error("BATBOT AFFILIATE WITHDRAWAL:", error.message);
+    res.status(500).json({ error: "Impossible d'enregistrer la demande de retrait." });
+  } finally {
+    client.release();
+  }
+});
+
+// Historique des retraits du membre connecté.
+app.get("/api/affiliate/withdrawals/mine", requireUser, async (req, res) => {
+  try {
+    const withdrawals = await pgAll(
+      `SELECT id, commission_type, amount, payment_method, status,
+              admin_note, payment_reference, created_at, resolved_at, paid_at
+         FROM affiliate_withdrawals
+        WHERE affiliate_user_id=$1
+        ORDER BY created_at DESC
+        LIMIT 100`,
+      [req.session.userId]
+    );
+    res.json({ withdrawals });
+  } catch (error) {
+    console.error("BATBOT AFFILIATE WITHDRAWALS:", error.message);
+    res.status(500).json({ error: "Impossible de charger les retraits." });
+  }
+});
+
+// Administration : liste des demandes, sans exposer les profils complets.
+app.get("/api/admin/affiliate/withdrawals", requireAdmin, async (req, res) => {
+  try {
+    const withdrawals = await pgAll(
+      `SELECT w.id, w.affiliate_user_id, u.username,
+              w.commission_type, w.amount, w.payment_method,
+              w.payment_number, w.batbot_account_id, w.status,
+              w.admin_note, w.payment_reference, w.created_at
+         FROM affiliate_withdrawals w
+         JOIN users u ON u.id=w.affiliate_user_id
+        ORDER BY CASE WHEN w.status IN ('pending','verifying','approved') THEN 0 ELSE 1 END,
+                 w.created_at ASC
+        LIMIT 300`
+    );
+    res.json({ withdrawals });
+  } catch (error) {
+    console.error("BATBOT ADMIN AFFILIATE WITHDRAWALS:", error.message);
+    res.status(500).json({ error: "Impossible de charger les demandes." });
+  }
+});
+
+// Administration : transitions de statut et paiement idempotent.
+app.patch("/api/admin/affiliate/withdrawals/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const status = String(req.body.status || "");
+  const note = String(req.body.admin_note || "").trim().slice(0, 1000);
+  const reference = String(req.body.payment_reference || "").trim().slice(0, 200);
+  const allowedStatuses = ["verifying", "approved", "paid", "rejected"];
+
+  if (!Number.isSafeInteger(id) || id <= 0 || !allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: "Demande ou statut invalide." });
+  }
+  if (status === "paid" && !reference) {
+    return res.status(400).json({ error: "La référence du paiement est obligatoire." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const found = await client.query(
+      "SELECT * FROM affiliate_withdrawals WHERE id=$1 FOR UPDATE",
+      [id]
+    );
+    const withdrawal = found.rows[0];
+
+    if (!withdrawal) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Demande de retrait introuvable." });
+    }
+    if (["paid", "rejected"].includes(withdrawal.status)) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Cette demande est déjà terminée." });
+    }
+
+    // Un paiement réel n'est autorisé qu'après approbation explicite.
+    if (status === "paid" && withdrawal.status !== "approved") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        error: "La demande doit être approuvée avant d'être marquée comme payée."
+      });
+    }
+
+    const allowedTransitions = {
+      pending: ["verifying", "approved", "rejected"],
+      verifying: ["verifying", "approved", "rejected"],
+      approved: ["approved", "paid", "rejected"]
+    };
+
+    if (!(allowedTransitions[withdrawal.status] || []).includes(status)) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        error: "Transition de statut non autorisée."
+      });
+    }
+
+    if (status === "rejected") {
+      const linked = await client.query(
+        `SELECT commission_id FROM affiliate_withdrawal_commissions
+          WHERE withdrawal_id=$1 AND released_at IS NULL
+          FOR UPDATE`,
+        [id]
+      );
+      for (const row of linked.rows) {
+        await client.query(
+          `UPDATE affiliate_commissions SET status='available'
+            WHERE id=$1 AND status='reserved'`,
+          [row.commission_id]
+        );
+      }
+      await client.query(
+        `UPDATE affiliate_withdrawal_commissions
+            SET released_at=CURRENT_TIMESTAMP
+          WHERE withdrawal_id=$1 AND released_at IS NULL`,
+        [id]
+      );
+    }
+
+    if (status === "paid") {
+      const linked = await client.query(
+        `SELECT wc.commission_id, wc.amount, c.status
+           FROM affiliate_withdrawal_commissions wc
+           JOIN affiliate_commissions c ON c.id=wc.commission_id
+          WHERE wc.withdrawal_id=$1 AND wc.released_at IS NULL
+          FOR UPDATE OF c`,
+        [id]
+      );
+      if (!linked.rowCount || linked.rows.some(row => row.status !== "reserved")) {
+        throw new Error("Les commissions réservées ne correspondent plus à cette demande.");
+      }
+      const total = linked.rows.reduce((sum, row) => sum + Number(row.amount), 0);
+      if (total !== Number(withdrawal.amount)) {
+        throw new Error("Le total réservé ne correspond pas au montant demandé.");
+      }
+
+      for (const row of linked.rows) {
+        const paid = await client.query(
+          `UPDATE affiliate_commissions SET status='paid', paid_at=CURRENT_TIMESTAMP
+            WHERE id=$1 AND status='reserved'`,
+          [row.commission_id]
+        );
+        if (paid.rowCount !== 1) {
+          throw new Error("Une commission a déjà été traitée.");
+        }
+      }
+    }
+
+    const updated = await client.query(
+      `UPDATE affiliate_withdrawals
+          SET status=$1, admin_note=$2, payment_reference=$3,
+              resolved_at=CURRENT_TIMESTAMP,
+              paid_at=CASE WHEN $1='paid' THEN CURRENT_TIMESTAMP ELSE paid_at END
+        WHERE id=$4 AND status NOT IN ('paid','rejected')
+        RETURNING id, status, amount, resolved_at, paid_at`,
+      [status, note, status === "paid" ? reference : withdrawal.payment_reference, id]
+    );
+    if (updated.rowCount !== 1) {
+      throw new Error("La demande a été traitée entre-temps.");
+    }
+
+    await client.query("COMMIT");
+    res.json({ withdrawal: updated.rows[0] });
+  } catch (error) {
+    try { await client.query("ROLLBACK"); } catch (_) {}
+    console.error("BATBOT ADMIN AFFILIATE WITHDRAWAL UPDATE:", error.message);
+    res.status(409).json({ error: error.message || "Impossible de traiter ce retrait." });
   } finally {
     client.release();
   }
@@ -2957,9 +3308,323 @@ app.use(express.static(path.join(__dirname, "public"), {
   }
 }));
 
+
+
+
+
+// API membre : informations et soldes du programme de parrainage.
+app.get("/api/affiliate/me", requireUser, async (req, res) => {
+  try {
+    const profile = await pgGet(
+      `SELECT referral_code, qualification_window_started_at,
+              renewal_eligible_until
+         FROM affiliate_profiles
+        WHERE user_id = $1`,
+      [req.session.userId]
+    );
+
+    if (!profile) {
+      return res.status(404).json({
+        error: "Profil de parrainage indisponible."
+      });
+    }
+
+    const balances = await pgAll(
+      `SELECT commission_type, COALESCE(SUM(commission_amount), 0)::int AS earned,
+              COALESCE(SUM(commission_amount) FILTER (WHERE status = 'available'), 0)::int AS available,
+              COALESCE(SUM(commission_amount) FILTER (WHERE status = 'reserved'), 0)::int AS reserved,
+              COALESCE(SUM(commission_amount) FILTER (WHERE status = 'paid'), 0)::int AS paid
+         FROM affiliate_commissions
+        WHERE affiliate_user_id = $1
+        GROUP BY commission_type`,
+      [req.session.userId]
+    );
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    res.json({
+      referral_code: profile.referral_code,
+      referral_link: `${baseUrl}/?ref=${encodeURIComponent(profile.referral_code)}`,
+      qualification_window_started_at: profile.qualification_window_started_at,
+      renewal_eligible_until: profile.renewal_eligible_until,
+      withdrawal_minimum: 3000,
+      balances
+    });
+  } catch (error) {
+    console.error("BATBOT AFFILIATE PROFILE:", error.message);
+    res.status(500).json({
+      error: "Impossible de charger les informations de parrainage."
+    });
+  }
+});
+
+// API membre : liste limitée aux filleuls directs du compte connecté.
+app.get("/api/affiliate/referrals", requireUser, async (req, res) => {
+  try {
+    const referrals = await pgAll(
+      `SELECT u.id,
+              u.username,
+              ap.created_at AS joined_at,
+              EXISTS (
+                SELECT 1
+                  FROM affiliate_payment_events e
+                 WHERE e.user_id = u.id
+              ) AS has_confirmed_payment,
+              (
+                SELECT COUNT(*)::int
+                  FROM affiliate_commissions c
+                 WHERE c.referred_user_id = u.id
+                   AND c.affiliate_user_id = $1
+                   AND c.commission_type = 'first_purchase_20'
+              ) AS first_commission_recorded
+         FROM affiliate_profiles ap
+         JOIN users u ON u.id = ap.user_id
+        WHERE ap.referred_by_user_id = $1
+        ORDER BY ap.created_at DESC
+        LIMIT 200`,
+      [req.session.userId]
+    );
+
+    res.json({ referrals });
+  } catch (error) {
+    console.error("BATBOT AFFILIATE REFERRALS:", error.message);
+    res.status(500).json({
+      error: "Impossible de charger la liste des filleuls."
+    });
+  }
+});
+
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
+async function recordAffiliateConfirmedPayment(client, request, offer, amount, confirmedAt) {
+  const payment = await client.query(
+    `INSERT INTO affiliate_payment_events
+       (payment_request_id, user_id, offer, amount, confirmed_at)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (payment_request_id) DO NOTHING
+     RETURNING id`,
+    [request.id, request.user_id, offer, amount, confirmedAt]
+  );
+
+  if (payment.rowCount !== 1) {
+    throw new Error("Ce paiement possède déjà un événement d'affiliation.");
+  }
+
+  const paymentEventId = payment.rows[0].id;
+
+  const referral = await client.query(
+    `SELECT referred_by_user_id
+       FROM affiliate_profiles
+      WHERE user_id = $1
+      FOR UPDATE`,
+    [request.user_id]
+  );
+
+  const affiliateUserId = referral.rows[0]?.referred_by_user_id;
+  if (!affiliateUserId) {
+    return { paymentEventId, commissionType: null, commissionAmount: 0 };
+  }
+
+  // Verrouille le profil du parrain pour traiter ses qualifications en série.
+  const affiliateResult = await client.query(
+    `SELECT qualification_window_started_at, renewal_eligible_until
+       FROM affiliate_profiles
+      WHERE user_id = $1
+      FOR UPDATE`,
+    [affiliateUserId]
+  );
+
+  if (affiliateResult.rowCount !== 1) {
+    throw new Error("Profil de parrain introuvable.");
+  }
+
+  const affiliateProfile = affiliateResult.rows[0];
+  const paidAt = new Date(confirmedAt);
+  let windowStart = affiliateProfile.qualification_window_started_at
+    ? new Date(affiliateProfile.qualification_window_started_at)
+    : null;
+
+  // Une fenêtre de qualification dure 72 heures.
+  if (!windowStart || paidAt.getTime() > windowStart.getTime() + 72 * 60 * 60 * 1000) {
+    windowStart = paidAt;
+    await client.query(
+      `UPDATE affiliate_profiles
+          SET qualification_window_started_at = $2
+        WHERE user_id = $1`,
+      [affiliateUserId, paidAt]
+    );
+  }
+
+  const qualifiedReferrals = await client.query(
+    `SELECT COUNT(DISTINCT e.user_id)::int AS total
+       FROM affiliate_payment_events e
+       JOIN affiliate_profiles referred_profile
+         ON referred_profile.user_id = e.user_id
+      WHERE referred_profile.referred_by_user_id = $1
+        AND e.confirmed_at >= $2
+        AND e.confirmed_at <= ($2::timestamptz + INTERVAL '72 hours')`,
+    [affiliateUserId, windowStart]
+  );
+
+  const eligibleUntil = affiliateProfile.renewal_eligible_until
+    ? new Date(affiliateProfile.renewal_eligible_until)
+    : null;
+
+  // La qualification est accordée ou renouvelée uniquement si elle est expirée.
+  if (
+    qualifiedReferrals.rows[0].total >= 10 &&
+    (!eligibleUntil || eligibleUntil <= paidAt)
+  ) {
+    await client.query(
+      `UPDATE affiliate_profiles
+          SET renewal_eligible_until = $2::timestamptz + INTERVAL '30 days'
+        WHERE user_id = $1`,
+      [affiliateUserId, paidAt]
+    );
+  }
+
+  const previousFirstPurchase = await client.query(
+    `SELECT id
+       FROM affiliate_commissions
+      WHERE referred_user_id = $1
+        AND commission_type = 'first_purchase_20'
+      LIMIT 1`,
+    [request.user_id]
+  );
+
+  let commissionType = null;
+  let commissionRate = 0;
+
+  if (previousFirstPurchase.rowCount === 0) {
+    commissionType = "first_purchase_20";
+    commissionRate = 0.20;
+  } else {
+    const currentEligibility = await client.query(
+      `SELECT renewal_eligible_until
+         FROM affiliate_profiles
+        WHERE user_id = $1`,
+      [affiliateUserId]
+    );
+
+    const currentEligibleUntil = currentEligibility.rows[0]?.renewal_eligible_until;
+    if (currentEligibleUntil && new Date(currentEligibleUntil) > paidAt) {
+      commissionType = "renewal_10";
+      commissionRate = 0.10;
+    }
+  }
+
+  if (!commissionType) {
+    return { paymentEventId, commissionType: null, commissionAmount: 0 };
+  }
+
+  const commissionAmount = Math.round(Number(amount) * commissionRate);
+  if (!Number.isInteger(commissionAmount) || commissionAmount <= 0) {
+    throw new Error("Montant de commission invalide.");
+  }
+
+  const commission = await client.query(
+    `INSERT INTO affiliate_commissions
+       (affiliate_user_id, referred_user_id, payment_event_id,
+        commission_type, offer, payment_amount, commission_rate,
+        commission_amount, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'available')
+     ON CONFLICT DO NOTHING
+     RETURNING id`,
+    [
+      affiliateUserId,
+      request.user_id,
+      paymentEventId,
+      commissionType,
+      offer,
+      amount,
+      commissionRate,
+      commissionAmount
+    ]
+  );
+
+  if (commission.rowCount !== 1) {
+    throw new Error("La commission existe déjà ou n'a pas pu être enregistrée.");
+  }
+
+  return { paymentEventId, commissionType, commissionAmount };
+}
+
+async function initializeAffiliateSchema() {
+  const fs = require("fs");
+  const schemaPath = path.join(__dirname, "database", "affiliation-schema.sql");
+  const schema = fs.readFileSync(schemaPath, "utf8");
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    await client.query(schema);
+
+    const users = await client.query(`
+      SELECT u.id
+      FROM users u
+      LEFT JOIN affiliate_profiles a ON a.user_id = u.id
+      WHERE a.user_id IS NULL
+      ORDER BY u.id
+      FOR UPDATE OF u
+    `);
+
+    let createdCount = 0;
+
+    for (const user of users.rows) {
+      let created = false;
+
+      for (let attempt = 0; attempt < 8 && !created; attempt++) {
+        const referralCode =
+          "BAT" + crypto.randomBytes(6).toString("hex").toUpperCase();
+
+        try {
+          const result = await client.query(
+            `INSERT INTO affiliate_profiles(user_id, referral_code)
+             VALUES($1, $2)
+             ON CONFLICT DO NOTHING
+             RETURNING user_id`,
+            [user.id, referralCode]
+          );
+
+          if (result.rowCount === 1) {
+            created = true;
+            createdCount++;
+          } else {
+            const existing = await client.query(
+              "SELECT user_id FROM affiliate_profiles WHERE user_id=$1",
+              [user.id]
+            );
+
+            if (existing.rowCount === 1) {
+              created = true;
+            }
+          }
+        } catch (error) {
+          if (error.code !== "23505") throw error;
+        }
+      }
+
+      if (!created) {
+        throw new Error(
+          `Impossible de créer le code de parrainage du compte ${user.id}.`
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    console.log(
+      `BatBot : affiliation initialisée ; ${createdCount} profil(s) créé(s).`
+    );
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {}
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 let server;
 
@@ -2971,6 +3636,7 @@ async function startServer() {
     await initializeBookmakers();
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();
+    await initializeAffiliateSchema();
 
     server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`BatBot démarré sur le port ${PORT}`);

@@ -2537,7 +2537,15 @@ PSG vs Marseille"></textarea>
       <div id="adminDailyMatches"></div>
     </div>
 
-  </div>
+
+    <div class="card" id="affiliateAdminCard">
+      <h2>🤝 Gestion des parrainages</h2>
+      <p class="muted">Consultez les affiliés, les commissions et les demandes de retrait.</p>
+      <div id="affiliateAdminStatus" class="status">La gestion des parrainages sera connectée aux fonctions sécurisées du serveur lors de l’étape suivante.</div>
+      <div id="affiliateAdminList"></div>
+    </div>
+
+</div>
 </section>
 
 
@@ -2854,6 +2862,15 @@ async function register(){
   const password2=document.getElementById("registerPassword2").value;
   const securityQuestion=document.getElementById("registerSecurityQuestion").value;
   const securityAnswer=document.getElementById("registerSecurityAnswer").value.trim();
+  const referralCode=(function(){
+    try{
+      return String(new URLSearchParams(window.location.search).get("ref")||"")
+        .trim()
+        .toUpperCase();
+    }catch(_){
+      return "";
+    }
+  })();
 
   if(!username||!password||!password2||!securityQuestion||!securityAnswer)
     return showStatus("registerStatus","Remplissez tous les champs, y compris la question et la réponse secrètes.","error");
@@ -2877,7 +2894,7 @@ async function register(){
       method:"POST",
       headers:{"Content-Type":"application/json","Accept":"application/json"},
       credentials:"same-origin",
-      body:JSON.stringify({username,password,name:username,security_question:securityQuestion,security_answer:securityAnswer})
+      body:JSON.stringify({username,password,name:username,security_question:securityQuestion,security_answer:securityAnswer,referral_code:referralCode})
     });
 
     const data=await readApiResponse(response);
@@ -5979,6 +5996,7 @@ async function loadAdmin(){
         }).join("")||'<p class="muted">Aucune demande en attente.</p>';
     }
 
+    await loadAdminAffiliateWithdrawals();
     await loadAdminBookmakers();
     await loadAdminCoupons();
     await loadAdminDailyMatches();
@@ -5986,6 +6004,129 @@ async function loadAdmin(){
   }catch(error){
     console.error("ADMIN:",error);
     document.getElementById("adminStats").textContent="Impossible de contacter le serveur.";
+  }
+}
+
+
+async function loadAdminAffiliateWithdrawals(){
+  const box=document.getElementById("affiliateAdminList");
+  const status=document.getElementById("affiliateAdminStatus");
+  if(!box || !status)return;
+
+  status.textContent="Chargement des demandes de parrainage…";
+  try{
+    const response=await fetch("/api/admin/affiliate/withdrawals",{
+      credentials:"same-origin",cache:"no-store"
+    });
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Chargement impossible.");
+
+    const withdrawals=Array.isArray(data.withdrawals)?data.withdrawals:[];
+    status.textContent="Demandes de retrait : "+withdrawals.length;
+
+    if(!withdrawals.length){
+      box.innerHTML='<p class="muted">Aucune demande de retrait pour le moment.</p>';
+      return;
+    }
+
+    const labels={
+      pending:"En attente",
+      verifying:"En vérification",
+      approved:"Approuvée",
+      paid:"Payée",
+      rejected:"Rejetée"
+    };
+
+    box.innerHTML=withdrawals.map(function(w){
+      const id=Number(w.id);
+      if(!Number.isSafeInteger(id)||id<=0)return "";
+      const current=String(w.status||"pending");
+      const options={
+        pending:["verifying","approved","rejected"],
+        verifying:["verifying","approved","rejected"],
+        approved:["approved","paid","rejected"]
+      }[current]||[];
+
+      const statusLabel=labels[current]||current;
+      const controls=["pending","verifying","approved"].includes(current)
+        ? '<div style="display:grid;gap:8px;margin-top:10px">'+
+          '<label for="affiliateStatus'+id+'">Action</label>'+
+          '<select id="affiliateStatus'+id+'" class="form-control">'+
+          options.map(function(v){
+            return '<option value="'+v+'"'+(v===current?' selected':'')+'>'+
+              escapeHtml(labels[v]||v)+'</option>';
+          }).join("")+'</select>'+
+          '<label for="affiliateNote'+id+'">Note administrative</label>'+
+          '<textarea id="affiliateNote'+id+'" class="form-control" maxlength="1000" placeholder="Note facultative">'+escapeHtml(w.admin_note||"")+'</textarea>'+
+          '<label for="affiliateRef'+id+'">Référence du paiement (obligatoire pour Payée)</label>'+
+          '<input id="affiliateRef'+id+'" class="form-control" maxlength="200" value="'+escapeHtml(w.payment_reference||"")+'" placeholder="Référence du transfert">'+
+          '<button type="button" class="btn green" onclick="saveAdminAffiliateWithdrawal('+id+')">Enregistrer le traitement</button>'+
+          '</div>'
+        : '<p class="muted">Cette demande est terminée.</p>';
+
+      return '<div class="card" style="margin:12px 0;padding:14px">'+
+        '<h3>Retrait #'+id+' — '+escapeHtml(w.username||"Membre")+'</h3>'+
+        '<p><strong>Montant :</strong> '+escapeHtml(w.amount??"0")+' FCFA</p>'+
+        '<p><strong>Type :</strong> '+escapeHtml(w.commission_type||"Non précisé")+'</p>'+
+        '<p><strong>Moyen de paiement :</strong> '+escapeHtml(w.payment_method||"Non précisé")+'</p>'+
+        '<p><strong>Numéro :</strong> '+escapeHtml(w.payment_number||"Non précisé")+'</p>'+
+        '<p><strong>Compte BatBot :</strong> '+escapeHtml(w.batbot_account_id||"Non précisé")+'</p>'+
+        '<p><strong>Statut :</strong> '+escapeHtml(statusLabel)+'</p>'+
+        (w.created_at?'<p><strong>Date :</strong> '+escapeHtml(formatDateTime(w.created_at))+'</p>':'')+
+        (w.payment_reference?'<p><strong>Référence :</strong> '+escapeHtml(w.payment_reference)+'</p>':'')+
+        controls+'</div>';
+    }).join("");
+
+  }catch(error){
+    console.error("ADMIN AFFILIATE:",error);
+    status.textContent="Impossible de charger les demandes de parrainage.";
+    box.innerHTML='<button type="button" class="btn secondary" onclick="loadAdminAffiliateWithdrawals()">Réessayer</button>';
+  }
+}
+
+async function saveAdminAffiliateWithdrawal(id){
+  if(!Number.isSafeInteger(Number(id))||Number(id)<=0)return;
+  const statusField=document.getElementById("affiliateStatus"+id);
+  const noteField=document.getElementById("affiliateNote"+id);
+  const refField=document.getElementById("affiliateRef"+id);
+  if(!statusField||!noteField||!refField)return;
+
+  const status=statusField.value;
+  const reference=refField.value.trim();
+
+  if(status==="paid"){
+    if(!reference){
+      showToast("La référence du paiement est obligatoire.","error");
+      return;
+    }
+    if(!confirm("Confirme-tu que le transfert réel a déjà été effectué et que tu veux marquer ce retrait comme payé ?"))return;
+  }else if(!confirm("Confirmer cette mise à jour du retrait de parrainage ?")){
+    return;
+  }
+
+  const button=statusField.parentElement.querySelector("button");
+  if(button)button.disabled=true;
+
+  try{
+    const response=await fetch("/api/admin/affiliate/withdrawals/"+Number(id),{
+      method:"PATCH",
+      credentials:"same-origin",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        status:status,
+        admin_note:noteField.value.trim(),
+        payment_reference:reference
+      })
+    });
+    const data=await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error||"Mise à jour impossible.");
+
+    showToast("Demande de parrainage mise à jour.","success");
+    await loadAdminAffiliateWithdrawals();
+  }catch(error){
+    console.error("ADMIN AFFILIATE UPDATE:",error);
+    showToast(error.message||"Impossible de traiter la demande.","error");
+    if(button)button.disabled=false;
   }
 }
 
@@ -6960,7 +7101,138 @@ document.addEventListener("keydown",function(event){
       },30000);
     }
 
-    function openMemberProfile(){
+    async function loadBatBotAffiliate(profileCard) {
+  const panel = profileCard.querySelector('#batbotAffiliatePanel');
+  if (!panel) return;
+
+  panel.innerHTML = '<p role="status">Chargement du parrainage…</p>';
+
+  try {
+    const responses = await Promise.all([
+      fetch('/api/affiliate/me', { credentials: 'same-origin' }),
+      fetch('/api/affiliate/referrals', { credentials: 'same-origin' }),
+      fetch('/api/affiliate/withdrawals/mine', { credentials: 'same-origin' })
+    ]);
+    const data = await Promise.all(responses.map(readApiResponse));
+    if (!responses[0].ok) throw new Error(data[0].error || 'Parrainage indisponible.');
+    if (!responses[1].ok) throw new Error(data[1].error || 'Chargement des filleuls impossible.');
+    if (!responses[2].ok) throw new Error(data[2].error || 'Chargement des retraits impossible.');
+
+    const me = data[0];
+    const balances = Object.fromEntries((me.balances || []).map(x => [x.commission_type, x]));
+    const first = balances.first_purchase_20 || {};
+    const renewal = balances.renewal_10 || {};
+    const money = n => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`;
+    const safe = escapeHtml;
+    const referrals = data[1].referrals || [];
+    const withdrawals = data[2].withdrawals || [];
+
+    panel.innerHTML = `
+      <div class="batbot-profile-section" style="padding:14px">
+        <h3>🎁 Mon parrainage</h3>
+        <p>Partage ton lien et gagne des commissions sur les abonnements Premium confirmés.</p>
+        <label for="affiliateCode">Mon code</label>
+        <input id="affiliateCode" readonly value="${safe(me.referral_code)}" style="width:100%;box-sizing:border-box">
+        <button type="button" class="btn secondary" id="affiliateCopyCode">Copier mon code</button>
+        <label for="affiliateLink">Mon lien</label>
+        <input id="affiliateLink" readonly value="${safe(me.referral_link)}" style="width:100%;box-sizing:border-box">
+        <button type="button" class="btn secondary" id="affiliateCopyLink">Copier mon lien</button>
+        <div class="profile-status-grid">
+          <div class="status-card"><strong>${money(first.available)}</strong><div>Disponible · 20 %</div></div>
+          <div class="status-card"><strong>${money(renewal.available)}</strong><div>Disponible · 10 %</div></div>
+          <div class="status-card"><strong>${money(first.reserved)}</strong><div>Réservé · 20 %</div></div>
+          <div class="status-card"><strong>${money(renewal.reserved)}</strong><div>Réservé · 10 %</div></div>
+        </div>
+        <p>Retrait minimum : ${money(me.withdrawal_minimum || 3000)} par catégorie.</p>
+        <p>Renouvellements : ${me.renewal_eligible_until ? 'éligibilité jusqu’au ' + safe(new Date(me.renewal_eligible_until).toLocaleDateString('fr-FR')) : 'éligibilité non activée'}.</p>
+      </div>
+      <details class="batbot-profile-section">
+        <summary><i class="fa-solid fa-users"></i> Mes filleuls (${referrals.length})</summary>
+        <div style="padding:12px">${referrals.length ? referrals.map(x => `<p><strong>${safe(x.username || 'Membre')}</strong><br>${x.has_confirmed_payment ? 'Paiement Premium confirmé' : 'Aucun paiement confirmé'}</p>`).join('') : '<p>Aucun filleul pour le moment.</p>'}</div>
+      </details>
+      <details class="batbot-profile-section">
+        <summary><i class="fa-solid fa-wallet"></i> Demander un retrait</summary>
+        <form id="affiliateWithdrawalForm" class="batbot-profile-fields" style="padding:12px">
+          <div class="full"><label for="affiliateType">Catégorie</label><select id="affiliateType"><option value="first_purchase_20">Commissions 20 %</option><option value="renewal_10">Commissions 10 %</option></select></div>
+          <div class="full"><label for="affiliateAmount">Montant (FCFA)</label><input id="affiliateAmount" type="number" min="3000" step="1" required></div>
+          <div class="full"><label for="affiliateMethod">Moyen de paiement</label><select id="affiliateMethod"><option>Wave</option><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option></select></div>
+          <div class="full"><label for="affiliateNumber">Numéro de réception</label><input id="affiliateNumber" type="tel" maxlength="24" required></div>
+          <div class="full"><label for="affiliateAccount">ID du compte BATBOT</label><input id="affiliateAccount" maxlength="64" required value="BATBOT-${safe(window.batBotCurrentUser?.id || '')}"></div>
+          <div class="full"><button class="btn primary batbot-profile-save" id="affiliateSubmit" type="submit">Envoyer la demande</button></div>
+          <p class="full" id="affiliateMessage" role="status" aria-live="polite"></p>
+          <p class="full">Ne communique jamais ton code PIN Mobile Money. Traitement annoncé : 1 à 72 heures.</p>
+        </form>
+      </details>
+      <details class="batbot-profile-section">
+        <summary><i class="fa-solid fa-clock-rotate-left"></i> Historique des retraits (${withdrawals.length})</summary>
+        <div style="padding:12px">${withdrawals.length ? withdrawals.map(x => `<p><strong>${money(x.amount)}</strong> · ${safe(x.payment_method)}<br>Statut : ${safe(x.status)}</p>`).join('') : '<p>Aucune demande de retrait.</p>'}</div>
+      </details>
+      <p id="affiliateLoadMessage" role="status"></p>`;
+
+    async function copy(value) {
+      try {
+        if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+        else {
+          const input = document.createElement('textarea');
+          input.value = value;
+          document.body.appendChild(input);
+          input.select();
+          const ok = document.execCommand('copy');
+          input.remove();
+          if (!ok) throw new Error();
+        }
+        showToast('Copié avec succès.', 'success');
+      } catch (_) {
+        showToast('Copie impossible. Sélectionne le texte pour le copier.', 'error');
+      }
+    }
+    panel.querySelector('#affiliateCopyCode').addEventListener('click', () => copy(me.referral_code || ''));
+    panel.querySelector('#affiliateCopyLink').addEventListener('click', () => copy(me.referral_link || ''));
+
+    panel.querySelector('#affiliateWithdrawalForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const type = panel.querySelector('#affiliateType').value;
+      const amount = Number(panel.querySelector('#affiliateAmount').value);
+      const available = Number((type === 'first_purchase_20' ? first : renewal).available || 0);
+      const message = panel.querySelector('#affiliateMessage');
+      const submit = panel.querySelector('#affiliateSubmit');
+      if (!Number.isSafeInteger(amount) || amount < 3000 || amount > available) {
+        message.textContent = 'Montant invalide ou solde disponible insuffisant.';
+        return;
+      }
+      submit.disabled = true;
+      message.textContent = 'Envoi en cours…';
+      try {
+        const response = await fetch('/api/affiliate/withdrawals', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            commission_type: type,
+            amount,
+            payment_method: panel.querySelector('#affiliateMethod').value,
+            payment_number: panel.querySelector('#affiliateNumber').value.trim(),
+            batbot_account_id: panel.querySelector('#affiliateAccount').value.trim()
+          })
+        });
+        const result = await readApiResponse(response);
+        if (!response.ok) throw new Error(result.error || 'Demande impossible.');
+        message.textContent = result.message || 'Demande envoyée pour vérification.';
+        await loadBatBotAffiliate(profileCard);
+      } catch (error) {
+        message.textContent = error.message || 'Erreur pendant la demande.';
+      } finally {
+        const button = panel.querySelector('#affiliateSubmit');
+        if (button) button.disabled = false;
+      }
+    });
+  } catch (error) {
+    panel.innerHTML = `<p class="batbot-profile-message error">${escapeHtml(error.message || 'Chargement impossible.')}</p><button type="button" class="btn secondary" id="affiliateRetry">Réessayer</button>`;
+    panel.querySelector('#affiliateRetry')?.addEventListener('click', () => loadBatBotAffiliate(profileCard));
+  }
+}
+
+function openMemberProfile(){
       const user=window.batBotCurrentUser||{};
       const avatarId=/^avatar-(0[1-9]|10)$/.test(String(user.avatar_id||''))?user.avatar_id:'avatar-01';
       const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
@@ -7007,10 +7279,12 @@ document.addEventListener("keydown",function(event){
               <div class="full"><button type="button" class="btn secondary batbot-profile-save" id="batbotChangePassword">Mettre à jour le mot de passe</button></div>
             </div>
           </details>
+          <details class="batbot-profile-section" id="batbotAffiliateSection"><summary><i class="fa-solid fa-gift"></i> Parrainage et retraits</summary><div id="batbotAffiliatePanel" style="padding:12px"><p>Ouvre cette rubrique pour charger tes informations de parrainage.</p></div></details>
           <p id="batbotProfileMessage" class="batbot-profile-message" role="status" aria-live="polite"></p>
           <button type="button" class="btn primary batbot-profile-save" id="batbotSaveProfile"><i class="fa-solid fa-floppy-disk"></i> Enregistrer mon profil</button>
         </div>`;
       openModal(profileCard,'Mon profil');
+    loadBatBotAffiliate(profileCard);
       let selectedAvatar=avatarId;
       const message=profileCard.querySelector('#batbotProfileMessage');
       const setMessage=(text,type='')=>{message.textContent=text;message.className='batbot-profile-message '+type;};
@@ -7283,7 +7557,8 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
           [5,'Gestion des bookmakers','fa-solid fa-chart-column'],
           [6,'Gestion des coupons','fa-solid fa-gift'],
           [7,'Demandes de mot de passe','fa-solid fa-key'],
-          [8,'Probabilités du jour','fa-solid fa-chart-pie']
+          [8,'Probabilités du jour','fa-solid fa-chart-pie'],
+          [9,'Gestion des parrainages','fa-solid fa-handshake']
         ]}
       };
       const cfg=configs[key];
