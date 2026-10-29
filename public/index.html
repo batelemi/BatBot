@@ -1353,6 +1353,46 @@ button.batbot-predict-btn *,
 
 
 <style id="batbot-ticket-clean-modal">
+
+  /* BATBOT FIX — empêcher les logos des équipes de déborder du ticket */
+  #batbotTicketModal .batbot-ticket-modern .batbot-team-crest,
+  #batbotTicketModal .batbot-ticket-modern .ai-ticket-name .batbot-team-crest {
+    display: inline-flex !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    max-width: 30px !important;
+    max-height: 30px !important;
+    flex: 0 0 30px !important;
+    vertical-align: middle;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    border-radius: 50%;
+  }
+
+  #batbotTicketModal .batbot-ticket-modern .batbot-team-crest img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+  }
+
+  #batbotTicketModal .batbot-ticket-modern .batbot-team-crest-fallback {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
   #batbotTicketModal {
     padding: 12px;
     background: rgba(2, 12, 27, .94);
