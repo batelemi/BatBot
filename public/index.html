@@ -7977,7 +7977,6 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
               :"Informations insuffisantes"));
 
       const selected=getSelectedOption(match);
-      const predictedScore=getCompatibleProbableScore(match);
       const exactScore=getExactScoreOption(match);
 
       const currentHome=num(fixture?.goals?.home);
@@ -7986,8 +7985,8 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       const venue=venueName(fixture);
       const competition=fixture?.league?.name||fixture?.competition||"";
 
-      const flagHome=home?renderBatBotTeamFlag(teamFlag(homeTeam)):"";
-      const flagAway=away?renderBatBotTeamFlag(teamFlag(awayTeam)):"";
+      const flagHome=home?renderBatBotTeamFlag(teamFlag(homeTeam),home,"",homeTeam.id||homeTeam.team_id||homeTeam.teamId):"";
+      const flagAway=away?renderBatBotTeamFlag(teamFlag(awayTeam),away,"",awayTeam.id||awayTeam.team_id||awayTeam.teamId):"";
 
       html+='<div class="ai-ticket-header">'+
         '<div class="ai-ticket-name">'+
@@ -8065,18 +8064,6 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
         }
 
-        if(predictedScore){
-
-          html+='<div class="ai-ticket-section-title">'+
-            '📊 SCORE PRÉVISIONNEL'+
-          '</div>';
-
-          html+='<div class="ai-ticket-predicted-score">'+
-            escapeHtml(predictedScore)+
-          '</div>';
-
-        }
-
         if(exactScore){
 
           html+='<div class="ai-ticket-section-title">'+
@@ -8090,7 +8077,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
         }
 
-        if(!selected&&!predictedScore&&!exactScore){
+        if(!selected&&!exactScore){
 
           html+='<div class="batbot-ticket-muted">'+
             'Analyse insuffisante'+
