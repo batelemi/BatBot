@@ -355,7 +355,7 @@ app.post("/api/register", async (req, res) => {
 
     for (let attempt = 0; attempt < 8 && !profileCreated; attempt++) {
       const ownReferralCode =
-        "BAT" + crypto.randomBytes(6).toString("hex").toUpperCase();
+        "BAT-" + crypto.randomBytes(3).toString("hex").toUpperCase();
 
       try {
         const profile = await client.query(
@@ -916,20 +916,6 @@ async function cleanupExpiredBatBotMessages() {
 cleanupExpiredBatBotMessages();
 setInterval(cleanupExpiredBatBotMessages, 5 * 60 * 1000).unref();
 
-// Les reçus de paiement ne sont conservés que 24 heures.
-async function cleanupExpiredPaymentRequests() {
-  try {
-    const result = await pgQuery(
-      "DELETE FROM payment_requests WHERE created_at <= CURRENT_TIMESTAMP - INTERVAL '24 hours'"
-    );
-    return result.rowCount || 0;
-  } catch (error) {
-    console.error("BATBOT PAYMENT RECEIPT CLEANUP:", error.message);
-    return 0;
-  }
-}
-cleanupExpiredPaymentRequests();
-setInterval(cleanupExpiredPaymentRequests, 5 * 60 * 1000).unref();
 
 app.get("/api/messages/mine", requireUser, async (req, res) => {
   const messages = await pgAll(`
@@ -1106,24 +1092,23 @@ app.post("/api/payment-requests", requireUser, async (req, res) => {
 });
 
 app.get("/api/payment-requests/mine", requireUser, async (req, res) => {
-  await cleanupExpiredPaymentRequests();
   const requests = await pgAll(`
     SELECT id, offer, operator, amount, reference, status, admin_note, created_at, resolved_at
     FROM payment_requests
     WHERE user_id=$1
-      AND created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'
+      AND created_at > CURRENT_TIMESTAMP - INTERVAL '14 days'
     ORDER BY id DESC
   `, [req.session.userId]);
   res.json({ requests });
 });
 
 app.get("/api/admin/payment-requests", requireAdmin, async (req, res) => {
-  await cleanupExpiredPaymentRequests();
   const requests = await pgAll(`
     SELECT p.*, u.username, u.phone
     FROM payment_requests p
     LEFT JOIN users u ON u.id=p.user_id
-    WHERE p.created_at > CURRENT_TIMESTAMP - INTERVAL '24 hours'
+    WHERE p.status='pending'
+       OR p.created_at > CURRENT_TIMESTAMP - INTERVAL '14 days'
     ORDER BY CASE WHEN p.status='pending' THEN 0 ELSE 1 END, p.id DESC
   `);
   res.json({ requests });
@@ -1378,6 +1363,7 @@ app.get("/api/affiliate/withdrawals/mine", requireUser, async (req, res) => {
               admin_note, payment_reference, created_at, resolved_at, paid_at
          FROM affiliate_withdrawals
         WHERE affiliate_user_id=$1
+          AND created_at > CURRENT_TIMESTAMP - INTERVAL '14 days'
         ORDER BY created_at DESC
         LIMIT 100`,
       [req.session.userId]
@@ -1400,6 +1386,8 @@ app.get("/api/admin/affiliate/withdrawals", requireAdmin, async (req, res) => {
               w.resolved_at, w.paid_at
          FROM affiliate_withdrawals w
          JOIN users u ON u.id=w.affiliate_user_id
+        WHERE w.status IN ('pending','verifying','approved')
+           OR w.created_at > CURRENT_TIMESTAMP - INTERVAL '14 days'
         ORDER BY CASE WHEN w.status IN ('pending','verifying','approved') THEN 0 ELSE 1 END,
                  w.created_at ASC
         LIMIT 300`
@@ -3577,7 +3565,7 @@ async function initializeAffiliateSchema() {
 
       for (let attempt = 0; attempt < 8 && !created; attempt++) {
         const referralCode =
-          "BAT" + crypto.randomBytes(6).toString("hex").toUpperCase();
+          "BAT-" + crypto.randomBytes(3).toString("hex").toUpperCase();
 
         try {
           const result = await client.query(

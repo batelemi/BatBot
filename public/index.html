@@ -2618,6 +2618,7 @@ let WAVE_PAYMENT_DAY_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=
 let WAVE_PAYMENT_7_DAYS_URL="https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000";
 const PAYMENT_NUMBER="0152171974";
 let adminUsersCache=[];
+let adminUsersVisibleCount=3;
 
 function readApiResponse(response){
   return response.text().then(function(text){
@@ -2781,7 +2782,17 @@ function escapeHtml(value){
     .replace(/'/g,"&#039;");
 }
 
+function applyReferralCodeFromUrl(){
+  const input=document.getElementById("registerReferralCode");
+  if(!input || input.value.trim())return;
+  try{
+    const code=String(new URLSearchParams(window.location.search).get("ref")||"").trim().toUpperCase();
+    if(code)input.value=code;
+  }catch(_){}
+}
+
 function showRegister(){
+  applyReferralCodeFromUrl();
   document.getElementById("registerBox").classList.remove("hidden");
   document.getElementById("loginBox").classList.add("hidden");
   document.getElementById("forgotBox").classList.add("hidden");
@@ -3557,7 +3568,8 @@ function filterAdminUsers(){
 }
 
 function renderAdminUsers(users){
-  document.getElementById("usersList").innerHTML=users.map(function(user){
+  const container=document.getElementById("usersList");
+  container.innerHTML=users.slice(0,adminUsersVisibleCount).map(function(user){
     const active=Boolean(user.subscription_active||user.is_subscribed||user.subscribed);
     const aiActive=Boolean(user.ai_active);
     const accountActive=!Boolean(user.disabled);
@@ -3583,8 +3595,28 @@ function renderAdminUsers(users){
       </div>
     </div>`;
   }).join("")||'<p class="muted">Aucun client trouvé.</p>';
+
+  const controls=users.length>3
+    ? '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px 0">'+
+      (adminUsersVisibleCount<users.length
+        ? '<button class="btn primary" type="button" onclick="showMoreAdminUsers()">Voir plus</button>'
+        : '')+
+      (adminUsersVisibleCount>3
+        ? '<button class="btn secondary" type="button" onclick="reduceAdminUsers()">Réduire</button>'
+        : '')+
+      '</div>'
+    : '';
+  container.insertAdjacentHTML("beforeend",controls);
 }
 
+function showMoreAdminUsers(){
+  adminUsersVisibleCount+=3;
+  filterAdminUsers();
+}
+function reduceAdminUsers(){
+  adminUsersVisibleCount=3;
+  filterAdminUsers();
+}
 function askBatBotDuration(feature){
   return new Promise(resolve=>{
     const overlay=document.createElement("div");
@@ -5458,6 +5490,7 @@ function renderBatBotReceipt(x,options={}){
         <div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>${escapeHtml(x.operator||"—")}</strong></div>
         <div class="batbot-receipt-row"><span>📅 Date</span><strong>${escapeHtml(formatPaymentDateTime(x.created_at))}</strong></div>
         ${adminNote}
+        <div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>
         <div class="batbot-receipt-reference">
           <span class="batbot-receipt-reference-label">🔖 Référence de transaction</span>
           <code>${escapeHtml(reference)}</code>
@@ -6009,6 +6042,7 @@ async function loadAdmin(){
 
     const users=Array.isArray(data.users)?data.users:[];
     adminUsersCache=users;
+    adminUsersVisibleCount=3;
     document.getElementById("adminStats").textContent=
       "Nombre total de membres inscrits : "+users.length;
     renderAdminUsers(users);
@@ -6141,6 +6175,7 @@ async function loadAdminAffiliateWithdrawals(){
             (w.paid_at?'<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>'+escapeHtml(formatDateTime(w.paid_at))+'</strong></div>':'')+
             (w.payment_reference?'<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>'+escapeHtml(w.payment_reference)+'</code></div>':'')+
             (w.admin_note?'<div class="batbot-receipt-row"><span>Message admin</span><strong>'+escapeHtml(w.admin_note)+'</strong></div>':'')+
+            '<div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d\'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>'+
           '</div>'+
           '<div class="batbot-receipt-footer">'+
             '<div class="batbot-receipt-status '+receiptStatusKey+'">'+escapeHtml(statusLabel)+'</div>'+
@@ -6703,6 +6738,7 @@ function startBatBotLiveSync(){
 }
 
 document.addEventListener("DOMContentLoaded",function(){
+  applyReferralCodeFromUrl();
   loadPublicConfig();
   showLoading("Connexion en cours…");
 
@@ -7308,6 +7344,7 @@ document.addEventListener("keydown",function(event){
                 ${x.paid_at ? `<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>${safe(formatDateTime(x.paid_at))}</strong></div>` : ""}
                 ${x.payment_reference ? `<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>${safe(x.payment_reference)}</code></div>` : ""}
                 ${x.admin_note ? `<div class="batbot-receipt-row"><span>Message admin</span><strong>${safe(x.admin_note)}</strong></div>` : ""}
+                <div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>
               </div>
               <div class="batbot-receipt-footer">
                 <div class="batbot-receipt-status ${receiptStatusKey}">${safe(withdrawalStatusLabels[x.status] || "Statut inconnu")}</div>
