@@ -6111,16 +6111,42 @@ async function loadAdminAffiliateWithdrawals(){
           '</div>'
         : '<p class="muted">Cette demande est terminée.</p>';
 
+      const receiptStatusKey = current === "paid" || current === "approved"
+        ? "accepted" : current === "rejected" ? "rejected" : "pending";
+      const receiptStamp = current === "paid" ? "PAYÉ"
+        : current === "approved" ? "APPROUVÉ"
+        : current === "rejected" ? "REJETÉ" : "EN COURS";
+      const categoryLabel = {
+        first_purchase_20: "Retrait 20 %",
+        renewal_10: "Retrait 10 %"
+      }[w.commission_type] || "Non précisée";
+
       return '<div class="card" style="margin:12px 0;padding:14px">'+
-        '<h3>Retrait #'+id+' — '+escapeHtml(w.username||"Membre")+'</h3>'+
-        '<p><strong>Montant :</strong> '+escapeHtml(w.amount??"0")+' FCFA</p>'+
-        '<p><strong>Catégorie :</strong> '+escapeHtml(({first_purchase_20:"Inscription / premier achat — 20 %",renewal_10:"Renouvellement — 10 %"}[w.commission_type]||"Non précisé"))+'</p>'+
-        '<p><strong>Moyen de paiement :</strong> '+escapeHtml(w.payment_method||"Non précisé")+'</p>'+
-        '<p><strong>Numéro :</strong> '+escapeHtml(w.payment_number||"Non précisé")+'</p>'+
-        '<p><strong>Compte BatBot :</strong> '+escapeHtml(w.batbot_account_id||"Non précisé")+'</p>'+
-        '<p><strong>Statut :</strong> '+escapeHtml(statusLabel)+'</p>'+
-        (w.created_at?'<p><strong>Date :</strong> '+escapeHtml(formatDateTime(w.created_at))+'</p>':'')+
-        (w.payment_reference?'<p><strong>Référence :</strong> '+escapeHtml(w.payment_reference)+'</p>':'')+
+        '<article class="batbot-receipt">'+
+          '<div class="batbot-receipt-head">'+
+            '<div class="batbot-receipt-brand">'+
+              '<img src="logo.png" alt="Logo BATBOT PRO">'+
+              '<div><div>BATBOT PRO</div><div class="batbot-receipt-subtitle">REÇU DE RETRAIT</div></div>'+
+            '</div>'+
+            '<div class="batbot-receipt-id">N° '+escapeHtml(String(id))+'</div>'+
+          '</div>'+
+          '<div class="batbot-receipt-body">'+
+            '<div class="batbot-receipt-row"><span>👤 Identifiant</span><strong>'+escapeHtml("ID : BATBOT-"+w.affiliate_user_id)+'</strong></div>'+
+            '<div class="batbot-receipt-row"><span>💰 Montant</span><strong>'+escapeHtml(Number(w.amount||0).toLocaleString("fr-FR"))+' FCFA</strong></div>'+
+            '<div class="batbot-receipt-row"><span>🎯 Catégorie</span><strong>'+escapeHtml(categoryLabel)+'</strong></div>'+
+            '<div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>'+escapeHtml(w.payment_method||"Non précisé")+'</strong></div>'+
+            '<div class="batbot-receipt-row"><span>☎️ Numéro de réception</span><strong>'+escapeHtml(w.payment_number||"Non précisé")+'</strong></div>'+
+            (w.created_at?'<div class="batbot-receipt-row"><span>📅 Demande</span><strong>'+escapeHtml(formatDateTime(w.created_at))+'</strong></div>':'')+
+            (w.resolved_at?'<div class="batbot-receipt-row"><span>⚙️ Traitement</span><strong>'+escapeHtml(formatDateTime(w.resolved_at))+'</strong></div>':'')+
+            (w.paid_at?'<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>'+escapeHtml(formatDateTime(w.paid_at))+'</strong></div>':'')+
+            (w.payment_reference?'<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>'+escapeHtml(w.payment_reference)+'</code></div>':'')+
+            (w.admin_note?'<div class="batbot-receipt-row"><span>Message admin</span><strong>'+escapeHtml(w.admin_note)+'</strong></div>':'')+
+          '</div>'+
+          '<div class="batbot-receipt-footer">'+
+            '<div class="batbot-receipt-status '+receiptStatusKey+'">'+escapeHtml(statusLabel)+'</div>'+
+            '<div class="batbot-receipt-stamp '+receiptStatusKey+'">BATBOT<br>'+receiptStamp+'<span>Retrait</span></div>'+
+          '</div>'+
+        '</article>'+
         controls+'</div>';
     }).join("");
 
@@ -7201,8 +7227,8 @@ document.addEventListener("keydown",function(event){
     const referrals = data[1].referrals || [];
     const withdrawals = data[2].withdrawals || [];
     const commissionLabels = {
-      first_purchase_20: "Inscription / premier achat — 20 %",
-      renewal_10: "Renouvellement — 10 %"
+      first_purchase_20: "Retrait 20 %",
+      renewal_10: "Retrait 10 %"
     };
     const withdrawalStatusLabels = {
       pending: "En attente",
@@ -7239,7 +7265,7 @@ document.addEventListener("keydown",function(event){
       </div>
       <details class="batbot-profile-section">
         <summary><i class="fa-solid fa-users"></i> Mes filleuls (${referrals.length})</summary>
-        <div style="padding:12px">${referrals.length ? referrals.map(x => `<p><strong>${safe(x.username || 'Membre')}</strong><br>${x.has_confirmed_payment ? 'Paiement Premium confirmé' : 'Aucun paiement confirmé'}</p>`).join('') : '<p>Aucun filleul pour le moment.</p>'}</div>
+        <div style="padding:12px;display:grid;gap:12px">${referrals.length ? referrals.map(x => `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid rgba(120,170,210,.15)"><strong>${safe('ID : BATBOT-' + x.id)}</strong>${x.has_confirmed_payment ? '<i class="fa-solid fa-circle-check" style="color:#269BFF;font-size:21px" role="img" aria-label="Premium confirmé" title="Premium confirmé"></i>' : '<i class="fa-solid fa-circle-xmark" style="color:#EF4444;font-size:21px" role="img" aria-label="Non abonné Premium" title="Non abonné Premium"></i>'}</div>`).join('') : '<p>Aucun filleul pour le moment.</p>'}</div>
       </details>
       <details class="batbot-profile-section">
         <summary><i class="fa-solid fa-wallet"></i> Demander un retrait</summary>
@@ -7256,23 +7282,39 @@ document.addEventListener("keydown",function(event){
       </details>
       <details class="batbot-profile-section">
         <summary><i class="fa-solid fa-clock-rotate-left"></i> Historique des retraits (${withdrawals.length})</summary>
-        <div style="padding:12px;display:grid;gap:12px">${withdrawals.length ? withdrawals.map(x => `
-          <article style="border:1px solid rgba(120,170,210,.25);border-radius:13px;padding:14px;background:rgba(6,22,38,.65)">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-              <strong>REÇU DE RETRAIT #${safe(x.id)}</strong>
-              <span class="batbot-profile-status">${safe(withdrawalStatusLabels[x.status] || "Statut inconnu")}</span>
-            </div>
-            <p style="font-size:20px;font-weight:800;margin:12px 0">${money(x.amount)}</p>
-            <p><strong>Catégorie :</strong> ${safe(commissionLabels[x.commission_type] || "Non précisée")}</p>
-            <p><strong>Moyen de paiement :</strong> ${safe(x.payment_method || "Non précisé")}</p>
-            ${x.payment_number ? `<p><strong>Numéro de réception :</strong> ${safe(maskPaymentNumber(x.payment_number))}</p>` : ""}
-            ${x.created_at ? `<p><strong>Date de la demande :</strong> ${safe(formatDateTime(x.created_at))}</p>` : ""}
-            ${x.resolved_at ? `<p><strong>Date de traitement :</strong> ${safe(formatDateTime(x.resolved_at))}</p>` : ""}
-            ${x.paid_at ? `<p><strong>Date du paiement :</strong> ${safe(formatDateTime(x.paid_at))}</p>` : ""}
-            ${x.payment_reference ? `<p><strong>Référence du transfert :</strong> ${safe(x.payment_reference)}</p>` : ""}
-            ${x.admin_note ? `<div style="margin-top:10px;padding:10px;border-radius:9px;background:rgba(83,207,255,.08)"><strong>Message de l’administration</strong><p>${safe(x.admin_note)}</p></div>` : ""}
-          </article>
-        `).join('') : '<p>Aucune demande de retrait pour le moment.</p>'}</div>
+        <div style="padding:12px;display:grid;gap:12px">${withdrawals.length ? withdrawals.map(x => {
+          const receiptStatusKey = x.status === "paid" || x.status === "approved"
+            ? "accepted" : x.status === "rejected" ? "rejected" : "pending";
+          const receiptStamp = x.status === "paid" ? "PAYÉ"
+            : x.status === "approved" ? "APPROUVÉ"
+            : x.status === "rejected" ? "REJETÉ" : "EN COURS";
+          return `
+            <article class="batbot-receipt">
+              <div class="batbot-receipt-head">
+                <div class="batbot-receipt-brand">
+                  <img src="logo.png" alt="Logo BATBOT PRO">
+                  <div><div>BATBOT PRO</div><div class="batbot-receipt-subtitle">REÇU DE RETRAIT</div></div>
+                </div>
+                <div class="batbot-receipt-id">N° ${safe(String(x.id))}</div>
+              </div>
+              <div class="batbot-receipt-body">
+                <div class="batbot-receipt-row"><span>👤 Identifiant</span><strong>${safe('ID : BATBOT-' + (window.batBotCurrentUser?.id || ''))}</strong></div>
+                <div class="batbot-receipt-row"><span>💰 Montant</span><strong>${money(x.amount)}</strong></div>
+                <div class="batbot-receipt-row"><span>🎯 Catégorie</span><strong>${safe(commissionLabels[x.commission_type] || "Non précisée")}</strong></div>
+                <div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>${safe(x.payment_method || "Non précisé")}</strong></div>
+                <div class="batbot-receipt-row"><span>☎️ Numéro de réception</span><strong>${safe(maskPaymentNumber(x.payment_number))}</strong></div>
+                ${x.created_at ? `<div class="batbot-receipt-row"><span>📅 Demande</span><strong>${safe(formatDateTime(x.created_at))}</strong></div>` : ""}
+                ${x.resolved_at ? `<div class="batbot-receipt-row"><span>⚙️ Traitement</span><strong>${safe(formatDateTime(x.resolved_at))}</strong></div>` : ""}
+                ${x.paid_at ? `<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>${safe(formatDateTime(x.paid_at))}</strong></div>` : ""}
+                ${x.payment_reference ? `<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>${safe(x.payment_reference)}</code></div>` : ""}
+                ${x.admin_note ? `<div class="batbot-receipt-row"><span>Message admin</span><strong>${safe(x.admin_note)}</strong></div>` : ""}
+              </div>
+              <div class="batbot-receipt-footer">
+                <div class="batbot-receipt-status ${receiptStatusKey}">${safe(withdrawalStatusLabels[x.status] || "Statut inconnu")}</div>
+                <div class="batbot-receipt-stamp ${receiptStatusKey}">BATBOT<br>${receiptStamp}<span>Retrait</span></div>
+              </div>
+            </article>`;
+        }).join('') : '<p>Aucune demande de retrait pour le moment.</p>'}</div>
       </details>
       <p id="affiliateLoadMessage" role="status"></p>`;
 

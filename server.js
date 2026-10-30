@@ -1396,7 +1396,8 @@ app.get("/api/admin/affiliate/withdrawals", requireAdmin, async (req, res) => {
       `SELECT w.id, w.affiliate_user_id, u.username,
               w.commission_type, w.amount, w.payment_method,
               w.payment_number, w.batbot_account_id, w.status,
-              w.admin_note, w.payment_reference, w.created_at
+              w.admin_note, w.payment_reference, w.created_at,
+              w.resolved_at, w.paid_at
          FROM affiliate_withdrawals w
          JOIN users u ON u.id=w.affiliate_user_id
         ORDER BY CASE WHEN w.status IN ('pending','verifying','approved') THEN 0 ELSE 1 END,
