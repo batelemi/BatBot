@@ -1374,7 +1374,7 @@ app.post("/api/affiliate/withdrawals", requireUser, async (req, res) => {
 app.get("/api/affiliate/withdrawals/mine", requireUser, async (req, res) => {
   try {
     const withdrawals = await pgAll(
-      `SELECT id, commission_type, amount, payment_method, status,
+      `SELECT id, commission_type, amount, payment_method, payment_number, status,
               admin_note, payment_reference, created_at, resolved_at, paid_at
          FROM affiliate_withdrawals
         WHERE affiliate_user_id=$1

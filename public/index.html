@@ -2621,9 +2621,20 @@ let adminUsersCache=[];
 
 function readApiResponse(response){
   return response.text().then(function(text){
-    if(!text)return {};
-    try{return JSON.parse(text);}
-    catch(_){return {error:text};}
+    const status = Number(response && response.status) || 0;
+    const fallback = [502,503,504].includes(status)
+      ? "Le serveur rencontre momentanément une difficulté. Réessayez dans quelques instants."
+      : "Le serveur a renvoyé une réponse inattendue. Réessayez.";
+
+    if(!text){
+      return response && !response.ok ? {error:fallback} : {};
+    }
+
+    try{
+      return JSON.parse(text);
+    }catch(_){
+      return {error:fallback};
+    }
   });
 }
 
@@ -6092,8 +6103,8 @@ async function loadAdminAffiliateWithdrawals(){
             return '<option value="'+v+'"'+(v===current?' selected':'')+'>'+
               escapeHtml(labels[v]||v)+'</option>';
           }).join("")+'</select>'+
-          '<label for="affiliateNote'+id+'">Note administrative</label>'+
-          '<textarea id="affiliateNote'+id+'" class="form-control" maxlength="1000" placeholder="Note facultative">'+escapeHtml(w.admin_note||"")+'</textarea>'+
+          '<label for="affiliateNote'+id+'">Message de l’administration (facultatif)</label>'+
+          '<textarea id="affiliateNote'+id+'" class="form-control" maxlength="1000" placeholder="Message destiné au membre, facultatif">'+escapeHtml(w.admin_note||"")+'</textarea>'+
           '<label for="affiliateRef'+id+'">Référence du paiement (obligatoire pour Payée)</label>'+
           '<input id="affiliateRef'+id+'" class="form-control" maxlength="200" value="'+escapeHtml(w.payment_reference||"")+'" placeholder="Référence du transfert">'+
           '<button type="button" class="btn green" onclick="saveAdminAffiliateWithdrawal('+id+')">Enregistrer le traitement</button>'+
@@ -6103,7 +6114,7 @@ async function loadAdminAffiliateWithdrawals(){
       return '<div class="card" style="margin:12px 0;padding:14px">'+
         '<h3>Retrait #'+id+' — '+escapeHtml(w.username||"Membre")+'</h3>'+
         '<p><strong>Montant :</strong> '+escapeHtml(w.amount??"0")+' FCFA</p>'+
-        '<p><strong>Type :</strong> '+escapeHtml(w.commission_type||"Non précisé")+'</p>'+
+        '<p><strong>Catégorie :</strong> '+escapeHtml(({first_purchase_20:"Inscription / premier achat — 20 %",renewal_10:"Renouvellement — 10 %"}[w.commission_type]||"Non précisé"))+'</p>'+
         '<p><strong>Moyen de paiement :</strong> '+escapeHtml(w.payment_method||"Non précisé")+'</p>'+
         '<p><strong>Numéro :</strong> '+escapeHtml(w.payment_number||"Non précisé")+'</p>'+
         '<p><strong>Compte BatBot :</strong> '+escapeHtml(w.batbot_account_id||"Non précisé")+'</p>'+
@@ -6130,15 +6141,42 @@ async function saveAdminAffiliateWithdrawal(id){
   const status=statusField.value;
   const reference=refField.value.trim();
 
-  if(status==="paid"){
-    if(!reference){
-      showToast("La référence du paiement est obligatoire.","error");
-      return;
+  const confirmations = {
+    verifying: {
+      title:"Mettre le retrait en vérification ?",
+      message:"Confirmez-vous la prise en charge de cette demande pour vérification ?",
+      confirmText:"Confirmer la vérification"
+    },
+    approved: {
+      title:"Approuver ce retrait ?",
+      message:"Confirmez-vous l’approbation de cette demande de retrait ?",
+      confirmText:"Approuver le retrait"
+    },
+    rejected: {
+      title:"Rejeter ce retrait ?",
+      message:"Confirmez-vous le rejet de cette demande ? Cette action déclenchera les règles de restitution prévues par BatBot.",
+      confirmText:"Confirmer le rejet"
+    },
+    paid: {
+      title:"Confirmer le paiement réel ?",
+      message:"Confirmez uniquement si le transfert a réellement été effectué. La demande sera marquée comme payée.",
+      confirmText:"Confirmer le paiement"
     }
-    if(!confirm("Confirme-tu que le transfert réel a déjà été effectué et que tu veux marquer ce retrait comme payé ?"))return;
-  }else if(!confirm("Confirmer cette mise à jour du retrait de parrainage ?")){
+  };
+
+  if(status==="paid" && !reference){
+    showToast("La référence du paiement est obligatoire.","error");
     return;
   }
+
+  const confirmation = confirmations[status];
+  if(!confirmation){
+    showToast("Action de retrait non reconnue.","error");
+    return;
+  }
+
+  const confirmed = await showProfessionalConfirm(confirmation);
+  if(!confirmed)return;
 
   const button=statusField.parentElement.querySelector("button");
   if(button)button.disabled=true;
@@ -7162,6 +7200,23 @@ document.addEventListener("keydown",function(event){
     const safe = escapeHtml;
     const referrals = data[1].referrals || [];
     const withdrawals = data[2].withdrawals || [];
+    const commissionLabels = {
+      first_purchase_20: "Inscription / premier achat — 20 %",
+      renewal_10: "Renouvellement — 10 %"
+    };
+    const withdrawalStatusLabels = {
+      pending: "En attente",
+      verifying: "En vérification",
+      approved: "Approuvée",
+      paid: "Payée",
+      rejected: "Rejetée"
+    };
+    const maskPaymentNumber = value => {
+      const number = String(value || "");
+      return number.length > 4
+        ? "••••••" + number.slice(-3)
+        : number;
+    };
 
     panel.innerHTML = `
       <div class="batbot-profile-section" style="padding:14px">
@@ -7201,7 +7256,23 @@ document.addEventListener("keydown",function(event){
       </details>
       <details class="batbot-profile-section">
         <summary><i class="fa-solid fa-clock-rotate-left"></i> Historique des retraits (${withdrawals.length})</summary>
-        <div style="padding:12px">${withdrawals.length ? withdrawals.map(x => `<p><strong>${money(x.amount)}</strong> · ${safe(x.payment_method)}<br>Statut : ${safe(x.status)}</p>`).join('') : '<p>Aucune demande de retrait.</p>'}</div>
+        <div style="padding:12px;display:grid;gap:12px">${withdrawals.length ? withdrawals.map(x => `
+          <article style="border:1px solid rgba(120,170,210,.25);border-radius:13px;padding:14px;background:rgba(6,22,38,.65)">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+              <strong>REÇU DE RETRAIT #${safe(x.id)}</strong>
+              <span class="batbot-profile-status">${safe(withdrawalStatusLabels[x.status] || "Statut inconnu")}</span>
+            </div>
+            <p style="font-size:20px;font-weight:800;margin:12px 0">${money(x.amount)}</p>
+            <p><strong>Catégorie :</strong> ${safe(commissionLabels[x.commission_type] || "Non précisée")}</p>
+            <p><strong>Moyen de paiement :</strong> ${safe(x.payment_method || "Non précisé")}</p>
+            ${x.payment_number ? `<p><strong>Numéro de réception :</strong> ${safe(maskPaymentNumber(x.payment_number))}</p>` : ""}
+            ${x.created_at ? `<p><strong>Date de la demande :</strong> ${safe(formatDateTime(x.created_at))}</p>` : ""}
+            ${x.resolved_at ? `<p><strong>Date de traitement :</strong> ${safe(formatDateTime(x.resolved_at))}</p>` : ""}
+            ${x.paid_at ? `<p><strong>Date du paiement :</strong> ${safe(formatDateTime(x.paid_at))}</p>` : ""}
+            ${x.payment_reference ? `<p><strong>Référence du transfert :</strong> ${safe(x.payment_reference)}</p>` : ""}
+            ${x.admin_note ? `<div style="margin-top:10px;padding:10px;border-radius:9px;background:rgba(83,207,255,.08)"><strong>Message de l’administration</strong><p>${safe(x.admin_note)}</p></div>` : ""}
+          </article>
+        `).join('') : '<p>Aucune demande de retrait pour le moment.</p>'}</div>
       </details>
       <p id="affiliateLoadMessage" role="status"></p>`;
 
