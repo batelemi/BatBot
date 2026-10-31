@@ -3191,6 +3191,59 @@ async function loadSportApiFixturesByDate(date) {
         });
         return { ...value, cached: true };
       }
+      if (age >= SPORTAPI_FIXTURES_CACHE_TTL) {
+        const staleValue = {
+          ...value,
+          cached: true,
+          stale: true
+        };
+
+        sportApiFixturesCache.set(date, {
+          value: staleValue,
+          expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL
+        });
+
+        const refreshRequest = (async () => {
+          try {
+            const apiResult = await fetchSportApiFixtures(date);
+            if (!Array.isArray(apiResult?.fixtures)) {
+              throw new Error("Réponse SportAPI.ai sans liste valide de matchs.");
+            }
+
+            const freshValue = {
+              source: "SportAPI.ai",
+              date,
+              updated: new Date().toISOString(),
+              fixtures: apiResult.fixtures,
+              stale: false
+            };
+
+            sportApiFixturesCache.set(date, {
+              value: freshValue,
+              expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL
+            });
+
+            if (sportApiPersistentCacheReady) {
+              await pgQuery(
+                `INSERT INTO sportapi_fixtures_cache (fixture_date, fixtures, fetched_at)
+                 VALUES ($1::date, $2::jsonb, NOW())
+                 ON CONFLICT (fixture_date)
+                 DO UPDATE SET fixtures=EXCLUDED.fixtures, fetched_at=NOW()`,
+                [date, JSON.stringify(freshValue.fixtures)]
+              );
+            }
+          } catch (error) {
+            console.error("BatBot: actualisation SportAPI en arrière-plan:", error.message);
+          } finally {
+            if (sportApiFixturesInFlight.get(date) === refreshRequest) {
+              sportApiFixturesInFlight.delete(date);
+            }
+          }
+        })();
+
+        sportApiFixturesInFlight.set(date, refreshRequest);
+        return staleValue;
+      }
     }
 
     try {

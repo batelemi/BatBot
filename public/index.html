@@ -158,6 +158,16 @@ textarea{min-height:120px;resize:vertical}
 .payment-request-status.pending{background:rgba(245,197,66,.09);border-color:rgba(245,197,66,.35);color:#FFE59A}
 .payment-request-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
 .payment-request-actions .btn{margin:0;min-height:44px}
+.payment-request-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:9px 12px;border:1px solid #315D82;border-radius:11px;background:#102F50;color:#fff;font-size:13px;font-weight:800}
+.payment-request-toggle-row>span:first-child{flex:1;min-width:0}
+.payment-request-switch{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
+.payment-request-switch-ui{position:relative;display:inline-block;flex:0 0 48px;width:48px;height:27px;border-radius:20px;background:#DC2626;transition:background .18s ease}
+.payment-request-switch-ui:after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:transform .18s ease}
+.payment-request-switch:checked+.payment-request-switch-ui{background:#16A34A}
+.payment-request-switch:checked+.payment-request-switch-ui:after{transform:translateX(21px)}
+.payment-request-switch:focus-visible+.payment-request-switch-ui{outline:2px solid #fff;outline-offset:3px}
+.payment-request-switch:disabled+.payment-request-switch-ui{opacity:.55}
+
 .payment-processing-note{margin-top:12px;padding:12px 13px;border-radius:13px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.24);color:#D9E7F3;font-size:13px;line-height:1.5}
 .professional-status{padding:12px 14px;border-radius:14px;background:linear-gradient(145deg,#102F52,#0B223D);border:1px solid rgba(83,207,255,.28);color:#D9E7F3;line-height:1.45;text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.14)}
 .professional-status.success{border-color:rgba(110,231,160,.35)}
@@ -5190,38 +5200,69 @@ async function loadFootballFixtures(selectedDate){
   const box=document.getElementById("footballResults");
   const button=document.getElementById("footballLoadButton");
   if(!status||!box)return;
+
   const date=/^\d{4}-\d{2}-\d{2}$/.test(String(selectedDate||""))?String(selectedDate):getAbidjanDate(0);
   setFootballDate(date);
-  if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
+
+  if(window.batbotLiveRefreshTimer){
+    clearInterval(window.batbotLiveRefreshTimer);
+    window.batbotLiveRefreshTimer=null;
+  }
+
+  const hasDisplayed=window.batBotLastRenderedMode==="daily"
+    && Array.isArray(window.batBotDailyFixtures)
+    && window.batBotDailyFixtures.length>0
+    && window.batBotDailyFixturesLoadedDate===date;
+
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML="";
+  status.innerHTML=hasDisplayed
+    ? '<div class="professional-status"><div class="professional-status-body">Actualisation des rencontres…</div></div>'
+    : "";
   box.classList.remove("hidden");
-  box.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des matchs</strong><small>Veuillez patienter…</small></div></div>';
+
+  if(!hasDisplayed){
+    box.innerHTML='<div class="professional-status"><div class="professional-status-body">Recherche des rencontres disponibles…</div></div>';
+  }
 
   try{
     await ensureFootballAccess();
-    const response=await fetch("/api/football/fixtures?date="+encodeURIComponent(date),{credentials:"same-origin",headers:{Accept:"application/json"},cache:"no-store"});
+    const response=await fetch("/api/football/fixtures?date="+encodeURIComponent(date),{
+      credentials:"same-origin",
+      headers:{Accept:"application/json"},
+      cache:"no-store"
+    });
     const d=await readApiResponse(response);
     if(!response.ok||d?.ok===false)throw new Error(d?.error||"Impossible de récupérer les rencontres.");
 
     const rawFixtures=Array.isArray(d?.response)?d.response:[];
     const fixtures=rawFixtures.map(normalizeFootballClientMatch);
+
     window.batBotVisibleFixtureCount=20;
     window.batBotDailyFixturesLoadedDate=date;
     renderFootballFixtures(fixtures,date);
+    window.batBotLastRenderedMode="daily";
     updateFootballLiveIndicatorFromLoadedFixtures();
-    if(fixtures.length){
+
+    if(d?.stale){
+      status.innerHTML='<div class="professional-status"><div class="professional-status-head">📋 Derniers matchs disponibles</div><div class="professional-status-body">Les rencontres enregistrées sont affichées. Actualisation automatique en cours…</div></div>';
+      if(window.batbotFixturesRefreshTimer)clearTimeout(window.batbotFixturesRefreshTimer);
+      window.batbotFixturesRefreshTimer=setTimeout(function(){
+        if(getAbidjanDate(0)===date && window.batBotDailyFixturesLoadedDate===date){
+          loadFootballFixtures(date);
+        }
+      },32000);
+    }else if(fixtures.length){
       status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs actualisés</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) chargée(s).</div></div>";
     }else{
       status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est disponible pour cette date.</div></div>';
     }
   }catch(e){
-    window.batBotDailyFixtures=[];
-    window.batBotDailyFixturesLoadedDate="";
-    renderBatBotLeagueFixtures([]);
-    box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion indisponible</div><div class="professional-status-body">Impossible de charger les rencontres. Vérifiez votre connexion puis réessayez.</div></div>';
-    status.innerHTML="";
+    if(hasDisplayed){
+      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Actualisation momentanément indisponible</div><div class="professional-status-body">Les derniers matchs affichés sont conservés. Réessayez dans quelques instants.</div></div>';
+    }else{
+      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion indisponible</div><div class="professional-status-body">Impossible de charger les rencontres. Vérifiez votre connexion puis réessayez.</div></div>';
+    }
   }finally{
     if(button)button.disabled=false;
   }
@@ -5246,10 +5287,15 @@ async function loadBatBotLiveSection(){
   const box=document.getElementById("batbotLiveResults");
   const button=document.getElementById("batbotLiveLoadButton");
   if(!status||!box)return;
+
+  const hasDisplayed=box.children.length>0;
   if(button)button.disabled=true;
   box.classList.remove("hidden");
-  status.innerHTML='<div class="professional-status loading"><div class="professional-status-head">🔄 Chargement du direct</div><div class="professional-status-body">Recherche des rencontres en cours…</div></div>';
-  box.innerHTML="";
+
+  status.innerHTML=hasDisplayed
+    ? '<div class="professional-status"><div class="professional-status-body">Actualisation du direct…</div></div>'
+    : '<div class="professional-status"><div class="professional-status-body">Recherche des rencontres en cours…</div></div>';
+
   try{
     await ensureFootballAccess();
     const response=await fetch("/api/football/live",{
@@ -5261,15 +5307,19 @@ async function loadBatBotLiveSection(){
     if(!response.ok||data?.ok===false){
       throw new Error(data?.error||"Impossible de récupérer les matchs en direct.");
     }
+
     const raw=Array.isArray(data?.response)?data.response:[];
     const fixtures=raw.map(normalizeFootballClientMatch).filter(isLiveFixture);
     window.batBotLiveFixtures=fixtures;
+
     if(!fixtures.length){
       status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match en direct</div><div class="professional-status-body">Aucune rencontre en cours n’est actuellement signalée par la source sportive.</div></div>';
       box.innerHTML='<div class="professional-status"><div class="professional-status-body">Réessayez plus tard. Les liens vidéo officiels seront affichés ici uniquement après vérification de leur disponibilité.</div></div>';
       return;
     }
+
     status.innerHTML='<div class="professional-status success"><div class="professional-status-head">🔴 '+fixtures.length+' rencontre(s) en direct</div><div class="professional-status-body">Scores et statuts fournis par le service sportif. La vidéo n’est pas incluse automatiquement.</div></div>';
+
     box.innerHTML=fixtures.map(function(item,index){
       const teams=item.teams||{},home=teams.home||{},away=teams.away||{},league=item.league||{};
       const score=footballFixtureScore(item);
@@ -5288,7 +5338,7 @@ async function loadBatBotLiveSection(){
         +'</div>';
     }).join("");
   }catch(error){
-    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+escapeHtml(error?.message||"Impossible de charger les rencontres.")+'</div></div>';
+    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Actualisation momentanément indisponible</div><div class="professional-status-body">'+(hasDisplayed?"Les derniers matchs affichés sont conservés. ":"")+'Impossible de récupérer les nouvelles données pour le moment.</div></div>';
   }finally{
     if(button)button.disabled=false;
   }
@@ -5299,41 +5349,61 @@ async function loadFootballLive(){
   const box=document.getElementById("footballResults");
   const button=document.getElementById("footballLiveButton");
   if(!status||!box)return;
-  if(window.batbotLiveRefreshTimer){clearInterval(window.batbotLiveRefreshTimer);window.batbotLiveRefreshTimer=null;}
+
+  if(window.batbotLiveRefreshTimer){
+    clearInterval(window.batbotLiveRefreshTimer);
+    window.batbotLiveRefreshTimer=null;
+  }
+
+  const hasDisplayedLive=window.batBotLastRenderedMode==="live"
+    && Array.isArray(window.batBotLiveFixtures)
+    && window.batBotLiveFixtures.length>0;
+
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement du direct</strong><small>Recherche des matchs en cours…</small></div></div>';
+  status.innerHTML='<div class="professional-status"><div class="professional-status-body">Actualisation du direct…</div></div>';
   box.classList.remove("hidden");
-  box.innerHTML="";
 
   const refresh=async function(){
     try{
       await ensureFootballAccess();
-      const liveDate=getAbidjanDate(0);
-      const response=await fetch("/api/football/live",{credentials:"same-origin",headers:{Accept:"application/json"},cache:"no-store"});
+      const response=await fetch("/api/football/live",{
+        credentials:"same-origin",
+        headers:{Accept:"application/json"},
+        cache:"no-store"
+      });
       const d=await readApiResponse(response);
-      if(!response.ok||d?.ok===false)throw new Error(d?.error||"Impossible de récupérer les matchs en direct.");
+      if(!response.ok||d?.ok===false){
+        throw new Error(d?.error||"Impossible de récupérer les matchs en direct.");
+      }
+
       const rawFixtures=Array.isArray(d?.response)?d.response:[];
-      const fixtures=rawFixtures.map(normalizeFootballClientMatch).filter(function(item){return isLiveFixture(item);});
+      const fixtures=rawFixtures.map(normalizeFootballClientMatch).filter(isLiveFixture);
+      window.batBotLiveFixtures=fixtures;
+      window.batBotLastRenderedMode="live";
+
       if(button){
         button.dataset.liveState=fixtures.length?"live":"none";
         button.setAttribute("aria-label",fixtures.length
           ? "Voir les matchs en direct : "+fixtures.length+" rencontre(s) en cours"
           : "Voir les matchs en direct : aucune rencontre en cours signalée");
       }
+
       window.batBotVisibleFixtureCount=20;
       renderFootballFixtures(fixtures,"en direct");
+
       status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"Aucune rencontre en cours n’est actuellement signalée.")+'</div></div>';
     }catch(e){
       if(button)button.dataset.liveState="error";
-      window.batBotLiveRefreshTimer=null;
-      box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+ "Impossible d’actualiser les matchs en direct. Réessayez dans quelques instants." +'</div></div>';
-      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
+      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Actualisation momentanément indisponible</div><div class="professional-status-body">'+(hasDisplayedLive?"Les derniers matchs en direct affichés sont conservés. ":"Les résultats déjà affichés sont conservés. ")+'La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
     }
   };
+
   await refresh();
   if(button)button.disabled=false;
-  if(!window.batbotLiveRefreshTimer)window.batbotLiveRefreshTimer=setInterval(refresh,15000);
+  if(!window.batbotLiveRefreshTimer){
+    window.batbotLiveRefreshTimer=setInterval(refresh,15000);
+  }
 }
 
 document.addEventListener("DOMContentLoaded",function(){
@@ -5496,19 +5566,6 @@ function renderBatBotReceipt(x,options={}){
   const amount=Number(x.amount)||0;
   const adminNote=x.admin_note?`<div class="batbot-receipt-row"><span>📝 Note</span><strong>${escapeHtml(x.admin_note)}</strong></div>`:"";
   const stampName=username.length>20?username.slice(0,20)+"…":username;
-  const details=[
-    `Transaction #${x.id}`,
-    `Nom : ${username}`,
-    `Offre : ${x.offer||"—"}`,
-    `Montant : ${amount} FCFA`,
-    `Opérateur : ${x.operator||"—"}`,
-    `Référence : ${reference}`,
-    `Date et heure : ${formatPaymentDateTime(x.created_at)}`,
-    `Statut : ${meta.label}`,
-    x.admin_note?`Note : ${x.admin_note}`:""
-  ].filter(Boolean).join("\n");
-  const encodedDetails=encodeURIComponent(details);
-  const encodedReference=encodeURIComponent(reference);
   return `
     <div class="batbot-receipt">
       <div class="batbot-receipt-head">
@@ -5525,7 +5582,6 @@ function renderBatBotReceipt(x,options={}){
         <div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>${escapeHtml(x.operator||"—")}</strong></div>
         <div class="batbot-receipt-row"><span>📅 Date</span><strong>${escapeHtml(formatPaymentDateTime(x.created_at))}</strong></div>
         ${adminNote}
-        <div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>
         <div class="batbot-receipt-reference">
           <span class="batbot-receipt-reference-label">🔖 Référence de transaction</span>
           <code>${escapeHtml(reference)}</code>
@@ -5534,10 +5590,6 @@ function renderBatBotReceipt(x,options={}){
       <div class="batbot-receipt-footer">
         <div class="batbot-receipt-status ${meta.key}">${meta.key==="accepted"?"🟢":meta.key==="rejected"?"🔴":"🟡"} ${meta.label}</div>
         <div class="batbot-receipt-stamp ${meta.key}">BATBOT<br>${escapeHtml(meta.stamp)}<span>${escapeHtml(stampName)}</span></div>
-      </div>
-      <div class="batbot-receipt-actions">
-        <button class="btn secondary batbot-receipt-copy-reference" type="button" data-copy="${encodedReference}" onclick="copyPaymentDetails(decodeURIComponent(this.dataset.copy))">📋 Copier la référence</button>
-        <button class="btn secondary" type="button" data-copy="${encodedDetails}" onclick="copyPaymentDetails(decodeURIComponent(this.dataset.copy))">📋 Copier tous les détails</button>
       </div>
     </div>`;
 }
@@ -5722,9 +5774,13 @@ async function loadAdminPaymentRequests(){
       ? items.map(x=>{
           const meta=getPaymentStatusMeta(x.status);
           const reviewButtons=meta.key==="pending"
-            ? `<button class="btn green" type="button" onclick="resolvePaymentRequest(${x.id},'accepted',this)">✅ Approuver le paiement</button>
-               <button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected',this)">❌ Refuser le paiement</button>`
-            : "";
+                          ? `<label class="payment-request-toggle-row">
+                               <span>Valider ce paiement</span>
+                               <input class="payment-request-switch" type="checkbox" aria-label="Valider le paiement ${x.id}" onchange="handlePaymentApprovalSwitch(this,${x.id})">
+                               <span class="payment-request-switch-ui" aria-hidden="true"></span>
+                             </label>
+                             <button class="btn danger" type="button" onclick="resolvePaymentRequest(${x.id},'rejected',this)">❌ Refuser le paiement</button>`
+                          : "";
           const actionButtons=`<div class="two-columns" style="margin-top:8px">${reviewButtons}
                <button class="btn danger" type="button" onclick="deletePaymentRequest(${x.id},this)">🗑️ Supprimer le reçu</button>
              </div>`;
@@ -5738,7 +5794,12 @@ async function loadAdminPaymentRequests(){
 
 async function deletePaymentRequest(id,button){
   if(button?.disabled)return;
-  if(!window.confirm("Supprimer définitivement ce reçu de paiement ?"))return;
+  const confirmed=await showProfessionalConfirm({
+    title:"🗑️ Supprimer le reçu de paiement",
+    message:"Voulez-vous vraiment supprimer définitivement ce reçu ? Cette action est irréversible.",
+    confirmText:"🗑️ Supprimer"
+  });
+  if(!confirmed)return;
   if(button){
     button.disabled=true;
     button.textContent="Suppression…";
@@ -5757,30 +5818,45 @@ async function deletePaymentRequest(id,button){
     await loadAdminPaymentRequests();
   }catch(e){
     showToast(friendlyActionError(e,"Impossible de supprimer ce reçu. Réessayez."),"error");
-    if(button){button.disabled=false;button.textContent="🗑️ Supprimer le reçu";}
+    if(button){
+      button.disabled=false;
+      button.textContent="🗑️ Supprimer le reçu";
+    }
   }
 }
-
-async function resolvePaymentRequest(id,status,button){
-  if(button?.disabled)return;
-  if(button){
-    button.disabled=true;
-    button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>Traitement…';
-  }
-  try{
-    const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});
-    const d=await readApiResponse(r);
-    if(!r.ok)throw new Error(d.error||"Action impossible.");
-    showToast(d.message||(status==="accepted"?"Paiement approuvé.":"Paiement refusé."),"success");
-    await loadAdminPaymentRequests();
-  }catch(e){
-    showToast(friendlyActionError(e,"Impossible de traiter ce paiement. Réessayez."),"error");
-    if(button){button.disabled=false;button.textContent=status==="accepted"?"✅ Approuver le paiement":"❌ Refuser le paiement";}
-  }
-}
-
-
-window.copyMemberCoupon=async function copyMemberCoupon(value,button){
+async function handlePaymentApprovalSwitch(input,id){
+          if(!input||input.disabled||!input.checked)return;
+          const confirmed=await showProfessionalConfirm({
+            title:"✅ Valider le paiement",
+            message:"Confirmer la validation de ce paiement ? Cette action activera l'offre correspondante au client.",
+            confirmText:"✅ Confirmer la validation"
+          });
+          if(!confirmed){input.checked=false;return;}
+          await resolvePaymentRequest(id,"accepted",input);
+        }
+        async function resolvePaymentRequest(id,status,button){
+          if(button?.disabled)return;
+          const isSwitch=button?.type==="checkbox";
+          if(button){
+            button.disabled=true;
+            if(!isSwitch)button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>Traitement…';
+          }
+          try{
+            const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});
+            const d=await readApiResponse(r);
+            if(!r.ok)throw new Error(d.error||"Action impossible.");
+            showToast(d.message||(status==="accepted"?"Paiement approuvé.":"Paiement refusé."),"success");
+            await loadAdminPaymentRequests();
+          }catch(e){
+            showToast(friendlyActionError(e,"Impossible de traiter ce paiement. Réessayez."),"error");
+            if(button){
+              button.disabled=false;
+              if(isSwitch)button.checked=false;
+              else button.textContent="❌ Refuser le paiement";
+            }
+          }
+        }
+        window.copyMemberCoupon=async function copyMemberCoupon(value,button){
   const text=String(value??"").trim();
   if(!text){
     showToast("Aucun code coupon à copier.","error");
@@ -6210,7 +6286,7 @@ async function loadAdminAffiliateWithdrawals(){
             (w.paid_at?'<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>'+escapeHtml(formatDateTime(w.paid_at))+'</strong></div>':'')+
             (w.payment_reference?'<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>'+escapeHtml(w.payment_reference)+'</code></div>':'')+
             (w.admin_note?'<div class="batbot-receipt-row"><span>Message envoyé au membre</span><strong>'+escapeHtml(w.admin_note)+'</strong></div>':'')+
-            '<div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d\'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>'+
+
           '</div>'+
           '<div class="batbot-receipt-footer">'+
             '<div class="batbot-receipt-status '+receiptStatusKey+'">'+escapeHtml(statusLabel)+'</div>'+
@@ -7379,7 +7455,7 @@ document.addEventListener("keydown",function(event){
                 ${x.paid_at ? `<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>${safe(formatDateTime(x.paid_at))}</strong></div>` : ""}
                 ${x.payment_reference ? `<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>${safe(x.payment_reference)}</code></div>` : ""}
                 ${x.admin_note ? `<div class="batbot-receipt-row"><span>Message du Service BatBot</span><strong>${safe(x.admin_note)}</strong></div>` : ""}
-                <div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>
+
               </div>
               <div class="batbot-receipt-footer">
                 <div class="batbot-receipt-status ${receiptStatusKey}">${safe(withdrawalStatusLabels[x.status] || "Statut inconnu")}</div>
@@ -7580,7 +7656,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         ['Dépôts & paiements','fa-solid fa-wallet','payments'],
         ['Mes transactions','fa-solid fa-file-invoice-dollar','transactions']
       ]},
-      community:{title:'Communauté',icon:'fa-solid fa-comments',subtitle:'Publications et échanges des membres',items:[
+      community:{title:'Communauté',icon:'fa-solid fa-users',subtitle:'Publications et échanges des membres',items:[
         ['Pronostics publiés par les membres','fa-solid fa-bullhorn','predictions'],
         ['Publier un pronostic','fa-solid fa-square-pen','publishPrediction'],
         // Les messages sont accessibles depuis la cloche de l'en-tête.
@@ -7589,9 +7665,10 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Historique des pronostics','fa-solid fa-ticket','memberHistory'],
-        ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
-        // L'assistance reste accessible depuis l'icône dédiée sous les matchs.
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
+          ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
+        // L'assistance reste accessible depuis l'icône dédiée sous les matchs.
+
 
         ["Conditions d'utilisation",'fa-solid fa-file-contract','terms']
       ]}
@@ -7659,7 +7736,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       +'<button type="button" class="batbot-nav-item active" data-tab="home" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Accueil</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="analyses"><i class="fa-solid fa-trophy" aria-hidden="true"></i><span>Ligues</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="finances"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Abonnement</span></button>'
-      +'<button type="button" class="batbot-nav-item" data-tab="community"><i class="fa-solid fa-comments" aria-hidden="true"></i><span>Communauté</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="community"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Communauté</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="more"><i class="fa-solid fa-gear" aria-hidden="true"></i><span>Plus</span></button>';
     document.body.appendChild(nav);
 
@@ -7732,7 +7809,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     nav.innerHTML=''
       +'<button type="button" class="batbot-admin-nav-item active" data-tab="home" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Accueil</span></button>'
       +'<button type="button" class="batbot-admin-nav-item" data-tab="members"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Membres</span></button>'
-      +'<button type="button" class="batbot-admin-nav-item" data-tab="community"><i class="fa-solid fa-comments" aria-hidden="true"></i><span>Communauté</span></button>'
+      +'<button type="button" class="batbot-admin-nav-item" data-tab="community"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Communauté</span></button>'
       +'<button type="button" class="batbot-admin-nav-item" data-tab="finance"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Abonnement</span></button>'
       +'<button type="button" class="batbot-admin-nav-item" data-tab="more"><i class="fa-solid fa-gear" aria-hidden="true"></i><span>Plus</span></button>';
     document.body.appendChild(nav);
@@ -7766,7 +7843,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         members:{title:'Membres',icon:'fa-solid fa-users',subtitle:'Comptes et accès des membres BatBot',items:[
           [0,'Membres inscrits','fa-solid fa-users']
         ]},
-        community:{title:'Communauté',icon:'fa-solid fa-comments',subtitle:'Messages et pronostics de la communauté',items:[
+        community:{title:'Communauté',icon:'fa-solid fa-users',subtitle:'Messages et pronostics de la communauté',items:[
           [2,'Gestion des messages','fa-solid fa-bell'],
           [3,'Gestion des pronostics','fa-solid fa-bullhorn']
         ]},
@@ -7776,9 +7853,9 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Configuration et outils administrateur',items:[
           [1,'Paramètres modifiables','fa-solid fa-sliders'],
           [5,'Gestion des bookmakers','fa-solid fa-chart-column'],
-          [6,'Gestion des coupons','fa-solid fa-gift'],
-          [7,'Demandes de mot de passe','fa-solid fa-key'],
-          [8,'Probabilités du jour','fa-solid fa-chart-pie'],
+
+
+
           [9,'Gestion des parrainages','fa-solid fa-handshake']
         ]}
       };
