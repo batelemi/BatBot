@@ -1941,7 +1941,7 @@ button.batbot-predict-btn *,
   <div id="forgotBox" class="card hidden">
     <h2>🔑 Mot de passe oublié</h2>
     <p class="muted">
-      Entrez votre nom d'utilisateur pour retrouver votre question secrète et choisir un nouveau mot de passe. Si aucune question secrète n’est enregistrée pour votre compte, vous pourrez contacter l’administrateur.
+      Entrez votre nom d'utilisateur pour retrouver votre question secrète et choisir un nouveau mot de passe. Si aucune question secrète n’est enregistrée pour votre compte, vous pourrez contacter le Service BatBot.
     </p>
 
     <input id="forgotUsername" type="text" autocomplete="username" autocapitalize="none"
@@ -1972,7 +1972,7 @@ button.batbot-predict-btn *,
     </div>
 
     <a id="forgotWhatsApp" class="btn whatsapp hidden" target="_blank" rel="noopener noreferrer">
-      💬 Contacter l'administrateur sur WhatsApp
+      💬 Contacter le Service BatBot sur WhatsApp
     </a>
 
     <button class="btn secondary" type="button" onclick="hideForgot()" aria-label="Retour à la connexion" title="Retour à la connexion">×</button>
@@ -2260,7 +2260,7 @@ button.batbot-predict-btn *,
       href=""
       target="_blank" rel="noopener noreferrer"> Souscrire un abonnement</a>
     <div class="payment-confirm">
-      📌 Paiement manuel. Après paiement, envoyez votre confirmation à l'administrateur si nécessaire.
+      📌 Paiement manuel. Après paiement, envoyez votre confirmation au Service BatBot si nécessaire.
     </div>
   </div>
 
@@ -2350,7 +2350,7 @@ button.batbot-predict-btn *,
 
   <div id="myTransactionsCard" class="card">
     <h2>📊 Mes transactions</h2>
-    <p class="muted">Consultez vos demandes de paiement et leur statut. Les décisions validées ou refusées sont visibles après vérification et sont automatiquement supprimées après 24 heures.</p>
+    <p class="muted">Consultez vos demandes de paiement et leur statut. Elles restent consultables pendant 14 jours à compter de leur date d’enregistrement.</p>
     <div id="myTransactionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div></div>
   </div>
 
@@ -2673,6 +2673,7 @@ function showStatus(id,message,type=""){
 function showToast(message,type="success"){
   const value=String(message||"").trim();
   if(!value)return;
+
   let container=document.getElementById("batbotToastContainer");
   if(!container){
     container=document.createElement("div");
@@ -2682,44 +2683,94 @@ function showToast(message,type="success"){
     container.setAttribute("aria-relevant","additions");
     document.body.appendChild(container);
   }
+
   const normalizedType=type==="error"?"error":type==="info"||type==="warning"?"info":"success";
+
+  const duplicate=Array.from(container.children).find(item=>
+    item.dataset.message===value && item.dataset.type===normalizedType
+  );
+  if(duplicate)return;
+
+  while(container.children.length>=3){
+    const oldest=container.firstElementChild;
+    if(oldest && typeof oldest._batbotRemove==="function"){
+      oldest._batbotRemove(true);
+    }else if(oldest){
+      oldest.remove();
+    }else{
+      break;
+    }
+  }
+
   const toast=document.createElement("div");
   toast.className="batbot-toast "+normalizedType;
+  toast.dataset.message=value;
+  toast.dataset.type=normalizedType;
   toast.setAttribute("role",normalizedType==="error"?"alert":"status");
+
   const icon=document.createElement("span");
   icon.className="batbot-toast-icon";
   icon.setAttribute("aria-hidden","true");
-  icon.innerHTML=normalizedType==="error"?'<i class="fa-solid fa-xmark"></i>':normalizedType==="info"?'<i class="fa-solid fa-circle-info"></i>':'<i class="fa-solid fa-check"></i>';
+  icon.innerHTML=normalizedType==="error"
+    ?'<i class="fa-solid fa-xmark"></i>'
+    :normalizedType==="info"
+      ?'<i class="fa-solid fa-circle-info"></i>'
+      :'<i class="fa-solid fa-check"></i>';
+
   const content=document.createElement("div");
   content.className="batbot-toast-content";
+
   const title=document.createElement("strong");
   title.className="batbot-toast-title";
   title.textContent=type==="welcome"?"Bienvenue sur BATBOT PRO":normalizedType==="error"?"Opération échouée":normalizedType==="info"?"Information":"Opération réussie";
+
   const text=document.createElement("div");
   text.className="batbot-toast-text";
   text.textContent=value;
   content.append(title,text);
+
   const close=document.createElement("button");
   close.type="button";
   close.className="batbot-toast-close";
   close.setAttribute("aria-label","Fermer la notification");
   close.innerHTML="&times;";
+
   const progress=document.createElement("span");
   progress.className="batbot-toast-progress";
   progress.setAttribute("aria-hidden","true");
+
   let removeTimer;
-  const removeToast=()=>{
+  let removed=false;
+
+  const removeToast=(immediate=false)=>{
+    if(removed)return;
+    removed=true;
     if(removeTimer)clearTimeout(removeTimer);
+    if(immediate){
+      toast.remove();
+      return;
+    }
     toast.classList.remove("show");
     setTimeout(()=>toast.remove(),230);
   };
-  close.addEventListener("click",removeToast);
+
+  toast._batbotRemove=removeToast;
+  close.addEventListener("click",()=>removeToast());
+
   toast.append(icon,content,close,progress);
   container.appendChild(toast);
+
   requestAnimationFrame(()=>toast.classList.add("show"));
-  removeTimer=setTimeout(removeToast,4000);
+  removeTimer=setTimeout(()=>removeToast(),4000);
 }
 window.alert=function(message){showToast(message,"error");};
+function friendlyActionError(error,fallback="Une erreur est survenue. Vérifiez votre connexion et réessayez."){
+  const message=String(error?.message||"").trim();
+  if(!message||/failed to fetch|networkerror|load failed|fetch failed|timeout|timed out|econn|sqlstate|postgres|database|syntaxerror|typeerror|internal server error|unexpected token/i.test(message)){
+    return fallback;
+  }
+  return message;
+}
 
 function setLoading(id,loading,normalText){
   const button=document.getElementById(id);
@@ -3076,7 +3127,7 @@ async function submitForgotPassword(){
           whatsappButton.classList.add("hidden");
         }
       }
-      showStatus("forgotStatus",data.message||"Contactez l’administrateur pour récupérer votre compte.","error");
+      showStatus("forgotStatus",data.message||"Contactez le Service BatBot pour récupérer votre compte.","error");
       return;
     }
 
@@ -3177,7 +3228,7 @@ function renderPasswordResetDelivery(state){
   if(state.status==="pending"){
     box.classList.remove("hidden");
     box.classList.add("pending");
-    box.innerHTML='<div class="password-reset-delivery-title">ℹ️ Récupération du compte</div><div class="password-reset-meta">Si aucune question secrète n’est enregistrée pour votre compte, contactez l’administrateur sur WhatsApp.</div>';
+    box.innerHTML='<div class="password-reset-delivery-title">ℹ️ Récupération du compte</div><div class="password-reset-meta">Si aucune question secrète n’est enregistrée pour votre compte, contactez le Service BatBot sur WhatsApp.</div>';
     return;
   }
 
@@ -3314,7 +3365,7 @@ function showFileName(){
 
 async function submitPaymentReference(){
   const body={offer:document.getElementById("paymentOffer").value,operator:document.getElementById("paymentOperator").value,amount:document.getElementById("paymentAmount").value,reference:document.getElementById("paymentReference").value.trim()};
-  try{const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Enregistrement impossible.");showStatus("paymentNumberStatus","Référence enregistrée. Vous pouvez aussi envoyer votre référence ou votre preuve par WhatsApp au service BATBOT PRO.","success");}catch(e){showStatus("paymentNumberStatus",e.message,"error");}
+  try{const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Enregistrement impossible.");showStatus("paymentNumberStatus","Référence enregistrée. Vous pouvez aussi envoyer votre référence ou votre preuve par WhatsApp au service BATBOT PRO.","success");}catch(e){showStatus("paymentNumberStatus",friendlyActionError(e,"Impossible d’enregistrer la référence. Vérifiez votre connexion et réessayez."),"error");}
 }
 async function copyPaymentNumber(operator){
   const statusId="paymentNumberStatus";
@@ -3328,7 +3379,7 @@ async function copyPaymentNumber(operator){
     await navigator.clipboard.writeText(String(data.number));
     showStatus(statusId,"Numéro "+operator+" copié.","success");
   }catch(error){
-    showStatus(statusId,error.message||"Impossible de copier le numéro pour le moment.","error");
+    showStatus(statusId,friendlyActionError(error,"Impossible de copier le numéro. Réessayez ou contactez le Service BatBot."),"error");
   }
 }
 function sendPaymentWhatsApp(){if(!SERVICE_FLAGS.whatsapp)return showStatus("paymentNumberStatus","Le service WhatsApp est temporairement désactivé.","error");const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BATBOT PRO 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
@@ -3476,10 +3527,10 @@ async function loadCoupons(){
     const r=await fetch("/api/coupons",{credentials:"same-origin",cache:"no-store"}); const d=await readApiResponse(r);
     if(!r.ok)throw new Error(d.error||"Erreur");
     const items=Array.isArray(d.coupons)?d.coupons:[];
-    box.innerHTML=items.map(c=>`<div class="match-card"><strong>${escapeHtml(c.platform_name)}</strong><div class="notice">Code à utiliser sur ${escapeHtml(c.platform_name)} : <strong>${escapeHtml(c.code)}</strong></div>${c.description?`<p class="muted">${escapeHtml(c.description)}</p>`:""}<button class="btn primary" onclick="copyText('${String(c.code).replace(/'/g,"\\'")}')">📋 Copier le code</button><button class="btn secondary" onclick="copyText('${String(c.platform_url).replace(/'/g,"\\'")}')">🔗 Copier le lien</button><a class="btn green" href="${escapeHtml(c.platform_url)}" target="_blank" rel="noopener noreferrer">Ouvrir la plateforme</a><button class="btn telegram" onclick="shareCoupon('${String(c.platform_name).replace(/'/g,"\\'")}','${String(c.code).replace(/'/g,"\\'")}','${String(c.platform_url).replace(/'/g,"\\'")}')">📤 Partager</button></div>`).join("")||'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun coupon disponible</div><div class="professional-status-body">Aucun code coupon n’est actuellement publié.</div></div>';
+    box.innerHTML=items.map(c=>`<div class="match-card"><strong>${escapeHtml(c.platform_name)}</strong><div class="notice">Code à utiliser sur ${escapeHtml(c.platform_name)} : <strong>${escapeHtml(c.code)}</strong></div>${c.description?`<p class="muted">${escapeHtml(c.description)}</p>`:""}<button class="btn primary" onclick="copyText('${String(c.code).replace(/'/g,"\\'")}', 'Code copié avec succès')">📋 Copier le code</button><button class="btn secondary" onclick="copyText('${String(c.platform_url).replace(/'/g,"\\'")}', 'Lien copié avec succès')">🔗 Copier le lien</button><a class="btn green" href="${escapeHtml(c.platform_url)}" target="_blank" rel="noopener noreferrer">Ouvrir la plateforme</a><button class="btn telegram" onclick="shareCoupon('${String(c.platform_name).replace(/'/g,"\\'")}','${String(c.code).replace(/'/g,"\\'")}','${String(c.platform_url).replace(/'/g,"\\'")}')">📤 Partager</button></div>`).join("")||'<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun coupon disponible</div><div class="professional-status-body">Aucun code coupon n’est actuellement publié.</div></div>';
   }catch(e){box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Coupons indisponibles</div><div class="professional-status-body">Impossible de charger les coupons pour le moment.</div></div>';}
 }
-async function copyText(value){
+async function copyText(value,successMessage="Contenu copié avec succès."){
   const text=String(value??"");
   if(!text){showToast("Aucun contenu à copier.","error");return false;}
   try{
@@ -3493,7 +3544,7 @@ async function copyText(value){
       const copied=document.execCommand("copy");ta.remove();
       if(!copied)throw new Error("Fallback clipboard failed");
     }
-    showToast("Code copié avec succès.","success");
+    showToast(successMessage,"success");
     return true;
   }catch(e){
     try{
@@ -3502,7 +3553,7 @@ async function copyText(value){
       ta.style.position="fixed";ta.style.opacity="0";ta.style.pointerEvents="none";
       document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
       const copied=document.execCommand("copy");ta.remove();
-      if(copied){showToast("Code copié avec succès.","success");return true;}
+      if(copied){showToast(successMessage,"success");return true;}
     }catch(_){}
     showToast("La copie automatique n’a pas pu être effectuée. Appuyez longuement sur le code pour le copier manuellement.","error");
     return false;
@@ -3516,16 +3567,16 @@ async function toggleUserDisabled(id,disabled){
     if(!r.ok)throw new Error(d.error||"Action impossible");
     await loadAdmin();
     return true;
-  }catch(e){alert(e.message);return false;}
+  }catch(e){alert(friendlyActionError(e,"Impossible de modifier le compte. Réessayez."));return false;}
 }
 
 async function saveBookmaker(){
   const body={name:document.getElementById("bmName").value.trim(),bonus:document.getElementById("bmBonus").value.trim(),url:document.getElementById("bmUrl").value.trim(),active:true};
-  try{const r=await fetch("/api/admin/bookmakers",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("bookmakerAdminStatus",d.message||"Ajouté","success");await loadAdminBookmakers();await loadBookmakers();}catch(e){showStatus("bookmakerAdminStatus",e.message,"error");}
+  try{const r=await fetch("/api/admin/bookmakers",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("bookmakerAdminStatus",d.message||"Ajouté","success");await loadAdminBookmakers();await loadBookmakers();}catch(e){showStatus("bookmakerAdminStatus",friendlyActionError(e,"Impossible d’ajouter le bookmaker. Réessayez."),"error");}
 }
 async function saveCoupon(){
   const body={platform_name:document.getElementById("couponPlatform").value.trim(),code:document.getElementById("couponCode").value.trim(),platform_url:document.getElementById("couponUrl").value.trim(),description:document.getElementById("couponDescription").value.trim(),active:true};
-  try{const r=await fetch("/api/admin/coupons",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("couponAdminStatus",d.message||"Ajouté","success");await loadAdminCoupons();await loadCoupons();}catch(e){showStatus("couponAdminStatus",e.message,"error");}
+  try{const r=await fetch("/api/admin/coupons",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Erreur");showStatus("couponAdminStatus",d.message||"Ajouté","success");await loadAdminCoupons();await loadCoupons();}catch(e){showStatus("couponAdminStatus",friendlyActionError(e,"Impossible d’ajouter le coupon. Réessayez."),"error");}
 }
 async function loadAdminBookmakers(){
   const box=document.getElementById("adminBookmakersList");if(!box)return;const r=await fetch("/api/admin/bookmakers",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
@@ -3540,7 +3591,7 @@ async function deleteBookmaker(id){
     if(!response.ok)throw new Error(data.error||"Impossible de supprimer le bookmaker.");
     showToast(data.message||"Bookmaker supprimé avec succès.","success");
     await Promise.allSettled([loadAdminBookmakers(),loadBookmakers()]);
-  }catch(error){showToast(error.message||"Impossible de supprimer le bookmaker.","error");}
+  }catch(error){showToast(friendlyActionError(error,"Impossible de supprimer le bookmaker. Réessayez."),"error");}
 }
 async function loadAdminCoupons(){
   const box=document.getElementById("adminCouponsList");if(!box)return;const r=await fetch("/api/admin/coupons",{credentials:"same-origin"});const d=await readApiResponse(r);if(!r.ok)return;
@@ -3561,7 +3612,7 @@ async function deleteCoupon(id){
     showToast(data.message||"Coupon supprimé avec succès.","success");
     await Promise.allSettled([loadAdminCoupons(),loadCoupons()]);
   }catch(error){
-    showToast(error.message||"Impossible de supprimer le coupon.","error");
+    showToast(friendlyActionError(error,"Impossible de supprimer le coupon. Réessayez."),"error");
   }
 }
 function filterAdminUsers(){
@@ -3641,7 +3692,7 @@ async function setPremium(id,enabled){
     showToast(data.message||(enabled?"Premium activé avec succès.":"Premium désactivé avec succès."),"success");
     await loadAdmin();
     return true;
-  }catch(e){showToast(e.message||"Action impossible.","error");return false;}
+  }catch(e){showToast(friendlyActionError(e,"Impossible d’effectuer cette action. Réessayez."),"error");return false;}
 }
 
 async function handleMemberSwitch(input,feature,id){
@@ -3653,7 +3704,7 @@ async function handleMemberSwitch(input,feature,id){
     if(feature==="premium")success=await setPremium(id,requested);
     else if(feature==="account")success=await toggleUserDisabled(id,!requested);
   }catch(error){
-    showToast(error.message||"Action impossible.","error");
+    showToast(friendlyActionError(error,"Impossible de modifier le statut du compte. Réessayez."),"error");
   }finally{
     if(!success)input.checked=previous;
     input.disabled=false;
@@ -3673,7 +3724,7 @@ async function deleteAdminUser(id){
     if(!response.ok)throw new Error(data.error||"Suppression impossible.");
     await loadAdmin();
     showToast("Client supprimé avec succès.","success");
-  }catch(e){showToast(e.message||"Suppression impossible.","error");}
+  }catch(e){showToast(friendlyActionError(e,"Impossible de supprimer ce client. Vérifiez votre connexion et réessayez."),"error");}
 }
 
 function renderSettingsForm(settings){
@@ -3725,7 +3776,7 @@ async function toggleServiceSetting(input,key){
   }catch(error){
     input.checked=previous;
     if(label)label.textContent=previous?'Service activé':'Service désactivé';
-    showStatus('settingsStatus',error.message||'Impossible de modifier ce service.','error');
+    showStatus('settingsStatus',friendlyActionError(error,'Impossible de modifier ce service. Vérifiez votre connexion et réessayez.'),'error');
   }finally{input.disabled=false;}
 }
 
@@ -3738,7 +3789,7 @@ async function saveAdminSettings(){
     if(!response.ok)throw new Error(data.error||'Enregistrement impossible.');
     showStatus('settingsStatus','Paramètres enregistrés avec succès.','success');
     await loadConfig();
-  }catch(e){showStatus('settingsStatus',e.message,'error');}
+  }catch(e){showStatus('settingsStatus',friendlyActionError(e,'Impossible d’enregistrer les paramètres. Réessayez.'),'error');}
 }
 
 async function logout(){
@@ -4766,7 +4817,7 @@ async function submitBatBotAI(){
 function analyzeFootballMatch(home,away,homeId,awayId,fixture){
   const currentUser=window.batBotCurrentUser||{};
   if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
-    showToast("Abonnement Premium requis. Ouvrez Plus ou Finances pour consulter les options d’abonnement.","error");
+    showToast("Abonnement Premium requis. Ouvrez Plus ou Abonnement pour consulter les options d’abonnement.","error");
     return;
   }
   if(fixture){if(isFinishedFixture(fixture)){showFinishedFootballMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}}
@@ -4790,7 +4841,7 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
 function analyzeFirstTwoFootballMatches(){
   const currentUser=window.batBotCurrentUser||{};
   if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
-    showToast("Abonnement Premium requis pour recevoir un pronostic. Consultez les options dans Finances.","error");
+    showToast("Abonnement Premium requis pour recevoir un pronostic. Consultez les options dans la rubrique Abonnement.","error");
     return;
   }
   const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
@@ -5276,7 +5327,7 @@ async function loadFootballLive(){
     }catch(e){
       if(button)button.dataset.liveState="error";
       window.batBotLiveRefreshTimer=null;
-      box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+escapeHtml(e&&e.message?e.message:"Impossible de récupérer les matchs en direct.")+'</div></div>';
+      box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">'+ "Impossible d’actualiser les matchs en direct. Réessayez dans quelques instants." +'</div></div>';
       status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Direct indisponible</div><div class="professional-status-body">La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
     }
   };
@@ -5605,7 +5656,7 @@ async function publishBatBotMessage(){
     document.getElementById("adminMessageBody").value="";
     showStatus("adminMessageStatus",d.message||"Message publié avec succès.","success");
     await loadAdminMessages();
-  }catch(e){showStatus("adminMessageStatus",e.message||"Publication impossible.","error");}
+  }catch(e){showStatus("adminMessageStatus",friendlyActionError(e,"Impossible de publier le message. Réessayez."),"error");}
   finally{setLoading("adminPublishMessageButton",false,"📢 Publier le message");}
 }
 
@@ -5624,7 +5675,7 @@ async function deleteBatBotMessage(id,button){
     if(!r.ok)throw new Error(d.error||"Suppression impossible.");
     showToast(d.message||"Message supprimé.","success");
     await loadAdminMessages();
-  }catch(e){showToast(e.message||"Suppression impossible.","error");if(button){button.disabled=false;button.textContent="🗑️ Supprimer";}}
+  }catch(e){showToast(friendlyActionError(e,"Impossible de supprimer le message. Réessayez."),"error");if(button){button.disabled=false;button.textContent="🗑️ Supprimer";}}
 }
 
 async function loadMyTransactions(){
@@ -5705,7 +5756,7 @@ async function deletePaymentRequest(id,button){
     if(box)box.dataset.signature="";
     await loadAdminPaymentRequests();
   }catch(e){
-    showToast(e.message||"Impossible de supprimer ce reçu.","error");
+    showToast(friendlyActionError(e,"Impossible de supprimer ce reçu. Réessayez."),"error");
     if(button){button.disabled=false;button.textContent="🗑️ Supprimer le reçu";}
   }
 }
@@ -5723,7 +5774,7 @@ async function resolvePaymentRequest(id,status,button){
     showToast(d.message||(status==="accepted"?"Paiement approuvé.":"Paiement refusé."),"success");
     await loadAdminPaymentRequests();
   }catch(e){
-    showToast(e.message||"Impossible de traiter le paiement.","error");
+    showToast(friendlyActionError(e,"Impossible de traiter ce paiement. Réessayez."),"error");
     if(button){button.disabled=false;button.textContent=status==="accepted"?"✅ Approuver le paiement":"❌ Refuser le paiement";}
   }
 }
@@ -6158,7 +6209,7 @@ async function loadAdminAffiliateWithdrawals(){
             (w.resolved_at?'<div class="batbot-receipt-row"><span>⚙️ Traitement</span><strong>'+escapeHtml(formatDateTime(w.resolved_at))+'</strong></div>':'')+
             (w.paid_at?'<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>'+escapeHtml(formatDateTime(w.paid_at))+'</strong></div>':'')+
             (w.payment_reference?'<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>'+escapeHtml(w.payment_reference)+'</code></div>':'')+
-            (w.admin_note?'<div class="batbot-receipt-row"><span>Message admin</span><strong>'+escapeHtml(w.admin_note)+'</strong></div>':'')+
+            (w.admin_note?'<div class="batbot-receipt-row"><span>Message envoyé au membre</span><strong>'+escapeHtml(w.admin_note)+'</strong></div>':'')+
             '<div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d\'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>'+
           '</div>'+
           '<div class="batbot-receipt-footer">'+
@@ -6244,7 +6295,7 @@ async function saveAdminAffiliateWithdrawal(id){
     await loadAdminAffiliateWithdrawals();
   }catch(error){
     console.error("ADMIN AFFILIATE UPDATE:",error);
-    showToast(error.message||"Impossible de traiter la demande.","error");
+    showToast(friendlyActionError(error,"Impossible de traiter cette demande de retrait. Vérifiez son statut et réessayez."),"error");
     if(button)button.disabled=false;
   }
 }
@@ -7115,7 +7166,7 @@ document.addEventListener("keydown",function(event){
       }catch(e){
         if(!silent){
           target.innerHTML='<p>Historique indisponible : '+
-            escapeHtml(e.message||'erreur réseau')+'</p>';
+             'Historique temporairement indisponible. Vérifiez votre connexion et réessayez.' +'</p>';
         }else{
           console.warn('BATBOT : actualisation de l’historique impossible.',
             e.message||'erreur réseau');
@@ -7327,7 +7378,7 @@ document.addEventListener("keydown",function(event){
                 ${x.resolved_at ? `<div class="batbot-receipt-row"><span>⚙️ Traitement</span><strong>${safe(formatDateTime(x.resolved_at))}</strong></div>` : ""}
                 ${x.paid_at ? `<div class="batbot-receipt-row"><span>💳 Paiement</span><strong>${safe(formatDateTime(x.paid_at))}</strong></div>` : ""}
                 ${x.payment_reference ? `<div class="batbot-receipt-reference"><span class="batbot-receipt-reference-label">Référence du transfert</span><code>${safe(x.payment_reference)}</code></div>` : ""}
-                ${x.admin_note ? `<div class="batbot-receipt-row"><span>Message admin</span><strong>${safe(x.admin_note)}</strong></div>` : ""}
+                ${x.admin_note ? `<div class="batbot-receipt-row"><span>Message du Service BatBot</span><strong>${safe(x.admin_note)}</strong></div>` : ""}
                 <div class="batbot-receipt-retention" style="font-size:12px;color:#8b929e;margin-top:10px">Ce reçu est conservé pendant 14 jours à compter de sa date d'émission. Après ce délai, il sera automatiquement retiré de votre historique.</div>
               </div>
               <div class="batbot-receipt-footer">
@@ -7339,7 +7390,7 @@ document.addEventListener("keydown",function(event){
       </details>
       <p id="affiliateLoadMessage" role="status"></p>`;
 
-    async function copy(value) {
+    async function copy(value, successMessage) {
       try {
         if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
         else {
@@ -7351,13 +7402,13 @@ document.addEventListener("keydown",function(event){
           input.remove();
           if (!ok) throw new Error();
         }
-        showToast('Copié avec succès.', 'success');
+        showToast(successMessage || 'Contenu copié avec succès.', 'success');
       } catch (_) {
         showToast('Copie impossible. Sélectionne le texte pour le copier.', 'error');
       }
     }
-    panel.querySelector('#affiliateCopyCode').addEventListener('click', () => copy(me.referral_code || ''));
-    panel.querySelector('#affiliateCopyLink').addEventListener('click', () => copy(me.referral_link || ''));
+    panel.querySelector('#affiliateCopyCode').addEventListener('click', () => copy(me.referral_code || '', "Code de parrainage copié."));
+    panel.querySelector('#affiliateCopyLink').addEventListener('click', () => copy(me.referral_link || '', "Lien de parrainage copié."));
 
     panel.querySelector('#affiliateWithdrawalForm').addEventListener('submit', async event => {
       event.preventDefault();
@@ -7390,14 +7441,14 @@ document.addEventListener("keydown",function(event){
         message.textContent = result.message || 'Demande envoyée pour vérification.';
         await loadBatBotAffiliate(profileCard);
       } catch (error) {
-        message.textContent = error.message || 'Erreur pendant la demande.';
+        message.textContent = 'Impossible d’envoyer la demande pour le moment. Vérifiez votre connexion et réessayez.';
       } finally {
         const button = panel.querySelector('#affiliateSubmit');
         if (button) button.disabled = false;
       }
     });
   } catch (error) {
-    panel.innerHTML = `<p class="batbot-profile-message error">${escapeHtml(error.message || 'Chargement impossible.')}</p><button type="button" class="btn secondary" id="affiliateRetry">Réessayer</button>`;
+    panel.innerHTML = `<p class="batbot-profile-message error">Impossible de charger les informations de parrainage. Vérifiez votre connexion puis réessayez.</p><button type="button" class="btn secondary" id="affiliateRetry">Réessayer</button>`;
     panel.querySelector('#affiliateRetry')?.addEventListener('click', () => loadBatBotAffiliate(profileCard));
   }
 }

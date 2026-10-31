@@ -529,7 +529,7 @@ app.post("/api/password-reset", async (req, res) => {
 
     return res.json({
       mode: "contact_admin",
-      message: "Aucune question secrète n’est enregistrée pour ce compte. Contactez l’administrateur sur WhatsApp pour récupérer votre accès."
+      message: "Aucune question secrète n’est enregistrée pour ce compte. Contactez le Service BatBot sur WhatsApp pour récupérer votre accès."
     });
   } catch (error) {
     console.error("password-reset PostgreSQL:", error);
@@ -569,7 +569,7 @@ app.post("/api/password-reset/security", async (req, res) => {
       [username]
     );
     if (!user || user.disabled || !user.security_question || !user.security_answer_hash) {
-      return res.status(400).json({ error: "Impossible de vérifier cette réponse. Vérifiez les informations ou contactez l'administrateur." });
+      return res.status(400).json({ error: "Impossible de vérifier cette réponse. Vérifiez les informations ou contactez le Service BatBot." });
     }
 
     const validAnswer = bcrypt.compareSync(answer, user.security_answer_hash);
@@ -645,7 +645,7 @@ app.post("/api/forgot-password", async (req, res) => {
 
     return res.json({
       mode: "contact_admin",
-      message: "Aucune question secrète n’est enregistrée pour ce compte. Contactez l’administrateur sur WhatsApp pour récupérer votre accès."
+      message: "Aucune question secrète n’est enregistrée pour ce compte. Contactez le Service BatBot sur WhatsApp pour récupérer votre accès."
     });
   } catch (error) {
     console.error("forgot-password PostgreSQL:", error);
@@ -1264,9 +1264,12 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
       await client.query("ROLLBACK");
     } catch (_) {}
 
-    res.status(409).json({
-      error: error.message || "Demande déjà traitée."
-    });
+    console.error("BATBOT PAYMENT REQUEST RESOLUTION:", error);
+    const message = error.message === "Cette demande a déjà été traitée."
+      ? "Cette demande a déjà été traitée."
+      : "Impossible de traiter cette demande de paiement. Réessayez.";
+
+    res.status(409).json({ error: message });
   } finally {
     client.release();
   }
@@ -1541,8 +1544,22 @@ app.patch("/api/admin/affiliate/withdrawals/:id", requireAdmin, async (req, res)
     res.json({ withdrawal: updated.rows[0] });
   } catch (error) {
     try { await client.query("ROLLBACK"); } catch (_) {}
-    console.error("BATBOT ADMIN AFFILIATE WITHDRAWAL UPDATE:", error.message);
-    res.status(409).json({ error: error.message || "Impossible de traiter ce retrait." });
+    console.error("BATBOT ADMIN AFFILIATE WITHDRAWAL UPDATE:", error);
+
+    const safeMessages = {
+      "Les commissions réservées ne correspondent plus à cette demande.":
+        "Les commissions associées à ce retrait ne correspondent plus. Vérifiez la demande.",
+      "Le total réservé ne correspond pas au montant demandé.":
+        "Le montant des commissions réservées ne correspond pas au retrait demandé.",
+      "Une commission a déjà été traitée.":
+        "Une commission a déjà été traitée. Vérifiez les commissions de cette demande.",
+      "La demande a été traitée entre-temps.":
+        "Cette demande vient d’être traitée. Actualisez la liste pour voir son statut."
+    };
+
+    res.status(409).json({
+      error: safeMessages[error.message] || "Impossible de mettre à jour ce retrait. Vérifiez son statut et réessayez."
+    });
   } finally {
     client.release();
   }
@@ -2455,7 +2472,7 @@ app.get("/api/payment-number", requireUser, async (req, res) => {
   if (!key) return res.status(400).json({ error: "Opérateur de paiement invalide." });
   const settings = await getSettings();
   const enabledKey = key + "Enabled";
-  if (String(settings[enabledKey] ?? "true").toLowerCase() === "false") return res.status(404).json({ error: "Service désactivé par l’administrateur." });
+  if (String(settings[enabledKey] ?? "true").toLowerCase() === "false") return res.status(404).json({ error: "Ce moyen de paiement est temporairement indisponible." });
   const number = cleanPhone(settings[key]);
   if (!number) return res.status(404).json({ error: "Numéro de dépôt indisponible pour cet opérateur." });
   res.set("Cache-Control","no-store");
