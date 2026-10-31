@@ -14,6 +14,21 @@ CREATE TABLE IF NOT EXISTS affiliate_profiles (
 CREATE INDEX IF NOT EXISTS idx_affiliate_profiles_referrer
   ON affiliate_profiles(referred_by_user_id);
 
+-- Conservation des anciens liens de parrainage.
+CREATE TABLE IF NOT EXISTS affiliate_referral_code_aliases (
+  referral_code TEXT PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_affiliate_referral_code_aliases_user
+  ON affiliate_referral_code_aliases(user_id);
+
+-- Unicité des anciens codes sans distinction de casse ni espaces.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_affiliate_referral_code_aliases_normalized
+  ON affiliate_referral_code_aliases (UPPER(BTRIM(referral_code)));
+
+
 CREATE TABLE IF NOT EXISTS affiliate_payment_events (
   id BIGSERIAL PRIMARY KEY,
   payment_request_id BIGINT NOT NULL UNIQUE,

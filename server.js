@@ -320,11 +320,19 @@ app.post("/api/register", async (req, res) => {
 
     let referrerId = null;
     if (referralCode) {
-      const referrer = await client.query(
+      let referrer = await client.query(
         `SELECT user_id FROM affiliate_profiles
-         WHERE referral_code = $1`,
+         WHERE UPPER(BTRIM(referral_code)) = $1`,
         [referralCode]
       );
+
+      if (referrer.rowCount === 0) {
+        referrer = await client.query(
+          `SELECT user_id FROM affiliate_referral_code_aliases
+           WHERE UPPER(BTRIM(referral_code)) = $1`,
+          [referralCode]
+        );
+      }
 
       if (referrer.rowCount !== 1) {
         await client.query("ROLLBACK");
@@ -354,8 +362,19 @@ app.post("/api/register", async (req, res) => {
     let profileCreated = false;
 
     for (let attempt = 0; attempt < 8 && !profileCreated; attempt++) {
-      const ownReferralCode =
-        "BAT-" + crypto.randomBytes(3).toString("hex").toUpperCase();
+      const ownReferralCode = `BAT-${Array.from(
+        { length: 4 },
+        () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[crypto.randomInt(36)]
+      ).join("")}`;
+
+      const codeInUse = await client.query(
+        `SELECT 1 FROM affiliate_profiles WHERE UPPER(BTRIM(referral_code)) = $1
+         UNION ALL
+         SELECT 1 FROM affiliate_referral_code_aliases WHERE UPPER(BTRIM(referral_code)) = $1
+         LIMIT 1`,
+        [ownReferralCode]
+      );
+      if (codeInUse.rowCount) continue;
 
       try {
         const profile = await client.query(
@@ -3549,6 +3568,89 @@ async function initializeAffiliateSchema() {
     await client.query("BEGIN");
     await client.query(schema);
 
+    const legacyProfiles = await client.query(`
+      SELECT user_id, referral_code
+      FROM affiliate_profiles
+      WHERE referral_code !~ '^BAT-[A-Z0-9]{4}$'
+      ORDER BY user_id
+      FOR UPDATE
+    `);
+
+    let migratedCount = 0;
+
+    for (const profile of legacyProfiles.rows) {
+      const oldCode = String(profile.referral_code).trim().toUpperCase();
+
+      const activeCollision = await client.query(
+        `SELECT user_id FROM affiliate_profiles WHERE UPPER(BTRIM(referral_code)) = $1`,
+        [oldCode]
+      );
+
+      if (
+        activeCollision.rowCount > 0 &&
+        Number(activeCollision.rows[0].user_id) !== Number(profile.user_id)
+      ) {
+        throw new Error(`Ancien code en conflit avec un code actif : ${oldCode}`);
+      }
+
+      const aliasInsert = await client.query(
+        `INSERT INTO affiliate_referral_code_aliases(referral_code, user_id)
+         VALUES($1, $2)
+         ON CONFLICT DO NOTHING
+         RETURNING user_id`,
+        [oldCode, profile.user_id]
+      );
+
+      if (aliasInsert.rowCount === 0) {
+        const existingAlias = await client.query(
+          `SELECT user_id FROM affiliate_referral_code_aliases
+           WHERE UPPER(BTRIM(referral_code)) = $1`,
+          [oldCode]
+        );
+
+        if (
+          existingAlias.rowCount !== 1 ||
+          Number(existingAlias.rows[0].user_id) !== Number(profile.user_id)
+        ) {
+          throw new Error(`Ancien code associé à un autre compte : ${oldCode}`);
+        }
+      }
+
+      let updated = false;
+
+      for (let attempt = 0; attempt < 100 && !updated; attempt++) {
+        const newCode = `BAT-${Array.from(
+          { length: 4 },
+          () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[crypto.randomInt(36)]
+        ).join("")}`;
+
+        const codeInUse = await client.query(
+          `SELECT 1 FROM affiliate_profiles WHERE UPPER(BTRIM(referral_code)) = $1
+           UNION ALL
+           SELECT 1 FROM affiliate_referral_code_aliases WHERE UPPER(BTRIM(referral_code)) = $1
+           LIMIT 1`,
+          [newCode]
+        );
+
+        if (codeInUse.rowCount) continue;
+
+        const result = await client.query(
+          `UPDATE affiliate_profiles
+           SET referral_code = $1
+           WHERE user_id = $2`,
+          [newCode, profile.user_id]
+        );
+
+        updated = result.rowCount === 1;
+      }
+
+      if (!updated) {
+        throw new Error(`Impossible de générer le code du compte ${profile.user_id}.`);
+      }
+
+      migratedCount++;
+    }
+
     const users = await client.query(`
       SELECT u.id
       FROM users u
@@ -3564,8 +3666,19 @@ async function initializeAffiliateSchema() {
       let created = false;
 
       for (let attempt = 0; attempt < 8 && !created; attempt++) {
-        const referralCode =
-          "BAT-" + crypto.randomBytes(3).toString("hex").toUpperCase();
+        const referralCode = `BAT-${Array.from(
+          { length: 4 },
+          () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[crypto.randomInt(36)]
+        ).join("")}`;
+
+        const codeInUse = await client.query(
+          `SELECT 1 FROM affiliate_profiles WHERE UPPER(BTRIM(referral_code)) = $1
+           UNION ALL
+           SELECT 1 FROM affiliate_referral_code_aliases WHERE UPPER(BTRIM(referral_code)) = $1
+           LIMIT 1`,
+          [referralCode]
+        );
+        if (codeInUse.rowCount) continue;
 
         try {
           const result = await client.query(
@@ -3603,7 +3716,7 @@ async function initializeAffiliateSchema() {
 
     await client.query("COMMIT");
     console.log(
-      `BatBot : affiliation initialisée ; ${createdCount} profil(s) créé(s).`
+      `BatBot : affiliation initialisée ; ${createdCount} profil(s) créé(s), ${migratedCount} code(s) migré(s).`
     );
   } catch (error) {
     try {

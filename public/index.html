@@ -2784,11 +2784,22 @@ function escapeHtml(value){
 
 function applyReferralCodeFromUrl(){
   const input=document.getElementById("registerReferralCode");
-  if(!input || input.value.trim())return;
+  if(!input)return;
+
   try{
     const code=String(new URLSearchParams(window.location.search).get("ref")||"").trim().toUpperCase();
-    if(code)input.value=code;
-  }catch(_){}
+    if(code){
+      input.value=code;
+      input.readOnly=true;
+      input.setAttribute("aria-readonly","true");
+    }else{
+      input.readOnly=false;
+      input.removeAttribute("aria-readonly");
+    }
+  }catch(_){
+    input.readOnly=false;
+    input.removeAttribute("aria-readonly");
+  }
 }
 
 function showRegister(){
@@ -2917,17 +2928,8 @@ async function register(){
   const password2=document.getElementById("registerPassword2").value;
   const securityQuestion=document.getElementById("registerSecurityQuestion").value;
   const securityAnswer=document.getElementById("registerSecurityAnswer").value.trim();
+  applyReferralCodeFromUrl();
   const referralInput=document.getElementById("registerReferralCode");
-  const referralFromUrl=(function(){
-    try {
-      return String(new URLSearchParams(window.location.search).get("ref")||"").trim().toUpperCase();
-    } catch(_) {
-      return "";
-    }
-  })();
-  if(referralInput && !referralInput.value.trim() && referralFromUrl) {
-    referralInput.value=referralFromUrl;
-  }
   const referralCode=String((referralInput && referralInput.value)||"").trim().toUpperCase();
 
   if(!username||!password||!password2||!securityQuestion||!securityAnswer)
