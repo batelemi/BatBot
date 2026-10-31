@@ -469,6 +469,7 @@ app.post("/api/login", async (req, res) => {
       });
     }
 
+
     req.session.userId = user.id;
 
     res.json({
@@ -1636,11 +1637,15 @@ app.post("/api/admin/ai-subscription", requireAdmin, async (req, res) => {
   res.json({ message: "Accès IA désactivé." });
 });
 app.patch("/api/admin/users/:id/status", requireAdmin, async (req, res) => {
-  const disabled = Boolean(req.body.disabled);
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant utilisateur invalide." });
+  }
 
+  const disabled = Boolean(req.body.disabled);
   const result = await pgQuery(
     "UPDATE users SET disabled=$1 WHERE id=$2",
-    [disabled, Number(req.params.id)]
+    [disabled, id]
   );
 
   if (!result.rowCount) {
@@ -1677,16 +1682,124 @@ app.post("/api/admin/reset-password", requireAdmin, async (req, res) => {
 });
 
 app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
-  const result = await pgQuery(
-    "DELETE FROM users WHERE id=$1",
-    [Number(req.params.id)]
-  );
+  const id = Number(req.params.id);
 
-  if (!result.rowCount) {
-    return res.status(404).json({ error: "Utilisateur introuvable." });
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant utilisateur invalide." });
   }
 
-  res.json({ message: "Membre supprimé." });
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const target = await client.query(
+      "SELECT id FROM users WHERE id=$1 FOR UPDATE",
+      [id]
+    );
+
+    if (!target.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Utilisateur introuvable." });
+    }
+
+    // Conserver les commissions deja gagnees par le parrain.
+    await client.query(
+      `UPDATE affiliate_commissions
+       SET referred_user_id=NULL
+       WHERE referred_user_id=$1 AND affiliate_user_id<>$1`,
+      [id]
+    );
+
+    // Anonymiser les paiements lies aux commissions conservees.
+    await client.query(
+      `UPDATE affiliate_payment_events e
+       SET user_id=NULL
+       WHERE e.user_id=$1
+       AND EXISTS (
+         SELECT 1 FROM affiliate_commissions c
+         WHERE c.payment_event_id=e.id
+         AND c.affiliate_user_id<>$1
+       )`,
+      [id]
+    );
+
+    // Supprimer les liens de retraits du membre et de ses commissions.
+    await client.query(
+      `DELETE FROM affiliate_withdrawal_commissions wc
+       USING affiliate_withdrawals w
+       WHERE wc.withdrawal_id=w.id
+       AND w.affiliate_user_id=$1`,
+      [id]
+    );
+
+    await client.query(
+      `DELETE FROM affiliate_withdrawal_commissions wc
+       USING affiliate_commissions c
+       WHERE wc.commission_id=c.id
+       AND c.affiliate_user_id=$1`,
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM affiliate_withdrawals WHERE affiliate_user_id=$1",
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM affiliate_commissions WHERE affiliate_user_id=$1",
+      [id]
+    );
+
+    // Supprimer les evenements qui ne sont plus references.
+    await client.query(
+      `DELETE FROM affiliate_payment_events e
+       WHERE e.user_id=$1
+       AND NOT EXISTS (
+         SELECT 1 FROM affiliate_commissions c
+         WHERE c.payment_event_id=e.id
+       )`,
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM affiliate_referral_code_aliases WHERE user_id=$1",
+      [id]
+    );
+
+    await client.query(
+      "UPDATE affiliate_profiles SET referred_by_user_id=NULL WHERE referred_by_user_id=$1",
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM affiliate_profiles WHERE user_id=$1",
+      [id]
+    );
+
+    const result = await client.query(
+      "DELETE FROM users WHERE id=$1",
+      [id]
+    );
+
+    if (!result.rowCount) {
+      throw new Error("La suppression du compte n'a pas abouti.");
+    }
+
+    await client.query("COMMIT");
+
+    return res.json({
+      message: "Membre supprime. Les commissions deja gagnees par son parrain ont ete conservees."
+    });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("ADMIN USER DELETE:", error);
+    return res.status(500).json({
+      error: "Suppression impossible. Aucune modification n'a ete conservee."
+    });
+  } finally {
+    client.release();
+  }
 });
 
 app.get("/api/admin/password-resets", requireAdmin, async (req, res) => {

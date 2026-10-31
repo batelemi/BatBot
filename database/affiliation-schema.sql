@@ -114,3 +114,11 @@ CREATE INDEX IF NOT EXISTS idx_affiliate_withdrawals_admin
 
 CREATE INDEX IF NOT EXISTS idx_affiliate_withdrawals_user
   ON affiliate_withdrawals(affiliate_user_id, created_at DESC);
+
+-- Suppression securisee : conserver les commissions du parrain
+-- tout en permettant l'anonymisation du filleul supprime.
+ALTER TABLE affiliate_payment_events
+  ALTER COLUMN user_id DROP NOT NULL;
+
+ALTER TABLE affiliate_commissions
+  ALTER COLUMN referred_user_id DROP NOT NULL;
