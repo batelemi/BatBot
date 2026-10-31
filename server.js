@@ -3155,6 +3155,11 @@ async function loadSportApiFixturesByDate(date) {
 
   const pending = sportApiFixturesInFlight.get(date);
   if (pending) {
+    const cachedMemory = sportApiFixturesCache.get(date);
+    if (cachedMemory?.value?.stale) {
+      return { ...cachedMemory.value, cached: true };
+    }
+
     const value = await pending;
     return { ...value, cached: true };
   }
@@ -3224,16 +3229,23 @@ async function loadSportApiFixturesByDate(date) {
             });
 
             if (sportApiPersistentCacheReady) {
-              await pgQuery(
-                `INSERT INTO sportapi_fixtures_cache (fixture_date, fixtures, fetched_at)
-                 VALUES ($1::date, $2::jsonb, NOW())
-                 ON CONFLICT (fixture_date)
-                 DO UPDATE SET fixtures=EXCLUDED.fixtures, fetched_at=NOW()`,
-                [date, JSON.stringify(freshValue.fixtures)]
-              );
+              try {
+                await pgQuery(
+                  `INSERT INTO sportapi_fixtures_cache (fixture_date, fixtures, fetched_at)
+                   VALUES ($1::date, $2::jsonb, NOW())
+                   ON CONFLICT (fixture_date)
+                   DO UPDATE SET fixtures=EXCLUDED.fixtures, fetched_at=NOW()`,
+                  [date, JSON.stringify(freshValue.fixtures)]
+                );
+              } catch (error) {
+                console.error("BatBot: écriture du cache SportAPI PostgreSQL:", error.message);
+              }
             }
+
+            return freshValue;
           } catch (error) {
             console.error("BatBot: actualisation SportAPI en arrière-plan:", error.message);
+            return staleValue;
           } finally {
             if (sportApiFixturesInFlight.get(date) === refreshRequest) {
               sportApiFixturesInFlight.delete(date);
