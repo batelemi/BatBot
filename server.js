@@ -57,8 +57,12 @@ async function initializeSecurityQuestions() {
   `);
 }
 
-const { analyzeSportApiMatches } = require("./algorithms/sportapi-odds-service");
+const {
+  analyzeSportApiMatches,
+  initializeSportApiTeamHistoryCache
+} = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
+const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/sportapi-quota");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -2790,10 +2794,12 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
   } catch (error) {
     console.error("SportAPI.ai odds analysis:", error.message);
 
-    return res.status(502).json({
+    return res.status(error.status || 502).json({
       ok: false,
       source: "SportAPI.ai",
-      error: "Impossible de calculer l'analyse statistique des cotes.",
+      error: error.code === "SPORTAPI_DAILY_LIMIT"
+        ? error.message
+        : "Impossible de calculer l'analyse statistique des cotes.",
       details: error.message
     });
   }
@@ -2812,11 +2818,17 @@ app.get("/api/football/ai-history", requireUser, async (req, res) => {
       ? value.toISOString().slice(0,10) : String(value).slice(0,10);
     const dates = [...new Set(pending.map(r => dateOf(r.fixture_date))
       .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
+    let quotaLimited = false;
     for (const date of dates) {
       let fresh;
-      try { fresh = await fetchSportApiFixtures(date); }
-      catch (error) {
+      try {
+        fresh = await getSportApiFixturesCached(date, "");
+      } catch (error) {
         console.warn("BATBOT historique : résultat non vérifié pour", date, error.message);
+        if (error.code === "SPORTAPI_DAILY_LIMIT") {
+          quotaLimited = true;
+          break;
+        }
         continue;
       }
       const fixtures = Array.isArray(fresh?.fixtures) ? fresh.fixtures : [];
@@ -2866,7 +2878,7 @@ app.get("/api/football/ai-history", requireUser, async (req, res) => {
        ORDER BY created_at DESC LIMIT 100`,
       [req.session.userId]
     );
-    return res.json({ok:true, history});
+    return res.json({ok:true, history, quota_limited: quotaLimited});
   } catch (error) {
     console.error("BATBOT_HISTORY_ERROR:", error.message, error.code || "NO_SQL_CODE", error.position || "NO_SQL_POSITION");
     return res.status(500).json({ok:false,error:"Impossible de charger l'historique des pronostics."});
@@ -3356,7 +3368,9 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
     console.error("SportAPI.ai fixtures:", error.message);
     return res.status(error.status || 502).json({
       ok: false,
-      error: "Impossible de récupérer les matchs SportAPI.ai."
+      error: error.code === "SPORTAPI_DAILY_LIMIT"
+        ? error.message
+        : "Impossible de récupérer les matchs SportAPI.ai."
     });
   }
 });
@@ -3381,7 +3395,9 @@ app.get("/api/football/live", requireUser, async (req, res) => {
     console.error("SportAPI.ai live:", error.message);
     return res.status(error.status || 502).json({
       ok: false,
-      error: "Impossible de récupérer les matchs en direct SportAPI.ai."
+      error: error.code === "SPORTAPI_DAILY_LIMIT"
+        ? error.message
+        : "Impossible de récupérer les matchs en direct SportAPI.ai."
     });
   }
 });
@@ -3423,6 +3439,8 @@ app.get("/api/football/teams/:teamId/logo", requireUser, async (req, res) => {
   }
 
   try {
+    await reserveSportApiCall("team-logo");
+
     const upstream = await fetch(
       `https://sportapi.ai/api/teams/${teamId}/logo`,
       {
@@ -3485,9 +3503,11 @@ app.get("/api/football/teams/:teamId/logo", requireUser, async (req, res) => {
     return res.status(200).send(body);
   } catch (error) {
     console.error("Logo SportAPI.ai indisponible:", error.message);
-    return res.status(502).json({
+    return res.status(error.status || 502).json({
       ok: false,
-      error: "Impossible de récupérer le logo du club."
+      error: error.code === "SPORTAPI_DAILY_LIMIT"
+        ? error.message
+        : "Impossible de récupérer le logo du club."
     });
   }
 });
@@ -3931,6 +3951,8 @@ async function startServer() {
     await initializeSecurityQuestions();
     await initializeUserProfile();
     await initializeBookmakers();
+    await initializeSportApiQuota(pool);
+    await initializeSportApiTeamHistoryCache(pool);
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();
     await initializeAffiliateSchema();

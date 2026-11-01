@@ -3,8 +3,20 @@
 const { calculateOdds, MIN_MATCHES } = require('./odds-engine');
 
 const API_BASE = 'https://sportapi.ai/api';
+const { reserveSportApiCall } = require('./sportapi-quota');
 const REQUEST_TIMEOUT_MS = 15000;
 const HISTORY_LIMIT = 12;
+const { createTeamHistoryCache } = require('./sportapi-team-history-cache');
+
+let teamHistoryCache = null;
+
+async function initializeSportApiTeamHistoryCache(pool) {
+  teamHistoryCache = createTeamHistoryCache({
+    pool,
+    fetchHistory: fetchTeamHistory
+  });
+  await teamHistoryCache.initialize();
+}
 const FINISHED_STATUSES = new Set([
   'FT', 'AET', 'PEN', 'PENS', 'FINISHED', 'FULL_TIME', 'COMPLETED',
   'AFTER_EXTRA_TIME', 'AFTER_PENALTIES', 'ENDED'
@@ -154,6 +166,7 @@ function extractHistoryMatches(payload) {
 }
 
 async function fetchTeamHistory(teamId, apiKey) {
+  await reserveSportApiCall('team-history');
   const response = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}`, {
     method: 'GET',
     headers: { Accept: 'application/json', 'X-Api-Key': apiKey },
@@ -275,9 +288,13 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
       };
     }
 
+    const getHistory = teamHistoryCache
+      ? teamHistoryCache.getTeamHistory.bind(teamHistoryCache)
+      : fetchTeamHistory;
+
     const [homeHistory, awayHistory] = await Promise.all([
-      fetchTeamHistory(homeId, apiKey),
-      fetchTeamHistory(awayId, apiKey)
+      getHistory(homeId, apiKey),
+      getHistory(awayId, apiKey)
     ]);
     const homeStats = collectTeamStats(homeHistory, homeId, homeName);
     const awayStats = collectTeamStats(awayHistory, awayId, awayName);
@@ -327,6 +344,7 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
 
 module.exports = {
   analyzeSportApiMatches,
+  initializeSportApiTeamHistoryCache,
   collectTeamStats,
   isFinishedMatch,
   extractHistoryMatches,

@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const { initializeSportApiQuota } = require('./sportapi-quota');
 const { normalizeFixture } = require('./sportapi-fixtures-service');
 const {
   analyzeSportApiMatches,
@@ -120,7 +121,23 @@ function historyFor(teamId) {
 
 (async () => {
   const originalFetch = global.fetch;
+  let reservedCalls = 0;
+
+  const fakePool = {
+    async query(sql, params) {
+      if (sql.includes('CREATE TABLE')) return { rows: [] };
+
+      const [date, limit] = params;
+      if (reservedCalls >= limit) return { rows: [] };
+
+      reservedCalls++;
+      return { rows: [{ request_count: reservedCalls }] };
+    }
+  };
+
   try {
+    await initializeSportApiQuota(fakePool);
+
     global.fetch = async (url) => {
       const teamId = String(url).endsWith('/teams/11') ? 11 : 22;
       return {

@@ -1,6 +1,7 @@
 'use strict';
 
 const API_BASE = 'https://sportapi.ai/api';
+const { reserveSportApiCall } = require('./sportapi-quota');
 const REQUEST_TIMEOUT_MS = 15000;
 
 function normalizeFixture(match) {
@@ -161,6 +162,8 @@ async function fetchFixtures(date, options = {}) {
   if (!apiKey) {
     throw new Error('SPORTAPI_KEY absente de l’environnement.');
   }
+
+  await reserveSportApiCall('fixtures');
 
   const url = `${API_BASE}/fixtures/date/${encodeURIComponent(date)}`;
   const response = await fetch(url, {
