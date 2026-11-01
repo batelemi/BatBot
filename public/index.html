@@ -41,47 +41,99 @@ button,a{-webkit-tap-highlight-color:transparent}
 
 #loadingScreen{
   position:fixed;inset:0;z-index:99999;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  text-align:center;padding:25px;
-  background:radial-gradient(circle at center,#12385C 0%,#071A2D 70%);
-  transition:opacity .35s ease,visibility .35s ease;
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  text-align:center;padding:28px;
+  overflow:hidden;
+  background:
+    radial-gradient(ellipse at 50% 38%,rgba(0,191,255,.20),transparent 38%),
+    radial-gradient(ellipse at 50% 75%,rgba(245,197,66,.09),transparent 45%),
+    linear-gradient(155deg,#102F50 0%,#071A2D 55%,#030D19 100%);
+  transition:opacity .45s ease,visibility .45s ease;
+}
+#loadingScreen:before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(120deg,transparent 20%,rgba(255,255,255,.035) 48%,transparent 72%);
+  animation:splashLight 4s ease-in-out infinite;
 }
 #loadingScreen.hide{opacity:0;visibility:hidden;pointer-events:none}
 .loading-logo,.logo{
   display:flex;align-items:center;justify-content:center;
-  border-radius:50%;overflow:hidden;
-  background:rgba(255,255,255,.98);
+  border-radius:50%;overflow:hidden;background:rgba(255,255,255,.98);
   border:2px solid #21C55D;
 }
 .loading-logo{
-  width:125px;height:125px;
-  box-shadow:0 0 0 5px rgba(33,197,93,.10),0 15px 45px rgba(0,0,0,.35),inset 0 2px 5px rgba(255,255,255,.8);
-  animation:logoPulse 1.5s infinite ease-in-out;
+  position:relative;width:148px;height:148px;
+  border:3px solid #35E58A;
+  box-shadow:0 0 0 7px rgba(33,197,93,.09),
+    0 0 28px rgba(0,191,255,.42),0 0 65px rgba(0,191,255,.17),
+    0 18px 48px rgba(0,0,0,.45);
+  animation:logoPulse 2.2s ease-in-out infinite;
 }
-.loading-logo img{width:108px;height:108px;object-fit:contain;border-radius:50%;display:block}
+.loading-logo:after{
+  content:"";position:absolute;inset:-9px;border-radius:50%;
+  border:2px solid rgba(0,191,255,.55);
+  animation:splashRing 2.5s ease-out infinite;
+}
+.loading-logo img{width:132px;height:132px;object-fit:contain;border-radius:50%;display:block}
 .loading-logo .logo-fallback{font-size:60px}
 .logo{
-  width:92px;height:92px;margin:8px auto 12px;display:flex;align-items:center;justify-content:center;
-  border-radius:50%;background:rgba(255,255,255,.98);
-  border:2px solid #21C55D;
+  width:92px;height:92px;margin:8px auto 12px;
   box-shadow:0 8px 25px rgba(0,0,0,.20),inset 0 2px 5px rgba(255,255,255,.8);
-  overflow:hidden;
 }
 .logo img{width:82px;height:82px;object-fit:contain;border-radius:50%}
 .logo-fallback{font-size:40px;line-height:1}
 .logo-fallback.hidden-fallback{display:none!important}
 @keyframes logoPulse{
-  0%{transform:scale(.96)}50%{transform:scale(1.03)}100%{transform:scale(.96)}
+  0%,100%{transform:scale(.97);filter:brightness(1)}
+  50%{transform:scale(1.035);filter:brightness(1.12)}
 }
-.loading-title{margin-top:20px;font-size:28px;font-weight:900}
-.loading-message{margin-top:8px;min-height:22px;color:var(--muted);font-size:15px}
-.loading-spinner{
-  width:34px;height:34px;margin-top:20px;border-radius:50%;
-  border:3px solid rgba(255,255,255,.18);
-  border-top-color:var(--green);animation:spin .8s linear infinite;
+@keyframes splashRing{
+  0%{transform:scale(.94);opacity:.8}
+  100%{transform:scale(1.22);opacity:0}
 }
-@keyframes spin{to{transform:rotate(360deg)}}
-
+@keyframes splashLight{
+  0%,100%{transform:translateX(-35%);opacity:.25}
+  50%{transform:translateX(35%);opacity:.8}
+}
+.loading-title{
+  position:relative;margin-top:27px;font-size:32px;
+  font-weight:900;letter-spacing:2px;
+  color:#fff;text-shadow:0 0 18px rgba(0,191,255,.35);
+}
+.loading-message{
+  position:relative;margin-top:12px;min-height:24px;
+  color:#BBD2E7;font-size:14px;letter-spacing:.5px;
+}
+.loading-slogan{
+  position:relative;margin-top:9px;color:#39CFFF;
+  font-size:13px;font-weight:800;letter-spacing:2px;
+}
+.loading-progress{
+  position:relative;width:min(230px,75%);height:5px;
+  margin-top:34px;border-radius:20px;overflow:hidden;
+  background:rgba(255,255,255,.13);
+  box-shadow:0 0 12px rgba(0,191,255,.12);
+}
+.loading-progress:after{
+  content:"";display:block;width:42%;height:100%;
+  border-radius:20px;
+  background:linear-gradient(90deg,#00BFFF,#35E58A,#F5C542);
+  box-shadow:0 0 14px rgba(0,191,255,.65);
+  animation:splashProgress 1.8s ease-in-out infinite;
+}
+@keyframes splashProgress{
+  0%{transform:translateX(-110%)}
+  100%{transform:translateX(350%)}
+}
+.loading-caption{
+  position:relative;margin-top:17px;color:#7898B5;
+  font-size:9px;font-weight:700;letter-spacing:2px;
+}
+@media(prefers-reduced-motion:reduce){
+  .loading-logo,.loading-logo:after,#loadingScreen:before,
+  .loading-progress:after{animation:none!important}
+}
 .container{width:min(calc(100% - 24px),560px);margin:auto;padding:18px 0 35px}
 .center{text-align:center}
 h1{margin:5px 0;font-size:32px}
@@ -1863,8 +1915,10 @@ button.batbot-predict-btn *,
     <span class="logo-fallback hidden-fallback" aria-hidden="true"><img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"></span>
   </div>
   <div class="loading-title">BATBOT PRO</div>
+  <div class="loading-slogan">ÇA SORT DÈH !</div>
   <div id="loadingMessage" class="loading-message">Connexion en cours…</div>
-  <div class="loading-spinner"></div>
+  <div class="loading-progress" aria-hidden="true"></div>
+  <div class="loading-caption">L'EXCELLENCE DES PRONOSTICS</div>
 </div>
 
 <main class="container">
