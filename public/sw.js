@@ -1,9 +1,9 @@
-const CACHE = "batbot-v7";
+const CACHE = "batbot-v8";
 const ASSETS = [
   "/offline.html",
   "/manifest.json",
-  "/icon-192.png",
-  "/icon-512.png",
+  "/icon-192.png?v=7",
+  "/icon-512.png?v=7",
   "/assets/branding/batbot-pro.png",
   "/assets/branding/batbot-pro-admin.png"
 ];
