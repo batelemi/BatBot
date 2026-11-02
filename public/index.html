@@ -5498,12 +5498,15 @@ function openAdmin(){
 }
 
 async function adminLogin(){
+  if(window.adminLoginInProgress)return;
+
   const phone=document.getElementById("adminPhone").value.trim();
   const password=document.getElementById("adminPassword").value;
 
   if(!phone||!password)
     return showStatus("adminLoginStatus","Remplissez tous les champs.","error");
 
+  window.adminLoginInProgress=true;
   setLoading("adminLoginButton",true,"🔐 Accéder à l'administration");
 
   try{
@@ -5535,6 +5538,7 @@ async function adminLogin(){
     console.error("ADMIN LOGIN:",error);
     showStatus("adminLoginStatus","Erreur serveur.","error");
   }finally{
+    window.adminLoginInProgress=false;
     setLoading("adminLoginButton",false,"🔐 Accéder à l'administration");
   }
 }

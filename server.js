@@ -69,6 +69,14 @@ async function initializeAdminLoginAttempts() {
       PRIMARY KEY (account_key, ip_key)
     )
   `);
+
+  await pgQuery(`
+    CREATE TABLE IF NOT EXISTS admin_login_account_attempts (
+      account_key TEXT PRIMARY KEY,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 const {
@@ -1104,6 +1112,29 @@ app.post("/api/admin/login", async (req, res) => {
       bcrypt.compareSync(password, settings.adminPasswordHash);
 
     if (!validPhone || !validPassword) {
+      const globalAttempts = await pgGet(`
+        INSERT INTO admin_login_account_attempts(account_key,attempts,window_started_at)
+        VALUES($1,1,NOW())
+        ON CONFLICT(account_key) DO UPDATE SET
+          attempts = CASE
+            WHEN admin_login_account_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN 1
+            ELSE admin_login_account_attempts.attempts + 1
+          END,
+          window_started_at = CASE
+            WHEN admin_login_account_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN NOW()
+            ELSE admin_login_account_attempts.window_started_at
+          END
+        RETURNING attempts
+      `, [accountKey]);
+
+      const slowdownMs = Math.min(
+        Math.max(Number(globalAttempts?.attempts || 0) - 3, 0) * 500,
+        2000
+      );
+      if (slowdownMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, slowdownMs));
+      }
+
       const updatedAttempts = await pgGet(`
         INSERT INTO admin_login_attempts(account_key,ip_key,attempts,window_started_at,locked_until)
         VALUES($1,$2,1,NOW(),NULL)
@@ -1142,6 +1173,10 @@ app.post("/api/admin/login", async (req, res) => {
     await pgQuery(
       "DELETE FROM admin_login_attempts WHERE account_key=$1 AND ip_key=$2",
       [accountKey, ipKey]
+    );
+    await pgQuery(
+      "DELETE FROM admin_login_account_attempts WHERE account_key=$1",
+      [accountKey]
     );
 
     const existingUserId = req.session.userId;
