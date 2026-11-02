@@ -4872,7 +4872,11 @@ async function submitBatBotAI(){
       closeBatBotAIModal();openBatBotTicketModal();
     }
   }catch(e){
-    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(e?.message||"Une erreur est survenue pendant l’analyse.")+'</span></div>',"error");
+    const fetchError= !navigator.onLine || /failed to fetch|networkerror|load failed/i.test(String(e?.message||""));
+    const errorMessage=fetchError
+      ? "Connexion Internet indisponible. Vérifiez votre connexion puis réessayez."
+      : (e?.message||"Une erreur est survenue pendant l’analyse.");
+    setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(errorMessage)+'</span></div>',"error");
   }finally{
     if(button)button.disabled=false;
   }
@@ -5257,6 +5261,7 @@ async function loadFootballFixtures(selectedDate){
 
   const date=/^\d{4}-\d{2}-\d{2}$/.test(String(selectedDate||""))?String(selectedDate):getAbidjanDate(0);
   setFootballDate(date);
+  window.batBotLastRenderedMode="daily";
 
   if(window.batbotLiveRefreshTimer){
     clearInterval(window.batbotLiveRefreshTimer);
@@ -5291,6 +5296,7 @@ async function loadFootballFixtures(selectedDate){
 
     const rawFixtures=Array.isArray(d?.response)?d.response:[];
     const fixtures=rawFixtures.map(normalizeFootballClientMatch);
+    if(window.batBotLastRenderedMode==="live")return;
 
     window.batBotVisibleFixtureCount=20;
     window.batBotDailyFixturesLoadedDate=date;
@@ -5302,7 +5308,7 @@ async function loadFootballFixtures(selectedDate){
       status.innerHTML='<div class="professional-status"><div class="professional-status-head">📋 Derniers matchs disponibles</div><div class="professional-status-body">Les rencontres enregistrées sont affichées. Actualisation automatique en cours…</div></div>';
       if(window.batbotFixturesRefreshTimer)clearTimeout(window.batbotFixturesRefreshTimer);
       window.batbotFixturesRefreshTimer=setTimeout(function(){
-        if(getAbidjanDate(0)===date && window.batBotDailyFixturesLoadedDate===date){
+        if(window.batBotLastRenderedMode==="daily" && getAbidjanDate(0)===date && window.batBotDailyFixturesLoadedDate===date){
           loadFootballFixtures(date);
         }
       },32000);
@@ -5403,6 +5409,12 @@ async function loadFootballLive(){
   const box=document.getElementById("footballResults");
   const button=document.getElementById("footballLiveButton");
   if(!status||!box)return;
+
+  window.batBotLastRenderedMode="live";
+  if(window.batbotFixturesRefreshTimer){
+    clearTimeout(window.batbotFixturesRefreshTimer);
+    window.batbotFixturesRefreshTimer=null;
+  }
 
   if(window.batbotLiveRefreshTimer){
     clearInterval(window.batbotLiveRefreshTimer);
