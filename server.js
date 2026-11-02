@@ -5,7 +5,7 @@ if (process.env.DATABASE_URL && !process.env.PGSSL) {
 
 const express = require("express");
 const session = require("express-session");
-const { rateLimit } = require("express-rate-limit");
+
 const { createPostgresSessionStore } = require("./database/postgres-session");
 const bcrypt = require("bcryptjs");
 const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
@@ -58,6 +58,19 @@ async function initializeSecurityQuestions() {
   `);
 }
 
+async function initializeAdminLoginAttempts() {
+  await pgQuery(`
+    CREATE TABLE IF NOT EXISTS admin_login_attempts (
+      account_key TEXT NOT NULL,
+      ip_key TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      locked_until TIMESTAMPTZ,
+      PRIMARY KEY (account_key, ip_key)
+    )
+  `);
+}
+
 const {
   analyzeSportApiMatches,
   initializeSportApiTeamHistoryCache
@@ -67,18 +80,8 @@ const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/s
 
 const app = express();
 
-const adminLoginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  skipSuccessfulRequests: true,
-  handler: (req, res) => {
-    res.status(429).json({
-      error: "Trop de tentatives de connexion. Veuillez patienter avant de réessayer."
-    });
-  }
-});
+
+
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 
@@ -1071,20 +1074,75 @@ app.delete("/api/admin/messages/:id", requireAdmin, async (req, res) => {
   res.json({ message: "Message supprimé avec succès." });
 });
 
-app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
+app.post("/api/admin/login", async (req, res) => {
   try {
     const settings = await getSettings();
-    const phone = cleanPhone(req.body.phone);
-    const password = String(req.body.password || "");
+    const phone = cleanPhone(req.body?.phone);
+    const password = String(req.body?.password || "");
 
-    if (
-      phone !== cleanPhone(settings.adminPhone) ||
-      !bcrypt.compareSync(password, settings.adminPasswordHash)
-    ) {
+    const accountKey = crypto.createHash("sha256")
+      .update(cleanPhone(settings.adminPhone))
+      .digest("hex");
+
+    const ipKey = crypto.createHash("sha256")
+      .update(String(req.ip || req.socket?.remoteAddress || "unknown"))
+      .digest("hex");
+
+    const attempts = await pgGet(
+      "SELECT attempts, locked_until FROM admin_login_attempts WHERE account_key=$1 AND ip_key=$2",
+      [accountKey, ipKey]
+    );
+
+    if (attempts?.locked_until && new Date(attempts.locked_until) > new Date()) {
+      return res.status(429).json({
+        error: "Trop de tentatives de connexion. Veuillez patienter 15 minutes avant de réessayer."
+      });
+    }
+
+    const validPhone = phone === cleanPhone(settings.adminPhone);
+    const validPassword = Boolean(settings.adminPasswordHash) &&
+      bcrypt.compareSync(password, settings.adminPasswordHash);
+
+    if (!validPhone || !validPassword) {
+      const updatedAttempts = await pgGet(`
+        INSERT INTO admin_login_attempts(account_key,ip_key,attempts,window_started_at,locked_until)
+        VALUES($1,$2,1,NOW(),NULL)
+        ON CONFLICT(account_key,ip_key) DO UPDATE SET
+          attempts = CASE
+            WHEN admin_login_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN 1
+            ELSE admin_login_attempts.attempts + 1
+          END,
+          window_started_at = CASE
+            WHEN admin_login_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN NOW()
+            ELSE admin_login_attempts.window_started_at
+          END,
+          locked_until = CASE
+            WHEN (
+              CASE
+                WHEN admin_login_attempts.window_started_at < NOW() - INTERVAL '15 minutes' THEN 1
+                ELSE admin_login_attempts.attempts + 1
+              END
+            ) >= 5 THEN NOW() + INTERVAL '15 minutes'
+            ELSE NULL
+          END
+        RETURNING attempts, locked_until
+      `, [accountKey, ipKey]);
+
+      if (Number(updatedAttempts?.attempts || 0) >= 5) {
+        return res.status(429).json({
+          error: "Trop de tentatives de connexion. Veuillez patienter 15 minutes avant de réessayer."
+        });
+      }
+
       return res.status(401).json({
         error: "Identifiants incorrects. Veuillez vérifier vos informations."
       });
     }
+
+    await pgQuery(
+      "DELETE FROM admin_login_attempts WHERE account_key=$1 AND ip_key=$2",
+      [accountKey, ipKey]
+    );
 
     const existingUserId = req.session.userId;
 
@@ -1101,6 +1159,7 @@ app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
       }
 
       req.session.admin = true;
+
       req.session.save((saveError) => {
         if (saveError) {
           console.error("ADMIN SESSION SAVE:", saveError);
@@ -1113,6 +1172,7 @@ app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
             });
           });
         }
+
         return res.json({ message: "Administration ouverte." });
       });
     });
@@ -1123,7 +1183,6 @@ app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
     });
   }
 });
-
 app.get("/api/admin/me", (req, res) => {
   if (!req.session.admin) return res.status(401).json({ error: "Non connecté." });
   res.json({ admin: true });
@@ -4023,6 +4082,7 @@ async function startServer() {
   try {
     await initializeSettings();
     await initializeSecurityQuestions();
+    await initializeAdminLoginAttempts();
     await initializeUserProfile();
     await initializeBookmakers();
     await initializeSportApiQuota(pool);
