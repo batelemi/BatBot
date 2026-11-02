@@ -2202,7 +2202,7 @@ button.batbot-predict-btn *,
     <label for="footballDate" class="muted">Date des rencontres</label>
     <input type="date" id="footballDate" style="margin:6px 0 10px">
     <button type="button" class="btn primary" id="footballLoadButton" onclick="loadFootballFixtures(document.getElementById('footballDate').value)">🔎 Charger les matchs</button>
-    <button type="button" class="btn secondary" id="footballLiveButton" data-live-state="unknown" onclick="loadFootballLive()"><span class="batbot-live-indicator" aria-hidden="true"></span> Voir les matchs en direct</button><button type="button" class="btn secondary" id="footballTodayButton" onclick="loadFootballFixtures(getAbidjanDate(0))">Aujourd’hui</button>
+    <button type="button" class="btn secondary" id="footballLiveButton" data-live-state="unknown" onclick="loadFootballLive()"><span class="batbot-live-indicator" aria-hidden="true"></span> Voir les matchs en direct</button><button type="button" class="btn secondary" id="footballTodayButton" onclick="manualRefreshFootballFixtures()">↻ ACTUALISER</button>
     <div id="footballStatus" class="status" aria-live="polite"></div>
     <div id="footballResults" class="hidden" aria-live="polite"></div>
   </section>
@@ -5264,7 +5264,34 @@ function setFootballRefreshIndicator(state){
     window.batBotFootballRefreshErrorNotified=false;
   }else if(validState==="error"&&!window.batBotFootballRefreshErrorNotified){
     window.batBotFootballRefreshErrorNotified=true;
-    if(typeof showToast==="function")showToast("Actualisation des matchs impossible. Vérifiez votre connexion Internet puis réessayez.","error");
+    if(typeof showToast==="function")showToast("Actualisation momentanément impossible. Cliquez sur ACTUALISER pour relancer le chargement, ou patientez quelques instants et vérifiez votre connexion Internet. Les matchs seront actualisés automatiquement.","error");
+  }
+}
+
+async function manualRefreshFootballFixtures(){
+  const button=document.getElementById("footballTodayButton");
+  if(window.batBotManualFixturesRefreshInProgress)return;
+  window.batBotManualFixturesRefreshInProgress=true;
+
+  if(button){
+    button.disabled=true;
+    button.textContent="↻ Actualisation…";
+  }
+
+  window.batBotFootballRefreshErrorNotified=false;
+
+  try{
+    const date=getFootballSelectedDate();
+    const success=await loadFootballFixtures(date);
+    if(success && typeof showToast==="function"){
+      showToast("Les matchs ont été actualisés avec succès.","success");
+    }
+  }finally{
+    window.batBotManualFixturesRefreshInProgress=false;
+    if(button){
+      button.disabled=false;
+      button.textContent="↻ ACTUALISER";
+    }
   }
 }
 
@@ -5282,6 +5309,11 @@ async function loadFootballFixtures(selectedDate){
   if(!status||!box)return;
 
   const date=/^\d{4}-\d{2}-\d{2}$/.test(String(selectedDate||""))?String(selectedDate):getAbidjanDate(0);
+  const hasDisplayed=window.batBotLastRenderedMode==="daily"
+    && Array.isArray(window.batBotDailyFixtures)
+    && window.batBotDailyFixtures.length>0
+    && window.batBotDailyFixturesLoadedDate===date;
+
   setFootballDate(date);
   window.batBotLastRenderedMode="daily";
 
@@ -5289,11 +5321,6 @@ async function loadFootballFixtures(selectedDate){
     clearInterval(window.batbotLiveRefreshTimer);
     window.batbotLiveRefreshTimer=null;
   }
-
-  const hasDisplayed=window.batBotLastRenderedMode==="daily"
-    && Array.isArray(window.batBotDailyFixtures)
-    && window.batBotDailyFixtures.length>0
-    && window.batBotDailyFixturesLoadedDate===date;
 
   if(button)button.disabled=true;
   status.className="status";
@@ -5336,10 +5363,13 @@ async function loadFootballFixtures(selectedDate){
     }else{
       status.innerHTML="";
       setFootballRefreshIndicator("success");
+      return true;
     }
+    return false;
   }catch(e){
     status.innerHTML="";
     setFootballRefreshIndicator("error");
+    return false;
   }finally{
     if(button)button.disabled=false;
   }
