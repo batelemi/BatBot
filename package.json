@@ -9,13 +9,14 @@
     "db:migrate:postgres": "node scripts/migrate-sqlite-to-postgres.js"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "express-session": "^1.18.1",
-    "connect-sqlite3": "^0.9.16",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.7.0",
-    "pg": "^8.16.3",
-    "connect-pg-simple": "^10.0.0"
+    "connect-pg-simple": "^10.0.0",
+    "connect-sqlite3": "^0.9.16",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.7.2",
+    "express-session": "^1.18.1",
+    "pg": "^8.16.3"
   },
   "engines": {
     "node": "22.x"

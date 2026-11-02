@@ -5,6 +5,7 @@ if (process.env.DATABASE_URL && !process.env.PGSSL) {
 
 const express = require("express");
 const session = require("express-session");
+const { rateLimit } = require("express-rate-limit");
 const { createPostgresSessionStore } = require("./database/postgres-session");
 const bcrypt = require("bcryptjs");
 const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
@@ -65,6 +66,19 @@ const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-
 const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/sportapi-quota");
 
 const app = express();
+
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  handler: (req, res) => {
+    res.status(429).json({
+      error: "Trop de tentatives de connexion. Veuillez patienter avant de réessayer."
+    });
+  }
+});
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 
@@ -491,7 +505,22 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.post("/api/logout", (req, res) => {
-  req.session.destroy(() => res.json({ message: "Déconnexion réussie." }));
+  req.session.destroy((destroyError) => {
+    if (destroyError) {
+      console.error("USER LOGOUT:", destroyError);
+      return res.status(500).json({
+        error: "Une erreur est survenue. Veuillez réessayer ultérieurement."
+      });
+    }
+
+    res.clearCookie("connect.sid", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production"
+    });
+    return res.json({ message: "Déconnexion réussie." });
+  });
 });
 
 app.get("/api/me", requireUser, async (req, res) => {
@@ -1042,26 +1071,57 @@ app.delete("/api/admin/messages/:id", requireAdmin, async (req, res) => {
   res.json({ message: "Message supprimé avec succès." });
 });
 
-app.post("/api/admin/login", async (req, res) => {
-  const settings = await getSettings();
-  const phone = cleanPhone(req.body.phone);
-  const password = String(req.body.password || "");
+app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    const phone = cleanPhone(req.body.phone);
+    const password = String(req.body.password || "");
 
-  if (
-    phone !== cleanPhone(settings.adminPhone) ||
-    !bcrypt.compareSync(password, settings.adminPasswordHash)
-  ) {
-    return res.status(401).json({ error: "Accès administrateur refusé." });
-  }
-
-  req.session.admin = true;
-  req.session.save((saveError) => {
-    if (saveError) {
-      console.error("ADMIN SESSION SAVE:", saveError);
-      return res.status(500).json({ error: "Session administrateur impossible à enregistrer." });
+    if (
+      phone !== cleanPhone(settings.adminPhone) ||
+      !bcrypt.compareSync(password, settings.adminPasswordHash)
+    ) {
+      return res.status(401).json({
+        error: "Identifiants incorrects. Veuillez vérifier vos informations."
+      });
     }
-    res.json({ message: "Administration ouverte." });
-  });
+
+    const existingUserId = req.session.userId;
+
+    req.session.regenerate((regenerateError) => {
+      if (regenerateError) {
+        console.error("ADMIN SESSION REGENERATE:", regenerateError);
+        return res.status(500).json({
+          error: "Une erreur est survenue. Veuillez réessayer ultérieurement."
+        });
+      }
+
+      if (existingUserId) {
+        req.session.userId = existingUserId;
+      }
+
+      req.session.admin = true;
+      req.session.save((saveError) => {
+        if (saveError) {
+          console.error("ADMIN SESSION SAVE:", saveError);
+          return req.session.destroy((destroyError) => {
+            if (destroyError) {
+              console.error("ADMIN SESSION CLEANUP:", destroyError);
+            }
+            return res.status(500).json({
+              error: "Une erreur est survenue. Veuillez réessayer ultérieurement."
+            });
+          });
+        }
+        return res.json({ message: "Administration ouverte." });
+      });
+    });
+  } catch (error) {
+    console.error("ADMIN LOGIN:", error);
+    return res.status(500).json({
+      error: "Une erreur est survenue. Veuillez réessayer ultérieurement."
+    });
+  }
 });
 
 app.get("/api/admin/me", (req, res) => {
@@ -1070,8 +1130,22 @@ app.get("/api/admin/me", (req, res) => {
 });
 
 app.post("/api/admin/logout", (req, res) => {
-  req.session.admin = false;
-  res.json({ message: "Administration déconnectée." });
+  req.session.destroy((destroyError) => {
+    if (destroyError) {
+      console.error("ADMIN LOGOUT:", destroyError);
+      return res.status(500).json({
+        error: "Une erreur est survenue. Veuillez réessayer ultérieurement."
+      });
+    }
+
+    res.clearCookie("connect.sid", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production"
+    });
+    return res.json({ message: "Administration déconnectée." });
+  });
 });
 
 app.get("/api/admin/stats", requireAdmin, async (req, res) => {
