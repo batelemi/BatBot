@@ -1601,6 +1601,13 @@ button.batbot-predict-btn *,
 </style>
 
 
+<style id="batbot-fixtures-refresh-indicator">
+.batbot-fixtures-heading{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.batbot-fixtures-refresh-indicator{display:inline-block;width:11px;height:11px;flex:0 0 11px;border-radius:50%;background:#8995a5;box-shadow:none;vertical-align:middle}
+.batbot-fixtures-refresh-indicator[data-state="success"]{background:#21C55D;box-shadow:0 0 7px rgba(33,197,93,.75);animation:batbotStatusPulseGreen 1.25s ease-in-out infinite}
+.batbot-fixtures-refresh-indicator[data-state="error"]{background:#DC2626;box-shadow:0 0 7px rgba(220,38,38,.75);animation:batbotStatusPulseRed 1.25s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.batbot-fixtures-refresh-indicator{animation:none!important;opacity:1!important}}
+</style>
 <style id="batbot-finished-match-refinements">
   #batbotAIModal .ai-finished-match{
     position:relative;isolation:isolate;overflow:hidden;border-radius:18px;
@@ -2186,7 +2193,7 @@ button.batbot-predict-btn *,
 
   <section class="card hidden" id="batbotDailyMatchesCard">
     <div class="section-kicker">Football • Données en direct</div>
-    <h2>⚽ Matchs du jour</h2>
+    <h2 class="batbot-fixtures-heading">⚽ Matchs du jour <span id="batbotFixturesRefreshIndicator" class="batbot-fixtures-refresh-indicator" data-state="unknown" role="img" aria-label="État de l’actualisation inconnu" title="En attente de la première actualisation"></span></h2>
     <p class="muted">Consultez les rencontres disponibles et demandez un pronostic pour un match à venir ou en direct.</p>
     <div class="two-columns" style="margin:12px 0">
       <button type="button" class="btn secondary" id="footballPreviousDayButton" onclick="changeFootballDate(-1)">← Jour précédent</button>
@@ -5246,6 +5253,21 @@ function normalizeFootballClientMatch(match,index){
     eligibility:{finished,cancelled:blocked,live,scheduled,canAnalyze:scheduled||live}
   };
 }
+function setFootballRefreshIndicator(state){
+  const indicator=document.getElementById("batbotFixturesRefreshIndicator");
+  if(!indicator)return;
+  const validState=["success","error","unknown"].includes(state)?state:"unknown";
+  indicator.dataset.state=validState;
+  indicator.setAttribute("aria-label",validState==="success"?"Dernière actualisation réussie":validState==="error"?"Échec de la dernière actualisation":"État de l’actualisation inconnu");
+  indicator.title=validState==="success"?"Dernière actualisation réussie":validState==="error"?"Actualisation échouée. Vérifiez votre connexion.":"En attente de la première actualisation";
+  if(validState==="success"){
+    window.batBotFootballRefreshErrorNotified=false;
+  }else if(validState==="error"&&!window.batBotFootballRefreshErrorNotified){
+    window.batBotFootballRefreshErrorNotified=true;
+    if(typeof showToast==="function")showToast("Actualisation des matchs impossible. Vérifiez votre connexion Internet puis réessayez.","error");
+  }
+}
+
 async function ensureFootballAccess(){
   const r=await fetch("/api/football/access",{credentials:"same-origin",cache:"no-store"});
   const d=await readApiResponse(r);
@@ -5275,9 +5297,7 @@ async function loadFootballFixtures(selectedDate){
 
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML=hasDisplayed
-    ? '<div class="professional-status"><div class="professional-status-body">Actualisation des rencontres…</div></div>'
-    : "";
+  status.innerHTML="";
   box.classList.remove("hidden");
 
   if(!hasDisplayed){
@@ -5305,24 +5325,21 @@ async function loadFootballFixtures(selectedDate){
     updateFootballLiveIndicatorFromLoadedFixtures();
 
     if(d?.stale){
-      status.innerHTML='<div class="professional-status"><div class="professional-status-head">📋 Derniers matchs disponibles</div><div class="professional-status-body">Les rencontres enregistrées sont affichées. Actualisation automatique en cours…</div></div>';
+      status.innerHTML="";
+      setFootballRefreshIndicator("error");
       if(window.batbotFixturesRefreshTimer)clearTimeout(window.batbotFixturesRefreshTimer);
       window.batbotFixturesRefreshTimer=setTimeout(function(){
         if(window.batBotLastRenderedMode==="daily" && getAbidjanDate(0)===date && window.batBotDailyFixturesLoadedDate===date){
           loadFootballFixtures(date);
         }
       },32000);
-    }else if(fixtures.length){
-      status.innerHTML='<div class="professional-status success"><div class="professional-status-head">✅ Matchs actualisés</div><div class="professional-status-body">'+fixtures.length+" rencontre(s) chargée(s).</div></div>";
     }else{
-      status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est disponible pour cette date.</div></div>';
+      status.innerHTML="";
+      setFootballRefreshIndicator("success");
     }
   }catch(e){
-    if(hasDisplayed){
-      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Actualisation momentanément indisponible</div><div class="professional-status-body">Les derniers matchs affichés sont conservés. Réessayez dans quelques instants.</div></div>';
-    }else{
-      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Connexion indisponible</div><div class="professional-status-body">Impossible de charger les rencontres. Vérifiez votre connexion puis réessayez.</div></div>';
-    }
+    status.innerHTML="";
+    setFootballRefreshIndicator("error");
   }finally{
     if(button)button.disabled=false;
   }
@@ -5352,9 +5369,7 @@ async function loadBatBotLiveSection(){
   if(button)button.disabled=true;
   box.classList.remove("hidden");
 
-  status.innerHTML=hasDisplayed
-    ? '<div class="professional-status"><div class="professional-status-body">Actualisation du direct…</div></div>'
-    : '<div class="professional-status"><div class="professional-status-body">Recherche des rencontres en cours…</div></div>';
+  status.innerHTML="";
 
   try{
     await ensureFootballAccess();
@@ -5371,6 +5386,7 @@ async function loadBatBotLiveSection(){
     const raw=Array.isArray(data?.response)?data.response:[];
     const fixtures=raw.map(normalizeFootballClientMatch).filter(isLiveFixture);
     window.batBotLiveFixtures=fixtures;
+    setFootballRefreshIndicator("success");
 
     if(!fixtures.length){
       status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match en direct</div><div class="professional-status-body">Aucune rencontre en cours n’est actuellement signalée par la source sportive.</div></div>';
@@ -5378,7 +5394,7 @@ async function loadBatBotLiveSection(){
       return;
     }
 
-    status.innerHTML='<div class="professional-status success"><div class="professional-status-head">🔴 '+fixtures.length+' rencontre(s) en direct</div><div class="professional-status-body">Scores et statuts fournis par le service sportif. La vidéo n’est pas incluse automatiquement.</div></div>';
+    status.innerHTML="";
 
     box.innerHTML=fixtures.map(function(item,index){
       const teams=item.teams||{},home=teams.home||{},away=teams.away||{},league=item.league||{};
@@ -5398,7 +5414,8 @@ async function loadBatBotLiveSection(){
         +'</div>';
     }).join("");
   }catch(error){
-    status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Actualisation momentanément indisponible</div><div class="professional-status-body">'+(hasDisplayed?"Les derniers matchs affichés sont conservés. ":"")+'Impossible de récupérer les nouvelles données pour le moment.</div></div>';
+    status.innerHTML="";
+    setFootballRefreshIndicator("error");
   }finally{
     if(button)button.disabled=false;
   }
@@ -5427,7 +5444,7 @@ async function loadFootballLive(){
 
   if(button)button.disabled=true;
   status.className="status";
-  status.innerHTML='<div class="professional-status"><div class="professional-status-body">Actualisation du direct…</div></div>';
+  status.innerHTML="";
   box.classList.remove("hidden");
 
   const refresh=async function(){
@@ -5458,10 +5475,12 @@ async function loadFootballLive(){
       window.batBotVisibleFixtureCount=20;
       renderFootballFixtures(fixtures,"en direct");
 
-      status.innerHTML='<div class="professional-status '+(fixtures.length?"success":"")+'"><div class="professional-status-head">'+(fixtures.length?"🔴 Direct":"ℹ️ Aucun match en direct")+'</div><div class="professional-status-body">'+(fixtures.length?fixtures.length+" rencontre(s) en direct actuellement.":"Aucune rencontre en cours n’est actuellement signalée.")+'</div></div>';
+      status.innerHTML="";
+      setFootballRefreshIndicator("success");
     }catch(e){
       if(button)button.dataset.liveState="error";
-      status.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Actualisation momentanément indisponible</div><div class="professional-status-body">'+(hasDisplayedLive?"Les derniers matchs en direct affichés sont conservés. ":"Les résultats déjà affichés sont conservés. ")+'La connexion aux données sportives n’a pas pu être actualisée.</div></div>';
+      status.innerHTML="";
+      setFootballRefreshIndicator("error");
     }
   };
 
