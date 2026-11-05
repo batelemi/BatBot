@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS payment_requests (
   offer TEXT NOT NULL,
   operator TEXT NOT NULL,
   amount INTEGER NOT NULL,
-  reference TEXT NOT NULL,
+  reference TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'pending',
   admin_note TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

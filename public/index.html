@@ -2391,8 +2391,8 @@ button.batbot-predict-btn *,
           <div><b>3.</b><span>Pour Orange Money, MTN Money ou Moov Money, cliquez sur le petit bouton <strong>Copier</strong>. Le numéro sera automatiquement copié.</span></div>
           <div><b>4.</b><span>Ouvrez ensuite votre application de paiement sur votre téléphone et effectuez le transfert.</span></div>
           <div><b>5.</b><span>Pour Wave, appuyez sur le bouton correspondant à l’offre choisie et suivez les instructions de paiement.</span></div>
-          <div><b>6.</b><span>Après le paiement, revenez dans BATBOT PRO, indiquez le montant payé et saisissez votre référence de transaction.</span></div>
-          <div><b>7.</b><span>Appuyez sur <strong>Enregistrer la référence</strong>, puis envoyez votre preuve sur WhatsApp si nécessaire.</span></div>
+          <div><b>6.</b><span>Après le paiement, revenez dans BATBOT PRO et indiquez le montant payé.</span></div>
+          <div><b>7.</b><span>Appuyez sur <strong>Valider le paiement</strong>, puis envoyez votre preuve sur WhatsApp pour vérification.</span></div>
         </div>
         <button class="btn secondary conditions-close-button" type="button" aria-label="Retour au paiement" title="Retour au paiement">×</button>
       </div>
@@ -2401,8 +2401,7 @@ button.batbot-predict-btn *,
     <label class="payment-field payment-offer-field"><span class="muted">Offre payée</span><select id="paymentOffer" class="payment-offer-select" aria-label="Offre payée"><option value="Premium 7 jours">Premium 7 jours — 1 000 FCFA</option><option value="Premium 14 jours">Premium 14 jours — 2 000 FCFA</option><option value="Premium 21 jours">Premium 21 jours — 3 000 FCFA</option></select></label>
     <label class="payment-field payment-operator-field"><span class="muted">Opérateur utilisé</span><select id="paymentOperator" class="payment-operator-select" aria-label="Opérateur utilisé"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option><option>Wave</option></select></label>
     <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
-    <label><span class="muted">Référence de transaction</span><input id="paymentReference" maxlength="120" placeholder="Référence du paiement"></label>
-    <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ Enregistrer la référence</button>
+    <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ VALIDER LE PAIEMENT</button>
     <button class="btn whatsapp" type="button" hidden onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
     <div id="paymentNumberStatus" class="status"></div>
   </div>
@@ -3435,8 +3434,30 @@ function showFileName(){
 }
 
 async function submitPaymentReference(){
-  const body={offer:document.getElementById("paymentOffer").value,operator:document.getElementById("paymentOperator").value,amount:document.getElementById("paymentAmount").value,reference:document.getElementById("paymentReference").value.trim()};
-  try{const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});const d=await readApiResponse(r);if(!r.ok)throw new Error(d.error||"Enregistrement impossible.");showStatus("paymentNumberStatus","Référence enregistrée. Vous pouvez aussi envoyer votre référence ou votre preuve par WhatsApp au service BATBOT PRO.","success");}catch(e){showStatus("paymentNumberStatus",friendlyActionError(e,"Impossible d’enregistrer la référence. Vérifiez votre connexion et réessayez."),"error");}
+  const offer=document.getElementById("paymentOffer").value;
+  const operator=document.getElementById("paymentOperator").value;
+  const amount=document.getElementById("paymentAmount").value;
+  const button=document.querySelector('button[onclick="submitPaymentReference()"]');
+  if(!amount)return showStatus("paymentNumberStatus","Indiquez le montant payé avant de continuer.","error");
+  if(button?.disabled)return;
+  if(button)button.disabled=true;
+  window.batBotLastPaymentRequestId="";
+  const whatsappButton=document.querySelector('button[onclick="sendPaymentWhatsApp()"]');
+  if(whatsappButton)whatsappButton.hidden=true;
+  try{
+    const body={offer,operator,amount};
+    const r=await fetch("/api/payment-requests",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});
+    const d=await readApiResponse(r);
+    if(!r.ok)throw new Error(d.error||"Validation impossible.");
+    window.batBotLastPaymentRequestId=String(d.id||"");
+    if(!window.batBotLastPaymentRequestId)throw new Error("Numéro de demande introuvable.");
+    showStatus("paymentNumberStatus","Votre demande N° "+window.batBotLastPaymentRequestId+" est enregistrée et en attente de vérification. Envoyez maintenant votre preuve sur WhatsApp.","success");
+    if(whatsappButton)whatsappButton.hidden=!SERVICE_FLAGS.whatsapp;
+  }catch(e){
+    showStatus("paymentNumberStatus",friendlyActionError(e,"Impossible d’enregistrer votre demande. Vérifiez votre connexion et réessayez."),"error");
+  }finally{
+    if(button)button.disabled=false;
+  }
 }
 async function copyPaymentNumber(operator){
   const statusId="paymentNumberStatus";
@@ -3453,7 +3474,18 @@ async function copyPaymentNumber(operator){
     showStatus(statusId,friendlyActionError(error,"Impossible de copier le numéro. Réessayez ou contactez le Service BatBot."),"error");
   }
 }
-function sendPaymentWhatsApp(){if(!SERVICE_FLAGS.whatsapp)return showStatus("paymentNumberStatus","Le service WhatsApp est temporairement désactivé.","error");const offer=document.getElementById("paymentOffer").value,operator=document.getElementById("paymentOperator").value,amount=document.getElementById("paymentAmount").value,reference=document.getElementById("paymentReference").value.trim();if(!amount||!reference)return showStatus("paymentNumberStatus","Saisissez le montant et la référence avant de continuer.","error");const message="Bonjour BATBOT PRO 👋\n\nJe viens d’effectuer un paiement.\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\nRéférence : "+reference+"\n\nJe joins ma capture de paiement. Merci.";window.open(createWhatsAppUrl(message),"_blank");}
+function sendPaymentWhatsApp(){
+  if(!SERVICE_FLAGS.whatsapp)return showStatus("paymentNumberStatus","Le service WhatsApp est temporairement désactivé.","error");
+  const offer=document.getElementById("paymentOffer").value;
+  const operator=document.getElementById("paymentOperator").value;
+  const amount=document.getElementById("paymentAmount").value;
+  const requestId=window.batBotLastPaymentRequestId;
+  if(!requestId)return showStatus("paymentNumberStatus","Enregistrez d’abord votre demande de paiement.","error");
+  if(!amount)return showStatus("paymentNumberStatus","Indiquez le montant payé avant de continuer.","error");
+  const message="Bonjour BATBOT PRO 👋\n\nDemande Premium N° : "+requestId+"\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\n\nJe joins ma capture de paiement. Merci.";
+  const url=createWhatsAppUrl(message);
+  if(url)window.open(url,"_blank");
+}
 
 function updatePaymentOfferStyle(){
   const select=document.getElementById('paymentOffer');
@@ -5681,7 +5713,6 @@ function renderBatBotReceipt(x,options={}){
     (window.batBotCurrentUser?.username||window.batBotCurrentUser?.name)||
     "Utilisateur"
   );
-  const reference=String(x.reference||"—");
   const amount=Number(x.amount)||0;
   const adminNote=x.admin_note?`<div class="batbot-receipt-row"><span>📝 Note</span><strong>${escapeHtml(x.admin_note)}</strong></div>`:"";
   const stampName=username.length>20?username.slice(0,20)+"…":username;
@@ -5701,10 +5732,6 @@ function renderBatBotReceipt(x,options={}){
         <div class="batbot-receipt-row"><span>📱 Opérateur</span><strong>${escapeHtml(x.operator||"—")}</strong></div>
         <div class="batbot-receipt-row"><span>📅 Date</span><strong>${escapeHtml(formatPaymentDateTime(x.created_at))}</strong></div>
         ${adminNote}
-        <div class="batbot-receipt-reference">
-          <span class="batbot-receipt-reference-label">🔖 Référence de transaction</span>
-          <code>${escapeHtml(reference)}</code>
-        </div>
       </div>
       <div class="batbot-receipt-footer">
         <div class="batbot-receipt-status ${meta.key}">${meta.key==="accepted"?"🟢":meta.key==="rejected"?"🔴":"🟡"} ${meta.label}</div>

@@ -1260,7 +1260,7 @@ app.post("/api/payment-requests", requireUser, async (req, res) => {
   const offer = String(req.body.offer || "").trim();
   const operator = String(req.body.operator || "").trim();
   const amount = Number(req.body.amount);
-  const reference = String(req.body.reference || "").trim();
+  const reference = "";
   const allowedOperators = ["Orange Money", "MTN Money", "Moov Money", "Wave"];
   const premiumAmounts = {
     "Premium 7 jours": 1000,
@@ -1271,8 +1271,8 @@ app.post("/api/payment-requests", requireUser, async (req, res) => {
   if (!Object.prototype.hasOwnProperty.call(premiumAmounts, offer)) {
     return res.status(400).json({ error: "Choisissez une formule Premium disponible." });
   }
-  if (!allowedOperators.includes(operator) || !Number.isInteger(amount) || amount !== premiumAmounts[offer] || !reference) {
-    return res.status(400).json({ error: "Vérifiez le moyen de paiement, le montant exact de la formule et la référence de transaction." });
+  if (!allowedOperators.includes(operator) || !Number.isInteger(amount) || amount !== premiumAmounts[offer]) {
+    return res.status(400).json({ error: "Vérifiez le moyen de paiement et le montant exact de la formule." });
   }
   const result = await pgGet(
     `INSERT INTO payment_requests(user_id,offer,operator,amount,reference)
@@ -1280,7 +1280,7 @@ app.post("/api/payment-requests", requireUser, async (req, res) => {
      RETURNING id`,
     [req.session.userId, offer, operator, Math.round(amount), reference]
   );
-  res.json({ message: "Référence enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.id });
+  res.json({ message: "Demande de paiement enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.id });
 });
 
 app.get("/api/payment-requests/mine", requireUser, async (req, res) => {
@@ -1364,12 +1364,11 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
       const expected = premiumOffers[offer];
       const amount = Number(request.amount);
       const operator = String(request.operator || "").trim();
-      const reference = String(request.reference || "").trim();
       const allowedOperators = ["Orange Money", "MTN Money", "Moov Money", "Wave"];
 
-      if (!expected || !Number.isInteger(amount) || amount !== expected.amount || !allowedOperators.includes(operator) || !reference) {
+      if (!expected || !Number.isInteger(amount) || amount !== expected.amount || !allowedOperators.includes(operator)) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ error: "Demande Premium invalide : formule, montant, moyen de paiement ou référence incorrect." });
+        return res.status(400).json({ error: "Demande Premium invalide : formule, montant ou moyen de paiement incorrect." });
       }
 
       const durationDays = expected.days;
