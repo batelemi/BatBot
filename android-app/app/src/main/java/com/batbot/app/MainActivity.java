@@ -2,17 +2,164 @@ package com.batbot.app;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.content.Intent;
+import android.content.ActivityNotFoundException;
+import android.net.Uri;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebViewTransport;
+import android.os.Message;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
     private WebView webView;
+
+    private boolean isInternalUrl(Uri uri) {
+        if (uri == null) return false;
+
+        String host = uri.getHost();
+        if (host == null) return false;
+
+        return host.equalsIgnoreCase("batbot.pro")
+            || host.toLowerCase().endsWith(".batbot.pro");
+    }
+
+    private boolean openExternalUrl(String url) {
+        if (url == null || url.trim().isEmpty()) return true;
+
+        try {
+            Uri uri = Uri.parse(url);
+            String scheme = uri.getScheme();
+
+            if (scheme == null) return true;
+
+            if (scheme.equalsIgnoreCase("http")
+                    || scheme.equalsIgnoreCase("https")) {
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                startActivity(intent);
+                return true;
+            }
+
+            if (scheme.equalsIgnoreCase("intent")) {
+                try {
+                    Intent intent = Intent.parseUri(
+                        url, Intent.URI_INTENT_SCHEME
+                    );
+                    intent.setComponent(null);
+                    intent.setSelector(null);
+                    startActivity(intent);
+                    return true;
+                } catch (ActivityNotFoundException e) {
+                    Intent parsed = Intent.parseUri(
+                        url, Intent.URI_INTENT_SCHEME
+                    );
+                    String fallback = parsed.getStringExtra(
+                        "browser_fallback_url"
+                    );
+                    if (fallback != null && !fallback.isEmpty()) {
+                        return openExternalUrl(fallback);
+                    }
+                    Toast.makeText(this,
+                        "Application non installée.",
+                        Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+            }
+
+            if (scheme.equalsIgnoreCase("whatsapp")
+                    || scheme.equalsIgnoreCase("tg")
+                    || scheme.equalsIgnoreCase("mailto")
+                    || scheme.equalsIgnoreCase("tel")
+                    || scheme.equalsIgnoreCase("sms")) {
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                startActivity(intent);
+                return true;
+            }
+
+            Toast.makeText(this,
+                "Type de lien non pris en charge.",
+                Toast.LENGTH_SHORT).show();
+            return true;
+
+        } catch (ActivityNotFoundException e) {
+            // Repli HTTPS pour certains liens de réseaux sociaux.
+            try {
+                Uri uri = Uri.parse(url);
+                String scheme = uri.getScheme();
+
+                if ("tg".equalsIgnoreCase(scheme)) {
+                    String domain = uri.getQueryParameter("domain");
+                    if (domain != null && !domain.isEmpty()) {
+                        startActivity(new Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://t.me/" + domain)
+                        ));
+                        return true;
+                    }
+                }
+
+                if ("whatsapp".equalsIgnoreCase(scheme)) {
+                    String phone = uri.getQueryParameter("phone");
+                    if (phone != null && !phone.isEmpty()) {
+                        startActivity(new Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://wa.me/" + phone)
+                        ));
+                        return true;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+
+            Toast.makeText(this,
+                "Impossible d'ouvrir ce lien. Vérifie l'application installée.",
+                Toast.LENGTH_LONG).show();
+            return true;
+
+        } catch (Exception e) {
+            Toast.makeText(this,
+                "Erreur lors de l'ouverture du lien.",
+                Toast.LENGTH_SHORT).show();
+            return true;
+        }
+    }
+
+    private boolean handleNavigation(String url) {
+        if (url == null) return true;
+
+        Uri uri = Uri.parse(url);
+
+        if (isInternalUrl(uri)) {
+            return false;
+        }
+
+        return openExternalUrl(url);
+    }
+
+    private WebViewClient createWebViewClient() {
+        return new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(
+                    WebView view, String url) {
+                return handleNavigation(url);
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(
+                    WebView view, WebResourceRequest request) {
+                return handleNavigation(
+                    request.getUrl().toString()
+                );
+            }
+        };
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,12 +179,52 @@ public class MainActivity extends Activity {
         settings.setDatabaseEnabled(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
-        settings.setJavaScriptCanOpenWindowsAutomatically(false);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setSupportMultipleWindows(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
 
-        webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebViewClient(createWebViewClient());
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onCreateWindow(
+                    WebView view,
+                    boolean isDialog,
+                    boolean isUserGesture,
+                    Message resultMsg) {
+
+                WebView popupWebView = new WebView(MainActivity.this);
+
+                popupWebView.getSettings().setJavaScriptEnabled(true);
+                popupWebView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(
+                            WebView view, String url) {
+                        boolean handled = handleNavigation(url);
+                        if (handled) view.destroy();
+                        return handled;
+                    }
+
+                    @Override
+                    public boolean shouldOverrideUrlLoading(
+                            WebView view, WebResourceRequest request) {
+                        boolean handled = handleNavigation(
+                            request.getUrl().toString()
+                        );
+                        if (handled) view.destroy();
+                        return handled;
+                    }
+                });
+
+                WebViewTransport transport =
+                    (WebViewTransport) resultMsg.obj;
+                transport.setWebView(popupWebView);
+                resultMsg.sendToTarget();
+                return true;
+            }
+        });
+
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         setContentView(webView);
