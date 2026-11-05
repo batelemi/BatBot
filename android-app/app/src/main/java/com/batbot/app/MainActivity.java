@@ -10,7 +10,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
 import android.webkit.WebResourceRequest;
-import android.webkit.WebViewTransport;
 import android.os.Message;
 import android.view.View;
 import android.view.Window;
@@ -217,8 +216,8 @@ public class MainActivity extends Activity {
                     }
                 });
 
-                WebViewTransport transport =
-                    (WebViewTransport) resultMsg.obj;
+                WebView.WebViewTransport transport =
+                    (WebView.WebViewTransport) resultMsg.obj;
                 transport.setWebView(popupWebView);
                 resultMsg.sendToTarget();
                 return true;
