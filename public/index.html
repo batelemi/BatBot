@@ -1604,9 +1604,11 @@ button.batbot-predict-btn *,
 <style id="batbot-fixtures-refresh-indicator">
 .batbot-fixtures-heading{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .batbot-fixtures-refresh-indicator{display:inline-block;width:11px;height:11px;flex:0 0 11px;border-radius:50%;background:#8995a5;box-shadow:none;vertical-align:middle}
+.batbot-fixtures-refresh-indicator[data-state="refreshing"]{background:#F59E0B;box-shadow:0 0 7px rgba(245,158,11,.75);animation:batbotStatusPulseOrange 1.25s ease-in-out infinite}
 .batbot-fixtures-refresh-indicator[data-state="success"]{background:#21C55D;box-shadow:0 0 7px rgba(33,197,93,.75);animation:batbotStatusPulseGreen 1.25s ease-in-out infinite}
 .batbot-fixtures-refresh-indicator[data-state="error"]{background:#DC2626;box-shadow:0 0 7px rgba(220,38,38,.75);animation:batbotStatusPulseRed 1.25s ease-in-out infinite}
 @media(prefers-reduced-motion:reduce){.batbot-fixtures-refresh-indicator{animation:none!important;opacity:1!important}}
+@keyframes batbotStatusPulseOrange{0%,100%{opacity:.62;box-shadow:0 0 0 0 rgba(245,158,11,.58),0 0 6px rgba(245,158,11,.48)}50%{opacity:1;box-shadow:0 0 0 6px rgba(245,158,11,0),0 0 13px rgba(245,158,11,.9)}}
 </style>
 <style id="batbot-finished-match-refinements">
   #batbotAIModal .ai-finished-match{
@@ -5296,18 +5298,29 @@ function normalizeFootballClientMatch(match,index){
 function setFootballRefreshIndicator(state){
   const indicator=document.getElementById("batbotFixturesRefreshIndicator");
   if(!indicator)return;
-  const validState=["success","error","unknown"].includes(state)?state:"unknown";
+
+  const validState=["success","error","refreshing","unknown"].includes(state)?state:"unknown";
   indicator.dataset.state=validState;
-  indicator.setAttribute("aria-label",validState==="success"?"Dernière actualisation réussie":validState==="error"?"Échec de la dernière actualisation":"État de l’actualisation inconnu");
-  indicator.title=validState==="success"?"Dernière actualisation réussie":validState==="error"?"Actualisation échouée. Vérifiez votre connexion.":"En attente de la première actualisation";
+
+  const labels={
+    success:"Dernière actualisation réussie",
+    error:"Échec de la dernière actualisation",
+    refreshing:"Actualisation des matchs en cours",
+    unknown:"État de l’actualisation inconnu"
+  };
+
+  indicator.setAttribute("aria-label",labels[validState]);
+  indicator.title=labels[validState];
+
   if(validState==="success"){
     window.batBotFootballRefreshErrorNotified=false;
   }else if(validState==="error"&&!window.batBotFootballRefreshErrorNotified){
     window.batBotFootballRefreshErrorNotified=true;
-    if(typeof showToast==="function")showToast("Actualisation momentanément impossible. Cliquez sur ACTUALISER pour relancer le chargement, ou patientez quelques instants et vérifiez votre connexion Internet. Les matchs seront actualisés automatiquement.","error");
+    if(typeof showToast==="function"){
+      showToast("Actualisation momentanément impossible. Cliquez sur ACTUALISER pour relancer le chargement, ou patientez quelques instants et vérifiez votre connexion Internet. Les matchs seront actualisés automatiquement.","error");
+    }
   }
 }
-
 function startFootballFixturesAutoRefresh(){
   if(window.batbotDailyFixturesAutoRefreshTimer)return;
   window.batbotDailyFixturesAutoRefreshTimer=setInterval(function(){
@@ -5417,9 +5430,10 @@ async function loadFootballFixtures(selectedDate){
 
     if(d?.stale){
       status.innerHTML="";
-      setFootballRefreshIndicator("error");
+      setFootballRefreshIndicator(d?.refreshing ? "refreshing" : "error");
       if(window.batbotFixturesRefreshTimer)clearTimeout(window.batbotFixturesRefreshTimer);
       window.batbotFixturesRefreshTimer=setTimeout(function(){
+        window.batbotFixturesRefreshTimer=null;
         if(window.batBotLastRenderedMode==="daily" && getAbidjanDate(0)===date && window.batBotDailyFixturesLoadedDate===date){
           loadFootballFixtures(date);
         }
@@ -5494,8 +5508,6 @@ async function loadBatBotLiveSection(){
     const raw=Array.isArray(data?.response)?data.response:[];
     const fixtures=raw.map(normalizeFootballClientMatch).filter(isLiveFixture);
     window.batBotLiveFixtures=fixtures;
-    setFootballRefreshIndicator("success");
-
     if(!fixtures.length){
       status.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match en direct</div><div class="professional-status-body">Aucune rencontre en cours n’est actuellement signalée par la source sportive.</div></div>';
       box.innerHTML='<div class="professional-status"><div class="professional-status-body">Réessayez plus tard. Les liens vidéo officiels seront affichés ici uniquement après vérification de leur disponibilité.</div></div>';
@@ -5523,7 +5535,6 @@ async function loadBatBotLiveSection(){
     }).join("");
   }catch(error){
     status.innerHTML="";
-    setFootballRefreshIndicator("error");
   }finally{
     if(button)button.disabled=false;
   }
@@ -5590,7 +5601,6 @@ async function loadFootballLive(){
       renderFootballFixtures(fixtures,"en direct");
 
       status.innerHTML="";
-      setFootballRefreshIndicator("success");
     }catch(e){
         if(window.batBotLastRenderedMode==="live"){
           if(button)button.dataset.liveState="error";
@@ -5598,7 +5608,6 @@ async function loadFootballLive(){
           if(!hasDisplayedLive){
             box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs en direct indisponibles</div><div class="professional-status-body">Impossible de récupérer les rencontres en direct pour le moment. Vérifiez votre connexion Internet. L’actualisation automatique réessaiera dans quelques instants.</div></div>';
           }
-          setFootballRefreshIndicator("error");
         }
       }finally{
       window.batBotLiveRefreshInProgress=false;

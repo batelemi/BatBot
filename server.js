@@ -3529,6 +3529,7 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       updated: data.updated,
       cached: data.cached,
       stale: Boolean(data.stale),
+      refreshing: Boolean(data.stale && sportApiFixturesInFlight.has(date)),
       response: data.fixtures
     });
   } catch (error) {
