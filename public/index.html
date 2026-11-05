@@ -5144,7 +5144,15 @@ function renderBatBotLivePitchBackground(){
 function renderFootballFixtures(fixtures,checkedDate){
   const box=document.getElementById("footballResults");if(!box)return;window.batBotDailyFixtures=Array.isArray(fixtures)?fixtures:[];
   renderBatBotLeagueFixtures(window.batBotDailyFixtures);
-  if(!fixtures.length){box.innerHTML='<div class="professional-status"><div class="professional-status-head">ℹ️ Aucun match disponible</div><div class="professional-status-body">Aucune rencontre n’est disponible pour cette sélection. Consultez le direct ou réessayez plus tard.</div></div>';return;}
+  if(!fixtures.length){
+    const liveMode=window.batBotLastRenderedMode==="live"||String(checkedDate||"").toLowerCase()==="en direct";
+    const title=liveMode?"ℹ️ Aucun match en direct pour le moment":"ℹ️ Aucun match programmé pour cette date";
+    const message=liveMode
+      ?"Aucune rencontre n'est actuellement en cours. Les matchs en direct apparaîtront automatiquement dès le début des prochaines rencontres."
+      :"Aucune rencontre n'est programmée pour cette date. Consultez une autre date ou réessayez plus tard.";
+    box.innerHTML='<div class="professional-status"><div class="professional-status-head">'+title+'</div><div class="professional-status-body">'+message+'</div></div>';
+    return;
+  }
   const visibleCount=Math.min(fixtures.length,Number(window.batBotVisibleFixtureCount)||20);
   box.innerHTML=fixtures.slice(0,visibleCount).map(function(item,index){
     const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
@@ -5300,6 +5308,23 @@ function setFootballRefreshIndicator(state){
   }
 }
 
+function startFootballFixturesAutoRefresh(){
+  if(window.batbotDailyFixturesAutoRefreshTimer)return;
+  window.batbotDailyFixturesAutoRefreshTimer=setInterval(function(){
+    if(document.visibilityState && document.visibilityState!=="visible")return;
+    if(window.batBotLastRenderedMode!=="daily")return;
+    if(window.batBotFixturesLoadInProgress)return;
+    loadFootballFixtures(getFootballSelectedDate());
+  },60000);
+}
+
+function stopFootballFixturesAutoRefresh(){
+  if(window.batbotDailyFixturesAutoRefreshTimer){
+    clearInterval(window.batbotDailyFixturesAutoRefreshTimer);
+    window.batbotDailyFixturesAutoRefreshTimer=null;
+  }
+}
+
 async function manualRefreshFootballFixtures(){
   const button=document.getElementById("footballTodayButton");
   if(window.batBotManualFixturesRefreshInProgress)return;
@@ -5341,6 +5366,12 @@ async function loadFootballFixtures(selectedDate){
   if(!status||!box)return;
 
   const date=/^\d{4}-\d{2}-\d{2}$/.test(String(selectedDate||""))?String(selectedDate):getAbidjanDate(0);
+  if(window.batBotFixturesLoadInProgress){
+    if(date!==window.batBotFixturesActiveDate)window.batBotPendingFixturesDate=date;
+    return false;
+  }
+  window.batBotFixturesLoadInProgress=true;
+  window.batBotFixturesActiveDate=date;
   const hasDisplayed=window.batBotLastRenderedMode==="daily"
     && Array.isArray(window.batBotDailyFixtures)
     && window.batBotDailyFixtures.length>0
@@ -5348,6 +5379,7 @@ async function loadFootballFixtures(selectedDate){
 
   setFootballDate(date);
   window.batBotLastRenderedMode="daily";
+  startFootballFixturesAutoRefresh();
 
   if(window.batbotLiveRefreshTimer){
     clearInterval(window.batbotLiveRefreshTimer);
@@ -5375,7 +5407,7 @@ async function loadFootballFixtures(selectedDate){
 
     const rawFixtures=Array.isArray(d?.response)?d.response:[];
     const fixtures=rawFixtures.map(normalizeFootballClientMatch);
-    if(window.batBotLastRenderedMode==="live")return;
+    if(window.batBotLastRenderedMode==="live"||getFootballSelectedDate()!==date)return false;
 
     window.batBotVisibleFixtureCount=20;
     window.batBotDailyFixturesLoadedDate=date;
@@ -5400,10 +5432,20 @@ async function loadFootballFixtures(selectedDate){
     return false;
   }catch(e){
     status.innerHTML="";
+    if(!hasDisplayed){
+      box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Impossible de charger les rencontres</div><div class="professional-status-body">Vérifiez votre connexion Internet puis cliquez sur ACTUALISER pour réessayer.</div></div>';
+    }
     setFootballRefreshIndicator("error");
     return false;
   }finally{
+    window.batBotFixturesLoadInProgress=false;
+    window.batBotFixturesActiveDate=null;
     if(button)button.disabled=false;
+    const pendingDate=window.batBotPendingFixturesDate;
+    window.batBotPendingFixturesDate=null;
+    if(pendingDate && window.batBotLastRenderedMode==="daily" && pendingDate===getFootballSelectedDate()){
+      Promise.resolve().then(function(){loadFootballFixtures(pendingDate);});
+    }
   }
 }
 
@@ -5488,8 +5530,11 @@ async function loadFootballLive(){
   const box=document.getElementById("footballResults");
   const button=document.getElementById("footballLiveButton");
   if(!status||!box)return;
+    if(window.batBotLiveRefreshInProgress)return false;
 
+  const wasLiveMode=window.batBotLastRenderedMode==="live";
   window.batBotLastRenderedMode="live";
+  stopFootballFixturesAutoRefresh();
   if(window.batbotFixturesRefreshTimer){
     clearTimeout(window.batbotFixturesRefreshTimer);
     window.batbotFixturesRefreshTimer=null;
@@ -5500,7 +5545,7 @@ async function loadFootballLive(){
     window.batbotLiveRefreshTimer=null;
   }
 
-  const hasDisplayedLive=window.batBotLastRenderedMode==="live"
+  const hasDisplayedLive=wasLiveMode
     && Array.isArray(window.batBotLiveFixtures)
     && window.batBotLiveFixtures.length>0;
 
@@ -5510,6 +5555,8 @@ async function loadFootballLive(){
   box.classList.remove("hidden");
 
   const refresh=async function(){
+    if(window.batBotLiveRefreshInProgress)return;
+    window.batBotLiveRefreshInProgress=true;
     try{
       await ensureFootballAccess();
       const response=await fetch("/api/football/live",{
@@ -5522,6 +5569,7 @@ async function loadFootballLive(){
         throw new Error(d?.error||"Impossible de récupérer les matchs en direct.");
       }
 
+      if(window.batBotLastRenderedMode!=="live")return;
       const rawFixtures=Array.isArray(d?.response)?d.response:[];
       const fixtures=rawFixtures.map(normalizeFootballClientMatch).filter(isLiveFixture);
       window.batBotLiveFixtures=fixtures;
@@ -5540,9 +5588,16 @@ async function loadFootballLive(){
       status.innerHTML="";
       setFootballRefreshIndicator("success");
     }catch(e){
-      if(button)button.dataset.liveState="error";
-      status.innerHTML="";
-      setFootballRefreshIndicator("error");
+        if(window.batBotLastRenderedMode==="live"){
+          if(button)button.dataset.liveState="error";
+          status.innerHTML="";
+          if(!hasDisplayedLive){
+            box.innerHTML='<div class="professional-status error"><div class="professional-status-head">⚠️ Matchs en direct indisponibles</div><div class="professional-status-body">Impossible de récupérer les rencontres en direct pour le moment. Vérifiez votre connexion Internet. L’actualisation automatique réessaiera dans quelques instants.</div></div>';
+          }
+          setFootballRefreshIndicator("error");
+        }
+      }finally{
+      window.batBotLiveRefreshInProgress=false;
     }
   };
 
