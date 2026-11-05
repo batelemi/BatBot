@@ -5425,6 +5425,10 @@ async function loadFootballFixtures(selectedDate){
         }
       },32000);
     }else{
+      if(window.batbotFixturesRefreshTimer){
+        clearTimeout(window.batbotFixturesRefreshTimer);
+        window.batbotFixturesRefreshTimer=null;
+      }
       status.innerHTML="";
       setFootballRefreshIndicator("success");
       return true;
