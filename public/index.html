@@ -3376,22 +3376,40 @@ function createWhatsAppUrl(message){
 }
 
 async function shareAnalysisRequest(platform,message,file){
+  if(window.BatBotAndroid && (file || platform==="telegram")){
+    try{
+      if(file){
+        window.BatBotAndroid.shareCapture(platform,message);
+      }else{
+        window.BatBotAndroid.shareText(platform,message);
+      }
+      showStatus("analysisStatus","Ouverture du partage "+(platform==="whatsapp"?"WhatsApp":"Telegram")+"…","success");
+    }catch(error){
+      showStatus("analysisStatus","Impossible de lancer le partage Android. Réessayez.","error");
+    }
+    return;
+  }
+
   if(file){
     if(!navigator.share || !navigator.canShare || !navigator.canShare({files:[file]})){
-      showStatus("analysisStatus","Le partage de capture n’est pas pris en charge. Ouvrez la conversation et joignez l’image manuellement.","error");
-      const url=platform==="whatsapp"?createWhatsAppUrl(message):TELEGRAM_CONTACT;
-      if(url)window.open(url,"_blank");
+      showStatus("analysisStatus","Le partage de capture n’est pas pris en charge ici. Ouvrez la conversation et joignez l’image manuellement.","error");
       return;
     }
     try{
       await navigator.share({title:"Demande de pronostic BATBOT PRO",text:message,files:[file]});
-      showStatus("analysisStatus","Menu de partage ouvert. Choisissez "+(platform==="whatsapp"?"WhatsApp":"Telegram")+" puis le destinataire.","success");
+      showStatus("analysisStatus","Partage ouvert. Choisissez "+(platform==="whatsapp"?"WhatsApp":"Telegram")+" puis le destinataire.","success");
     }catch(error){
-      if(error.name!=="AbortError")showStatus("analysisStatus","Le partage a échoué. Joignez la capture manuellement dans la conversation.","error");
+      if(error.name!=="AbortError"){
+        showStatus("analysisStatus","Le partage a échoué. Réessayez ou joignez la capture manuellement.","error");
+      }
     }
     return;
   }
-  const url=platform==="whatsapp"?createWhatsAppUrl(message):TELEGRAM_CONTACT+"?text="+encodeURIComponent(message);
+
+  const url=platform==="whatsapp"
+    ?createWhatsAppUrl(message)
+    :"https://t.me/share/url?url="+encodeURIComponent("https://www.batbot.pro/")+"&text="+encodeURIComponent(message);
+
   if(url)window.open(url,"_blank");
   showStatus("analysisStatus","Message préparé. Vérifiez-le puis envoyez votre demande.","success");
 }

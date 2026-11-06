@@ -3,10 +3,12 @@ package com.batbot.app;
 import android.app.Activity;
 import android.os.Bundle;
 import android.content.Intent;
+import android.content.ClipData;
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.webkit.WebChromeClient;
 import android.webkit.ValueCallback;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient.FileChooserParams;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -22,7 +24,72 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
+    private Uri selectedCaptureUri;
     private static final int FILE_CHOOSER_REQUEST_CODE = 7401;
+
+    public class AndroidBridge {
+        @JavascriptInterface
+        public void shareCapture(final String platform, final String message) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    shareWithPlatform(platform, message, true);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void shareText(final String platform, final String message) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    shareWithPlatform(platform, message, false);
+                }
+            });
+        }
+    }
+
+    private void shareWithPlatform(String platform, String message, boolean includeImage) {
+        Uri imageUri = includeImage ? selectedCaptureUri : null;
+
+        if (includeImage && imageUri == null) {
+            Toast.makeText(this, "Aucune capture sélectionnée. Réessayez.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.putExtra(Intent.EXTRA_TEXT, message);
+
+        if (imageUri != null) {
+            intent.setType("image/*");
+            intent.putExtra(Intent.EXTRA_STREAM, imageUri);
+            intent.setClipData(ClipData.newUri(getContentResolver(), "Capture BATBOT PRO", imageUri));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } else {
+            intent.setType("text/plain");
+        }
+
+        String packageName = "whatsapp".equalsIgnoreCase(platform)
+            ? "com.whatsapp"
+            : "org.telegram.messenger";
+
+        try {
+            intent.setPackage(packageName);
+            startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            intent.setPackage(null);
+            try {
+                startActivity(Intent.createChooser(intent,
+                    "whatsapp".equalsIgnoreCase(platform)
+                        ? "Partager avec WhatsApp"
+                        : "Partager avec Telegram"));
+            } catch (Exception error) {
+                Toast.makeText(this, "Impossible d'ouvrir le partage.", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Erreur lors du partage.", Toast.LENGTH_LONG).show();
+        }
+    }
 
     private boolean isInternalUrl(Uri uri) {
         if (uri == null) return false;
@@ -178,6 +245,7 @@ public class MainActivity extends Activity {
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
+        webView.addJavascriptInterface(new AndroidBridge(), "BatBotAndroid");
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
         settings.setLoadWithOverviewMode(true);
@@ -277,11 +345,13 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+            selectedCaptureUri = null;
             if (filePathCallback != null) {
                 Uri[] results = null;
 
                 if (resultCode == RESULT_OK && data != null) {
                     Uri selectedUri = data.getData();
+                    selectedCaptureUri = selectedUri;
                     if (selectedUri != null) {
                         results = new Uri[]{selectedUri};
                     }
