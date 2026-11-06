@@ -3551,6 +3551,10 @@ if(document.readyState==='loading'){
       if(type==='mobile'){
         title.textContent='📱 Paiement — tous les moyens';
         addNode(mobile);
+      }else if(type==='premium'){
+        title.textContent='⭐ Abonnement Premium requis';
+        body.insertAdjacentHTML('beforeend','<div style="margin:0 0 16px;padding:16px;border:2px solid #F5C542;border-radius:14px;background:linear-gradient(145deg,rgba(245,197,66,.18),rgba(7,26,45,.96));color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.2)"><div style="font-size:17px;font-weight:900;margin-bottom:8px">🔒 Pour recevoir votre pronostic, activez Premium</div><div style="font-size:14px;line-height:1.6">Votre compte ne dispose pas encore d’un abonnement Premium. Choisissez une offre et un moyen de paiement ci-dessous pour activer votre abonnement.</div></div>');
+        addNode(mobile);
       }else if(type==='conditions'){
         title.textContent='📋 Conditions de dépôt';
         addNode(conditions);
@@ -3558,6 +3562,9 @@ if(document.readyState==='loading'){
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
     }
+    window.openBatBotPremiumPaymentWindow=function(){
+      openPaymentWindow('premium');
+    };
 
     launcher.querySelectorAll('[data-payment-window]').forEach(button=>{
       button.addEventListener('click',()=>openPaymentWindow(button.dataset.paymentWindow));
@@ -4900,7 +4907,8 @@ async function submitBatBotAI(){
 function analyzeFootballMatch(home,away,homeId,awayId,fixture){
   const currentUser=window.batBotCurrentUser||{};
   if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
-    showToast("Abonnement Premium requis. Ouvrez Plus ou Abonnement pour consulter les options d’abonnement.","error");
+    if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
+    else showToast("Abonnement Premium requis. Ouvrez Plus ou Abonnement pour consulter les options d’abonnement.","error");
     return;
   }
   if(fixture){if(isFinishedFixture(fixture)){showFinishedFootballMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}}
@@ -4924,7 +4932,8 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
 function analyzeFirstTwoFootballMatches(){
   const currentUser=window.batBotCurrentUser||{};
   if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
-    showToast("Abonnement Premium requis pour recevoir un pronostic. Consultez les options dans la rubrique Abonnement.","error");
+    if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
+    else showToast("Abonnement Premium requis pour recevoir un pronostic. Consultez les options dans la rubrique Abonnement.","error");
     return;
   }
   const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
