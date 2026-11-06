@@ -635,7 +635,7 @@ textarea{min-height:120px;resize:vertical}
 .upload:hover{border-color:var(--blue)}
 .upload strong{display:block;margin-bottom:5px}
 .upload small{color:var(--muted);line-height:1.4}
-#capture{display:none}
+
 .file-name{margin-top:9px;color:#6EE7A0;font-size:13px;word-break:break-word}
 
 .two-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -2439,13 +2439,6 @@ Real Madrid vs FC Barcelone
 PSG vs Marseille"></textarea>
     </label>
 
-    <label class="upload" for="capture">
-      <strong>📷 Envoyer une capture</strong>
-      <small>Sélectionnez la capture de vos matchs si vous préférez cette méthode.</small>
-      <input id="capture" type="file" accept="image/*" onchange="showFileName()">
-      <div id="fileName" class="file-name"></div>
-    </label>
-
     <button id="sendAnalysisWhatsAppButton" class="btn whatsapp" hidden type="button" onclick="sendAnalysisWhatsApp()">💬 WhatsApp — Envoyer ma demande</button>
     <button id="sendAnalysisTelegramButton" class="btn telegram" hidden type="button" onclick="sendAnalysisTelegram()">✈️ Telegram — Envoyer ma demande</button>
     <div id="analysisStatus" class="status"></div>
@@ -2529,7 +2522,7 @@ PSG vs Marseille"></textarea>
     <h2>ℹ️ Comment ça fonctionne ?</h2>
     <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Créez votre compte</strong><span>Inscrivez-vous avec votre nom d'utilisateur et votre mot de passe.</span></div></div>
     <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Choisissez votre abonnement Premium</strong><span>Choisissez l'abonnement Premium de 7, 14 ou 21 jours selon votre besoin.</span></div></div>
-    <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs ou une capture d'écran.</span></div></div>
+    <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs. Pour ajouter une capture, utilisez directement WhatsApp ou Telegram.</span></div></div>
     <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez vos pronostics</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
   </div>
 
@@ -3375,82 +3368,45 @@ function createWhatsAppUrl(message){
   return phone?"https://wa.me/"+phone+"?text="+encodeURIComponent(message):"";
 }
 
-async function shareAnalysisRequest(platform,message,file){
-  if(window.BatBotAndroid && (file || platform==="telegram")){
-    try{
-      if(file){
-        window.BatBotAndroid.shareCapture(platform,message);
-      }else{
-        window.BatBotAndroid.shareText(platform,message);
-      }
-      showStatus("analysisStatus","Ouverture du partage "+(platform==="whatsapp"?"WhatsApp":"Telegram")+"…","success");
-    }catch(error){
-      showStatus("analysisStatus","Impossible de lancer le partage Android. Réessayez.","error");
-    }
+function openAnalysisContact(platform,message){
+  let url="";
+  if(platform==="whatsapp"){
+    url=createWhatsAppUrl(message);
+  }else if(TELEGRAM_CONTACT){
+    url=TELEGRAM_CONTACT+(TELEGRAM_CONTACT.includes("?")?"&":"?")+"text="+encodeURIComponent(message);
+  }
+
+  if(!url){
+    showStatus("analysisStatus","Le contact officiel "+(platform==="whatsapp"?"WhatsApp":"Telegram")+" n'est pas configuré.","error");
     return;
   }
 
-  if(file){
-    if(!navigator.share || !navigator.canShare || !navigator.canShare({files:[file]})){
-      showStatus("analysisStatus","Le partage de capture n’est pas pris en charge ici. Ouvrez la conversation et joignez l’image manuellement.","error");
-      return;
-    }
-    try{
-      await navigator.share({title:"Demande de pronostic BATBOT PRO",text:message,files:[file]});
-      showStatus("analysisStatus","Partage ouvert. Choisissez "+(platform==="whatsapp"?"WhatsApp":"Telegram")+" puis le destinataire.","success");
-    }catch(error){
-      if(error.name!=="AbortError"){
-        showStatus("analysisStatus","Le partage a échoué. Réessayez ou joignez la capture manuellement.","error");
-      }
-    }
-    return;
-  }
-
-  const url=platform==="whatsapp"
-    ?createWhatsAppUrl(message)
-    :"https://t.me/share/url?url="+encodeURIComponent("https://www.batbot.pro/")+"&text="+encodeURIComponent(message);
-
-  if(url)window.open(url,"_blank");
-  showStatus("analysisStatus","Message préparé. Vérifiez-le puis envoyez votre demande.","success");
+  window.open(url,"_blank");
+  showStatus("analysisStatus","Conversation ouverte. Vérifiez le message puis envoyez-le. Vous pourrez ajouter votre capture directement dans la messagerie.","success");
 }
 
 async function sendAnalysisWhatsApp(){
   if(!SERVICE_FLAGS.whatsapp)return showStatus("analysisStatus","Le service WhatsApp est temporairement désactivé.","error");
   const matches=document.getElementById("matches").value.trim();
-  const input=document.getElementById("capture");
-  const file=input&&input.files&&input.files.length?input.files[0]:null;
+  if(!matches)return showStatus("analysisStatus","Saisissez au moins un match à analyser.","error");
   const button=document.getElementById("sendAnalysisWhatsAppButton");
-  if(!matches&&!file)return showStatus("analysisStatus","Ajoutez au moins un match ou sélectionnez une capture.","error");
   if(button?.disabled)return;
-  setBatBotButtonLoading("sendAnalysisWhatsAppButton",true,"Préparation du partage…");
-  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite recevoir un pronostic sur ces matchs.\n\n"+(matches?matches+"\n\n":"")+"Merci.";
-  try{await shareAnalysisRequest("whatsapp",message,file);}
+  setBatBotButtonLoading("sendAnalysisWhatsAppButton",true,"Ouverture de WhatsApp…");
+  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite recevoir un pronostic sur ces matchs.\n\n"+matches+"\n\nMerci.";
+  try{openAnalysisContact("whatsapp",message);}
   finally{setBatBotButtonLoading("sendAnalysisWhatsAppButton",false,"💬 WhatsApp — Envoyer ma demande");}
 }
 
 async function sendAnalysisTelegram(){
   if(!SERVICE_FLAGS.telegram)return showStatus("analysisStatus","Le service Telegram est temporairement désactivé.","error");
   const matches=document.getElementById("matches").value.trim();
-  const input=document.getElementById("capture");
-  const file=input&&input.files&&input.files.length?input.files[0]:null;
+  if(!matches)return showStatus("analysisStatus","Saisissez au moins un match à analyser.","error");
   const button=document.getElementById("sendAnalysisTelegramButton");
-  if(!matches&&!file)return showStatus("analysisStatus","Ajoutez au moins un match ou sélectionnez une capture.","error");
   if(button?.disabled)return;
-  setBatBotButtonLoading("sendAnalysisTelegramButton",true,"Préparation du partage…");
-  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite recevoir un pronostic sur ces matchs.\n\n"+(matches?matches+"\n\n":"")+"Merci.";
-  try{await shareAnalysisRequest("telegram",message,file);}
+  setBatBotButtonLoading("sendAnalysisTelegramButton",true,"Ouverture de Telegram…");
+  const message="Bonjour BATBOT PRO 👋\n\nJe souhaite recevoir un pronostic sur ces matchs.\n\n"+matches+"\n\nMerci.";
+  try{openAnalysisContact("telegram",message);}
   finally{setBatBotButtonLoading("sendAnalysisTelegramButton",false,"✈️ Telegram — Envoyer ma demande");}
-}
-
-function showFileName(){
-  const input=document.getElementById("capture");
-  const fileName=document.getElementById("fileName");
-
-  if(input&&input.files&&input.files.length>0){
-    fileName.textContent='Capture sélectionnée : '+input.files[0].name;
-  }else{
-    fileName.textContent="";
-  }
 }
 
 async function submitPaymentReference(){
