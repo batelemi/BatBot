@@ -1611,8 +1611,8 @@ button.batbot-predict-btn *,
 .batbot-header-contact-item .social-contact-icon{width:32px;height:32px;min-width:32px;min-height:32px}
 .batbot-header-contact-item .social-contact-icon svg{width:18px;height:18px}
 .batbot-header-contact-item small{font-size:9px;line-height:1;color:#b8cde0;font-weight:700}
-.batbot-fixtures-orbit{width:36px;height:36px;flex:0 0 36px;margin-left:0;display:grid;place-items:center;border:1px solid rgba(49,195,255,.65);border-radius:50%;background:radial-gradient(circle,rgba(20,155,230,.25),rgba(5,30,57,.9) 72%);box-shadow:0 0 10px rgba(20,174,255,.35),inset 0 0 10px rgba(20,174,255,.18);animation:batbotFixturesOrbPulse 2.6s ease-in-out infinite}
-.batbot-fixtures-orbit span{display:block;font-size:21px;line-height:1;filter:drop-shadow(0 0 5px rgba(35,190,255,.8));animation:batbotFixturesOrbSpin 9s linear infinite}
+.batbot-fixtures-orbit{width:36px;height:36px;flex:0 0 36px;margin-left:0;display:grid;place-items:center;border:1px solid rgba(49,195,255,.65);border-radius:50%;background:radial-gradient(circle,rgba(20,155,230,.25),rgba(5,30,57,.9) 72%);box-shadow:0 0 10px rgba(20,174,255,.35),inset 0 0 10px rgba(20,174,255,.18);animation:none}
+.batbot-fixtures-orbit span{display:block;font-size:21px;line-height:1;filter:drop-shadow(0 0 5px rgba(35,190,255,.8));animation:none}
 @keyframes batbotFixturesOrbSpin{to{transform:rotate(360deg)}}
 @keyframes batbotFixturesOrbPulse{0%,100%{box-shadow:0 0 8px rgba(20,174,255,.25),inset 0 0 8px rgba(20,174,255,.12)}50%{box-shadow:0 0 17px rgba(20,174,255,.65),inset 0 0 13px rgba(20,174,255,.28)}}
 @media(prefers-reduced-motion:reduce){.batbot-fixtures-orbit,.batbot-fixtures-orbit span{animation:none!important}}
@@ -3834,9 +3834,9 @@ function renderSettingsForm(settings){
   const serviceFields=[
     ["whatsapp","Numéro WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Lien groupe WhatsApp"],["telegramGroup","Lien groupe Telegram"],
     ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
-    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"],["sdriveLink","Lien BATBOT PRO"]
+    ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"]
   ];
-  const ordinaryFields=[["sdriveInviteMessage","Message BATBOT PRO"],["adminPhone","Numéro administrateur"]];
+  const ordinaryFields=[["adminPhone","Numéro administrateur"]];
   const enabled=key=>String(settings[key+"Enabled"]??"true").toLowerCase()!=="false";
   const services=serviceFields.map(([key,label])=>`<div class="settings-service-field"><label for="setting-${key}">${label}</label><input id="setting-${key}" data-setting="${key}" value="${escapeHtml(settings[key]||'')}"><label class="settings-service-toggle"><span>${enabled(key)?"Service activé":"Service désactivé"}</span><input type="checkbox" data-setting-enabled="${key}" ${enabled(key)?"checked":""} onchange="toggleServiceSetting(this,'${key}')" aria-label="Activer ou désactiver ${escapeHtml(label)}"><span class="settings-service-switch" aria-hidden="true"></span></label></div>`).join('');
   const ordinary=ordinaryFields.map(([key,label])=>`<label>${label}<input data-setting="${key}" value="${escapeHtml(settings[key]||'')}"></label>`).join('');
@@ -7010,7 +7010,7 @@ async function checkSession(){
   hideLoading();
 }
 
-const SERVICE_FLAGS={whatsapp:true,telegram:true,whatsappGroup:true,telegramGroup:true,wave500:true,wave1000:true,orangeMoney:true,moovMoney:true,mtnMoney:true,tiktok:true,facebook:true,instagram:true,sdriveLink:true};
+const SERVICE_FLAGS={whatsapp:true,telegram:true,whatsappGroup:true,telegramGroup:true,wave500:true,wave1000:true,orangeMoney:true,moovMoney:true,mtnMoney:true,tiktok:true,facebook:true,instagram:true};
 function applyServiceVisibility(data){
   const keys=Object.keys(SERVICE_FLAGS);
   keys.forEach(key=>{SERVICE_FLAGS[key]=data[key+"Enabled"]!==false;});
@@ -8020,7 +8020,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     Object.keys(cards).forEach(function(key){const card=cards[key]();if(card)card.classList.add('hidden');});
     const dailyMatchesCard=document.getElementById("batbotDailyMatchesCard");
     const messagesCard=document.getElementById("batbotMessagesCard");
-    if(dailyMatchesCard){dailyMatchesCard.classList.remove("hidden");if(messagesCard&&dailyMatchesCard.parentNode===messagesCard.parentNode)messagesCard.parentNode.insertBefore(dailyMatchesCard,messagesCard);const socialFooter=document.getElementById("batbotSocialFooter");if(socialFooter&&dailyMatchesCard.parentNode)dailyMatchesCard.parentNode.insertBefore(socialFooter,dailyMatchesCard.nextSibling);}
+    if(dailyMatchesCard){dailyMatchesCard.classList.remove("hidden");if(messagesCard&&dailyMatchesCard.parentNode===messagesCard.parentNode)messagesCard.parentNode.insertBefore(dailyMatchesCard,messagesCard);const socialFooter=document.getElementById("batbotSocialFooter");if(socialFooter&&dailyMatchesCard){const fixturesHeading=dailyMatchesCard.querySelector(".batbot-fixtures-heading");if(fixturesHeading)fixturesHeading.insertAdjacentElement("afterend",socialFooter);}}
     const observer=new MutationObserver(function(){
       const visible=!dashboard.classList.contains('hidden');
       nav.classList.toggle('hidden',!visible);
