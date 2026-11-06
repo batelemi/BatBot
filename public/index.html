@@ -2204,7 +2204,7 @@ button.batbot-predict-btn *,
     <label for="footballDate" class="muted">Date des rencontres</label>
     <input type="date" id="footballDate" style="margin:6px 0 10px">
     <button type="button" class="btn primary" id="footballLoadButton" onclick="loadFootballFixtures(document.getElementById('footballDate').value)">🔎 Charger les matchs</button>
-    <button type="button" class="btn secondary" id="footballLiveButton" data-live-state="unknown" onclick="loadFootballLive()"><span class="batbot-live-indicator" aria-hidden="true"></span> Voir les matchs en direct</button><button type="button" class="btn secondary" id="footballTodayButton" onclick="manualRefreshFootballFixtures()">↻ ACTUALISER</button>
+    <button type="button" class="btn secondary" id="footballLiveButton" data-live-state="unknown" onclick="toggleFootballLiveMode()"><span class="batbot-live-indicator" aria-hidden="true"></span> Voir les matchs en direct</button><button type="button" class="btn secondary" id="footballTodayButton" onclick="manualRefreshFootballFixtures()">↻ ACTUALISER</button>
     <div id="footballStatus" class="status" aria-live="polite"></div>
     <div id="footballResults" class="hidden" aria-live="polite"></div>
   </section>
@@ -5366,6 +5366,8 @@ async function loadFootballFixtures(selectedDate){
 
   setFootballDate(date);
   window.batBotLastRenderedMode="daily";
+  const liveButton=document.getElementById("footballLiveButton");
+  if(liveButton){liveButton.dataset.liveState="unknown";liveButton.innerHTML='<span class="batbot-live-indicator" aria-hidden="true"></span> Voir les matchs en direct';}
   startFootballFixturesAutoRefresh();
 
   if(window.batbotLiveRefreshTimer){
@@ -5399,6 +5401,8 @@ async function loadFootballFixtures(selectedDate){
     window.batBotVisibleFixtureCount=20;
     window.batBotDailyFixturesLoadedDate=date;
     renderFootballFixtures(fixtures,date);
+    window.batBotDailyFixturesSnapshot=fixtures;
+    window.batBotDailyFixturesSnapshotDate=date;
     window.batBotLastRenderedMode="daily";
     updateFootballLiveIndicatorFromLoadedFixtures();
 
@@ -5514,6 +5518,41 @@ async function loadBatBotLiveSection(){
   }
 }
 
+function toggleFootballLiveMode(){
+  if(window.batBotLastRenderedMode!=="live")return loadFootballLive();
+
+  const date=getFootballSelectedDate();
+  const button=document.getElementById("footballLiveButton");
+  const status=document.getElementById("footballStatus");
+  const box=document.getElementById("footballResults");
+
+  if(window.batbotLiveRefreshTimer){
+    clearInterval(window.batbotLiveRefreshTimer);
+    window.batbotLiveRefreshTimer=null;
+  }
+
+  window.batBotLastRenderedMode="daily";
+
+  if(button){
+    button.dataset.liveState="unknown";
+    button.innerHTML='<span class="batbot-live-indicator" aria-hidden="true"></span> Voir les matchs en direct';
+  }
+
+  if(Array.isArray(window.batBotDailyFixturesSnapshot)
+    && window.batBotDailyFixturesSnapshotDate===date){
+    window.batBotDailyFixtures=window.batBotDailyFixturesSnapshot;
+    window.batBotDailyFixturesLoadedDate=date;
+    window.batBotVisibleFixtureCount=20;
+    if(status)status.innerHTML="";
+    if(box)box.classList.remove("hidden");
+    renderFootballFixtures(window.batBotDailyFixturesSnapshot,date);
+    startFootballFixturesAutoRefresh();
+    return true;
+  }
+
+  return loadFootballFixtures(date);
+}
+
 async function loadFootballLive(){
   const status=document.getElementById("footballStatus");
   const box=document.getElementById("footballResults");
@@ -5522,7 +5561,15 @@ async function loadFootballLive(){
     if(window.batBotLiveRefreshInProgress)return false;
 
   const wasLiveMode=window.batBotLastRenderedMode==="live";
+  if(!wasLiveMode && window.batBotLastRenderedMode==="daily" && Array.isArray(window.batBotDailyFixtures) && window.batBotDailyFixturesLoadedDate===getFootballSelectedDate()){
+    window.batBotDailyFixturesSnapshot=window.batBotDailyFixtures;
+    window.batBotDailyFixturesSnapshotDate=getFootballSelectedDate();
+  }
   window.batBotLastRenderedMode="live";
+  if(button){
+    button.innerHTML='<span class="batbot-live-indicator" aria-hidden="true"></span> Retour aux matchs programmés';
+    button.setAttribute("aria-label","Retour aux matchs programmés");
+  }
   stopFootballFixturesAutoRefresh();
   if(window.batbotFixturesRefreshTimer){
     clearTimeout(window.batbotFixturesRefreshTimer);
@@ -5569,6 +5616,7 @@ async function loadFootballLive(){
         button.setAttribute("aria-label",fixtures.length
           ? "Voir les matchs en direct : "+fixtures.length+" rencontre(s) en cours"
           : "Voir les matchs en direct : aucune rencontre en cours signalée");
+        button.innerHTML='<span class="batbot-live-indicator" aria-hidden="true"></span> Retour aux matchs programmés';
       }
 
       window.batBotVisibleFixtureCount=20;
@@ -5590,7 +5638,7 @@ async function loadFootballLive(){
 
   await refresh();
   if(button)button.disabled=false;
-  if(!window.batbotLiveRefreshTimer){
+  if(window.batBotLastRenderedMode==="live" && !window.batbotLiveRefreshTimer){
     window.batbotLiveRefreshTimer=setInterval(refresh,15000);
   }
 }
