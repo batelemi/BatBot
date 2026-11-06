@@ -3515,6 +3515,7 @@ if(document.readyState==='loading'){
     const mobile=document.getElementById('mobileMoneyCard');
     const conditions=document.getElementById('paymentConditionsCard');
     if(!launcher||!modal||!body||!title||!closeButton||!waveDay||!wavePremium||!mobile||!conditions||modal.dataset.ready==='1')return;
+    if(modal.parentNode!==document.body)document.body.appendChild(modal);
     modal.dataset.ready='1';
     [waveDay,wavePremium,mobile,conditions].forEach(card=>card.classList.add('hidden'));
     let activeNodes=[];
