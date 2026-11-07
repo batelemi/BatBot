@@ -1316,7 +1316,7 @@ button.batbot-predict-btn *,
   width:min(100%,620px);padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
   background:rgba(5,18,33,.97);border-top:1px solid rgba(83,207,255,.24);
   box-shadow:0 -12px 35px rgba(0,0,0,.35);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  display:grid;grid-template-columns:repeat(5,1fr);gap:5px;
+  display:grid;grid-template-columns:repeat(6,1fr);gap:5px;
 }
 .batbot-admin-bottom-nav.hidden{display:none!important}
 .batbot-admin-nav-item{
@@ -6747,6 +6747,49 @@ function formatAffiliateAdminAmount(value){
   return (Number.isFinite(amount) ? amount : 0).toLocaleString("fr-FR") + " FCFA";
 }
 
+window.adminAffiliateReferrersData = window.adminAffiliateReferrersData || [];
+window.adminAffiliateReferrersVisibleCount = 5;
+
+function renderAdminAffiliateReferrers(){
+  const box = document.getElementById("affiliateAdminReferrersList");
+  if(!box)return;
+
+  const referrers = Array.isArray(window.adminAffiliateReferrersData)
+    ? window.adminAffiliateReferrersData : [];
+  const visibleCount = Math.max(5, Number(window.adminAffiliateReferrersVisibleCount) || 5);
+
+  box.innerHTML = referrers.slice(0, visibleCount).map(function(referrer){
+    const id = Number(referrer.user_id);
+    if(!Number.isSafeInteger(id) || id <= 0)return "";
+
+    return `
+      <div class="match-card">
+        <div class="match-title">👤 ${escapeHtml(referrer.username || "Membre")}</div>
+        <div class="admin-small">Identifiant BATBOT : ${id}</div>
+        <div class="admin-small">Code : <strong>${escapeHtml(referrer.referral_code || "—")}</strong></div>
+        <div class="admin-small">Filleuls directs : <strong>${Number(referrer.referral_count || 0)}</strong></div>
+        <div class="admin-small">Filleuls avec paiement confirmé : <strong>${Number(referrer.paid_referral_count || 0)}</strong></div>
+        <div class="admin-small">Commissions générées : <strong>${formatAffiliateAdminAmount(referrer.earned)}</strong></div>
+        <div class="admin-small">Disponible : ${formatAffiliateAdminAmount(referrer.available)} · Réservé : ${formatAffiliateAdminAmount(referrer.reserved)} · Payé : ${formatAffiliateAdminAmount(referrer.paid)}</div>
+        <button class="btn secondary" type="button" onclick="loadAdminAffiliateReferrerDetails(${id})">🔎 Voir les détails</button>
+      </div>
+    `;
+  }).join("");
+
+  if(referrers.length > visibleCount){
+    const remaining = referrers.length - visibleCount;
+    box.insertAdjacentHTML("beforeend",
+      '<button class="btn secondary" type="button" style="width:100%;margin-top:12px" onclick="showMoreAdminAffiliateReferrers()">Voir plus (' + remaining + ' restants)</button>'
+    );
+  }
+}
+
+window.showMoreAdminAffiliateReferrers = function(){
+  window.adminAffiliateReferrersVisibleCount =
+    (Number(window.adminAffiliateReferrersVisibleCount) || 5) + 5;
+  renderAdminAffiliateReferrers();
+};
+
 async function loadAdminAffiliateReferrers(){
   const box = document.getElementById("affiliateAdminReferrersList");
   const status = document.getElementById("affiliateAdminReferrersStatus");
@@ -6766,6 +6809,8 @@ async function loadAdminAffiliateReferrers(){
     if(!response.ok)throw new Error(data.error || "Chargement impossible.");
 
     const referrers = Array.isArray(data.referrers) ? data.referrers : [];
+    window.adminAffiliateReferrersData = referrers;
+    window.adminAffiliateReferrersVisibleCount = 5;
     status.textContent = "Parrains actifs : " + referrers.length;
 
     if(!referrers.length){
@@ -6773,23 +6818,7 @@ async function loadAdminAffiliateReferrers(){
       return;
     }
 
-    box.innerHTML = referrers.map(function(referrer){
-      const id = Number(referrer.user_id);
-      if(!Number.isSafeInteger(id) || id <= 0)return "";
-
-      return `
-        <div class="match-card">
-          <div class="match-title">👤 ${escapeHtml(referrer.username || "Membre")}</div>
-          <div class="admin-small">Identifiant BATBOT : ${id}</div>
-          <div class="admin-small">Code : <strong>${escapeHtml(referrer.referral_code || "—")}</strong></div>
-          <div class="admin-small">Filleuls directs : <strong>${Number(referrer.referral_count || 0)}</strong></div>
-          <div class="admin-small">Filleuls avec paiement confirmé : <strong>${Number(referrer.paid_referral_count || 0)}</strong></div>
-          <div class="admin-small">Commissions générées : <strong>${formatAffiliateAdminAmount(referrer.earned)}</strong></div>
-          <div class="admin-small">Disponible : ${formatAffiliateAdminAmount(referrer.available)} · Réservé : ${formatAffiliateAdminAmount(referrer.reserved)} · Payé : ${formatAffiliateAdminAmount(referrer.paid)}</div>
-          <button class="btn secondary" type="button" onclick="loadAdminAffiliateReferrerDetails(${id})">🔎 Voir les détails</button>
-        </div>
-      `;
-    }).join("");
+    renderAdminAffiliateReferrers();
 
   }catch(error){
     console.error("ADMIN AFFILIATE REFERRERS:", error);
@@ -8334,6 +8363,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       +'<button type="button" class="batbot-admin-nav-item" data-tab="members"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Membres</span></button>'
       +'<button type="button" class="batbot-admin-nav-item" data-tab="community"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Communauté</span></button>'
       +'<button type="button" class="batbot-admin-nav-item" data-tab="finance"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Abonnement</span></button>'
+      +'<button type="button" class="batbot-admin-nav-item" data-tab="affiliates"><i class="fa-solid fa-handshake" aria-hidden="true"></i><span>Parrainages</span></button>'
       +'<button type="button" class="batbot-admin-nav-item" data-tab="more"><i class="fa-solid fa-gear" aria-hidden="true"></i><span>Plus</span></button>';
     document.body.appendChild(nav);
 
@@ -8373,13 +8403,12 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         finance:{title:'Abonnement',icon:'fa-solid fa-wallet',subtitle:'Demandes de paiement à vérifier',items:[
           [4,'Demandes de paiement manuel','fa-solid fa-wallet']
         ]},
+        affiliates:{title:'Parrainages',icon:'fa-solid fa-handshake',subtitle:'Parrains actifs, commissions et demandes de retrait',items:[
+          [9,'Gestion des parrainages','fa-solid fa-handshake']
+        ]},
         more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Configuration et outils administrateur',items:[
           [1,'Paramètres modifiables','fa-solid fa-sliders'],
-          [5,'Gestion des bookmakers','fa-solid fa-chart-column'],
-
-
-
-          [9,'Gestion des parrainages','fa-solid fa-handshake']
+          [5,'Gestion des bookmakers','fa-solid fa-chart-column']
         ]}
       };
       const cfg=configs[key];
