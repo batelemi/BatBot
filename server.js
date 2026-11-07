@@ -3784,6 +3784,169 @@ app.get("/api/affiliate/referrals", requireUser, async (req, res) => {
   }
 });
 
+
+// Administration : liste automatique des membres ayant au moins un filleul direct.
+app.get("/api/admin/affiliate/referrers", requireAdmin, async (req, res) => {
+  try {
+    const referrers = await pgAll(
+      `SELECT u.id AS user_id, u.username, u.phone,
+              ap.referral_code, ap.created_at,
+              stats.referral_count, stats.paid_referral_count,
+              COALESCE(b.earned, 0)::int AS earned,
+              COALESCE(b.available, 0)::int AS available,
+              COALESCE(b.reserved, 0)::int AS reserved,
+              COALESCE(b.paid, 0)::int AS paid
+         FROM affiliate_profiles ap
+         JOIN users u ON u.id = ap.user_id
+         JOIN LATERAL (
+           SELECT COUNT(*)::int AS referral_count,
+                  COUNT(DISTINCT e.user_id)::int AS paid_referral_count
+             FROM affiliate_profiles rp
+             LEFT JOIN affiliate_payment_events e ON e.user_id = rp.user_id
+            WHERE rp.referred_by_user_id = ap.user_id
+         ) stats ON stats.referral_count > 0
+         LEFT JOIN LATERAL (
+           SELECT COALESCE(SUM(commission_amount), 0)::int AS earned,
+                  COALESCE(SUM(commission_amount) FILTER (WHERE status = 'available'), 0)::int AS available,
+                  COALESCE(SUM(commission_amount) FILTER (WHERE status = 'reserved'), 0)::int AS reserved,
+                  COALESCE(SUM(commission_amount) FILTER (WHERE status = 'paid'), 0)::int AS paid
+             FROM affiliate_commissions
+            WHERE affiliate_user_id = ap.user_id
+         ) b ON TRUE
+        ORDER BY stats.referral_count DESC, ap.created_at DESC
+        LIMIT 500`
+    );
+
+    res.json({ referrers });
+  } catch (error) {
+    console.error("BATBOT ADMIN AFFILIATE REFERRERS:", error);
+    res.status(500).json({
+      error: "Impossible de charger la liste des parrains."
+    });
+  }
+});
+
+
+// Administration : détails complets d'un parrain actif.
+app.get("/api/admin/affiliate/referrers/:userId", requireAdmin, async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      return res.status(400).json({ error: "Identifiant de parrain invalide." });
+    }
+
+    const referrer = await pgGet(
+      `SELECT u.id AS user_id, u.username, u.phone,
+              ap.referral_code, ap.created_at,
+              ap.qualification_window_started_at,
+              ap.renewal_eligible_until
+         FROM affiliate_profiles ap
+         JOIN users u ON u.id = ap.user_id
+        WHERE ap.user_id = $1
+          AND EXISTS (
+            SELECT 1
+              FROM affiliate_profiles rp
+             WHERE rp.referred_by_user_id = ap.user_id
+          )`,
+      [userId]
+    );
+
+    if (!referrer) {
+      return res.status(404).json({ error: "Parrain introuvable ou sans filleul." });
+    }
+
+    const referrals = await pgAll(
+      `SELECT rp.user_id AS referred_user_id,
+              COALESCE(u.username, 'Compte supprimé') AS username,
+              COALESCE(u.phone, '') AS phone,
+              rp.created_at AS joined_at,
+              COALESCE(pay.payment_count, 0)::int AS confirmed_payment_count,
+              COALESCE(pay.payment_total, 0)::int AS confirmed_payment_total,
+              COALESCE(pay.payments, '[]'::json) AS payments,
+              COALESCE(comm.first_purchase, 0)::int AS first_purchase_commission,
+              COALESCE(comm.renewals, 0)::int AS renewal_commission
+         FROM affiliate_profiles rp
+         LEFT JOIN users u ON u.id = rp.user_id
+         LEFT JOIN LATERAL (
+           SELECT COUNT(*)::int AS payment_count,
+                  COALESCE(SUM(e.amount), 0)::int AS payment_total,
+                  COALESCE(
+                    json_agg(
+                      json_build_object(
+                        'offer', e.offer,
+                        'amount', e.amount,
+                        'confirmed_at', e.confirmed_at
+                      ) ORDER BY e.confirmed_at DESC
+                    ),
+                    '[]'::json
+                  ) AS payments
+             FROM affiliate_payment_events e
+            WHERE e.user_id = rp.user_id
+         ) pay ON TRUE
+         LEFT JOIN LATERAL (
+           SELECT
+             COALESCE(SUM(c.commission_amount) FILTER (
+               WHERE c.commission_type = 'first_purchase_20'
+                 AND c.status <> 'cancelled'
+             ), 0)::int AS first_purchase,
+             COALESCE(SUM(c.commission_amount) FILTER (
+               WHERE c.commission_type = 'renewal_10'
+                 AND c.status <> 'cancelled'
+             ), 0)::int AS renewals
+             FROM affiliate_commissions c
+            WHERE c.affiliate_user_id = $1
+              AND c.referred_user_id = rp.user_id
+         ) comm ON TRUE
+        WHERE rp.referred_by_user_id = $1
+        ORDER BY rp.created_at DESC
+        LIMIT 500`,
+      [userId]
+    );
+
+    const commissions = await pgAll(
+      `SELECT commission_type,
+              COUNT(*)::int AS commission_count,
+              COALESCE(SUM(commission_amount), 0)::int AS earned,
+              COALESCE(SUM(commission_amount) FILTER (
+                WHERE status = 'available'
+              ), 0)::int AS available,
+              COALESCE(SUM(commission_amount) FILTER (
+                WHERE status = 'reserved'
+              ), 0)::int AS reserved,
+              COALESCE(SUM(commission_amount) FILTER (
+                WHERE status = 'paid'
+              ), 0)::int AS paid,
+              COALESCE(SUM(commission_amount) FILTER (
+                WHERE status = 'cancelled'
+              ), 0)::int AS cancelled
+         FROM affiliate_commissions
+        WHERE affiliate_user_id = $1
+        GROUP BY commission_type`,
+      [userId]
+    );
+
+    const withdrawals = await pgAll(
+      `SELECT id, commission_type, amount, payment_method,
+              payment_number, batbot_account_id, status,
+              admin_note, payment_reference, created_at,
+              resolved_at, paid_at
+         FROM affiliate_withdrawals
+        WHERE affiliate_user_id = $1
+        ORDER BY created_at DESC
+        LIMIT 500`,
+      [userId]
+    );
+
+    res.json({ referrer, referrals, commissions, withdrawals });
+  } catch (error) {
+    console.error("BATBOT ADMIN AFFILIATE REFERRER DETAILS:", error);
+    res.status(500).json({
+      error: "Impossible de charger les détails de ce parrain."
+    });
+  }
+});
+
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });

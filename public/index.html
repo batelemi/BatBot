@@ -2749,8 +2749,15 @@ PSG vs Marseille"></textarea>
 
     <div class="card" id="affiliateAdminCard">
       <h2>🤝 Gestion des parrainages</h2>
-      <p class="muted">Consultez les affiliés, les commissions et les demandes de retrait.</p>
-      <div id="affiliateAdminStatus" class="status">La gestion des parrainages sera connectée aux fonctions sécurisées du serveur lors de l’étape suivante.</div>
+      <p class="muted">Consultez les parrains actifs, leurs filleuls, les commissions et les demandes de retrait.</p>
+
+      <h3>👥 Parrains actifs</h3>
+      <div id="affiliateAdminReferrersStatus" class="status">Chargement des parrains actifs…</div>
+      <div id="affiliateAdminReferrersList"></div>
+      <div id="affiliateAdminReferrerDetails"></div>
+
+      <h3>💸 Demandes de retrait</h3>
+      <div id="affiliateAdminStatus" class="status">Chargement des demandes de retrait…</div>
       <div id="affiliateAdminList"></div>
     </div>
 
@@ -6545,6 +6552,7 @@ async function loadAdmin(){
         }).join("")||'<p class="muted">Aucune demande en attente.</p>';
     }
 
+    await loadAdminAffiliateReferrers();
     await loadAdminAffiliateWithdrawals();
     await loadAdminBookmakers();
     await loadAdminCoupons();
@@ -6730,6 +6738,167 @@ async function saveAdminAffiliateWithdrawal(id){
     console.error("ADMIN AFFILIATE UPDATE:",error);
     showToast(friendlyActionError(error,"Impossible de traiter cette demande de retrait. Vérifiez son statut et réessayez."),"error");
     if(button)button.disabled=false;
+  }
+}
+
+
+function formatAffiliateAdminAmount(value){
+  const amount = Number(value || 0);
+  return (Number.isFinite(amount) ? amount : 0).toLocaleString("fr-FR") + " FCFA";
+}
+
+async function loadAdminAffiliateReferrers(){
+  const box = document.getElementById("affiliateAdminReferrersList");
+  const status = document.getElementById("affiliateAdminReferrersStatus");
+  const details = document.getElementById("affiliateAdminReferrerDetails");
+  if(!box || !status)return;
+
+  status.textContent = "Chargement des parrains actifs…";
+  box.innerHTML = "";
+  if(details)details.innerHTML = "";
+
+  try{
+    const response = await fetch("/api/admin/affiliate/referrers", {
+      credentials:"same-origin",
+      cache:"no-store"
+    });
+    const data = await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error || "Chargement impossible.");
+
+    const referrers = Array.isArray(data.referrers) ? data.referrers : [];
+    status.textContent = "Parrains actifs : " + referrers.length;
+
+    if(!referrers.length){
+      box.innerHTML = '<p class="muted">Aucun membre n’a encore parrainé un utilisateur.</p>';
+      return;
+    }
+
+    box.innerHTML = referrers.map(function(referrer){
+      const id = Number(referrer.user_id);
+      if(!Number.isSafeInteger(id) || id <= 0)return "";
+
+      return `
+        <div class="match-card">
+          <div class="match-title">👤 ${escapeHtml(referrer.username || "Membre")}</div>
+          <div class="admin-small">Identifiant BATBOT : ${id}</div>
+          <div class="admin-small">Code : <strong>${escapeHtml(referrer.referral_code || "—")}</strong></div>
+          <div class="admin-small">Filleuls directs : <strong>${Number(referrer.referral_count || 0)}</strong></div>
+          <div class="admin-small">Filleuls avec paiement confirmé : <strong>${Number(referrer.paid_referral_count || 0)}</strong></div>
+          <div class="admin-small">Commissions générées : <strong>${formatAffiliateAdminAmount(referrer.earned)}</strong></div>
+          <div class="admin-small">Disponible : ${formatAffiliateAdminAmount(referrer.available)} · Réservé : ${formatAffiliateAdminAmount(referrer.reserved)} · Payé : ${formatAffiliateAdminAmount(referrer.paid)}</div>
+          <button class="btn secondary" type="button" onclick="loadAdminAffiliateReferrerDetails(${id})">🔎 Voir les détails</button>
+        </div>
+      `;
+    }).join("");
+
+  }catch(error){
+    console.error("ADMIN AFFILIATE REFERRERS:", error);
+    status.textContent = "Impossible de charger les parrains actifs.";
+    box.innerHTML = '<button type="button" class="btn secondary" onclick="loadAdminAffiliateReferrers()">Réessayer</button>';
+  }
+}
+
+async function loadAdminAffiliateReferrerDetails(userId){
+  const box = document.getElementById("affiliateAdminReferrerDetails");
+  if(!box)return;
+
+  const id = Number(userId);
+  if(!Number.isSafeInteger(id) || id <= 0)return;
+
+  box.innerHTML = '<div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement de la fiche</strong><small>Récupération des informations du parrain…</small></div></div>';
+
+  try{
+    const response = await fetch("/api/admin/affiliate/referrers/" + encodeURIComponent(id), {
+      credentials:"same-origin",
+      cache:"no-store"
+    });
+    const data = await readApiResponse(response);
+    if(!response.ok)throw new Error(data.error || "Chargement impossible.");
+
+    const referrer = data.referrer || {};
+    const referrals = Array.isArray(data.referrals) ? data.referrals : [];
+    const commissions = Array.isArray(data.commissions) ? data.commissions : [];
+    const withdrawals = Array.isArray(data.withdrawals) ? data.withdrawals : [];
+
+    const totals = {earned:0, available:0, reserved:0, paid:0, cancelled:0};
+    commissions.forEach(function(item){
+      Object.keys(totals).forEach(function(key){
+        totals[key] += Number(item[key] || 0);
+      });
+    });
+
+    const commissionLabels = {
+      first_purchase_20:"Premiers achats (20 %)",
+      renewal_10:"Renouvellements (10 %)"
+    };
+    const withdrawalLabels = {
+      pending:"En attente",
+      verifying:"En vérification",
+      approved:"Approuvé",
+      paid:"Payé",
+      rejected:"Rejeté"
+    };
+
+    box.innerHTML = `
+      <div class="match-card">
+        <h3>📋 Fiche du parrain</h3>
+        <p><strong>${escapeHtml(referrer.username || "Membre")}</strong></p>
+        <p class="admin-small">Identifiant BATBOT : ${Number(referrer.user_id || id)}</p>
+        <p class="admin-small">Téléphone : ${escapeHtml(referrer.phone || "Non renseigné")}</p>
+        <p class="admin-small">Code de parrainage : <strong>${escapeHtml(referrer.referral_code || "—")}</strong></p>
+        <p class="admin-small">Inscription : ${escapeHtml(formatDateTime(referrer.created_at) || "—")}</p>
+
+        <h3>💰 Bilan des commissions</h3>
+        <p>Gagné : <strong>${formatAffiliateAdminAmount(totals.earned)}</strong></p>
+        <p>Disponible : <strong>${formatAffiliateAdminAmount(totals.available)}</strong></p>
+        <p>Réservé : <strong>${formatAffiliateAdminAmount(totals.reserved)}</strong></p>
+        <p>Déjà payé : <strong>${formatAffiliateAdminAmount(totals.paid)}</strong></p>
+        <p>Annulé : ${formatAffiliateAdminAmount(totals.cancelled)}</p>
+
+        <h3>📊 Détail des commissions</h3>
+        ${commissions.length ? commissions.map(function(item){
+          return `<p><strong>${escapeHtml(commissionLabels[item.commission_type] || item.commission_type || "Commission")}</strong><br>
+            Nombre : ${Number(item.commission_count || 0)} · Gagné : ${formatAffiliateAdminAmount(item.earned)}<br>
+            Disponible : ${formatAffiliateAdminAmount(item.available)} · Réservé : ${formatAffiliateAdminAmount(item.reserved)} · Payé : ${formatAffiliateAdminAmount(item.paid)}</p>`;
+        }).join("") : '<p class="muted">Aucune commission enregistrée.</p>'}
+
+        <h3>👥 Filleuls directs (${referrals.length})</h3>
+        ${referrals.length ? referrals.map(function(person){
+          const payments = Array.isArray(person.payments) ? person.payments : [];
+          return `<div class="notice">
+            <strong>${escapeHtml(person.username || "Compte supprimé")}</strong>
+            <div class="admin-small">Identifiant : ${person.referred_user_id == null ? "—" : Number(person.referred_user_id)}</div>
+            <div class="admin-small">Téléphone : ${escapeHtml(person.phone || "—")}</div>
+            <div class="admin-small">Inscription : ${escapeHtml(formatDateTime(person.joined_at) || "—")}</div>
+            <div class="admin-small">Paiements confirmés : ${Number(person.confirmed_payment_count || 0)} · Total : ${formatAffiliateAdminAmount(person.confirmed_payment_total)}</div>
+            <div class="admin-small">Commission premier achat : ${formatAffiliateAdminAmount(person.first_purchase_commission)}</div>
+            <div class="admin-small">Commissions renouvellements : ${formatAffiliateAdminAmount(person.renewal_commission)}</div>
+            ${payments.length ? `<div class="admin-small"><strong>Historique des paiements confirmés :</strong>${payments.map(function(payment){
+              return `<div>• ${escapeHtml(payment.offer || "Paiement")} — ${formatAffiliateAdminAmount(payment.amount)} — ${escapeHtml(formatDateTime(payment.confirmed_at) || "Date inconnue")}</div>`;
+            }).join("")}</div>` : '<div class="admin-small">Aucun paiement confirmé.</div>'}
+          </div>`;
+        }).join("") : '<p class="muted">Aucun filleul enregistré.</p>'}
+
+        <h3>💸 Historique des retraits (${withdrawals.length})</h3>
+        ${withdrawals.length ? withdrawals.map(function(withdrawal){
+          return `<div class="notice">
+            <strong>Retrait n°${Number(withdrawal.id)}</strong> — ${formatAffiliateAdminAmount(withdrawal.amount)}
+            <div class="admin-small">Type : ${escapeHtml(commissionLabels[withdrawal.commission_type] || withdrawal.commission_type || "—")}</div>
+            <div class="admin-small">Moyen : ${escapeHtml(withdrawal.payment_method || "—")} · Numéro : ${escapeHtml(withdrawal.payment_number || "—")}</div>
+            <div class="admin-small">Statut : <strong>${escapeHtml(withdrawalLabels[withdrawal.status] || withdrawal.status || "—")}</strong></div>
+            <div class="admin-small">Référence : ${escapeHtml(withdrawal.payment_reference || "—")}</div>
+            <div class="admin-small">Demande : ${escapeHtml(formatDateTime(withdrawal.created_at) || "—")} · Paiement : ${escapeHtml(formatDateTime(withdrawal.paid_at) || "—")}</div>
+            ${withdrawal.admin_note ? `<div class="admin-small">Note admin : ${escapeHtml(withdrawal.admin_note)}</div>` : ""}
+          </div>`;
+        }).join("") : '<p class="muted">Aucun retrait enregistré.</p>'}
+
+        <button type="button" class="btn secondary" onclick="document.getElementById('affiliateAdminReferrerDetails').innerHTML=''">Fermer la fiche</button>
+      </div>
+    `;
+
+  }catch(error){
+    console.error("ADMIN AFFILIATE REFERRER DETAILS:", error);
+    box.innerHTML = '<div class="professional-status error">Impossible de charger cette fiche. <button type="button" class="btn secondary" onclick="loadAdminAffiliateReferrerDetails(' + id + ')">Réessayer</button></div>';
   }
 }
 
