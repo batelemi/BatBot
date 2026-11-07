@@ -2748,15 +2748,16 @@ PSG vs Marseille"></textarea>
 
 
     <div class="card" id="affiliateAdminCard">
-      <h2>🤝 Gestion des parrainages</h2>
-      <p class="muted">Consultez les parrains actifs, leurs filleuls, les commissions et les demandes de retrait.</p>
-
-      <h3>👥 Parrains actifs</h3>
+      <h2>👥 Parrains actifs</h2>
+      <p class="muted">Consultez les parrains, leurs filleuls, leurs commissions et leurs fiches détaillées.</p>
       <div id="affiliateAdminReferrersStatus" class="status">Chargement des parrains actifs…</div>
       <div id="affiliateAdminReferrersList"></div>
       <div id="affiliateAdminReferrerDetails"></div>
+    </div>
 
-      <h3>💸 Demandes de retrait</h3>
+    <div class="card" id="affiliateWithdrawalsAdminCard">
+      <h2>💸 Demandes de retrait des parrains</h2>
+      <p class="muted">Consultez les demandes de retrait, vérifiez les informations de paiement et gérez les reçus.</p>
       <div id="affiliateAdminStatus" class="status">Chargement des demandes de retrait…</div>
       <div id="affiliateAdminList"></div>
     </div>
@@ -6869,59 +6870,85 @@ async function loadAdminAffiliateReferrerDetails(userId){
     };
 
     box.innerHTML = `
-      <div class="match-card">
-        <h3>📋 Fiche du parrain</h3>
-        <p><strong>${escapeHtml(referrer.username || "Membre")}</strong></p>
-        <p class="admin-small">Identifiant BATBOT : ${Number(referrer.user_id || id)}</p>
-        <p class="admin-small">Téléphone : ${escapeHtml(referrer.phone || "Non renseigné")}</p>
-        <p class="admin-small">Code de parrainage : <strong>${escapeHtml(referrer.referral_code || "—")}</strong></p>
-        <p class="admin-small">Inscription : ${escapeHtml(formatDateTime(referrer.created_at) || "—")}</p>
+      <div class="batbot-aff-detail">
+        <header class="batbot-aff-hero">
+          <span class="batbot-aff-tag">FICHE PARTENAIRE</span>
+          <h3>👤 ${escapeHtml(referrer.username || "Membre")}</h3>
+          <p>Identifiant BATBOT : <strong>${Number(referrer.user_id || id)}</strong></p>
+          <p>Téléphone : ${escapeHtml(referrer.phone || "Non renseigné")}</p>
+          <p>Date d’inscription : ${escapeHtml(formatDateTime(referrer.created_at) || "—")}</p>
+          <div class="batbot-aff-code">CODE : ${escapeHtml(referrer.referral_code || "—")}</div>
+        </header>
 
-        <h3>💰 Bilan des commissions</h3>
-        <p>Gagné : <strong>${formatAffiliateAdminAmount(totals.earned)}</strong></p>
-        <p>Disponible : <strong>${formatAffiliateAdminAmount(totals.available)}</strong></p>
-        <p>Réservé : <strong>${formatAffiliateAdminAmount(totals.reserved)}</strong></p>
-        <p>Déjà payé : <strong>${formatAffiliateAdminAmount(totals.paid)}</strong></p>
-        <p>Annulé : ${formatAffiliateAdminAmount(totals.cancelled)}</p>
+        <section class="batbot-aff-section">
+          <h4>💰 Synthèse financière</h4>
+          <div class="batbot-aff-stats">
+            <div class="batbot-aff-stat highlight"><span>Total gagné</span><strong>${formatAffiliateAdminAmount(totals.earned)}</strong></div>
+            <div class="batbot-aff-stat highlight"><span>Disponible</span><strong>${formatAffiliateAdminAmount(totals.available)}</strong></div>
+            <div class="batbot-aff-stat"><span>En attente de versement</span><strong>${formatAffiliateAdminAmount(totals.reserved)}</strong></div>
+            <div class="batbot-aff-stat"><span>Déjà payé</span><strong>${formatAffiliateAdminAmount(totals.paid)}</strong></div>
+            <div class="batbot-aff-stat"><span>Commissions annulées</span><strong>${formatAffiliateAdminAmount(totals.cancelled)}</strong></div>
+          </div>
+        </section>
 
-        <h3>📊 Détail des commissions</h3>
-        ${commissions.length ? commissions.map(function(item){
-          return `<p><strong>${escapeHtml(commissionLabels[item.commission_type] || item.commission_type || "Commission")}</strong><br>
-            Nombre : ${Number(item.commission_count || 0)} · Gagné : ${formatAffiliateAdminAmount(item.earned)}<br>
-            Disponible : ${formatAffiliateAdminAmount(item.available)} · Réservé : ${formatAffiliateAdminAmount(item.reserved)} · Payé : ${formatAffiliateAdminAmount(item.paid)}</p>`;
-        }).join("") : '<p class="muted">Aucune commission enregistrée.</p>'}
+        <section class="batbot-aff-section">
+          <h4>📊 Détail des commissions</h4>
+          ${commissions.length ? commissions.map(function(item){
+            return `<article class="batbot-aff-entry">
+              <div class="batbot-aff-entry-head">
+                <strong>${escapeHtml(commissionLabels[item.commission_type] || item.commission_type || "Commission")}</strong>
+                <span class="batbot-aff-tag">${Number(item.commission_count || 0)} commission(s)</span>
+              </div>
+              <p>Gagné : <strong>${formatAffiliateAdminAmount(item.earned)}</strong></p>
+              <p>Disponible : ${formatAffiliateAdminAmount(item.available)} · Réservé : ${formatAffiliateAdminAmount(item.reserved)}</p>
+              <p>Payé : ${formatAffiliateAdminAmount(item.paid)} · Annulé : ${formatAffiliateAdminAmount(item.cancelled)}</p>
+            </article>`;
+          }).join("") : '<div class="batbot-aff-empty">Aucune commission enregistrée.</div>'}
+        </section>
 
-        <h3>👥 Filleuls directs (${referrals.length})</h3>
-        ${referrals.length ? referrals.map(function(person){
-          const payments = Array.isArray(person.payments) ? person.payments : [];
-          return `<div class="notice">
-            <strong>${escapeHtml(person.username || "Compte supprimé")}</strong>
-            <div class="admin-small">Identifiant : ${person.referred_user_id == null ? "—" : Number(person.referred_user_id)}</div>
-            <div class="admin-small">Téléphone : ${escapeHtml(person.phone || "—")}</div>
-            <div class="admin-small">Inscription : ${escapeHtml(formatDateTime(person.joined_at) || "—")}</div>
-            <div class="admin-small">Paiements confirmés : ${Number(person.confirmed_payment_count || 0)} · Total : ${formatAffiliateAdminAmount(person.confirmed_payment_total)}</div>
-            <div class="admin-small">Commission premier achat : ${formatAffiliateAdminAmount(person.first_purchase_commission)}</div>
-            <div class="admin-small">Commissions renouvellements : ${formatAffiliateAdminAmount(person.renewal_commission)}</div>
-            ${payments.length ? `<div class="admin-small"><strong>Historique des paiements confirmés :</strong>${payments.map(function(payment){
-              return `<div>• ${escapeHtml(payment.offer || "Paiement")} — ${formatAffiliateAdminAmount(payment.amount)} — ${escapeHtml(formatDateTime(payment.confirmed_at) || "Date inconnue")}</div>`;
-            }).join("")}</div>` : '<div class="admin-small">Aucun paiement confirmé.</div>'}
-          </div>`;
-        }).join("") : '<p class="muted">Aucun filleul enregistré.</p>'}
+        <section class="batbot-aff-section">
+          <h4>👥 Filleuls directs · ${referrals.length}</h4>
+          ${referrals.length ? referrals.map(function(person){
+            const payments = Array.isArray(person.payments) ? person.payments : [];
+            return `<article class="batbot-aff-entry">
+              <div class="batbot-aff-entry-head">
+                <strong>${escapeHtml(person.username || "Compte supprimé")}</strong>
+                <span class="batbot-aff-tag">ID : ${person.referred_user_id == null ? "—" : Number(person.referred_user_id)}</span>
+              </div>
+              <p>Téléphone : ${escapeHtml(person.phone || "—")}</p>
+              <p>Inscription : ${escapeHtml(formatDateTime(person.joined_at) || "—")}</p>
+              <p>Paiements confirmés : <strong>${Number(person.confirmed_payment_count || 0)}</strong></p>
+              <p>Total des paiements : <strong>${formatAffiliateAdminAmount(person.confirmed_payment_total)}</strong></p>
+              <p>Commission premier achat : ${formatAffiliateAdminAmount(person.first_purchase_commission)}</p>
+              <p>Commissions renouvellements : ${formatAffiliateAdminAmount(person.renewal_commission)}</p>
+              <p><strong>Historique des paiements confirmés</strong></p>
+              ${payments.length ? payments.map(function(payment){
+                return `<p>• ${escapeHtml(payment.offer || "Paiement")} — ${formatAffiliateAdminAmount(payment.amount)} — ${escapeHtml(formatDateTime(payment.confirmed_at) || "Date inconnue")}</p>`;
+              }).join("") : '<p>Aucun paiement confirmé.</p>'}
+            </article>`;
+          }).join("") : '<div class="batbot-aff-empty">Aucun filleul enregistré.</div>'}
+        </section>
 
-        <h3>💸 Historique des retraits (${withdrawals.length})</h3>
-        ${withdrawals.length ? withdrawals.map(function(withdrawal){
-          return `<div class="notice">
-            <strong>Retrait n°${Number(withdrawal.id)}</strong> — ${formatAffiliateAdminAmount(withdrawal.amount)}
-            <div class="admin-small">Type : ${escapeHtml(commissionLabels[withdrawal.commission_type] || withdrawal.commission_type || "—")}</div>
-            <div class="admin-small">Moyen : ${escapeHtml(withdrawal.payment_method || "—")} · Numéro : ${escapeHtml(withdrawal.payment_number || "—")}</div>
-            <div class="admin-small">Statut : <strong>${escapeHtml(withdrawalLabels[withdrawal.status] || withdrawal.status || "—")}</strong></div>
-            <div class="admin-small">Référence : ${escapeHtml(withdrawal.payment_reference || "—")}</div>
-            <div class="admin-small">Demande : ${escapeHtml(formatDateTime(withdrawal.created_at) || "—")} · Paiement : ${escapeHtml(formatDateTime(withdrawal.paid_at) || "—")}</div>
-            ${withdrawal.admin_note ? `<div class="admin-small">Note admin : ${escapeHtml(withdrawal.admin_note)}</div>` : ""}
-          </div>`;
-        }).join("") : '<p class="muted">Aucun retrait enregistré.</p>'}
+        <section class="batbot-aff-section">
+          <h4>💸 Historique des retraits · ${withdrawals.length}</h4>
+          ${withdrawals.length ? withdrawals.map(function(withdrawal){
+            return `<article class="batbot-aff-entry">
+              <div class="batbot-aff-entry-head">
+                <strong>Retrait n°${Number(withdrawal.id)} · ${formatAffiliateAdminAmount(withdrawal.amount)}</strong>
+                <span class="batbot-aff-tag">${escapeHtml(withdrawalLabels[withdrawal.status] || withdrawal.status || "—")}</span>
+              </div>
+              <p>Type : ${escapeHtml(commissionLabels[withdrawal.commission_type] || withdrawal.commission_type || "—")}</p>
+              <p>Moyen de paiement : ${escapeHtml(withdrawal.payment_method || "—")}</p>
+              <p>Numéro de paiement : ${escapeHtml(withdrawal.payment_number || "—")}</p>
+              <p>Référence : ${escapeHtml(withdrawal.payment_reference || "—")}</p>
+              <p>Demande : ${escapeHtml(formatDateTime(withdrawal.created_at) || "—")}</p>
+              <p>Date du paiement : ${escapeHtml(formatDateTime(withdrawal.paid_at) || "—")}</p>
+              ${withdrawal.admin_note ? `<p>Note administrateur : ${escapeHtml(withdrawal.admin_note)}</p>` : ""}
+            </article>`;
+          }).join("") : '<div class="batbot-aff-empty">Aucun retrait enregistré.</div>'}
+        </section>
 
-        <button type="button" class="btn secondary" onclick="document.getElementById('affiliateAdminReferrerDetails').innerHTML=''">Fermer la fiche</button>
+        <button type="button" class="btn secondary batbot-aff-close" onclick="document.getElementById('affiliateAdminReferrerDetails').innerHTML=''">Fermer la fiche</button>
       </div>
     `;
 
@@ -7673,6 +7700,30 @@ document.addEventListener("keydown",function(event){
 .batbot-profile-message.error{color:#ff9e9e}.batbot-profile-message.success{color:#83edba}
 @media(max-width:390px){.batbot-profile-fields{grid-template-columns:1fr}.batbot-profile-fields .full{grid-column:auto}.batbot-avatar-grid{gap:4px}.batbot-avatar-choice{font-size:9px;padding:3px}.batbot-profile-avatar{width:62px;height:62px}}
 
+
+
+/* BATBOT PRO — Fiches détaillées des parrains */
+.batbot-aff-detail{display:grid;gap:14px;margin:16px 0}
+.batbot-aff-hero{padding:17px;border:1px solid rgba(83,207,255,.35);border-radius:16px;background:linear-gradient(145deg,#123b5b,#0a223a)}
+.batbot-aff-hero h3{margin:0 0 8px;color:#fff;font-size:19px}
+.batbot-aff-hero p{margin:5px 0;color:#c5d8e8;font-size:12px;overflow-wrap:anywhere}
+.batbot-aff-code{display:inline-block;margin-top:8px;padding:7px 11px;border:1px solid rgba(83,207,255,.35);border-radius:9px;background:#071a2d;color:#6ee7ff;font-weight:900;letter-spacing:1px}
+.batbot-aff-section{padding:14px;border:1px solid #315d82;border-radius:15px;background:#0c2745}
+.batbot-aff-section h4{margin:0 0 12px;color:#fff;font-size:15px}
+.batbot-aff-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.batbot-aff-stat{min-width:0;padding:12px;border:1px solid rgba(83,207,255,.2);border-radius:12px;background:#071a2d}
+.batbot-aff-stat span{display:block;color:#afc1d4;font-size:11px}
+.batbot-aff-stat strong{display:block;margin-top:6px;color:#fff;font-size:15px;overflow-wrap:anywhere}
+.batbot-aff-stat.highlight strong{color:#6ee7a0}
+.batbot-aff-entry{padding:12px;margin:9px 0 0;border:1px solid rgba(83,207,255,.18);border-radius:11px;background:#071a2d}
+.batbot-aff-entry strong{color:#fff}
+.batbot-aff-entry p{margin:6px 0 0;color:#c5d8e8;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.batbot-aff-entry-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.batbot-aff-tag{display:inline-block;padding:4px 8px;border-radius:20px;background:#123b5b;color:#bcecff;font-size:10px;font-weight:800}
+.batbot-aff-empty{padding:12px;border:1px dashed #315d82;border-radius:10px;color:#afc1d4;font-size:12px;text-align:center}
+.batbot-aff-detail .batbot-aff-close{width:100%;margin:0}
+@media(min-width:520px){.batbot-aff-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
 </style>
 
 <script id="batbot-public-options-script">
@@ -8405,7 +8456,8 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Configuration et outils administrateur',items:[
           [1,'Paramètres modifiables','fa-solid fa-sliders'],
           [5,'Gestion des bookmakers','fa-solid fa-chart-column'],
-          [9,'Gestion des parrainages','fa-solid fa-handshake']
+          [9,'Parrains actifs','fa-solid fa-users'],
+          [10,'Demandes de retrait','fa-solid fa-wallet']
         ]}
       };
       const cfg=configs[key];
