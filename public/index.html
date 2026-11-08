@@ -6766,12 +6766,6 @@ function renderAdminAffiliateReferrers(){
     return `
       <div class="match-card">
         <div class="match-title">👤 ${escapeHtml(referrer.username || "Membre")}</div>
-        <div class="admin-small">Identifiant BATBOT : ${id}</div>
-        <div class="admin-small">Code : <strong>${escapeHtml(referrer.referral_code || "—")}</strong></div>
-        <div class="admin-small">Filleuls directs : <strong>${Number(referrer.referral_count || 0)}</strong></div>
-        <div class="admin-small">Filleuls avec paiement confirmé : <strong>${Number(referrer.paid_referral_count || 0)}</strong></div>
-        <div class="admin-small">Commissions générées : <strong>${formatAffiliateAdminAmount(referrer.earned)}</strong></div>
-        <div class="admin-small">Disponible : ${formatAffiliateAdminAmount(referrer.available)} · Réservé : ${formatAffiliateAdminAmount(referrer.reserved)} · Payé : ${formatAffiliateAdminAmount(referrer.paid)}</div>
         <button class="btn secondary" type="button" onclick="loadAdminAffiliateReferrerDetails(${id})">🔎 Voir les détails</button>
       </div>
     `;
@@ -6812,7 +6806,7 @@ async function loadAdminAffiliateReferrers(){
     const referrers = Array.isArray(data.referrers) ? data.referrers : [];
     window.adminAffiliateReferrersData = referrers;
     window.adminAffiliateReferrersVisibleCount = 5;
-    status.textContent = "Parrains actifs : " + referrers.length;
+    status.textContent = "";
 
     if(!referrers.length){
       box.innerHTML = '<p class="muted">Aucun membre n’a encore parrainé un utilisateur.</p>';
@@ -6869,6 +6863,45 @@ async function loadAdminAffiliateReferrerDetails(userId){
       rejected:"Rejeté"
     };
 
+    let visibleReferralsCount = 2;
+
+    function renderCompactReferrals(){
+      const visible = referrals.slice(0, visibleReferralsCount);
+
+      const entries = visible.map(function(person){
+        const payments = Array.isArray(person.payments) ? person.payments : [];
+
+        return `<article class="batbot-aff-entry">
+          <div class="batbot-aff-entry-head">
+            <strong>${escapeHtml(person.username || "Compte supprimé")}</strong>
+            <span class="batbot-aff-referral-status">
+              <span class="batbot-aff-tag">ID : BATBOT-${person.referred_user_id == null ? "—" : Number(person.referred_user_id)}</span>
+              <span class="batbot-aff-premium-badge ${person.subscription_active ? "active" : "inactive"}" title="${person.subscription_active ? "Abonnement Premium actif" : "Aucun abonnement Premium actif"}" aria-label="${person.subscription_active ? "Abonnement Premium actif" : "Aucun abonnement Premium actif"}">
+                <i class="fa-solid ${person.subscription_active ? "fa-check" : "fa-xmark"}" aria-hidden="true"></i>
+              </span>
+            </span>
+          </div>
+          <p>Inscription : ${escapeHtml(formatDateTime(person.joined_at) || "—")}</p>
+          <p><strong>Offres Premium confirmées</strong></p>
+          ${payments.length ? payments.map(function(payment){
+            return `<p>• ${escapeHtml(payment.offer || "Abonnement Premium")} — ${escapeHtml(formatDateTime(payment.confirmed_at) || "Date inconnue")}</p>`;
+          }).join("") : '<p>Aucune offre Premium confirmée.</p>'}
+        </article>`;
+      }).join("");
+
+      const more = referrals.length > visibleReferralsCount
+        ? `<button class="btn secondary" type="button" style="width:100%;margin-top:12px" onclick="window.showMoreAdminAffiliateDetailsReferrals()">Voir plus (${referrals.length - visibleReferralsCount} restants)</button>`
+        : "";
+
+      return (entries || '<div class="batbot-aff-empty">Aucun filleul enregistré.</div>') + more;
+    }
+
+    window.showMoreAdminAffiliateDetailsReferrals = function(){
+      visibleReferralsCount += 2;
+      const list = box.querySelector(".batbot-aff-referrals-list");
+      if(list) list.innerHTML = renderCompactReferrals();
+    };
+
     box.innerHTML = `
       <div class="batbot-aff-detail">
         <header class="batbot-aff-hero">
@@ -6891,47 +6924,11 @@ async function loadAdminAffiliateReferrerDetails(userId){
           </div>
         </section>
 
-        <section class="batbot-aff-section">
-          <h4>📊 Détail des commissions</h4>
-          ${commissions.length ? commissions.map(function(item){
-            return `<article class="batbot-aff-entry">
-              <div class="batbot-aff-entry-head">
-                <strong>${escapeHtml(commissionLabels[item.commission_type] || item.commission_type || "Commission")}</strong>
-                <span class="batbot-aff-tag">${Number(item.commission_count || 0)} commission(s)</span>
-              </div>
-              <p>Gagné : <strong>${formatAffiliateAdminAmount(item.earned)}</strong></p>
-              <p>Disponible : ${formatAffiliateAdminAmount(item.available)} · Réservé : ${formatAffiliateAdminAmount(item.reserved)}</p>
-              <p>Payé : ${formatAffiliateAdminAmount(item.paid)} · Annulé : ${formatAffiliateAdminAmount(item.cancelled)}</p>
-            </article>`;
-          }).join("") : '<div class="batbot-aff-empty">Aucune commission enregistrée.</div>'}
-        </section>
+
 
         <section class="batbot-aff-section">
           <h4>👥 Filleuls directs · ${referrals.length}</h4>
-          ${referrals.length ? referrals.map(function(person){
-            const payments = Array.isArray(person.payments) ? person.payments : [];
-            return `<article class="batbot-aff-entry">
-              <div class="batbot-aff-entry-head">
-                <strong>${escapeHtml(person.username || "Compte supprimé")}</strong>
-                <span class="batbot-aff-referral-status">
-                  <span class="batbot-aff-tag">ID : BATBOT-${person.referred_user_id == null ? "—" : Number(person.referred_user_id)}</span>
-                  <span class="batbot-aff-premium-badge ${person.subscription_active ? "active" : "inactive"}" title="${person.subscription_active ? "Abonnement Premium actif" : "Aucun abonnement Premium actif"}" aria-label="${person.subscription_active ? "Abonnement Premium actif" : "Aucun abonnement Premium actif"}">
-                    <i class="fa-solid ${person.subscription_active ? "fa-check" : "fa-xmark"}" aria-hidden="true"></i>
-                  </span>
-                </span>
-              </div>
-              <p>Téléphone : ${escapeHtml(person.phone || "—")}</p>
-              <p>Inscription : ${escapeHtml(formatDateTime(person.joined_at) || "—")}</p>
-              <p>Paiements confirmés : <strong>${Number(person.confirmed_payment_count || 0)}</strong></p>
-              <p>Total des paiements : <strong>${formatAffiliateAdminAmount(person.confirmed_payment_total)}</strong></p>
-              <p>Commission premier achat : ${formatAffiliateAdminAmount(person.first_purchase_commission)}</p>
-              <p>Commissions renouvellements : ${formatAffiliateAdminAmount(person.renewal_commission)}</p>
-              <p><strong>Historique des paiements confirmés</strong></p>
-              ${payments.length ? payments.map(function(payment){
-                return `<p>• ${escapeHtml(payment.offer || "Paiement")} — ${formatAffiliateAdminAmount(payment.amount)} — ${escapeHtml(formatDateTime(payment.confirmed_at) || "Date inconnue")}</p>`;
-              }).join("") : '<p>Aucun paiement confirmé.</p>'}
-            </article>`;
-          }).join("") : '<div class="batbot-aff-empty">Aucun filleul enregistré.</div>'}
+          <div class="batbot-aff-referrals-list">${renderCompactReferrals()}</div>
         </section>
 
         <section class="batbot-aff-section">
