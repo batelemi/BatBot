@@ -3885,7 +3885,7 @@ if(document.readyState==='loading'){
       const conditionsClose=event.target.closest('.conditions-close-button');
       if(conditionsClose){
         event.preventDefault();
-        openPaymentWindow('mobile');
+        closePaymentWindow();
       }
     });
 
@@ -7576,7 +7576,7 @@ const socialGrid=document.querySelector('#batbotSocialFooter .social-grid');
   setVisible(socialGrid?.closest('.card'),Boolean(socialGrid&&Array.from(socialGrid.querySelectorAll('a')).some(link=>!link.hidden)));
   const waButton=document.getElementById('sendAnalysisWhatsAppButton');setVisible(waButton,SERVICE_FLAGS.whatsapp);
   const tgButton=document.getElementById('sendAnalysisTelegramButton');setVisible(tgButton,SERVICE_FLAGS.telegram);
-  document.querySelectorAll('button[onclick*="sendPaymentWhatsApp"]').forEach(el=>setVisible(el,SERVICE_FLAGS.whatsapp));
+  const paymentWhatsAppButton=document.querySelector('#mobileMoneyCard button[onclick="sendPaymentWhatsApp()"]');if(paymentWhatsAppButton&&window.batBotPremiumGuidedFlow)paymentWhatsAppButton.hidden=true;
   const launcher=document.querySelector('.mobile-all-networks');
   setVisible(launcher,SERVICE_FLAGS.wave500||SERVICE_FLAGS.wave1000||SERVICE_FLAGS.orangeMoney||SERVICE_FLAGS.mtnMoney||SERVICE_FLAGS.moovMoney);
 }
