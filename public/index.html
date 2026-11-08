@@ -6913,7 +6913,12 @@ async function loadAdminAffiliateReferrerDetails(userId){
             return `<article class="batbot-aff-entry">
               <div class="batbot-aff-entry-head">
                 <strong>${escapeHtml(person.username || "Compte supprimé")}</strong>
-                <span class="batbot-aff-tag">ID : ${person.referred_user_id == null ? "—" : Number(person.referred_user_id)}</span>
+                <span class="batbot-aff-referral-status">
+                  <span class="batbot-aff-tag">ID : BATBOT-${person.referred_user_id == null ? "—" : Number(person.referred_user_id)}</span>
+                  <span class="batbot-aff-premium-badge ${person.subscription_active ? "active" : "inactive"}" title="${person.subscription_active ? "Abonnement Premium actif" : "Aucun abonnement Premium actif"}" aria-label="${person.subscription_active ? "Abonnement Premium actif" : "Aucun abonnement Premium actif"}">
+                    <i class="fa-solid ${person.subscription_active ? "fa-check" : "fa-xmark"}" aria-hidden="true"></i>
+                  </span>
+                </span>
               </div>
               <p>Téléphone : ${escapeHtml(person.phone || "—")}</p>
               <p>Inscription : ${escapeHtml(formatDateTime(person.joined_at) || "—")}</p>
@@ -7717,6 +7722,10 @@ document.addEventListener("keydown",function(event){
 .batbot-aff-stat.highlight strong{color:#6ee7a0}
 .batbot-aff-entry{padding:12px;margin:9px 0 0;border:1px solid rgba(83,207,255,.18);border-radius:11px;background:#071a2d}
 .batbot-aff-entry strong{color:#fff}
+.batbot-aff-referral-status{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap}
+.batbot-aff-premium-badge{display:inline-flex;width:23px;height:23px;align-items:center;justify-content:center;border-radius:50%;font-size:12px;font-weight:900}
+.batbot-aff-premium-badge.active{background:#168bd2;color:#fff;box-shadow:0 0 0 2px rgba(22,139,210,.2)}
+.batbot-aff-premium-badge.inactive{background:#dc3545;color:#fff;box-shadow:0 0 0 2px rgba(220,53,69,.2)}
 .batbot-aff-entry p{margin:6px 0 0;color:#c5d8e8;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
 .batbot-aff-entry-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
 .batbot-aff-tag{display:inline-block;padding:4px 8px;border-radius:20px;background:#123b5b;color:#bcecff;font-size:10px;font-weight:800}

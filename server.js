@@ -3861,6 +3861,8 @@ app.get("/api/admin/affiliate/referrers/:userId", requireAdmin, async (req, res)
               COALESCE(u.username, 'Compte supprimé') AS username,
               COALESCE(u.phone, '') AS phone,
               rp.created_at AS joined_at,
+              u.premium_until,
+              (COALESCE(u.premium_until > NOW(), FALSE) AND NOT COALESCE(u.disabled, FALSE)) AS subscription_active,
               COALESCE(pay.payment_count, 0)::int AS confirmed_payment_count,
               COALESCE(pay.payment_total, 0)::int AS confirmed_payment_total,
               COALESCE(pay.payments, '[]'::json) AS payments,
