@@ -1,17 +1,23 @@
 package com.batbot.app;
 
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.os.Bundle;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ClipData;
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
+import android.os.Environment;
 import android.webkit.WebChromeClient;
 import android.webkit.ValueCallback;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient.FileChooserParams;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.DownloadListener;
+import android.webkit.CookieManager;
+import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebResourceRequest;
 import android.os.Message;
@@ -256,6 +262,58 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
 
         webView.setWebViewClient(createWebViewClient());
+
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            try {
+                Uri downloadUri = Uri.parse(url);
+                String host = downloadUri.getHost();
+                String path = downloadUri.getPath();
+
+                if (host == null
+                        || !host.equalsIgnoreCase("www.batbot.pro")
+                        && !host.equalsIgnoreCase("batbot.pro")
+                        || path == null
+                        || !path.toLowerCase().endsWith(".apk")) {
+                    Toast.makeText(this, "Lien de téléchargement non pris en charge.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+                if (fileName == null || fileName.trim().isEmpty()) {
+                    fileName = "batbot-pro.apk";
+                }
+
+                DownloadManager.Request request = new DownloadManager.Request(downloadUri);
+                request.setMimeType("application/vnd.android.package-archive");
+                if (userAgent != null && !userAgent.isEmpty()) {
+                    request.addRequestHeader("User-Agent", userAgent);
+                }
+                String cookies = CookieManager.getInstance().getCookie(url);
+                if (cookies != null && !cookies.isEmpty()) {
+                    request.addRequestHeader("Cookie", cookies);
+                }
+                request.setTitle("BATBOT PRO");
+                request.setDescription("Téléchargement de l'application BATBOT PRO...");
+                request.setNotificationVisibility(
+                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                );
+                request.setDestinationInExternalFilesDir(
+                        this, Environment.DIRECTORY_DOWNLOADS, fileName
+                );
+
+                DownloadManager manager =
+                        (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                if (manager == null) {
+                    Toast.makeText(this, "Service de téléchargement indisponible.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                manager.enqueue(request);
+                Toast.makeText(this, "Téléchargement de BATBOT PRO lancé.", Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Impossible de lancer le téléchargement.", Toast.LENGTH_LONG).show();
+            }
+        });
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override

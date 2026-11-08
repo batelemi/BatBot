@@ -55,16 +55,24 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleRelease --no-daemon
 
-      - name: Verify APK signature
+      - name: Verify APK signature and certificate
         run: |
           APK="android-app/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify --verbose "$APK"
+          ACTUAL=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/ {print tolower($2); exit}')
+          EXPECTED="f84233833ee11f74f83076bf01fc6fc597c594a702026f24f3dc5b84f3080ac1"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Le certificat de signature ne correspond pas à celui de BATBOT PRO."
+            exit 1
+          fi
+          echo "Certificat de signature BATBOT PRO confirmé."
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BATBOT-PRO-Android-v1.1
+          name: BATBOT-PRO-Android-v1.2
           path: android-app/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
