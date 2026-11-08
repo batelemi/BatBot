@@ -3552,10 +3552,12 @@ async function submitPaymentReference(){
     if(!r.ok)throw new Error(d.error||"Validation impossible.");
     window.batBotLastPaymentRequestId=String(d.id||"");
     if(!window.batBotLastPaymentRequestId)throw new Error("Numéro de demande introuvable.");
-    showStatus("paymentNumberStatus","Votre demande N° "+window.batBotLastPaymentRequestId+" est enregistrée et en attente de vérification. Envoyez maintenant votre preuve sur WhatsApp.","success");
-    if(whatsappButton)whatsappButton.hidden=!SERVICE_FLAGS.whatsapp;
+    if(whatsappButton)whatsappButton.hidden=true;
     if(window.batBotPremiumGuidedFlow&&typeof window.showBatBotPaymentReceipt==='function'){
-      window.showBatBotPaymentReceipt({id:window.batBotLastPaymentRequestId,offer,operator,amount});
+      await window.showBatBotPaymentReceipt({id:window.batBotLastPaymentRequestId,offer,operator,amount});
+    }else{
+      showStatus("paymentNumberStatus","Votre demande N° "+window.batBotLastPaymentRequestId+" est enregistrée et en attente de vérification.","success");
+      if(whatsappButton)whatsappButton.hidden=!SERVICE_FLAGS.whatsapp;
     }
   }catch(e){
     showStatus("paymentNumberStatus",friendlyActionError(e,"Impossible d’enregistrer votre demande. Vérifiez votre connexion et réessayez."),"error");
@@ -3580,17 +3582,16 @@ async function copyPaymentNumber(operator){
 }
 function sendPaymentWhatsApp(){
   if(!SERVICE_FLAGS.whatsapp)return showStatus("paymentNumberStatus","Le service WhatsApp est temporairement désactivé.","error");
-  const offer=document.getElementById("paymentOffer").value;
-  const operator=document.getElementById("paymentOperator").value;
-  const amount=document.getElementById("paymentAmount").value;
-  const requestId=window.batBotLastPaymentRequestId;
-  if(!requestId)return showStatus("paymentNumberStatus","Enregistrez d’abord votre demande de paiement.","error");
-  if(!amount)return showStatus("paymentNumberStatus","Indiquez le montant payé avant de continuer.","error");
-  const message="Bonjour BATBOT PRO 👋\n\nDemande Premium N° : "+requestId+"\nOffre : "+offer+"\nOpérateur : "+operator+"\nMontant : "+amount+" FCFA\n\nJe joins ma capture de paiement. Merci.";
+  const saved=window.batBotLastPaymentReceipt;
+  const offer=saved?.offer||document.getElementById("paymentOffer")?.value;
+  const operator=saved?.operator||document.getElementById("paymentOperator")?.value;
+  const amount=saved?.amount||document.getElementById("paymentAmount")?.value;
+  const requestId=saved?.id||window.batBotLastPaymentRequestId;
+  if(!requestId||!offer||!operator||!amount)return showStatus("paymentNumberStatus","Les informations du reçu sont indisponibles.","error");
+  const message="Bonjour BATBOT PRO 👋\\n\\nDemande Premium N° : "+requestId+"\\nOffre : "+offer+"\\nOpérateur : "+operator+"\\nMontant : "+amount+" FCFA\\n\\nJe joins ma capture de paiement au Service BATBOT PRO. Merci.";
   const url=createWhatsAppUrl(message);
   if(url)window.open(url,"_blank");
 }
-
 function updatePaymentOfferStyle(){
   const select=document.getElementById('paymentOffer');
   const amountInput=document.getElementById('paymentAmount');
@@ -3777,26 +3778,63 @@ if(document.readyState==='loading'){
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
     }
-    window.showBatBotPaymentReceipt=function(data){
+    window.showBatBotPaymentReceipt=async function(data){
       if(!window.batBotPremiumGuidedFlow)return;
-      mobile.classList.add('hidden');
-      const whatsapp=SERVICE_FLAGS.whatsapp?'<button type="button" class="btn whatsapp" onclick="sendPaymentWhatsApp()">💬 Envoyer ma preuve sur WhatsApp</button>':'';
-      body.insertAdjacentHTML('beforeend',`
-        <div style="padding:20px;border:1px solid #39c98a;border-radius:16px;background:linear-gradient(145deg,#123b32,#0b223d);color:#fff">
-          <div style="text-align:center;font-size:38px">🧾</div>
-          <h3 style="text-align:center;margin:8px 0 14px">Demande enregistrée !</h3>
-          <p style="text-align:center;color:#b9f5d5">Votre demande de paiement a bien été transmise à BATBOT PRO.</p>
-          <div style="padding:13px;border-radius:12px;background:rgba(0,0,0,.2);line-height:1.9">
-            <div><strong>Demande N° :</strong> ${data.id}</div>
-            <div><strong>Offre :</strong> ${data.offer}</div>
-            <div><strong>Opérateur :</strong> ${data.operator}</div>
-            <div><strong>Montant :</strong> ${Number(data.amount).toLocaleString('fr-FR')} FCFA</div>
+
+      restoreNodes();
+      body.innerHTML='';
+      title.textContent='🧾 Votre reçu de transaction';
+
+      let request={
+        id:data.id,
+        offer:data.offer,
+        operator:data.operator,
+        amount:data.amount,
+        created_at:new Date().toISOString(),
+        status:"pending",
+        username:window.batBotCurrentUser?.username||window.batBotCurrentUser?.name||"Utilisateur"
+      };
+
+      try{
+        const response=await fetch("/api/payment-requests/mine",{
+          credentials:"same-origin",
+          cache:"no-store"
+        });
+        const result=await readApiResponse(response);
+        if(response.ok&&Array.isArray(result.requests)){
+          const saved=result.requests.find(item=>String(item.id)===String(data.id));
+          if(saved)request=saved;
+        }
+      }catch(error){
+        console.warn("Reçu : récupération des détails indisponible.",error);
+      }
+
+      const receipt=typeof renderBatBotReceipt==="function"
+        ?renderBatBotReceipt(request)
+        :'<p>Votre demande N° '+escapeHtml(String(data.id))+' est enregistrée.</p>';
+
+      window.batBotLastPaymentReceipt={
+        id:request.id,
+        offer:request.offer,
+        operator:request.operator,
+        amount:request.amount
+      };
+
+      const whatsapp=SERVICE_FLAGS.whatsapp
+        ?'<button type="button" class="btn whatsapp" onclick="sendPaymentWhatsApp()">💬 Envoyer ma preuve sur WhatsApp</button>'
+        :'';
+
+      body.innerHTML=`
+        <div class="payment-request-card" style="margin:0">
+          ${receipt}
+          <p style="margin:12px 0;padding:11px;border-radius:10px;background:rgba(245,197,66,.12);color:#ffe28a;text-align:center;font-size:13px;line-height:1.5">
+            Le Service BATBOT PRO vérifie votre paiement. Votre abonnement sera activé après confirmation du montant.
+          </p>
+          <div class="batbot-receipt-actions">
+            ${whatsapp}
+            <button type="button" class="btn secondary" data-premium-receipt-close>Fermer</button>
           </div>
-          <p style="margin:15px 0;padding:12px;border-radius:10px;background:rgba(245,197,66,.13);color:#ffe28a;text-align:center;font-weight:800">⏳ En attente de vérification</p>
-          <p style="font-size:13px;line-height:1.5;color:#d9e7f3">Votre abonnement sera activé après vérification et validation de votre paiement par l'administrateur.</p>
-          ${whatsapp}
-          <button type="button" class="btn secondary" data-premium-receipt-close style="width:100%;margin-top:10px">Fermer</button>
-        </div>`);
+        </div>`;
     };
     body.addEventListener('click',event=>{
       const offerButton=event.target.closest('[data-premium-offer]');
