@@ -708,6 +708,12 @@ textarea{min-height:120px;resize:vertical}
 #usersList .admin-actions{grid-template-columns:1fr}
 #usersList .admin-actions>.btn.danger{width:100%;min-height:44px}
 .member-card{background:#0C2745;border:1px solid #315D82;border-radius:13px;padding:13px;margin:9px 0}
+.member-card.member-card-standard{background:linear-gradient(145deg,#0b2038,#102d4b);border-color:#315d82}
+.member-card.member-card-premium{background:linear-gradient(145deg,#0b3558,#10517a);border:1px solid #38bdf8;box-shadow:0 0 0 1px rgba(56,189,248,.16),0 7px 20px rgba(0,0,0,.2)}
+.member-card.member-card-disabled{background:linear-gradient(145deg,#351923,#501d2a);border:1px solid #e05262;box-shadow:0 0 0 1px rgba(224,82,98,.14),0 7px 20px rgba(0,0,0,.2)}
+.member-card.member-card-premium .member-username{color:#d8f2ff}
+.member-card.member-card-disabled .member-username{color:#ffd8dd}
+
 .member-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .member-username{font-weight:800;word-break:break-word}
 .admin-small{color:var(--muted);font-size:12px}
@@ -1929,19 +1935,19 @@ button.batbot-predict-btn *,
 }
 #batbotAiPredictionHistory .batbot-ai-history-validated::before{
   background-image:linear-gradient(
-    110deg,rgba(3,40,20,.78),rgba(4,65,30,.62),rgba(3,40,20,.80)
+    110deg,rgba(2,48,25,.88),rgba(5,95,48,.72),rgba(2,48,25,.88)
   ),url('/images/stade-tickets-valides.jpg');
   background-position:center 57%;
 }
 #batbotAiPredictionHistory .batbot-ai-history-failed::before{
   background-image:linear-gradient(
-    110deg,rgba(38,7,12,.86),rgba(53,13,19,.69),rgba(38,7,12,.86)
+    110deg,rgba(65,10,20,.90),rgba(105,20,32,.78),rgba(65,10,20,.90)
   ),url('/images/pronostics-non-valides.jpg');
   background-position:center 50%;
 }
 #batbotAiPredictionHistory .batbot-ai-history-pending::before{
   background-image:linear-gradient(
-    110deg,rgba(3,19,32,.84),rgba(7,31,48,.66),rgba(3,19,32,.84)
+    110deg,rgba(5,28,52,.90),rgba(12,58,91,.76),rgba(5,28,52,.90)
   ),url('/images/matchs-programmes.jpg');
   background-position:center 57%;
 }
@@ -3832,7 +3838,7 @@ function renderAdminUsers(users){
     const active=Boolean(user.subscription_active||user.is_subscribed||user.subscribed);
     const accountActive=!Boolean(user.disabled);
     const userId=Number(user.id);
-    return `<div class="member-card">
+    return `<div class="member-card ${!accountActive?"member-card-disabled":active?"member-card-premium":"member-card-standard"}">
       <div class="member-card-top">
         <div class="member-username">👤 ${escapeHtml(user.username||user.name||"Utilisateur")}</div>
         <span class="badge ${active?'badge-blue':''}">${active?'🔵 Premium actif':'🏅 Membre BATBOT PRO'}</span>
@@ -6902,6 +6908,40 @@ async function loadAdminAffiliateReferrerDetails(userId){
       if(list) list.innerHTML = renderCompactReferrals();
     };
 
+    let visibleWithdrawalsCount = 1;
+
+    function renderCompactWithdrawals(){
+      const visible = withdrawals.slice(0, visibleWithdrawalsCount);
+
+      const entries = visible.map(function(withdrawal){
+        return `<article class="batbot-aff-entry">
+          <div class="batbot-aff-entry-head">
+            <strong>Retrait n°${Number(withdrawal.id)} · ${formatAffiliateAdminAmount(withdrawal.amount)}</strong>
+            <span class="batbot-aff-tag batbot-aff-status-${({pending:"pending",verifying:"verifying",approved:"approved",paid:"paid",rejected:"rejected"})[withdrawal.status] || ""}">${escapeHtml(withdrawalLabels[withdrawal.status] || withdrawal.status || "—")}</span>
+          </div>
+          <p>Type : ${escapeHtml(commissionLabels[withdrawal.commission_type] || withdrawal.commission_type || "—")}</p>
+          <p>Moyen de paiement : ${escapeHtml(withdrawal.payment_method || "—")}</p>
+          <p>Numéro de paiement : ${escapeHtml(withdrawal.payment_number || "—")}</p>
+          <p>Référence : ${escapeHtml(withdrawal.payment_reference || "—")}</p>
+          <p>Demande : ${escapeHtml(formatDateTime(withdrawal.created_at) || "—")}</p>
+          <p>Date du paiement : ${escapeHtml(formatDateTime(withdrawal.paid_at) || "—")}</p>
+          ${withdrawal.admin_note ? `<p>Note administrateur : ${escapeHtml(withdrawal.admin_note)}</p>` : ""}
+        </article>`;
+      }).join("");
+
+      const more = withdrawals.length > visibleWithdrawalsCount
+        ? `<button class="btn secondary" type="button" style="width:100%;margin-top:12px" onclick="window.showMoreAdminAffiliateDetailsWithdrawals()">Voir plus (${withdrawals.length - visibleWithdrawalsCount} restants)</button>`
+        : "";
+
+      return (entries || '<div class="batbot-aff-empty">Aucun retrait enregistré.</div>') + more;
+    }
+
+    window.showMoreAdminAffiliateDetailsWithdrawals = function(){
+      visibleWithdrawalsCount += 1;
+      const list = box.querySelector(".batbot-aff-withdrawals-list");
+      if(list) list.innerHTML = renderCompactWithdrawals();
+    };
+
     box.innerHTML = `
       <div class="batbot-aff-detail">
         <header class="batbot-aff-hero">
@@ -6933,22 +6973,7 @@ async function loadAdminAffiliateReferrerDetails(userId){
 
         <section class="batbot-aff-section">
           <h4>💸 Historique des retraits · ${withdrawals.length}</h4>
-          ${withdrawals.length ? withdrawals.map(function(withdrawal){
-            return `<article class="batbot-aff-entry">
-              <div class="batbot-aff-entry-head">
-                <strong>Retrait n°${Number(withdrawal.id)} · ${formatAffiliateAdminAmount(withdrawal.amount)}</strong>
-                <span class="batbot-aff-tag">${escapeHtml(withdrawalLabels[withdrawal.status] || withdrawal.status || "—")}</span>
-              </div>
-              <p>Type : ${escapeHtml(commissionLabels[withdrawal.commission_type] || withdrawal.commission_type || "—")}</p>
-              <p>Moyen de paiement : ${escapeHtml(withdrawal.payment_method || "—")}</p>
-              <p>Numéro de paiement : ${escapeHtml(withdrawal.payment_number || "—")}</p>
-              <p>Référence : ${escapeHtml(withdrawal.payment_reference || "—")}</p>
-              <p>Demande : ${escapeHtml(formatDateTime(withdrawal.created_at) || "—")}</p>
-              <p>Date du paiement : ${escapeHtml(formatDateTime(withdrawal.paid_at) || "—")}</p>
-              ${withdrawal.admin_note ? `<p>Note administrateur : ${escapeHtml(withdrawal.admin_note)}</p>` : ""}
-            </article>`;
-          }).join("") : '<div class="batbot-aff-empty">Aucun retrait enregistré.</div>'}
-        </section>
+          <div class="batbot-aff-withdrawals-list">${renderCompactWithdrawals()}</div>        </section>
 
         <button type="button" class="btn secondary batbot-aff-close" onclick="document.getElementById('affiliateAdminReferrerDetails').innerHTML=''">Fermer la fiche</button>
       </div>
@@ -7726,8 +7751,30 @@ document.addEventListener("keydown",function(event){
 .batbot-aff-entry p{margin:6px 0 0;color:#c5d8e8;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
 .batbot-aff-entry-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
 .batbot-aff-tag{display:inline-block;padding:4px 8px;border-radius:20px;background:#123b5b;color:#bcecff;font-size:10px;font-weight:800}
+.batbot-aff-tag.batbot-aff-status-pending{background:#713f12;color:#fde68a;border:1px solid #f59e0b}
+.batbot-aff-tag.batbot-aff-status-verifying{background:#123b70;color:#bfdbfe;border:1px solid #3b82f6}
+.batbot-aff-tag.batbot-aff-status-approved{background:#14532d;color:#bbf7d0;border:1px solid #22c55e}
+.batbot-aff-tag.batbot-aff-status-paid{background:#064e3b;color:#a7f3d0;border:1px solid #10b981}
+.batbot-aff-tag.batbot-aff-status-rejected{background:#7f1d1d;color:#fecaca;border:1px solid #ef4444}
 .batbot-aff-empty{padding:12px;border:1px dashed #315d82;border-radius:10px;color:#afc1d4;font-size:12px;text-align:center}
-.batbot-aff-detail .batbot-aff-close{width:100%;margin:0}
+.batbot-aff-detail .batbot-aff-close{
+  position:sticky;
+  bottom:10px;
+  z-index:5;
+  display:block;
+  width:100%;
+  min-height:50px;
+  margin:8px 0 10px;
+  padding:14px 18px;
+  border:2px solid #53cfff;
+  border-radius:12px;
+  background:#123b5b;
+  color:#fff;
+  font-size:15px;
+  font-weight:800;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+.batbot-aff-detail .batbot-aff-close:active{transform:scale(.98)}
 @media(min-width:520px){.batbot-aff-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 </style>
