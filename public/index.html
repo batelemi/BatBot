@@ -3219,7 +3219,12 @@ async function register(){
       return;
     }
 
-    showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
+    const successMessage=data.message||"Compte créé avec succès.";
+    document.getElementById("loginUsername").value=username;
+    document.getElementById("loginPassword").value="";
+    showLogin();
+    showStatus("loginStatus",successMessage,"success");
+    document.getElementById("loginPassword").focus();
 
 
   }catch(error){
