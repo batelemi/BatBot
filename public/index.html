@@ -3554,6 +3554,9 @@ async function submitPaymentReference(){
     if(!window.batBotLastPaymentRequestId)throw new Error("Numéro de demande introuvable.");
     showStatus("paymentNumberStatus","Votre demande N° "+window.batBotLastPaymentRequestId+" est enregistrée et en attente de vérification. Envoyez maintenant votre preuve sur WhatsApp.","success");
     if(whatsappButton)whatsappButton.hidden=!SERVICE_FLAGS.whatsapp;
+    if(window.batBotPremiumGuidedFlow&&typeof window.showBatBotPaymentReceipt==='function'){
+      window.showBatBotPaymentReceipt({id:window.batBotLastPaymentRequestId,offer,operator,amount});
+    }
   }catch(e){
     showStatus("paymentNumberStatus",friendlyActionError(e,"Impossible d’enregistrer votre demande. Vérifiez votre connexion et réessayez."),"error");
   }finally{
@@ -3657,6 +3660,7 @@ if(document.readyState==='loading'){
     }
     function closePaymentWindow(){
       restoreNodes();
+      resetGuidedPayment();
       body.innerHTML='';
       modal.classList.add('hidden');
       document.body.style.overflow='';
@@ -3688,9 +3692,146 @@ if(document.readyState==='loading'){
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
     }
+
+    function resetGuidedPayment(){
+      window.batBotPremiumGuidedFlow=false;
+      mobile.style.display='';
+      mobile.querySelectorAll('.payment-offer-field,.payment-operator-field').forEach(el=>el.style.display='');
+      mobile.querySelectorAll('.payment-number').forEach(el=>el.style.display='');
+      const waveBlock=mobile.querySelector('.wave-mobile-payment-block');
+      if(waveBlock)waveBlock.style.display='';
+    }
+    function openPremiumSelectionWindow(){
+      closePaymentWindow();
+      resetGuidedPayment();
+      window.batBotPremiumGuidedFlow=true;
+      title.textContent='⭐ Choisissez votre abonnement Premium';
+      body.innerHTML=`
+        <div style="padding:14px;border:1px solid #37617f;border-radius:15px;background:#102f4d;color:#fff;margin-bottom:14px">
+          <strong style="font-size:17px">🔒 Activez votre accès Premium</strong>
+          <p style="margin:7px 0 0;color:#c8d9e8;line-height:1.5">Choisissez la durée de votre abonnement pour continuer.</p>
+        </div>
+        <div style="display:grid;gap:11px">
+          <button type="button" class="btn secondary" data-premium-offer="Premium 7 jours" style="padding:16px;text-align:left">⭐ Premium 7 jours <strong style="float:right">1 000 FCFA</strong></button>
+          <button type="button" class="btn secondary" data-premium-offer="Premium 14 jours" style="padding:16px;text-align:left">⭐ Premium 14 jours <strong style="float:right">2 000 FCFA</strong></button>
+          <button type="button" class="btn secondary" data-premium-offer="Premium 21 jours" style="padding:16px;text-align:left">⭐ Premium 21 jours <strong style="float:right">3 000 FCFA</strong></button>
+        </div>`;
+      modal.classList.remove('hidden');
+      document.body.style.overflow='hidden';
+    }
+    function showPremiumOperators(offer){
+      const amount={'Premium 7 jours':'1 000','Premium 14 jours':'2 000','Premium 21 jours':'3 000'}[offer];
+      const operators=[
+        {name:'Orange Money',key:'orangeMoney',logo:'/orange-money.png'},
+        {name:'MTN Money',key:'mtnMoney',logo:'/mtn-money.png'},
+        {name:'Moov Money',key:'moovMoney',logo:'/moov-money.png'},
+        {name:'Wave',key:'wave1000',logo:'/wave.png'}
+      ].filter(op=>{
+        if(op.name==='Wave'){
+          const waveButton=document.getElementById('waveMobilePremiumButton');
+          return Boolean(SERVICE_FLAGS.wave1000&&waveButton&&!waveButton.hidden&&waveButton.href);
+        }
+        return Boolean(SERVICE_FLAGS[op.key]);
+      });
+      title.textContent='📱 Choisissez votre opérateur';
+      body.innerHTML=`
+        <div style="padding:12px;margin-bottom:13px;border-radius:12px;background:#102f4d;color:#fff">
+          <strong>${offer}</strong><span style="float:right">${amount} FCFA</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          ${operators.map(op=>`<button type="button" data-premium-operator="${op.name}" class="btn secondary" style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px">
+            <img src="${op.logo}" alt="${op.name}" style="width:43px;height:43px;object-fit:contain">
+            <strong>${op.name}</strong>
+          </button>`).join('')}
+        </div>
+        ${operators.length?'':'<p class="muted">Aucun moyen de paiement n’est actuellement disponible.</p>'}
+        <button type="button" class="btn secondary" data-premium-back style="margin-top:14px">← Retour aux offres</button>`;
+    }
+    function showGuidedPayment(offer,operator){
+      const offerSelect=document.getElementById('paymentOffer');
+      const operatorSelect=document.getElementById('paymentOperator');
+      if(!offerSelect||!operatorSelect)return;
+      window.batBotPremiumGuidedFlow=true;
+      offerSelect.value=offer;
+      operatorSelect.value=operator;
+      if(typeof updatePaymentOfferStyle==='function')updatePaymentOfferStyle();
+      if(typeof updatePaymentOperatorStyle==='function')updatePaymentOperatorStyle();
+      title.textContent='💳 Paiement — '+operator;
+      body.innerHTML='';
+      mobile.style.display='';
+      addNode(mobile);
+      mobile.querySelectorAll('.payment-offer-field,.payment-operator-field').forEach(el=>el.style.display='none');
+      mobile.querySelectorAll('.payment-number').forEach(el=>{
+        const selected=operator==='Orange Money'?el.classList.contains('orange-network'):
+          operator==='MTN Money'?el.classList.contains('mtn-network'):
+          operator==='Moov Money'?el.classList.contains('moov-network'):false;
+        el.style.display=selected?'':'none';
+      });
+      const waveBlock=mobile.querySelector('.wave-mobile-payment-block');
+      if(waveBlock)waveBlock.style.display=operator==='Wave'?'':'none';
+      body.insertAdjacentHTML('afterbegin',`
+        <div style="padding:12px;margin-bottom:12px;border-radius:12px;background:#102f4d;color:#fff">
+          <strong>${offer}</strong><span style="float:right">${Number(document.getElementById('paymentAmount').value).toLocaleString('fr-FR')} FCFA</span>
+        </div>
+        <button type="button" class="btn secondary" data-premium-back style="margin-bottom:12px">← Changer d’opérateur</button>`);
+      modal.classList.remove('hidden');
+      document.body.style.overflow='hidden';
+    }
+    window.showBatBotPaymentReceipt=function(data){
+      if(!window.batBotPremiumGuidedFlow)return;
+      mobile.classList.add('hidden');
+      const whatsapp=SERVICE_FLAGS.whatsapp?'<button type="button" class="btn whatsapp" onclick="sendPaymentWhatsApp()">💬 Envoyer ma preuve sur WhatsApp</button>':'';
+      body.insertAdjacentHTML('beforeend',`
+        <div style="padding:20px;border:1px solid #39c98a;border-radius:16px;background:linear-gradient(145deg,#123b32,#0b223d);color:#fff">
+          <div style="text-align:center;font-size:38px">🧾</div>
+          <h3 style="text-align:center;margin:8px 0 14px">Demande enregistrée !</h3>
+          <p style="text-align:center;color:#b9f5d5">Votre demande de paiement a bien été transmise à BATBOT PRO.</p>
+          <div style="padding:13px;border-radius:12px;background:rgba(0,0,0,.2);line-height:1.9">
+            <div><strong>Demande N° :</strong> ${data.id}</div>
+            <div><strong>Offre :</strong> ${data.offer}</div>
+            <div><strong>Opérateur :</strong> ${data.operator}</div>
+            <div><strong>Montant :</strong> ${Number(data.amount).toLocaleString('fr-FR')} FCFA</div>
+          </div>
+          <p style="margin:15px 0;padding:12px;border-radius:10px;background:rgba(245,197,66,.13);color:#ffe28a;text-align:center;font-weight:800">⏳ En attente de vérification</p>
+          <p style="font-size:13px;line-height:1.5;color:#d9e7f3">Votre abonnement sera activé après vérification et validation de votre paiement par l'administrateur.</p>
+          ${whatsapp}
+          <button type="button" class="btn secondary" data-premium-receipt-close style="width:100%;margin-top:10px">Fermer</button>
+        </div>`);
+    };
+    body.addEventListener('click',event=>{
+      const offerButton=event.target.closest('[data-premium-offer]');
+      if(offerButton){
+        const offer=offerButton.dataset.premiumOffer;
+        const select=document.getElementById('paymentOffer');
+        if(select){select.value=offer;if(typeof updatePaymentOfferStyle==='function')updatePaymentOfferStyle();}
+        showPremiumOperators(offer);
+        return;
+      }
+      const operatorButton=event.target.closest('[data-premium-operator]');
+      if(operatorButton){
+        const offer=document.getElementById('paymentOffer')?.value;
+        showGuidedPayment(offer,operatorButton.dataset.premiumOperator);
+        return;
+      }
+      if(event.target.closest('[data-premium-back]')){
+        const operatorSelect=document.getElementById('paymentOperator');
+        if(operatorSelect&&body.contains(mobile)){
+          restoreNodes();
+          resetGuidedPayment();
+          showPremiumOperators(document.getElementById('paymentOffer')?.value||'Premium 7 jours');
+        }else{
+          openPremiumSelectionWindow();
+        }
+        return;
+      }
+      if(event.target.closest('[data-premium-receipt-close]'))closePaymentWindow();
+    });
+
     window.openBatBotPremiumPaymentWindow=function(){
       openPaymentWindow('premium');
     };
+    window.openBatBotPremiumSelectionWindow=openPremiumSelectionWindow;
+    window.closeBatBotPaymentWindow=closePaymentWindow;
 
     launcher.querySelectorAll('[data-payment-window]').forEach(button=>{
       button.addEventListener('click',()=>openPaymentWindow(button.dataset.paymentWindow));
@@ -5033,7 +5174,7 @@ async function submitBatBotAI(){
 function analyzeFootballMatch(home,away,homeId,awayId,fixture){
   const currentUser=window.batBotCurrentUser||{};
   if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
-    if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
+    if(typeof window.openBatBotPremiumSelectionWindow==='function')window.openBatBotPremiumSelectionWindow();else if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
     else showToast("Abonnement Premium requis. Ouvrez Plus ou Abonnement pour consulter les options d’abonnement.","error");
     return;
   }
