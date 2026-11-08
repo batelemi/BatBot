@@ -3163,6 +3163,32 @@ function showDashboard(user){
   startBatBotMessagesPolling();
 }
 
+function showBatBotApkDownloadChoice(username){
+  let modal=document.getElementById("batbotApkDownloadModal");
+  if(!modal){
+    modal=document.createElement("div");
+    modal.id="batbotApkDownloadModal";
+    modal.className="batbot-message-modal hidden";
+    modal.setAttribute("role","dialog");
+    modal.setAttribute("aria-modal","true");
+    modal.innerHTML='<div class="batbot-message-modal-inner"><div class="batbot-message-modal-kicker">BATBOT PRO • APPLICATION ANDROID</div><div class="batbot-message-modal-title">🎉 Bienvenue sur BATBOT PRO !</div><div class="batbot-message-modal-body">Votre compte a été créé avec succès. Téléchargez notre application Android pour profiter de BATBOT PRO sur votre téléphone, ou continuez directement sur le site.</div><div class="batbot-message-modal-actions"><a class="btn primary" href="/downloads/batbot-pro.apk" download="batbot-pro.apk" onclick="setTimeout(continueAfterBatBotApkDownload,300)">📲 TÉLÉCHARGER BATBOT PRO</a><button class="btn secondary" type="button" onclick="continueAfterBatBotApkDownload()">Continuer sur le site</button></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener("click",function(e){
+      if(e.target===modal)continueAfterBatBotApkDownload();
+    });
+  }
+  modal.dataset.username=username;
+  modal.classList.remove("hidden");
+}
+function continueAfterBatBotApkDownload(){
+  const modal=document.getElementById("batbotApkDownloadModal");
+  const username=modal?.dataset.username||"";
+  if(modal)modal.classList.add("hidden");
+  showLogin();
+  document.getElementById("loginUsername").value=username;
+  document.getElementById("loginPassword").value="";
+}
+
 async function register(){
   const username=document.getElementById("registerUsername").value.trim();
   const password=document.getElementById("registerPassword").value;
@@ -3206,14 +3232,7 @@ async function register(){
     }
 
     showStatus("registerStatus",data.message||"Compte créé avec succès.","success");
-    showLoading("Compte créé. Préparation de la connexion…","/assets/branding/batbot-pro.png");
-
-    setTimeout(function(){
-      showLogin();
-      document.getElementById("loginUsername").value=username;
-      document.getElementById("loginPassword").value="";
-      hideLoading();
-    },1400);
+    showBatBotApkDownloadChoice(username);
 
   }catch(error){
     console.error("REGISTER:",error);
