@@ -9056,50 +9056,39 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       .trim().toUpperCase();
     const name = String(option.name || match?.recommendation || "")
       .trim().toUpperCase();
+    const rawMarket = code || name;
+    const totalOver = rawMarket.match(/^(?:OVER|PLUS DE)\s*(\d)[.,](\d)(?:\s+BUTS?)?$/);
+    const totalUnder = rawMarket.match(/^(?:UNDER|MOINS DE)\s*(\d)[.,](\d)(?:\s+BUTS?)?$/);
+    const market = code || (
+      totalOver ? `OVER${totalOver[1]}${totalOver[2]}` :
+      totalUnder ? `UNDER${totalUnder[1]}${totalUnder[2]}` :
+      name
+    );
 
-    const market = code || name;
-
-    if(
-      market === "OVER15" || /^(OVER 1\.5|PLUS DE 1[,.]5)/.test(market)
-    ){
-      return total >= 2 ? score : "";
+    let matchLine = market.match(/^(OVER|UNDER)(\d{2})$/);
+    if(matchLine){
+      const line = Number(matchLine[2]) / 10;
+      return matchLine[1] === "OVER"
+        ? (total > line ? score : "")
+        : (total < line ? score : "");
     }
 
-    if(
-      market === "OVER25" || /^(OVER 2\.5|PLUS DE 2[,.]5)/.test(market)
-    ){
-      return total >= 3 ? score : "";
+    matchLine = market.match(/^(HOME|AWAY)_(OVER|UNDER)(\d{2})$/);
+    if(matchLine){
+      const goals = matchLine[1] === "HOME" ? home : away;
+      const line = Number(matchLine[3]) / 10;
+      return matchLine[2] === "OVER"
+        ? (goals > line ? score : "")
+        : (goals < line ? score : "");
     }
 
-    if(
-      market === "OVER35" || /^(OVER 3\.5|PLUS DE 3[,.]5)/.test(market)
-    ){
-      return total >= 4 ? score : "";
-    }
-
-    if(
-      market === "UNDER15" || /^(UNDER 1\.5|MOINS DE 1[,.]5)/.test(market)
-    ){
-      return total <= 1 ? score : "";
-    }
-
-    if(
-      market === "UNDER25" || /^(UNDER 2\.5|MOINS DE 2[,.]5)/.test(market)
-    ){
-      return total <= 2 ? score : "";
-    }
-
-    if(
-      market === "UNDER35" || /^(UNDER 3\.5|MOINS DE 3[,.]5)/.test(market)
-    ){
-      return total <= 3 ? score : "";
-    }
-
-    if(market === "BTTS_YES" || /BTTS.*(YES|OUI)|LES DEUX ÉQUIPES MARQUENT.*OUI/.test(market)){
+    if(market === "BTTS_YES" ||
+       /BTTS.*(YES|OUI)|LES DEUX ÉQUIPES MARQUENT.*OUI/.test(market)){
       return home > 0 && away > 0 ? score : "";
     }
 
-    if(market === "BTTS_NO" || /BTTS.*(NO|NON)|LES DEUX ÉQUIPES MARQUENT.*NON/.test(market)){
+    if(market === "BTTS_NO" ||
+       /BTTS.*(NO|NON)|LES DEUX ÉQUIPES MARQUENT.*NON/.test(market)){
       return home === 0 || away === 0 ? score : "";
     }
 
@@ -9112,6 +9101,21 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     if(market === "1X") return home >= away ? score : "";
     if(market === "X2") return away >= home ? score : "";
     if(market === "12") return home !== away ? score : "";
+
+    if(market.startsWith("SCORE_")){
+      const expected = market.slice(6).replace("_", "-");
+      return `${home}-${away}` === expected ? score : "";
+    }
+
+    if(market.startsWith("GOAL_RANGE_")){
+      const range = market.slice("GOAL_RANGE_".length);
+      if(range === "4_") return total >= 4 ? score : "";
+      const bounds = range.match(/^(\d+)_(\d+)$/);
+      if(bounds){
+        return total >= Number(bounds[1]) && total <= Number(bounds[2])
+          ? score : "";
+      }
+    }
 
     return score;
   }

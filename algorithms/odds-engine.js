@@ -29,7 +29,7 @@
 
 "use strict";
 
-const MAX_GOALS = 10;
+const MAX_GOALS = 18;
 const MIN_MATCHES = 5;
 const MIN_SPLIT_MATCHES = 3;
 
@@ -732,140 +732,110 @@ function getCompatibleBestScore(matrix, preferredResult) {
   return best;
 }
 
-function calculateMarkets(
-  matrix
-) {
+function calculateMarkets(matrix) {
   let home = 0;
   let draw = 0;
   let away = 0;
-
-  let over15 = 0;
-  let over25 = 0;
-  let over35 = 0;
-
   let btts = 0;
 
-  let bestScore = {
-    homeGoals: 0,
-    awayGoals: 0,
-    probability: 0
+  const totalGoals = {};
+  const homeGoals = {};
+  const awayGoals = {};
+  const goalRanges = {
+    "0-1": 0,
+    "2-3": 0,
+    "4+": 0
   };
+  const scores = [];
 
-  for (
-    let h = 0;
-    h <= MAX_GOALS;
-    h += 1
-  ) {
-    for (
-      let a = 0;
-      a <= MAX_GOALS;
-      a += 1
-    ) {
-      const probability =
-        matrix[h][a];
+  for (const line of [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]) {
+    const key = `over${String(line).replace(".", "")}`;
+    totalGoals[key] = 0;
+  }
 
-      if (
-        h > a
-      ) {
-        home +=
-          probability;
-      } else if (
-        h === a
-      ) {
-        draw +=
-          probability;
-      } else {
-        away +=
-          probability;
+  for (const line of [0.5, 1.5, 2.5, 3.5]) {
+    const key = `over${String(line).replace(".", "")}`;
+    homeGoals[key] = 0;
+    awayGoals[key] = 0;
+  }
+
+  for (let h = 0; h <= MAX_GOALS; h += 1) {
+    for (let a = 0; a <= MAX_GOALS; a += 1) {
+      const probability = matrix[h][a];
+      const total = h + a;
+
+      if (h > a) home += probability;
+      else if (h === a) draw += probability;
+      else away += probability;
+
+      if (h > 0 && a > 0) btts += probability;
+
+      if (total <= 1) goalRanges["0-1"] += probability;
+      else if (total <= 3) goalRanges["2-3"] += probability;
+      else goalRanges["4+"] += probability;
+
+      scores.push({
+        homeGoals: h,
+        awayGoals: a,
+        probability
+      });
+
+      for (const line of [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]) {
+        const key = `over${String(line).replace(".", "")}`;
+        if (total >= Math.floor(line) + 1) {
+          totalGoals[key] += probability;
+        }
       }
 
-      /*
-       * Over 1.5
-       */
-      if (
-        h + a >= 2
-      ) {
-        over15 +=
-          probability;
-      }
+      for (const line of [0.5, 1.5, 2.5, 3.5]) {
+        const key = `over${String(line).replace(".", "")}`;
+        const threshold = Math.floor(line) + 1;
 
-      /*
-       * Over 2.5
-       */
-      if (
-        h + a >= 3
-      ) {
-        over25 +=
-          probability;
+        if (h >= threshold) homeGoals[key] += probability;
+        if (a >= threshold) awayGoals[key] += probability;
       }
-
-      /*
-       * Over 3.5
-       */
-      if (
-        h + a >= 4
-      ) {
-        over35 +=
-          probability;
-      }
-
-      /*
-       * Both Teams To Score
-       */
-      if (
-        h > 0 &&
-        a > 0
-      ) {
-        btts +=
-          probability;
-      }
-
     }
   }
 
-  const preferredResult =
-    home >= draw && home >= away
-      ? "home"
-      : away >= home && away >= draw
-        ? "away"
-        : "draw";
+  for (const line of [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]) {
+    const key = `over${String(line).replace(".", "")}`;
+    totalGoals[key.replace("over", "under")] = 1 - totalGoals[key];
+  }
 
-  bestScore = getCompatibleBestScore(
-    matrix,
-    preferredResult
-  );
+  for (const line of [0.5, 1.5, 2.5, 3.5]) {
+    const key = `over${String(line).replace(".", "")}`;
+    homeGoals[key.replace("over", "under")] = 1 - homeGoals[key];
+    awayGoals[key.replace("over", "under")] = 1 - awayGoals[key];
+  }
+
+  const preferredResult =
+    home >= draw && home >= away ? "home" :
+    away >= home && away >= draw ? "away" : "draw";
+
+  const bestScore = getCompatibleBestScore(matrix, preferredResult);
+
+  scores.sort((x, y) => y.probability - x.probability);
 
   return {
     home,
-
     draw,
-
     away,
-
-    over15,
-
-    over25,
-
-    over35,
-
-    under25:
-      1 - over25,
-
-    under35:
-      1 - over35,
-
-    bttsYes:
-      btts,
-
-    bttsNo:
-      1 - btts,
-
+    over15: totalGoals.over15,
+    over25: totalGoals.over25,
+    over35: totalGoals.over35,
+    under25: totalGoals.under25,
+    under35: totalGoals.under35,
+    bttsYes: btts,
+    bttsNo: 1 - btts,
+    totalGoals,
+    homeGoals,
+    awayGoals,
+    goalRanges,
+    topScores: scores.slice(0, 5),
     bestScore
   };
 }
 
-
-// ============================================================
 // NORMALISATION 1X2
 // ============================================================
 
@@ -1016,60 +986,51 @@ function calculateOdds(
     },
 
     markets: {
-      "1X":
-        formatMarket(
-          probabilities.home +
-          probabilities.draw
-        ),
+      "1X": formatMarket(probabilities.home + probabilities.draw),
+      "X2": formatMarket(probabilities.draw + probabilities.away),
+      "12": formatMarket(probabilities.home + probabilities.away),
 
-      "X2":
-        formatMarket(
-          probabilities.draw +
-          probabilities.away
-        ),
+      over15: formatMarket(markets.over15),
+      over25: formatMarket(markets.over25),
+      over35: formatMarket(markets.over35),
+      under25: formatMarket(markets.under25),
+      under35: formatMarket(markets.under35),
+      bttsYes: formatMarket(markets.bttsYes),
+      bttsNo: formatMarket(markets.bttsNo),
 
-      "12":
-        formatMarket(
-          probabilities.home +
-          probabilities.away
-        ),
+      totalGoals: Object.fromEntries(
+        Object.entries(markets.totalGoals).map(([key, value]) => [
+          key,
+          formatMarket(value)
+        ])
+      ),
 
-      over15:
-        formatMarket(
-          markets.over15
-        ),
+      homeGoals: Object.fromEntries(
+        Object.entries(markets.homeGoals).map(([key, value]) => [
+          key,
+          formatMarket(value)
+        ])
+      ),
 
-      over25:
-        formatMarket(
-          markets.over25
-        ),
+      awayGoals: Object.fromEntries(
+        Object.entries(markets.awayGoals).map(([key, value]) => [
+          key,
+          formatMarket(value)
+        ])
+      ),
 
-      over35:
-        formatMarket(
-          markets.over35
-        ),
+      goalRanges: Object.fromEntries(
+        Object.entries(markets.goalRanges).map(([key, value]) => [
+          key,
+          formatMarket(value)
+        ])
+      ),
 
-      under25:
-        formatMarket(
-          markets.under25
-        ),
-
-      under35:
-        formatMarket(
-          markets.under35
-        ),
-
-      bttsYes:
-        formatMarket(
-          markets.bttsYes
-        ),
-
-      bttsNo:
-        formatMarket(
-          markets.bttsNo
-        )
+      topScores: markets.topScores.map(score => ({
+        score: `${score.homeGoals}-${score.awayGoals}`,
+        ...formatMarket(score.probability)
+      }))
     },
-
     mostLikelyScore: {
       score:
         `${markets.bestScore.homeGoals}-${markets.bestScore.awayGoals}`,

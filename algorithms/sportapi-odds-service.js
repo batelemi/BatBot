@@ -202,19 +202,48 @@ function makeModel(odds, homeStats, awayStats, homeName, awayName) {
   ].map(item => ({ ...item, value: Number(item.value) }));
 
   const definitions = [
-    { code: '1', name: '1', probability: odds.oneXTwo?.home?.probability },
-    { code: 'X', name: 'X', probability: odds.oneXTwo?.draw?.probability },
-    { code: '2', name: '2', probability: odds.oneXTwo?.away?.probability },
-    { code: '1X', name: '1X', probability: odds.markets?.['1X']?.probability },
-    { code: 'X2', name: 'X2', probability: odds.markets?.['X2']?.probability },
-    { code: '12', name: '12', probability: odds.markets?.['12']?.probability },
-    { code: 'OVER15', name: 'Over 1.5', probability: odds.markets?.over15?.probability },
-    { code: 'OVER25', name: 'Over 2.5', probability: odds.markets?.over25?.probability },
-    { code: 'OVER35', name: 'Over 3.5', probability: odds.markets?.over35?.probability },
-    { code: 'UNDER25', name: 'Under 2.5', probability: odds.markets?.under25?.probability },
-    { code: 'UNDER35', name: 'Under 3.5', probability: odds.markets?.under35?.probability },
-    { code: 'BTTS_YES', name: 'BTTS Oui', probability: odds.markets?.bttsYes?.probability },
-    { code: 'BTTS_NO', name: 'BTTS Non', probability: odds.markets?.bttsNo?.probability }
+    { code: '1', name: `Victoire ${homeName}`, probability: odds.oneXTwo?.home?.probability, group: 'result' },
+    { code: 'X', name: 'Match nul', probability: odds.oneXTwo?.draw?.probability, group: 'result' },
+    { code: '2', name: `Victoire ${awayName}`, probability: odds.oneXTwo?.away?.probability, group: 'result' },
+
+    { code: '1X', name: `${homeName} ou match nul`, probability: odds.markets?.['1X']?.probability, group: 'double' },
+    { code: 'X2', name: `${awayName} ou match nul`, probability: odds.markets?.['X2']?.probability, group: 'double' },
+    { code: '12', name: 'Une des deux équipes gagne', probability: odds.markets?.['12']?.probability, group: 'double' },
+
+    ...[0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5].flatMap(line => {
+      const suffix = String(line).replace('.', '');
+      return [
+        { code: `OVER${suffix}`, name: `Over ${line}`, probability: odds.markets?.totalGoals?.[`over${suffix}`]?.probability, group: 'goals' },
+        { code: `UNDER${suffix}`, name: `Under ${line}`, probability: odds.markets?.totalGoals?.[`under${suffix}`]?.probability, group: 'goals' }
+      ];
+    }),
+
+    ...[0.5, 1.5, 2.5, 3.5].flatMap(line => {
+      const suffix = String(line).replace('.', '');
+      return [
+        { code: `HOME_OVER${suffix}`, name: `${homeName} plus de ${line} but`, probability: odds.markets?.homeGoals?.[`over${suffix}`]?.probability, group: 'home-goals' },
+        { code: `HOME_UNDER${suffix}`, name: `${homeName} moins de ${line} but`, probability: odds.markets?.homeGoals?.[`under${suffix}`]?.probability, group: 'home-goals' },
+        { code: `AWAY_OVER${suffix}`, name: `${awayName} plus de ${line} but`, probability: odds.markets?.awayGoals?.[`over${suffix}`]?.probability, group: 'away-goals' },
+        { code: `AWAY_UNDER${suffix}`, name: `${awayName} moins de ${line} but`, probability: odds.markets?.awayGoals?.[`under${suffix}`]?.probability, group: 'away-goals' }
+      ];
+    }),
+
+    { code: 'BTTS_YES', name: 'Les deux équipes marquent : Oui', probability: odds.markets?.bttsYes?.probability, group: 'btts' },
+    { code: 'BTTS_NO', name: 'Les deux équipes marquent : Non', probability: odds.markets?.bttsNo?.probability, group: 'btts' },
+
+    ...Object.entries(odds.markets?.goalRanges || {}).map(([range, market]) => ({
+      code: `GOAL_RANGE_${range.replace(/[^0-9]/g, '_')}`,
+      name: `Tranche de buts ${range}`,
+      probability: market?.probability,
+      group: 'ranges'
+    })),
+
+    ...(odds.markets?.topScores || []).map(item => ({
+      code: `SCORE_${String(item.score).replace('-', '_')}`,
+      name: `Score exact ${item.score}`,
+      probability: item.probability,
+      group: 'exact-score'
+    }))
   ];
 
   const options = definitions
@@ -228,23 +257,31 @@ function makeModel(odds, homeStats, awayStats, homeName, awayName) {
     .map(item => {
       const probability = Number(item.probability);
       return {
-        ...item,
+        code: item.code,
+        name: item.name,
         probability,
+        theoreticalOdds: probability > 0
+          ? Number((100 / probability).toFixed(2))
+          : null,
         risk: probability >= 75 ? 'faible' :
-              probability >= 60 ? 'modéré' : 'élevé',
-        reason: 'Probabilité calculée par le moteur Poisson v3 à partir de l’historique SportAPI.ai vérifié.'
+          probability >= 60 ? 'modéré' : 'élevé',
+        reason: 'Probabilité calculée par le moteur Poisson v3 à partir de l’historique SportAPI.ai vérifié.',
+        group: item.group
       };
     });
 
-  const eligible = options.filter(
-    item => item.probability >= MIN_RECOMMENDATION_PROBABILITY
+  const eligible = options.filter(item =>
+    item.probability >= MIN_RECOMMENDATION_PROBABILITY &&
+    item.probability <= 85 &&
+    ['result', 'double', 'goals', 'home-goals', 'away-goals', 'btts'].includes(item.group)
   );
 
-  const best = eligible.reduce(
-    (current, item) =>
-      !current || item.probability > current.probability ? item : current,
-    null
-  );
+  const best = eligible.reduce((current, item) => {
+    if (!current) return item;
+    const currentDistance = Math.abs(current.probability - 70);
+    const itemDistance = Math.abs(item.probability - 70);
+    return itemDistance < currentDistance ? item : current;
+  }, null);
 
   return {
     ready: true,
@@ -253,8 +290,8 @@ function makeModel(odds, homeStats, awayStats, homeName, awayName) {
     recommendation: best?.name || 'Aucun marché suffisamment fiable',
     recommendationCode: best?.code || null,
     reason: best
-      ? `Le marché ${best.name} a la probabilité calculée la plus élevée parmi les marchés évalués atteignant le seuil de ${MIN_RECOMMENDATION_PROBABILITY} %. Analyse Poisson v3 fondée sur l’historique terminé de SportAPI.ai pour ${homeName} à domicile et ${awayName} à l’extérieur.`
-      : `Aucun marché évalué n’atteint le seuil minimal de ${MIN_RECOMMENDATION_PROBABILITY} %. Aucun pronostic principal n’est recommandé.`,
+      ? `Le marché ${best.name} a été retenu parmi les marchés pertinents dont la probabilité se situe entre ${MIN_RECOMMENDATION_PROBABILITY} % et 85 %. Analyse Poisson v3 fondée sur l’historique terminé de SportAPI.ai pour ${homeName} à domicile et ${awayName} à l’extérieur.`
+      : `Aucun marché pertinent n’atteint les critères de sélection. Aucun pronostic principal n’est recommandé.`,
     probabilities,
     options,
     expected_goals: odds.expectedGoals,
@@ -264,6 +301,7 @@ function makeModel(odds, homeStats, awayStats, homeName, awayName) {
     data_quality: 'bonne'
   };
 }
+
 async function analyzeSportApiMatches(fixtures, options = {}) {
   if (!Array.isArray(fixtures) || !fixtures.length) throw new Error('Aucun match SportAPI.ai à analyser.');
   const apiKey = options.apiKey || process.env.SPORTAPI_KEY;
