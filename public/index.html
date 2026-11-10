@@ -6465,6 +6465,9 @@ async function handlePaymentApprovalSwitch(input,id){
             if(!r.ok)throw new Error(d.error||"Action impossible.");
             showToast(d.message||(status==="accepted"?"Paiement approuvé.":"Paiement refusé."),"success");
             await loadAdminPaymentRequests();
+            if(status==="accepted"){
+              await loadAdmin();
+            }
           }catch(e){
             showToast(friendlyActionError(e,"Impossible de traiter ce paiement. Réessayez."),"error");
             if(button){
