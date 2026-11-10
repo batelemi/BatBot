@@ -4601,7 +4601,7 @@ function renderBatBotTeamFlag(value,teamName,countryCode,teamId,teamMetadata){
   const nameCode=footballCountryCodeForTeam(teamName);
   const suppliedCode=String(countryCode||meta.country_code||meta.countryCode||meta.geo||"").trim().toUpperCase();
   const metadataCode=/^[A-Z]{2}$/.test(suppliedCode)?suppliedCode:footballCountryCodeForTeam(suppliedCode);
-  const isNational=explicitNational===true||(explicitNational!==false&&!typeIsClub&&(typeIsNational||!!nameCode));
+  const isNational=explicitNational===true||(!typeIsClub&&(typeIsNational||!!nameCode));
   const code=isNational?(metadataCode||nameCode):"";
   const countryFlag=/^[A-Z]{2}$/.test(code)
     ? String.fromCodePoint(...[...code].map(ch=>127397+ch.charCodeAt(0))) : "";
@@ -4609,6 +4609,10 @@ function renderBatBotTeamFlag(value,teamName,countryCode,teamId,teamMetadata){
     .slice(0,2).map(part=>part[0]).join("").toUpperCase();
   const fallback=isNational?(countryFlag||initials||"⚽"):(initials||"⚽");
   const countryClass=isNational&&/^[A-Z]{2}$/.test(code)?" batbot-crest-country-"+code.toLowerCase():"";
+  // Une sélection nationale reconnue affiche toujours son véritable drapeau.
+  if(isNational&&countryFlag){
+    return '<span class="batbot-team-crest'+countryClass+'" aria-label="'+escapeHtml(teamName||"")+'"><span class="batbot-team-crest-fallback" aria-hidden="true" style="display:flex">'+escapeHtml(countryFlag)+'</span></span>';
+  }
   const clubKey=batBotNormalizeLogoName(teamName);
   const clubAliases={
     "arsenal":"arsenal","arsenal fc":"arsenal",
