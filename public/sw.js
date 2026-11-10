@@ -1,14 +1,11 @@
-const CACHE = "batbot-v10";
+const CACHE = "batbot-v9";
 const ASSETS = [
   "/offline.html",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
   "/assets/branding/batbot-pro.png",
-  "/assets/branding/batbot-pro-admin.png",
-  ...Array.from({ length: 10 }, (_, index) =>
-    "/avatars/avatar-" + String(index + 1).padStart(2, "0") + ".svg"
-  )
+  "/assets/branding/batbot-pro-admin.png"
 ];
 
 self.addEventListener("install", event => {
