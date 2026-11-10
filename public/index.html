@@ -2029,6 +2029,34 @@ document.addEventListener("keydown",function(event){
 });
 </script>
 
+<style id="batbot-mobile-scroll-performance-fix">
+@media (max-width: 700px) {
+  #footballResults .match-card {
+    box-shadow: 0 3px 9px rgba(0,0,0,.12) !important;
+  }
+
+  #footballResults .match-card.batbot-match-upcoming::before,
+  #footballResults .match-card.batbot-match-finished::before {
+    background-image: linear-gradient(145deg,rgba(3,12,22,.88),rgba(3,12,22,.72)) !important;
+  }
+
+  #footballResults .match-card.batbot-match-live-pitch {
+    box-shadow: 0 3px 9px rgba(0,0,0,.12) !important;
+  }
+
+  #footballResults .batbot-match-pitch-bg {
+    opacity: .10 !important;
+  }
+
+  #footballResults .batbot-match-ball {
+    animation: none !important;
+  }
+
+  #footballResults .batbot-match-player {
+    box-shadow: none !important;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -8447,12 +8475,13 @@ function openMemberProfile(){
       const avatarId=/^avatar-(0[1-9]|10)$/.test(String(user.avatar_id||''))?user.avatar_id:'avatar-01';
       const premium=Boolean(user.is_subscribed||user.subscribed||user.subscription_active);
       const avatarSrc=id=>'/avatars/'+id+'.svg';
+    const avatarFallback='data:image/svg+xml,'+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='50' fill='#123b5b'/><circle cx='50' cy='37' r='19' fill='#65c8ef'/><path d='M15 94c2-23 16-35 35-35s33 12 35 35' fill='#65c8ef'/></svg>');
       const avatarNames=['Sandra','Bernice','Aïcha','Béné','Ariel','Wisdom','Donald','Lamine','Alfred','Gilbert'];
       profileCard.innerHTML=`
         <div class="batbot-profile">
           <div class="section-kicker">MON ESPACE PERSONNEL</div>
           <div class="batbot-profile-hero">
-            <img class="batbot-profile-avatar" id="batbotProfileAvatarPreview" src="${avatarSrc(avatarId)}" alt="Avatar du profil">
+            <img class="batbot-profile-avatar" id="batbotProfileAvatarPreview" src="${avatarSrc(avatarId)}" alt="Avatar du profil" loading="eager" decoding="async" onerror="this.onerror=null;this.src=&quot;${avatarFallback}&quot;">
             <div style="min-width:0;flex:1">
               <h2 class="batbot-profile-name">${escapeHtml(user.full_name||user.username||'Membre BATBOT')}</h2>
               <p class="batbot-profile-sub">@${escapeHtml(user.username||'membre')}</p>
@@ -8478,7 +8507,7 @@ function openMemberProfile(){
           <details class="batbot-profile-section" id="batbotAvatarSection">
             <summary><i class="fa-solid fa-face-smile"></i>Choisir parmi 10 avatars</summary>
             <p style="font-size:11px;opacity:.75;padding:0 13px;margin:0 0 10px">5 avatars féminins et 5 masculins. Les photos personnelles ne peuvent pas être importées.</p>
-            <div class="batbot-avatar-grid">${avatarNames.map((name,index)=>{const id='avatar-'+String(index+1).padStart(2,'0');return `<button type="button" class="batbot-avatar-choice ${id===avatarId?'selected':''}" data-avatar-id="${id}" aria-pressed="${id===avatarId}"><img src="${avatarSrc(id)}" alt=""><span>${name}</span></button>`;}).join('')}</div>
+            <div class="batbot-avatar-grid">${avatarNames.map((name,index)=>{const id='avatar-'+String(index+1).padStart(2,'0');return `<button type="button" class="batbot-avatar-choice ${id===avatarId?'selected':''}" data-avatar-id="${id}" aria-pressed="${id===avatarId}"><img src="${avatarSrc(id)}" alt="" loading="eager" decoding="async" onerror="this.onerror=null;this.src=&quot;${avatarFallback}&quot;"><span>${name}</span></button>`;}).join('')}</div>
           </details>
           <details class="batbot-profile-section" id="batbotPasswordSection">
             <summary><i class="fa-solid fa-lock"></i>Changer le mot de passe</summary>
