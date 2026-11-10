@@ -1096,6 +1096,14 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
   color:#FFFFFF;
   background:linear-gradient(135deg,#012169 0 45%,#FFFFFF 45% 55%,#C8102E 55% 70%,#012169 70% 100%);
 }
+/* Drapeaux nationaux : afficher l'emoji sans ancien fond tricolore */
+.batbot-team-crest[class*="batbot-crest-country-"] .batbot-team-crest-fallback{
+  background:#FFFFFF!important;
+  color:#102235!important;
+  font-size:24px!important;
+  text-shadow:none!important;
+}
+
 .batbot-team-crest.batbot-crest-club .batbot-team-crest-fallback{
   color:var(--batbot-fallback-text,#FFFFFF);
   background:var(--batbot-fallback-bg,linear-gradient(135deg,#087EBD,#102B49 75%));
@@ -4422,8 +4430,29 @@ function renderBatBotModelCard(model,fixture,evidence){
 }
 
 function footballCountryCodeForTeam(name){
-  const key=String(name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-  const map={"cote d ivoire":"CI","ivory coast":"CI","ghana":"GH","nigeria":"NG","senegal":"SN","cameroon":"CM","morocco":"MA","algeria":"DZ","tunisia":"TN","mali":"ML","burkina faso":"BF","guinea":"GN","south africa":"ZA","egypt":"EG","france":"FR","england":"GB","scotland":"GB","wales":"GB","northern ireland":"GB","spain":"ES","portugal":"PT","italy":"IT","germany":"DE","netherlands":"NL","belgium":"BE","brazil":"BR","argentina":"AR","uruguay":"UY","colombia":"CO","mexico":"MX","united states":"US","usa":"US","japan":"JP","south korea":"KR","australia":"AU","switzerland":"CH","croatia":"HR","serbia":"RS","denmark":"DK","sweden":"SE","norway":"NO","finland":"FI","poland":"PL","ukraine":"UA","turkey":"TR","türkiye":"TR","czech republic":"CZ","czechia":"CZ","austria":"AT","ireland":"IE","cameroon":"CM"};
+  let key=String(name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  key=key.replace(/\s+(women|woman|female|men|man|male|ladies|girls|boys|u\d{2})$/i,"").trim();
+  const map={
+    "cote d ivoire":"CI","ivory coast":"CI","ghana":"GH","nigeria":"NG",
+    "senegal":"SN","cameroon":"CM","morocco":"MA","algeria":"DZ",
+    "tunisia":"TN","mali":"ML","burkina faso":"BF","guinea":"GN",
+    "south africa":"ZA","egypt":"EG","congo":"CG","republic of congo":"CG",
+    "congo republic":"CG","congo brazzaville":"CG",
+    "dr congo":"CD","congo dr":"CD","congo kinshasa":"CD",
+    "democratic republic of congo":"CD",
+    "central african republic":"CF","gabon":"GA","chad":"TD",
+    "france":"FR","england":"GB","scotland":"GB","wales":"GB",
+    "northern ireland":"GB","spain":"ES","portugal":"PT","italy":"IT",
+    "germany":"DE","netherlands":"NL","belgium":"BE","brazil":"BR",
+    "argentina":"AR","uruguay":"UY","colombia":"CO","mexico":"MX",
+    "united states":"US","usa":"US","japan":"JP","south korea":"KR",
+    "korea republic":"KR","korea dpr":"KP","north korea":"KP",
+    "australia":"AU","switzerland":"CH","croatia":"HR","serbia":"RS",
+    "denmark":"DK","sweden":"SE","norway":"NO","finland":"FI",
+    "poland":"PL","ukraine":"UA","turkey":"TR","turkiye":"TR",
+    "czech republic":"CZ","czechia":"CZ","austria":"AT","ireland":"IE",
+    "iran":"IR","ir iran":"IR"
+  };
   return map[key]||"";
 }
 
@@ -4562,15 +4591,24 @@ function batBotLocalCompetitionLogoUrl(name){
   };
   return map[key] ? "/football-logos/" + map[key] : "";
 }
-function renderBatBotTeamFlag(value,teamName,countryCode,teamId){
+function renderBatBotTeamFlag(value,teamName,countryCode,teamId,teamMetadata){
   const raw=String(value||"").trim();
-  const code=(String(countryCode||"").trim().toUpperCase()||footballCountryCodeForTeam(teamName));
+  const meta=teamMetadata&&typeof teamMetadata==="object"?teamMetadata:{};
+  const explicitNational=typeof meta.is_national==="boolean"?meta.is_national:null;
+  const teamType=String(meta.team_type||meta.teamType||meta.type||"").trim().toLowerCase().replace(/[ -]+/g,"_");
+  const typeIsNational=/^(national|national_team|country|international)$/.test(teamType);
+  const typeIsClub=/^(club|club_team|football_club|professional_club)$/.test(teamType);
+  const nameCode=footballCountryCodeForTeam(teamName);
+  const suppliedCode=String(countryCode||meta.country_code||meta.countryCode||meta.geo||"").trim().toUpperCase();
+  const metadataCode=/^[A-Z]{2}$/.test(suppliedCode)?suppliedCode:footballCountryCodeForTeam(suppliedCode);
+  const isNational=explicitNational===true||(explicitNational!==false&&!typeIsClub&&(typeIsNational||!!nameCode));
+  const code=isNational?(metadataCode||nameCode):"";
   const countryFlag=/^[A-Z]{2}$/.test(code)
     ? String.fromCodePoint(...[...code].map(ch=>127397+ch.charCodeAt(0))) : "";
   const initials=String(teamName||"").trim().split(/\s+/).filter(Boolean)
     .slice(0,2).map(part=>part[0]).join("").toUpperCase();
-  const fallback=/^[A-Z]{2}$/.test(code)?code:(initials||"⚽");
-  const countryClass=/^[A-Z]{2}$/.test(code)?" batbot-crest-country-"+code.toLowerCase():"";
+  const fallback=isNational?(countryFlag||initials||"⚽"):(initials||"⚽");
+  const countryClass=isNational&&/^[A-Z]{2}$/.test(code)?" batbot-crest-country-"+code.toLowerCase():"";
   const clubKey=batBotNormalizeLogoName(teamName);
   const clubAliases={
     "arsenal":"arsenal","arsenal fc":"arsenal",
@@ -5455,7 +5493,7 @@ function renderFootballFixtures(fixtures,checkedDate){
   const visibleCount=Math.min(fixtures.length,Number(window.batBotVisibleFixtureCount)||20);
   box.innerHTML=fixtures.slice(0,visibleCount).map(function(item,index){
     const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=translateFootballTeamName(homeTeam.display_name||homeTeam.name||"Équipe 1"),away=translateFootballTeamName(awayTeam.display_name||awayTeam.name||"Équipe 2");
-    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.logo_url||homeTeam.image_url||"",homeTeam.name,homeTeam.country_code||homeTeam.countryCode||homeTeam.country,homeTeam.id),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.logo_url||awayTeam.image_url||"",awayTeam.name,awayTeam.country_code||awayTeam.countryCode||awayTeam.country,awayTeam.id);
+    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.logo_url||homeTeam.image_url||"",homeTeam.name,homeTeam.country_code||homeTeam.countryCode||homeTeam.country,homeTeam.id,homeTeam),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.logo_url||awayTeam.image_url||"",awayTeam.name,awayTeam.country_code||awayTeam.countryCode||awayTeam.country,awayTeam.id,awayTeam);
     const competitionEmblem=renderBatBotCompetitionEmblem(league.emblem||league.logo||league.image||league.logo_url||league.logoUrl,league.name);
     const date=formatFootballDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateFootballStatus(f.status?.long||f.status?.short||"Programmé"),score=footballFixtureScore(item);
     let action="";
@@ -5504,7 +5542,7 @@ function renderBatBotLeagueFixtures(fixtures){
     const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
     const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
     const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':item.analysis_available!==true?renderAnalysisUnavailableMessage():'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">🎯 Recevoir mon prono</button>';
-    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",home,homeTeam.country_code||homeTeam.countryCode,homeTeam.id),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",away,awayTeam.country_code||awayTeam.countryCode,awayTeam.id);
+    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",homeTeam.name||home,homeTeam.country_code||homeTeam.countryCode,homeTeam.id,homeTeam),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",awayTeam.name||away,awayTeam.country_code||awayTeam.countryCode,awayTeam.id,awayTeam);
     return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
   list.innerHTML='<button type="button" class="btn secondary" id="batbotLeagueBack">← Tous les championnats</button><div class="batbot-league-group-title">'+(renderBatBotCompetitionEmblem(group.logo,group.name,true)||'🏆')+' <span>'+escapeHtml(group.name)+'</span></div>'+rows;
@@ -9459,8 +9497,8 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       const venue=venueName(fixture);
       const competition=fixture?.league?.name||fixture?.competition||"";
 
-      const flagHome=home?renderBatBotTeamFlag(teamFlag(homeTeam),home,"",homeTeam.id||homeTeam.team_id||homeTeam.teamId):"";
-      const flagAway=away?renderBatBotTeamFlag(teamFlag(awayTeam),away,"",awayTeam.id||awayTeam.team_id||awayTeam.teamId):"";
+      const flagHome=home?renderBatBotTeamFlag(teamFlag(homeTeam),homeTeam.name||home,homeTeam.country_code||homeTeam.countryCode||homeTeam.country,homeTeam.id||homeTeam.team_id||homeTeam.teamId,homeTeam):"";
+      const flagAway=away?renderBatBotTeamFlag(teamFlag(awayTeam),awayTeam.name||away,awayTeam.country_code||awayTeam.countryCode||awayTeam.country,awayTeam.id||awayTeam.team_id||awayTeam.teamId,awayTeam):"";
 
       html+='<div class="ai-ticket-header">'+
         '<div class="ai-ticket-name">'+

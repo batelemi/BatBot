@@ -103,6 +103,54 @@ assert.equal(visualVariants.teams.home.logo, 'https://cdn.sportapi.test/home');
 assert.equal(visualVariants.teams.away.logo, 'https://cdn.sportapi.test/away.webp');
 assert.equal(visualVariants.league.emblem, 'https://cdn.sportapi.test/competition');
 
+// TEST MÉTADONNÉES SÉLECTIONS ET CLUBS
+const teamMetadataFixture = normalizeFixture({
+  id: 105,
+  date: '2026-10-17T18:00:00Z',
+  status: 'NS',
+  home_geo: 'CG',
+  away_geo: 'CI',
+  home_short: 'Congo W',
+  away_short: 'ASEC',
+  teams: {
+    home: {
+      id: 71,
+      name: 'Congo Women',
+      country_code: 'CG',
+      country_name: 'Congo',
+      team_type: 'national',
+      is_national: true
+    },
+    away: {
+      id: 72,
+      name: 'ASEC Mimosas',
+      countryCode: 'CI',
+      country: "Côte d'Ivoire",
+      type: 'club',
+      isNational: false,
+      logo_file: 'https://example.test/asec.svg'
+    }
+  }
+});
+
+assert.ok(teamMetadataFixture, 'Les équipes avec métadonnées doivent être normalisées.');
+assert.equal(teamMetadataFixture.teams.home.country_code, 'CG');
+assert.equal(teamMetadataFixture.teams.home.country, 'Congo');
+assert.equal(teamMetadataFixture.teams.home.geo, 'CG');
+assert.equal(teamMetadataFixture.teams.home.short_name, 'Congo W');
+assert.equal(teamMetadataFixture.teams.home.team_type, 'national');
+assert.equal(teamMetadataFixture.teams.home.is_national, true);
+
+assert.equal(teamMetadataFixture.teams.away.country_code, 'CI');
+assert.equal(teamMetadataFixture.teams.away.country, "Côte d'Ivoire");
+assert.equal(teamMetadataFixture.teams.away.geo, 'CI');
+assert.equal(teamMetadataFixture.teams.away.short_name, 'ASEC');
+assert.equal(teamMetadataFixture.teams.away.team_type, 'club');
+assert.equal(teamMetadataFixture.teams.away.is_national, false);
+assert.equal(teamMetadataFixture.teams.away.logo, 'https://example.test/asec.svg');
+
+console.log('TEST MÉTADONNÉES SÉLECTIONS ET CLUBS : OK');
+
 function historyFor(teamId) {
   return Array.from({ length: 6 }, (_, index) => {
     const isHome = index % 2 === 0;

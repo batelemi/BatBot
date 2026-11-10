@@ -85,14 +85,56 @@ function normalizeFixture(match) {
     match.home_team_data?.crest || match.home_team_data?.image ||
     homeObj.logo || homeObj.crest || homeObj.image || homeObj.logo_url ||
     homeObj.logoUrl || homeObj.image_url || homeObj.imageUrl ||
-    homeObj.badge || homeObj.flag || null;
+    homeObj.logo_file || homeObj.badge || homeObj.flag || null;
   const awayLogo = match.away_logo || match.away_team_logo ||
     match.awayTeam?.logo || match.awayTeam?.crest || match.awayTeam?.image ||
     match.awayTeam?.logoUrl || match.away_team_data?.logo ||
     match.away_team_data?.crest || match.away_team_data?.image ||
     awayObj.logo || awayObj.crest || awayObj.image || awayObj.logo_url ||
     awayObj.logoUrl || awayObj.image_url || awayObj.imageUrl ||
-    awayObj.badge || awayObj.flag || null;
+    awayObj.logo_file || awayObj.badge || awayObj.flag || null;
+  // Préserver les métadonnées SportAPI sans confondre club et sélection.
+  const normalizeTeamMetadata = (team, side) => {
+    const prefix = side === 'home' ? 'home' : 'away';
+    const firstString = (...values) => {
+      const value = values.find(item => typeof item === 'string' && item.trim());
+      return value ? value.trim() : null;
+    };
+    const firstBoolean = (...values) => {
+      for (const value of values) {
+        if (typeof value === 'boolean') return value;
+        if (value === 1 || value === 0) return Boolean(value);
+        if (typeof value === 'string') {
+          const normalized = value.trim().toLowerCase();
+          if (['true', 'yes', '1'].includes(normalized)) return true;
+          if (['false', 'no', '0'].includes(normalized)) return false;
+        }
+      }
+      return null;
+    };
+    const values = {
+      country_code: firstString(
+        team.country_code, team.countryCode, team.country_iso,
+        team.countryIso, team.iso_code, team.isoCode
+      ),
+      country: firstString(team.country, team.country_name, team.countryName),
+      geo: firstString(team.geo, match[`${prefix}_geo`]),
+      short_name: firstString(
+        team.short_name, team.shortName, team.short, match[`${prefix}_short`]
+      ),
+      team_type: firstString(team.team_type, team.teamType, team.type),
+      is_national: firstBoolean(
+        team.is_national, team.isNational, team.national_team,
+        team.nationalTeam, team.is_national_team
+      )
+    };
+    return Object.fromEntries(
+      Object.entries(values).filter(([, value]) => value !== null)
+    );
+  };
+  const homeMetadata = normalizeTeamMetadata(homeObj, 'home');
+  const awayMetadata = normalizeTeamMetadata(awayObj, 'away');
+
   const leagueObj = match.league || match.competition || {};
   const leagueId = match.league_id ?? leagueObj.id ?? null;
   const leagueName = (typeof leagueObj === 'object' ? leagueObj.name : leagueObj) ||
@@ -119,14 +161,16 @@ function normalizeFixture(match) {
         name: home,
         logo: homeLogo,
         flag: homeObj.flag || null,
-        slug: homeObj.slug || null
+        slug: homeObj.slug || null,
+        ...homeMetadata
       },
       away: {
         id: awayId == null ? null : String(awayId),
         name: away,
         logo: awayLogo,
         flag: awayObj.flag || null,
-        slug: awayObj.slug || null
+        slug: awayObj.slug || null,
+        ...awayMetadata
       }
     },
     league: {
