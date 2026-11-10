@@ -5228,7 +5228,7 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
     else showToast("Abonnement Premium requis. Ouvrez Plus ou Abonnement pour consulter les options d’abonnement.","error");
     return;
   }
-  if(fixture){if(isFinishedFixture(fixture)){showFinishedFootballMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}}
+  if(fixture){if(isFinishedFixture(fixture)){showFinishedFootballMatch(fixture);return;}if(!isAnalyzableFixture(fixture)){showToast("Ce match n’est pas disponible pour l’analyse.","error");return;}if(fixture.analysis_available!==true){showToast("Pronostic non disponible : les deux équipes ne disposent pas de suffisamment de données historiques.","error");return;}}
   const input1=document.getElementById("aiMatch1");
   const input2=document.getElementById("aiMatch2");
   if(!input1||!input2)return;
@@ -5254,9 +5254,9 @@ function analyzeFirstTwoFootballMatches(){
     return;
   }
   const fixtures=Array.isArray(window.batBotDailyFixtures)?window.batBotDailyFixtures:[];
-  const candidates=fixtures.filter(isAnalyzableFixture).slice(0,2),first=candidates[0],second=candidates[1];
+  const candidates=fixtures.filter(item=>isAnalyzableFixture(item)&&item.analysis_available===true).slice(0,2),first=candidates[0],second=candidates[1];
   const home1=first?.teams?.home?.name||"",away1=first?.teams?.away?.name||"",home2=second?.teams?.home?.name||"",away2=second?.teams?.away?.name||"";
-  if(!home1||!away1)return showStatus("footballStatus","⚠️ Aucun match à venir ou en direct n’est disponible pour l’analyse.","error");
+  if(!home1||!away1){const hasUnavailable=fixtures.some(item=>isAnalyzableFixture(item)&&item.analysis_available!==true);return showStatus("footballStatus",hasUnavailable?"Pronostic non disponible pour ce match. Les deux équipes ne disposent pas de suffisamment de données historiques pour produire un pronostic fiable.":"⚠️ Aucun match à venir ou en direct n’est disponible pour l’analyse.","error");}
   const input1=document.getElementById("aiMatch1"),input2=document.getElementById("aiMatch2");if(!input1||!input2)return;
   input1.value=home1+" vs "+away1;input2.value=(home2&&away2)?home2+" vs "+away2:"";
   window.batBotSelectedIds={home:String(first?.teams?.home?.id||""),away:String(first?.teams?.away?.id||"")};window.batBotSelectedIds2={home:String(second?.teams?.home?.id||""),away:String(second?.teams?.away?.id||"")};window.batBotSelectedFixtures=[first,second].filter(Boolean);
@@ -5339,6 +5339,9 @@ function updateFootballLiveIndicatorFromLoadedFixtures(){
 
 function isLiveFixture(item){return /(^|\b)(live|en direct|in progress|in play|in_play|first half|first_half|second half|second_half|half time|half_time|halftime|mi temps|1re mi temps|2e mi temps|1st half|2nd half|1h|2h|ht|extra time|extra_time|et|penalties|penalty|pen|paused)(\b|$)/i.test(fixtureStatusKey(item));}
 function isNonAnalyzableFixture(item){return /cancel|postpon|suspend|abandon|annul|report|retard|unknown|not known|tbd/i.test(fixtureStatusKey(item));}
+function renderAnalysisUnavailableMessage(){
+  return '<div class="muted" style="margin-top:12px"><strong>Pronostic non disponible pour ce match</strong><br>Les deux équipes ne disposent pas de suffisamment de données historiques pour produire un pronostic fiable.</div>';
+}
 function isAnalyzableFixture(item){
   const key=String(fixtureStatusKey(item)||"").toLowerCase().replace(/[._-]+/g," ").replace(/\s+/g," ").trim();
   const isLive=/\b(live|en direct|in progress|in play|in_play|first half|first_half|second half|second_half|half time|half_time|halftime|mi temps|1re mi temps|2e mi temps|1st half|2nd half|1h|2h|ht|extra time|extra_time|et|penalties|penalty|pen|paused)\b/i.test(key);
@@ -5464,6 +5467,7 @@ function renderFootballFixtures(fixtures,checkedDate){
     let action="";
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
     else if(blocked||!isAnalyzableFixture(item))action='<div class="muted" style="margin-top:12px">⚠️ Aucun pronostic disponible pour ce match.</div>';
+    else if(item.analysis_available!==true)action=renderAnalysisUnavailableMessage();
     else action='<button type="button" class="btn primary batbot-predict-btn" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
     const country=league.country||league.area||"";
     const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
@@ -5471,7 +5475,7 @@ function renderFootballFixtures(fixtures,checkedDate){
     return '<div class="match-card'+cardClass+'">'+(live?renderBatBotLivePitchBackground():'')+'<div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
   }).join("")+(fixtures.length>visibleCount?'<button type="button" class="btn secondary" id="batbotShowMoreFixtures" style="width:100%;margin-top:10px">Voir plus de matchs · '+(fixtures.length-visibleCount)+' restants</button>':"");
   const moreButton=box.querySelector("#batbotShowMoreFixtures");if(moreButton)moreButton.addEventListener("click",function(){window.batBotVisibleFixtureCount=visibleCount+20;renderFootballFixtures(fixtures,checkedDate);});
-  box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedFootballMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");analyzeFootballMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
+  box.querySelectorAll("[data-batbot-fixture-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-fixture-index"))];if(!item)return;if(isFinishedFixture(item))return showFinishedFootballMatch(item);if(!isAnalyzableFixture(item))return showToast("Ce match n’est pas disponible pour l’analyse.","error");if(item.analysis_available!==true)return showToast("Pronostic non disponible : les données historiques sont insuffisantes.","error");analyzeFootballMatch(item?.teams?.home?.name||"",item?.teams?.away?.name||"",item?.teams?.home?.id,item?.teams?.away?.id,item);});});
   box.querySelectorAll("[data-batbot-result-index]").forEach(function(button){button.addEventListener("click",function(){const item=fixtures[Number(button.getAttribute("data-batbot-result-index"))];if(item)showFinishedFootballMatch(item);});});
 }
 
@@ -5505,13 +5509,13 @@ function renderBatBotLeagueFixtures(fixtures){
     const item=entry.item,homeTeam=item?.teams?.home||{},awayTeam=item?.teams?.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
     const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
     const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
-    const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">🎯 Recevoir mon prono</button>';
+    const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':item.analysis_available!==true?renderAnalysisUnavailableMessage():'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">🎯 Recevoir mon prono</button>';
     const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",home,homeTeam.country_code||homeTeam.countryCode,homeTeam.id),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",away,awayTeam.country_code||awayTeam.countryCode,awayTeam.id);
     return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
   list.innerHTML='<button type="button" class="btn secondary" id="batbotLeagueBack">← Tous les championnats</button><div class="batbot-league-group-title">'+(renderBatBotCompetitionEmblem(group.logo,group.name,true)||'🏆')+' <span>'+escapeHtml(group.name)+'</span></div>'+rows;
   const back=list.querySelector('#batbotLeagueBack');if(back)back.addEventListener('click',function(){window.batBotSelectedLeagueKey="";renderBatBotLeagueFixtures(all);});
-  list.querySelectorAll('[data-batbot-league-fixture]').forEach(function(button){button.addEventListener('click',function(){const item=window.batBotDailyFixtures?.[Number(button.dataset.batbotLeagueFixture)];if(!item)return;analyzeFootballMatch(item.teams?.home?.name||"",item.teams?.away?.name||"",item.teams?.home?.id,item.teams?.away?.id,item);});});
+  list.querySelectorAll('[data-batbot-league-fixture]').forEach(function(button){button.addEventListener('click',function(){const item=window.batBotDailyFixtures?.[Number(button.dataset.batbotLeagueFixture)];if(!item)return;if(item.analysis_available!==true){showToast("Pronostic non disponible : les données historiques sont insuffisantes.","error");return;}analyzeFootballMatch(item.teams?.home?.name||"",item.teams?.away?.name||"",item.teams?.home?.id,item.teams?.away?.id,item);});});
   if(status)status.innerHTML='<div class="professional-status success">'+group.items.length+' match(s) dans ce championnat.</div>';
 }
 function translateFootballStatus(value){

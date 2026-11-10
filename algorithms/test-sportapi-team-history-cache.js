@@ -11,7 +11,11 @@ function createFakePool() {
   return {
     rows,
 
-    async query() {
+    async query(sql, params = []) {
+      if (sql.includes('SELECT matches, fetched_at')) {
+        const row = rows.get(params[0]);
+        return { rows: row ? [row] : [] };
+      }
       return { rows: [], rowCount: 0 };
     },
 
@@ -133,6 +137,25 @@ async function main() {
 
   assert.deepEqual(fallback, [{ team_id: '33', result: 'FT' }]);
   console.log('OK : ancien historique conservé après une panne SportAPI.');
+
+  cache.clearMemoryCache();
+  const callsBeforeEligibility = calls;
+
+  const freshHistory = await cache.getFreshCachedTeamHistory('11');
+  assert.deepEqual(freshHistory, first);
+
+  const missingHistory = await cache.getFreshCachedTeamHistory('44');
+  assert.equal(missingHistory, null);
+
+  const staleHistory = await cache.getFreshCachedTeamHistory('33');
+  assert.equal(staleHistory, null);
+
+  const emptyIdHistory = await cache.getFreshCachedTeamHistory('');
+  assert.equal(emptyIdHistory, null);
+
+  assert.equal(calls, callsBeforeEligibility);
+  console.log('OK : historique récent accepté, historique absent ou périmé refusé.');
+  console.log('OK : vérification d’éligibilité sans aucun appel SportAPI.');
 
   console.log('\nTOUS LES TESTS DU CACHE DES HISTORIQUES SONT RÉUSSIS.');
 }

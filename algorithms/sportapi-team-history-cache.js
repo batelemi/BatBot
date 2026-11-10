@@ -58,6 +58,51 @@ function createTeamHistoryCache({
     }
   }
 
+  async function getFreshCachedTeamHistory(teamId) {
+    const id = String(teamId || '').trim();
+
+    if (!id) {
+      return null;
+    }
+
+    const cached = memoryCache.get(id);
+
+    if (cached) {
+      const age = Date.now() - cached.fetchedAt;
+
+      if (Number.isFinite(age) && age >= 0 && age < ttlMs) {
+        return Array.isArray(cached.matches) ? cached.matches : null;
+      }
+    }
+
+    const result = await pool.query(
+      `SELECT matches, fetched_at
+       FROM sportapi_team_history_cache
+       WHERE team_id = $1`,
+      [id]
+    );
+
+    const row = result.rows[0] || null;
+
+    if (!row || !Array.isArray(row.matches)) {
+      return null;
+    }
+
+    const fetchedAt = new Date(row.fetched_at).getTime();
+    const age = Date.now() - fetchedAt;
+
+    if (!Number.isFinite(age) || age < 0 || age >= ttlMs) {
+      return null;
+    }
+
+    memoryCache.set(id, {
+      matches: row.matches,
+      fetchedAt
+    });
+
+    return row.matches;
+  }
+
   async function loadTeamHistory(id, apiKey) {
     const client = await pool.connect();
     const lockKey = `batbot:sportapi:team-history:${id}`;
@@ -162,6 +207,7 @@ function createTeamHistoryCache({
   return {
     initialize,
     getTeamHistory,
+    getFreshCachedTeamHistory,
     clearMemoryCache
   };
 }

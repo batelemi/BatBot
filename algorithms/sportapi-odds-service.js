@@ -154,6 +154,48 @@ function collectTeamStats(matches, teamId, teamName) {
   return stats;
 }
 
+async function addAnalysisEligibilityToFixtures(fixtures) {
+  if (!Array.isArray(fixtures)) return [];
+
+  return Promise.all(fixtures.map(async fixture => {
+    const homeId = fixture?.teams?.home?.id;
+    const awayId = fixture?.teams?.away?.id;
+    const homeName = String(fixture?.teams?.home?.name || '').trim();
+    const awayName = String(fixture?.teams?.away?.name || '').trim();
+
+    if (!teamHistoryCache || !homeId || !awayId || !homeName || !awayName) {
+      return { ...fixture, analysis_available: false };
+    }
+
+    try {
+      const [homeHistory, awayHistory] = await Promise.all([
+        teamHistoryCache.getFreshCachedTeamHistory(homeId),
+        teamHistoryCache.getFreshCachedTeamHistory(awayId)
+      ]);
+
+      if (!homeHistory || !awayHistory) {
+        return { ...fixture, analysis_available: false };
+      }
+
+      const homeStats = collectTeamStats(homeHistory, homeId, homeName);
+      const awayStats = collectTeamStats(awayHistory, awayId, awayName);
+
+      return {
+        ...fixture,
+        analysis_available:
+          homeStats.matches >= MIN_MATCHES &&
+          awayStats.matches >= MIN_MATCHES
+      };
+    } catch (error) {
+      console.warn(
+        'BATBOT : vérification des historiques en cache impossible :',
+        error.message
+      );
+      return { ...fixture, analysis_available: false };
+    }
+  }));
+}
+
 function extractHistoryMatches(payload) {
   const candidates = [
     payload?.matches,
@@ -383,6 +425,7 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
 module.exports = {
   analyzeSportApiMatches,
   initializeSportApiTeamHistoryCache,
+  addAnalysisEligibilityToFixtures,
   collectTeamStats,
   isFinishedMatch,
   extractHistoryMatches,

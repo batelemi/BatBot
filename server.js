@@ -81,7 +81,8 @@ async function initializeAdminLoginAttempts() {
 
 const {
   analyzeSportApiMatches,
-  initializeSportApiTeamHistoryCache
+  initializeSportApiTeamHistoryCache,
+  addAnalysisEligibilityToFixtures
 } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
 const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/sportapi-quota");
@@ -2897,7 +2898,19 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       });
     }
 
-    const analysis = await analyzeSportApiMatches(validFixtures);
+    const checkedFixtures = await addAnalysisEligibilityToFixtures(validFixtures);
+    const eligibleFixtures = checkedFixtures.filter(
+      fixture => fixture.analysis_available === true
+    );
+
+    if (!eligibleFixtures.length) {
+      return res.status(422).json({
+        ok: false,
+        error: "Pronostic non disponible pour ce match. Les deux équipes ne disposent pas de suffisamment de données historiques pour produire un pronostic fiable."
+      });
+    }
+
+    const analysis = await analyzeSportApiMatches(eligibleFixtures);
     // Conserver chaque analyse exploitable comme un événement historique distinct.
     for (const item of (Array.isArray(analysis.matches) ? analysis.matches : [])) {
       const model = item?.model || {};
@@ -3520,6 +3533,7 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       : "";
 
     const data = await getSportApiFixturesCached(date, statusFilter);
+    const fixturesWithEligibility = await addAnalysisEligibilityToFixtures(data.fixtures);
 
     return res.json({
       ok: true,
@@ -3530,7 +3544,7 @@ app.get("/api/football/fixtures", requireUser, async (req, res) => {
       cached: data.cached,
       stale: Boolean(data.stale),
       refreshing: Boolean(data.stale && sportApiFixturesInFlight.has(date)),
-      response: data.fixtures
+      response: fixturesWithEligibility
     });
   } catch (error) {
     console.error("SportAPI.ai fixtures:", error.message);
@@ -3547,6 +3561,7 @@ app.get("/api/football/live", requireUser, async (req, res) => {
   try {
     const date = currentAbidjanDate();
     const data = await getSportApiFixturesCached(date, "live");
+    const fixturesWithEligibility = await addAnalysisEligibilityToFixtures(data.fixtures);
 
     return res.json({
       ok: true,
@@ -3557,7 +3572,7 @@ app.get("/api/football/live", requireUser, async (req, res) => {
       updated: data.updated,
       cached: data.cached,
       stale: Boolean(data.stale),
-      response: data.fixtures
+      response: fixturesWithEligibility
     });
   } catch (error) {
     console.error("SportAPI.ai live:", error.message);
