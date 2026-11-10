@@ -9329,7 +9329,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       }
 
       if(exactScore){
-        lines.push("• Pari score exact : "+simpleName(exactScore.name, match, fixture)+" (Option recommandée)");
+        lines.push("• Score exact : "+simpleName(exactScore.name, match, fixture));
         lines.push("");
       }
 
@@ -9529,12 +9529,12 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         if(exactScore){
 
           html+='<div class="ai-ticket-section-title">'+
-            '🎯 PARI SCORE EXACT'+
+            '🎯 SCORE EXACT'+
           '</div>';
 
           html+='<div class="ai-ticket-predicted-score">'+
             escapeHtml(simpleName(exactScore.name, match, fixture))+
-            ' <span>(Option recommandée)</span>'+
+
           '</div>';
 
         }
