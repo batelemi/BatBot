@@ -4768,15 +4768,9 @@ function renderBatBotAIResult(raw,modelData){
     const hf=evidence.homeForm||{};
     const af=evidence.awayForm||{};
 
-    const homeName=
-      evidence.homeForm?.teamName||
-      fixture?.teams?.home?.name||
-      "Équipe 1";
+    const homeName=translateFootballTeamName(evidence.homeForm?.teamName||fixture?.teams?.home?.display_name||fixture?.teams?.home?.name||"Équipe 1");
 
-    const awayName=
-      evidence.awayForm?.teamName||
-      fixture?.teams?.away?.name||
-      "Équipe 2";
+    const awayName=translateFootballTeamName(evidence.awayForm?.teamName||fixture?.teams?.away?.display_name||fixture?.teams?.away?.name||"Équipe 2");
 
     const homeFlag=
       evidence?.homeTeam?.logo||
@@ -5369,8 +5363,8 @@ function footballFixtureScore(item){
   return "";
 }
 function showFinishedFootballMatch(item){
-  const home=item?.teams?.home?.name||"Équipe 1";
-  const away=item?.teams?.away?.name||"Équipe 2";
+  const home=translateFootballTeamName(item?.teams?.home?.name||"Équipe 1");
+  const away=translateFootballTeamName(item?.teams?.away?.name||"Équipe 2");
   const competition=item?.league?.name||"Compétition";
   const score=footballFixtureScore(item);
   const when=formatFootballDateTime(item?.fixture?.date);
@@ -5460,7 +5454,7 @@ function renderFootballFixtures(fixtures,checkedDate){
   }
   const visibleCount=Math.min(fixtures.length,Number(window.batBotVisibleFixtureCount)||20);
   box.innerHTML=fixtures.slice(0,visibleCount).map(function(item,index){
-    const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
+    const f=item.fixture||{},teams=item.teams||{},league=item.league||{},homeTeam=teams.home||{},awayTeam=teams.away||{},home=translateFootballTeamName(homeTeam.display_name||homeTeam.name||"Équipe 1"),away=translateFootballTeamName(awayTeam.display_name||awayTeam.name||"Équipe 2");
     const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.logo_url||homeTeam.image_url||"",homeTeam.name,homeTeam.country_code||homeTeam.countryCode||homeTeam.country,homeTeam.id),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.logo_url||awayTeam.image_url||"",awayTeam.name,awayTeam.country_code||awayTeam.countryCode||awayTeam.country,awayTeam.id);
     const competitionEmblem=renderBatBotCompetitionEmblem(league.emblem||league.logo||league.image||league.logo_url||league.logoUrl,league.name);
     const date=formatFootballDateTime(f.date),finished=isFinishedFixture(item),live=isLiveFixture(item),blocked=isNonAnalyzableFixture(item),status=finished?"Terminé":live?"En direct":translateFootballStatus(f.status?.long||f.status?.short||"Programmé"),score=footballFixtureScore(item);
@@ -5506,7 +5500,7 @@ function renderBatBotLeagueFixtures(fixtures){
   const group=sorted.find(function(item){return item.key===selected;});
   if(!group){window.batBotSelectedLeagueKey="";renderBatBotLeagueFixtures(all);return;}
   const rows=group.items.map(function(entry){
-    const item=entry.item,homeTeam=item?.teams?.home||{},awayTeam=item?.teams?.away||{},home=homeTeam.name||"Équipe 1",away=awayTeam.name||"Équipe 2";
+    const item=entry.item,homeTeam=item?.teams?.home||{},awayTeam=item?.teams?.away||{},home=translateFootballTeamName(homeTeam.display_name||homeTeam.name||"Équipe 1"),away=translateFootballTeamName(awayTeam.display_name||awayTeam.name||"Équipe 2");
     const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
     const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
     const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':item.analysis_available!==true?renderAnalysisUnavailableMessage():'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">🎯 Recevoir mon prono</button>';
@@ -5553,6 +5547,22 @@ function translateFootballCompetition(value){
   return text||"Compétition";
 }
 
+function translateFootballTeamName(value){
+  let text=String(value||"").trim();
+  if(!text)return text;
+  const replacements=[
+    [/\bBarcelona\b/gi,"Barcelone"],
+    [/\bAtletico Madrid\b/gi,"Atlético Madrid"],
+    [/\bSevilla\b/gi,"Séville"],
+    [/\bValencia\b/gi,"Valence"],
+    [/\bWomen(?:'s)?\b/gi,"Femme"],
+    [/\bFemen[ií]\b/gi,"Femme"],
+    [/\bFemenin[oa]s?\b/gi,"Femme"]
+  ];
+  replacements.forEach(([re,rep])=>{text=text.replace(re,rep);});
+  return text.replace(/\s+/g," ").trim();
+}
+
 function normalizeFootballClientMatch(match,index){
   const homeObj=match?.teams?.home||match?.home_team_data||match?.homeTeam||
     (match?.home_team&&typeof match.home_team==="object"?match.home_team:{})||
@@ -5586,8 +5596,8 @@ function normalizeFootballClientMatch(match,index){
     ...match,
     fixture:{...(match?.fixture||{}),id:match?.fixture?.id??match?.id??null,date,status:{short,long:translateFootballStatus(displayStatus)}},
     teams:{
-      home:{...homeObj,id:homeId==null?null:String(homeId),name:homeName,logo:homeLogo},
-      away:{...awayObj,id:awayId==null?null:String(awayId),name:awayName,logo:awayLogo}
+      home:{...homeObj,id:homeId==null?null:String(homeId),name:homeName,display_name:translateFootballTeamName(homeName),logo:homeLogo},
+      away:{...awayObj,id:awayId==null?null:String(awayId),name:awayName,display_name:translateFootballTeamName(awayName),logo:awayLogo}
     },
     league:{
       ...(typeof league==="object"?league:{}),
@@ -5783,8 +5793,8 @@ function selectBatBotLiveFixture(index){
   const scoreNode=document.getElementById("batbotLiveScore");
   const note=document.getElementById("batbotLiveScoreNote");
   if(!home||!away||!scoreNode||!note)return;
-  home.textContent=item.teams?.home?.name||"Équipe domicile";
-  away.textContent=item.teams?.away?.name||"Équipe extérieure";
+  home.textContent=translateFootballTeamName(item.teams?.home?.name||"Équipe domicile");
+  away.textContent=translateFootballTeamName(item.teams?.away?.name||"Équipe extérieure");
   scoreNode.textContent=footballFixtureScore(item)||"— : —";
   note.textContent=String(item.fixture?.status?.long||item.fixture?.status?.short||"EN DIRECT").toUpperCase();
 }
@@ -9264,7 +9274,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       const away=fixture?.teams?.away?.name||fixture?.away||"";
 
       if(home || away){
-        lines.push("⚽ "+[home,away].filter(Boolean).join(" vs "));
+        lines.push("⚽ "+[home,away].filter(Boolean).map(translateFootballTeamName).join(" vs "));
       }
 
       const rawDate=fixture?.date||match?.date||"";
@@ -9356,9 +9366,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
     function teamName(fixture,side,fallback){
       const value=fixture?.teams?.[side]?.name||fixture?.[side]||fallback||"";
-      return String(value)
-        .replace(/\b[\w-]+\.(?:png|jpe?g|webp|svg)\s*/gi,"")
-        .trim();
+      return translateFootballTeamName(String(value).replace(/\b[\w-]+\.(?:png|jpe?g|webp|svg)\s*/gi,"").trim());
     }
 
     function teamFlag(team){
@@ -9627,7 +9635,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       ctx.fillStyle="#102235";
       ctx.font="900 25px Arial";
       ctx.fillText(
-        (index+1)+". "+String(match.name||"Match"),
+        (index+1)+". "+(home&&away?[translateFootballTeamName(home),translateFootballTeamName(away)].join(" vs "):translateFootballTeamName(match.name||"Match")),
         50,y
       );
 
