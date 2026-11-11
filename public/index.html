@@ -1067,6 +1067,21 @@ button .batbot-ui-icon,.btn .batbot-ui-icon{margin-right:.28em}
 #footballResults .batbot-fixture-team{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;font-size:13px;font-weight:900;line-height:1.25;overflow-wrap:anywhere}
 #footballResults .batbot-team-crest{width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex:0 0 42px;border-radius:50%;background:#f8fafc;border:1px solid rgba(255,255,255,.22);box-shadow:0 3px 10px rgba(0,0,0,.22);overflow:hidden}
 #footballResults .batbot-team-crest img{display:block;width:100%;height:100%;object-fit:contain;padding:3px}
+
+/* Drapeaux nationaux SVG locaux : format rectangulaire */
+#footballResults .batbot-team-crest.batbot-crest-national-flag,
+.batbot-league-match-teams .batbot-team-crest.batbot-crest-national-flag{
+  border-radius:8px!important;
+  background:#fff;
+}
+#footballResults .batbot-team-crest.batbot-crest-national-flag img,
+.batbot-league-match-teams .batbot-team-crest.batbot-crest-national-flag img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  padding:0;
+}
+
 #footballResults .batbot-team-crest-fallback{display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:20px;color:#102235}
 /* Secours colore uniquement lorsque le logo est absent */
 .batbot-team-crest-fallback{
@@ -4605,9 +4620,10 @@ function renderBatBotTeamFlag(value,teamName,countryCode,teamId,teamMetadata){
     .slice(0,2).map(part=>part[0]).join("").toUpperCase();
   const fallback=isNational?(countryFlag||initials||"⚽"):(initials||"⚽");
   const countryClass=isNational&&/^[A-Z]{2}$/.test(code)?" batbot-crest-country-"+code.toLowerCase():"";
-  // Une sélection nationale reconnue affiche toujours son véritable drapeau.
-  if(isNational&&countryFlag){
-    return '<span class="batbot-team-crest'+countryClass+'" aria-label="'+escapeHtml(teamName||"")+'"><span class="batbot-team-crest-fallback" aria-hidden="true" style="display:flex">'+escapeHtml(countryFlag)+'</span></span>';
+  // Les sélections nationales utilisent les drapeaux SVG locaux (sans appel API).
+  if(isNational&&/^[A-Z]{2}$/.test(code)){
+    const flagUrl="/football-logos/flags/"+code.toLowerCase()+".svg";
+    return '<span class="batbot-team-crest batbot-crest-national-flag'+countryClass+'" aria-label="'+escapeHtml(teamName||"")+'"><img src="'+flagUrl+'" alt="Drapeau '+escapeHtml(teamName||code)+'" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\'"><span class="batbot-team-crest-fallback" aria-hidden="true" style="display:none">'+escapeHtml(countryFlag||initials||"⚽")+'</span></span>';
   }
   const clubKey=batBotNormalizeLogoName(teamName);
   const clubAliases={
@@ -4810,6 +4826,8 @@ function renderBatBotAIResult(raw,modelData){
 
     const awayName=translateFootballTeamName(evidence.awayForm?.teamName||fixture?.teams?.away?.display_name||fixture?.teams?.away?.name||"Équipe 2");
 
+    const homeMeta=evidence?.homeTeam||fixture?.teams?.home||{};
+    const awayMeta=evidence?.awayTeam||fixture?.teams?.away||{};
     const homeFlag=
       evidence?.homeTeam?.logo||
       fixture?.teams?.home?.logo||
@@ -4962,9 +4980,9 @@ function renderBatBotAIResult(raw,modelData){
       return '<div class="ai-match-result batbot-match-card">'+
         '<div class="batbot-match-head">'+
           '<div class="batbot-match-title">⚽ '+
-            renderBatBotTeamFlag(homeFlag)+escapeHtml(homeName)+
+            renderBatBotTeamFlag(homeFlag,homeName,homeMeta.country_code||homeMeta.countryCode||homeMeta.country,homeMeta.id??homeMeta.team_id??homeMeta.teamId,homeMeta)+escapeHtml(homeName)+
             ' <span class="batbot-vs">vs</span> '+
-            renderBatBotTeamFlag(awayFlag)+escapeHtml(awayName)+
+            renderBatBotTeamFlag(awayFlag,awayName,awayMeta.country_code||awayMeta.countryCode||awayMeta.country,awayMeta.id??awayMeta.team_id??awayMeta.teamId,awayMeta)+escapeHtml(awayName)+
           '</div>'+statusHtml+
         '</div>'+
         '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
@@ -4978,10 +4996,10 @@ function renderBatBotAIResult(raw,modelData){
       '<div class="batbot-match-head">'+
         '<div class="batbot-match-title">'+
           '⚽ '+
-          renderBatBotTeamFlag(homeFlag)+
+          renderBatBotTeamFlag(homeFlag,homeName,homeMeta.country_code||homeMeta.countryCode||homeMeta.country,homeMeta.id??homeMeta.team_id??homeMeta.teamId,homeMeta)+
           escapeHtml(homeName)+
           ' <span class="batbot-vs">vs</span> '+
-          renderBatBotTeamFlag(awayFlag)+
+          renderBatBotTeamFlag(awayFlag,awayName,awayMeta.country_code||awayMeta.countryCode||awayMeta.country,awayMeta.id??awayMeta.team_id??awayMeta.teamId,awayMeta)+
           escapeHtml(awayName)+
         '</div>'+
         statusHtml+
@@ -5006,7 +5024,7 @@ function renderBatBotAIResult(raw,modelData){
 
         '<div class="batbot-team-block">'+
           '<div class="batbot-team-name">'+
-            renderBatBotTeamFlag(homeFlag)+
+            renderBatBotTeamFlag(homeFlag,homeName,homeMeta.country_code||homeMeta.countryCode||homeMeta.country,homeMeta.id??homeMeta.team_id??homeMeta.teamId,homeMeta)+
             escapeHtml(homeName)+
           '</div>'+
           '<div class="batbot-form-line">'+
@@ -5019,7 +5037,7 @@ function renderBatBotAIResult(raw,modelData){
 
         '<div class="batbot-team-block">'+
           '<div class="batbot-team-name">'+
-            renderBatBotTeamFlag(awayFlag)+
+            renderBatBotTeamFlag(awayFlag,awayName,awayMeta.country_code||awayMeta.countryCode||awayMeta.country,awayMeta.id??awayMeta.team_id??awayMeta.teamId,awayMeta)+
             escapeHtml(awayName)+
           '</div>'+
           '<div class="batbot-form-line">'+
@@ -5189,16 +5207,22 @@ async function submitBatBotAI(){
           match:item?.match||compatibleMatches[index]?.name||"Match",
           fixture:item?.fixture ? {...item.fixture,...(item.fixture.fixture||{})} : null,
           homeTeam:{
+            ...(item?.fixture?.teams?.home||{}),
+            ...(item?.homeTeam||{}),
+            id:item?.homeTeam?.id??item?.homeTeam?.team_id??item?.homeTeam?.teamId??item?.fixture?.teams?.home?.id??item?.fixture?.teams?.home?.team_id??item?.fixture?.teams?.home?.teamId??null,
             name:item?.homeTeam?.name||item?.fixture?.teams?.home?.name||"",
-            slug:item?.homeTeam?.slug||"",
-            flag:item?.homeTeam?.flag||item?.homeTeam?.flag_emoji||item?.homeTeam?.flagEmoji||item?.homeTeam?.logo||item?.fixture?.teams?.home?.flag||item?.fixture?.teams?.home?.logo||"",
-            logo:item?.homeTeam?.logo||item?.fixture?.teams?.home?.logo||""
+            slug:item?.homeTeam?.slug||item?.fixture?.teams?.home?.slug||"",
+            flag:item?.homeTeam?.flag||item?.homeTeam?.flag_emoji||item?.homeTeam?.flagEmoji||item?.homeTeam?.logo||item?.fixture?.teams?.home?.flag||item?.fixture?.teams?.home?.flag_emoji||item?.fixture?.teams?.home?.logo||"",
+            logo:item?.homeTeam?.logo||item?.homeTeam?.logo_url||item?.homeTeam?.logoUrl||item?.homeTeam?.image||item?.homeTeam?.image_url||item?.homeTeam?.imageUrl||item?.homeTeam?.crest||item?.homeTeam?.badge||item?.fixture?.teams?.home?.logo||item?.fixture?.teams?.home?.logo_url||item?.fixture?.teams?.home?.image_url||""
           },
           awayTeam:{
+            ...(item?.fixture?.teams?.away||{}),
+            ...(item?.awayTeam||{}),
+            id:item?.awayTeam?.id??item?.awayTeam?.team_id??item?.awayTeam?.teamId??item?.fixture?.teams?.away?.id??item?.fixture?.teams?.away?.team_id??item?.fixture?.teams?.away?.teamId??null,
             name:item?.awayTeam?.name||item?.fixture?.teams?.away?.name||"",
-            slug:item?.awayTeam?.slug||"",
-            flag:item?.awayTeam?.flag||item?.awayTeam?.flag_emoji||item?.awayTeam?.flagEmoji||item?.awayTeam?.logo||item?.fixture?.teams?.away?.flag||item?.fixture?.teams?.away?.logo||"",
-            logo:item?.awayTeam?.logo||item?.fixture?.teams?.away?.logo||""
+            slug:item?.awayTeam?.slug||item?.fixture?.teams?.away?.slug||"",
+            flag:item?.awayTeam?.flag||item?.awayTeam?.flag_emoji||item?.awayTeam?.flagEmoji||item?.awayTeam?.logo||item?.fixture?.teams?.away?.flag||item?.fixture?.teams?.away?.flag_emoji||item?.fixture?.teams?.away?.logo||"",
+            logo:item?.awayTeam?.logo||item?.awayTeam?.logo_url||item?.awayTeam?.logoUrl||item?.awayTeam?.image||item?.awayTeam?.image_url||item?.awayTeam?.imageUrl||item?.awayTeam?.crest||item?.awayTeam?.badge||item?.fixture?.teams?.away?.logo||item?.fixture?.teams?.away?.logo_url||item?.fixture?.teams?.away?.image_url||""
           },
           homeForm:{
             teamName:item?.homeTeam?.name||item?.fixture?.teams?.home?.name||"",
@@ -5436,17 +5460,16 @@ function renderBatBotCompetitionEmblem(value,name,large){
     remote=raw;
   }
   const src=local||remote;
-  if(!src)return "";
   const style=large
     ?"width:44px;height:44px;object-fit:contain;vertical-align:middle"
     :"width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px";
   const fallback=local&&remote&&local!==remote?remote:"";
-  return '<span class="batbot-competition-emblem"><img src="'+escapeHtml(src)
-    +'" alt="" loading="lazy" referrerpolicy="no-referrer" style="'+style+'"'
-    +(fallback?' data-remote-fallback="'+escapeHtml(fallback)+'"':'')
-    +' onerror="if(this.dataset.remoteFallback&&!this.dataset.remoteFallbackTried){this.dataset.remoteFallbackTried=\'1\';this.src=this.dataset.remoteFallback;}else{this.onerror=null;this.style.display=\'none\';}"></span>';
+  return '<span class="batbot-competition-emblem" style="display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;'+(large?'width:44px;height:44px;':'width:20px;height:20px;')+'">'
+    +(src?'<img src="'+escapeHtml(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer" style="'+style+'"'
+      +(fallback?' data-remote-fallback="'+escapeHtml(fallback)+'"':'')
+      +' onerror="if(this.dataset.remoteFallback&&!this.dataset.remoteFallbackTried){this.dataset.remoteFallbackTried=\'1\';this.src=this.dataset.remoteFallback;}else{this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'inline-flex\';}">':'')
+    +'<span aria-hidden="true" style="display:'+(src?'none':'inline-flex')+';align-items:center;justify-content:center;'+(large?'width:44px;height:44px;font-size:32px;':'width:20px;height:20px;font-size:16px;')+'">🏆</span></span>';
 }
-
 function renderBatBotLivePitchBackground(){
   return '<div class="batbot-match-pitch-bg" aria-hidden="true"><div class="batbot-match-pitch-surface">'+
     '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><g fill="none" stroke="rgba(210,235,255,.72)" stroke-width=".65">'+
@@ -5541,7 +5564,14 @@ function renderBatBotLeagueFixtures(fixtures){
     const date=formatFootballDateTime(item?.fixture?.date),statusText=isLiveFixture(item)?"En direct":isFinishedFixture(item)?"Terminé":translateFootballStatus(item?.fixture?.status?.long||item?.fixture?.status?.short||"Programmé");
     const disabled=isFinishedFixture(item)||!isAnalyzableFixture(item)||!homeTeam.id||!awayTeam.id;
     const action=disabled?'<span class="batbot-league-match-meta">'+escapeHtml(statusText)+'</span>':'<button type="button" class="btn primary batbot-predict-btn" data-batbot-league-fixture="'+entry.index+'">🎯 Recevoir mon prono</button>';
-    const homeBadge=renderBatBotTeamFlag(homeTeam.logo||item.home_logo||item.home_team_logo||homeTeam.flag||"",homeTeam.name||home,homeTeam.country_code||homeTeam.countryCode,homeTeam.id,homeTeam),awayBadge=renderBatBotTeamFlag(awayTeam.logo||item.away_logo||item.away_team_logo||awayTeam.flag||"",awayTeam.name||away,awayTeam.country_code||awayTeam.countryCode,awayTeam.id,awayTeam);
+    const homeLogo=homeTeam.logo||homeTeam.logo_url||homeTeam.logoUrl||homeTeam.image||homeTeam.image_url||homeTeam.imageUrl||homeTeam.crest||homeTeam.badge||item.home_logo||item.home_team_logo||homeTeam.flag||homeTeam.flag_emoji||"";
+    const awayLogo=awayTeam.logo||awayTeam.logo_url||awayTeam.logoUrl||awayTeam.image||awayTeam.image_url||awayTeam.imageUrl||awayTeam.crest||awayTeam.badge||item.away_logo||item.away_team_logo||awayTeam.flag||awayTeam.flag_emoji||"";
+    const homeCountry=homeTeam.country_code||homeTeam.countryCode||homeTeam.country||"";
+    const awayCountry=awayTeam.country_code||awayTeam.countryCode||awayTeam.country||"";
+    const homeId=homeTeam.id??homeTeam.team_id??homeTeam.teamId??null;
+    const awayId=awayTeam.id??awayTeam.team_id??awayTeam.teamId??null;
+    const homeBadge=renderBatBotTeamFlag(homeLogo,homeTeam.name||home,homeCountry,homeId,homeTeam);
+    const awayBadge=renderBatBotTeamFlag(awayLogo,awayTeam.name||away,awayCountry,awayId,awayTeam);
     return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
   list.innerHTML='<button type="button" class="btn secondary" id="batbotLeagueBack">← Tous les championnats</button><div class="batbot-league-group-title">'+(renderBatBotCompetitionEmblem(group.logo,group.name,true)||'🏆')+' <span>'+escapeHtml(group.name)+'</span></div>'+rows;
@@ -5625,8 +5655,8 @@ function normalizeFootballClientMatch(match,index){
   const awayScore=match?.goals?.away??match?.away_score??match?.score?.fulltime?.away??null;
   const date=match?.fixture?.date||match?.kickoff_utc||match?.datetime||match?.date||null;
   const league=match?.league||match?.competition||{};
-  const homeId=homeObj.id??match?.home_id??match?.home_team_id??match?.homeTeam?.id??match?.home_team_data?.id??null;
-  const awayId=awayObj.id??match?.away_id??match?.away_team_id??match?.awayTeam?.id??match?.away_team_data?.id??null;
+  const homeId=homeObj.id??homeObj.team_id??homeObj.teamId??match?.home_id??match?.home_team_id??match?.homeTeam?.id??match?.homeTeam?.team_id??match?.homeTeam?.teamId??match?.home_team_data?.id??match?.home_team_data?.team_id??match?.home_team_data?.teamId??null;
+  const awayId=awayObj.id??awayObj.team_id??awayObj.teamId??match?.away_id??match?.away_team_id??match?.awayTeam?.id??match?.awayTeam?.team_id??match?.awayTeam?.teamId??match?.away_team_data?.id??match?.away_team_data?.team_id??match?.away_team_data?.teamId??null;
   const homeLogo=homeObj.logo||homeObj.image||homeObj.crest||homeObj.flag||homeObj.logo_url||homeObj.logoUrl||homeObj.image_url||homeObj.imageUrl||homeObj.badge||match?.home_logo||match?.home_team_logo||match?.homeTeam?.logo||match?.homeTeam?.image||match?.home_team_data?.logo||match?.fixture?.teams?.home?.logo||match?.teams?.home?.logo_url||match?.teams?.home?.image_url||null;
   const awayLogo=awayObj.logo||awayObj.image||awayObj.crest||awayObj.flag||awayObj.logo_url||awayObj.logoUrl||awayObj.image_url||awayObj.imageUrl||awayObj.badge||match?.away_logo||match?.away_team_logo||match?.awayTeam?.logo||match?.awayTeam?.image||match?.away_team_data?.logo||match?.fixture?.teams?.away?.logo||match?.teams?.away?.logo_url||match?.teams?.away?.image_url||null;
   return {
