@@ -1439,8 +1439,10 @@ button.batbot-predict-btn *,
 #batbotDailyMatchesCard{display:block!important;margin:12px 0 16px;padding:14px;background:linear-gradient(155deg,#102b49,#071a2d);border:1px solid rgba(0,191,255,.34);border-radius:20px;box-shadow:0 12px 30px rgba(0,0,0,.24)}
 #batbotDailyMatchesCard.hidden{display:block!important}
 #batbotDailyMatchesCard>p{display:none}
-#batbotDailyMatchesCard .two-columns{display:none}
-#batbotDailyMatchesCard label[for="footballDate"],#batbotDailyMatchesCard #footballDate,#batbotDailyMatchesCard #footballLoadButton{display:none!important}
+#batbotDailyMatchesCard .two-columns{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0!important}
+#batbotDailyMatchesCard label[for="footballDate"]{display:block!important;margin-top:10px}
+#batbotDailyMatchesCard #footballDate{display:block!important;width:100%;margin:6px 0 10px!important}
+#batbotDailyMatchesCard #footballLoadButton{display:block!important;width:100%;margin:8px 0!important}
 #batbotDailyMatchesCard #footballLiveButton{min-height:38px;width:auto;padding:8px 12px;margin:8px 0;font-size:12px}
 #footballResults .match-card{position:relative;margin:9px 0!important;padding:12px!important;border:1px solid rgba(83,207,255,.20)!important;border-radius:15px!important;background:linear-gradient(145deg,#123352,#0a2037)!important;box-shadow:0 7px 18px rgba(0,0,0,.16)}
 #footballResults .match-title{font-size:14px!important;font-weight:900;line-height:1.35;gap:6px!important}
@@ -5787,7 +5789,7 @@ async function loadFootballFixtures(selectedDate){
       if(window.batbotFixturesRefreshTimer)clearTimeout(window.batbotFixturesRefreshTimer);
       window.batbotFixturesRefreshTimer=setTimeout(function(){
         window.batbotFixturesRefreshTimer=null;
-        if(window.batBotLastRenderedMode==="daily" && getAbidjanDate(0)===date && window.batBotDailyFixturesLoadedDate===date){
+        if(window.batBotLastRenderedMode==="daily" && getFootballSelectedDate()===date && window.batBotDailyFixturesLoadedDate===date){
           loadFootballFixtures(date);
         }
       },32000);
