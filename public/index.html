@@ -5590,7 +5590,7 @@ function translateFootballTeamName(value){
     [/\bAtletico Madrid\b/gi,"Atlético Madrid"],
     [/\bSevilla\b/gi,"Séville"],
     [/\bValencia\b/gi,"Valence"],
-    [/\bWomen(?:'s)?\b/gi,"Femme"],
+    [/\b(?:women(?:'s)?|woman(?:'s)?|females?|lad(?:y|ies)|girls?)\b/gi,"Femme"],
     [/\bFemen[ií]\b/gi,"Femme"],
     [/\bFemenin[oa]s?\b/gi,"Femme"]
   ];
@@ -8831,21 +8831,21 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     const key=raw.toUpperCase();
 
     const sourceFixture=fixture || (match && match.fixture) || {};
-    const home=String(
+    const home=translateFootballTeamName(String(
       sourceFixture?.teams?.home?.name ||
       sourceFixture?.home ||
       match?.teams?.home?.name ||
       match?.home ||
       ""
-    ).trim();
+    ).trim());
 
-    const away=String(
+    const away=translateFootballTeamName(String(
       sourceFixture?.teams?.away?.name ||
       sourceFixture?.away ||
       match?.teams?.away?.name ||
       match?.away ||
       ""
-    ).trim();
+    ).trim());
 
     if(key==="1"){
       return home ? "🏠 Victoire de "+home : "🏠 Victoire de l'équipe 1";
