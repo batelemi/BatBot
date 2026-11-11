@@ -8902,15 +8902,17 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
     if(map[key])return map[key];
 
-    if(/^Victoire\s+/i.test(raw)){
-      return "🏆 "+raw;
+    const translatedRaw=translateFootballTeamName(raw);
+
+    if(/^Victoire\s+/i.test(translatedRaw)){
+      return "🏆 "+translatedRaw;
     }
 
-    if(/^Score exact\s+/i.test(raw)){
-      return "⚽ "+raw;
+    if(/^Score exact\s+/i.test(translatedRaw)){
+      return "⚽ "+translatedRaw;
     }
 
-    return raw;
+    return translatedRaw;
   }
 
   function optionProbability(option){
