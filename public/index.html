@@ -5523,8 +5523,8 @@ function renderFootballFixtures(fixtures,checkedDate){
     if(finished)action='<button type="button" class="btn secondary" style="width:100%;margin-top:12px" data-batbot-result-index="'+index+'">📊 Voir le résultat</button>';
     else if(blocked||!isAnalyzableFixture(item))action='<div class="muted" style="margin-top:12px">⚠️ Aucun pronostic disponible pour ce match.</div>';
     else action='<button type="button" class="btn primary batbot-predict-btn" style="width:100%;margin-top:12px" data-batbot-fixture-index="'+index+'">🎯 Recevoir mon prono</button>';
-    const country=league.country||league.area||"";
-    const leagueTitle=(country?country+" · ":"")+(league.name||"Compétition");
+    const country=translateFootballCountry(league.country||league.area||"");
+    const leagueTitle=(country?country+" · ":"")+translateFootballCompetition(league.name||"Compétition");
     const cardClass=live?' batbot-match-live-pitch':finished?' batbot-match-finished':(!blocked&&isAnalyzableFixture(item)?' batbot-match-upcoming':'');
     return '<div class="match-card'+cardClass+'">'+(live?renderBatBotLivePitchBackground():'')+'<div class="batbot-fixture-league"><span class="batbot-fixture-league-name">'+competitionEmblem+escapeHtml(leagueTitle)+'</span><span>'+escapeHtml(date)+'</span></div><div class="batbot-fixture-teams"><div class="batbot-fixture-team">'+homeBadge+'<span>'+escapeHtml(home)+'</span></div><span class="batbot-fixture-vs">VS</span><div class="batbot-fixture-team">'+awayBadge+'<span>'+escapeHtml(away)+'</span></div></div><div class="batbot-fixture-meta"><span class="batbot-fixture-status">'+escapeHtml(status)+'</span>'+(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'+action+'</div>';
   }).join("")+(fixtures.length>visibleCount?'<button type="button" class="btn secondary" id="batbotShowMoreFixtures" style="width:100%;margin-top:10px">Voir plus de matchs · '+(fixtures.length-visibleCount)+' restants</button>':"");
@@ -5551,7 +5551,7 @@ function renderBatBotLeagueFixtures(fixtures){
     list.innerHTML='<div class="batbot-league-grid">'+sorted.map(function(group){
       const logo=renderBatBotCompetitionEmblem(group.logo,group.name,true)||'<span class="batbot-league-logo-fallback">🏆</span>';
       const wideLogo=/dfb[\s-]*pokal|dfb cup/i.test(group.name);
-      return '<button type="button" class="batbot-league-tile" data-batbot-open-league="'+escapeHtml(group.key)+'"><span class="batbot-league-tile-logo'+(wideLogo?' batbot-league-tile-logo-wide':'')+'">'+logo+'</span><strong>'+escapeHtml(group.name)+'</strong><small>'+escapeHtml(group.country||"Compétition")+' · '+group.items.length+' match(s)</small></button>';
+      return '<button type="button" class="batbot-league-tile" data-batbot-open-league="'+escapeHtml(group.key)+'"><span class="batbot-league-tile-logo'+(wideLogo?' batbot-league-tile-logo-wide':'')+'">'+logo+'</span><strong>'+escapeHtml(translateFootballCompetition(group.name))+'</strong><small>'+escapeHtml(translateFootballCountry(group.country||"Compétition"))+' · '+group.items.length+' match(s)</small></button>';
     }).join('')+'</div>';
     list.querySelectorAll('[data-batbot-open-league]').forEach(function(button){button.addEventListener('click',function(){window.batBotSelectedLeagueKey=button.dataset.batbotOpenLeague;renderBatBotLeagueFixtures(all);});});
     if(status)status.innerHTML='<div class="professional-status success batbot-league-intro"><div class="professional-status-head">Championnats disponibles</div><div class="professional-status-body">Choisissez un championnat pour découvrir ses rencontres et demander un pronostic.</div></div>';
@@ -5574,7 +5574,7 @@ function renderBatBotLeagueFixtures(fixtures){
     const awayBadge=renderBatBotTeamFlag(awayLogo,awayTeam.name||away,awayCountry,awayId,awayTeam);
     return '<article class="batbot-league-match"><div class="batbot-league-match-teams"><span>'+homeBadge+' '+escapeHtml(home)+'</span><b>VS</b><span>'+awayBadge+' '+escapeHtml(away)+'</span></div><div class="batbot-league-match-meta">'+escapeHtml(date)+' · '+escapeHtml(statusText)+'</div>'+action+'</article>';
   }).join("");
-  list.innerHTML='<button type="button" class="btn secondary" id="batbotLeagueBack">← Tous les championnats</button><div class="batbot-league-group-title">'+(renderBatBotCompetitionEmblem(group.logo,group.name,true)||'🏆')+' <span>'+escapeHtml(group.name)+'</span></div>'+rows;
+  list.innerHTML='<button type="button" class="btn secondary" id="batbotLeagueBack">← Tous les championnats</button><div class="batbot-league-group-title">'+(renderBatBotCompetitionEmblem(group.logo,group.name,true)||'🏆')+' <span>'+escapeHtml(translateFootballCompetition(group.name))+'</span></div>'+rows;
   const back=list.querySelector('#batbotLeagueBack');if(back)back.addEventListener('click',function(){window.batBotSelectedLeagueKey="";renderBatBotLeagueFixtures(all);});
   list.querySelectorAll('[data-batbot-league-fixture]').forEach(function(button){button.addEventListener('click',function(){const item=window.batBotDailyFixtures?.[Number(button.dataset.batbotLeagueFixture)];if(!item)return; analyzeFootballMatch(item.teams?.home?.name||"",item.teams?.away?.name||"",item.teams?.home?.id,item.teams?.away?.id,item);});});
   if(status)status.innerHTML='<div class="professional-status success">'+group.items.length+' match(s) dans ce championnat.</div>';
@@ -5593,27 +5593,110 @@ function translateFootballStatus(value){
   return map[key]||raw||"Programmé";
 }
 
+function translateFootballCountry(value){
+  let text=String(value||"").trim();
+  if(!text)return text;
+  const countries={
+    "ivory coast":"Côte d'Ivoire",
+    "cote d'ivoire":"Côte d'Ivoire",
+    "guinea-bissau":"Guinée-Bissau",
+    "guinea bissau":"Guinée-Bissau",
+    "south korea":"Corée du Sud",
+    "north korea":"Corée du Nord",
+    "united states":"États-Unis",
+    "united kingdom":"Royaume-Uni",
+    "central african republic":"République centrafricaine",
+    "democratic republic of the congo":"République démocratique du Congo",
+    "republic of the congo":"République du Congo",
+    "equatorial guinea":"Guinée équatoriale",
+    "burkina faso":"Burkina Faso",
+    "sierra leone":"Sierra Leone",
+    "cape verde":"Cap-Vert",
+    "the gambia":"Gambie",
+    "gambia":"Gambie",
+    "morocco":"Maroc",
+    "algeria":"Algérie",
+    "tunisia":"Tunisie",
+    "egypt":"Égypte",
+    "ghana":"Ghana",
+    "nigeria":"Nigeria",
+    "senegal":"Sénégal",
+    "cameroon":"Cameroun",
+    "mali":"Mali",
+    "guinea":"Guinée",
+    "somalia":"Somalie",
+    "ethiopia":"Éthiopie",
+    "kenya":"Kenya",
+    "uganda":"Ouganda",
+    "tanzania":"Tanzanie",
+    "zambia":"Zambie",
+    "zimbabwe":"Zimbabwe",
+    "south africa":"Afrique du Sud",
+    "angola":"Angola",
+    "mozambique":"Mozambique",
+    "brazil":"Brésil",
+    "argentina":"Argentine",
+    "germany":"Allemagne",
+    "spain":"Espagne",
+    "france":"France",
+    "italy":"Italie",
+    "portugal":"Portugal",
+    "netherlands":"Pays-Bas",
+    "belgium":"Belgique",
+    "switzerland":"Suisse",
+    "turkey":"Turquie",
+    "japan":"Japon",
+    "china":"Chine",
+    "india":"Inde",
+    "australia":"Australie",
+    "canada":"Canada",
+    "mexico":"Mexique"
+  };
+  return countries[text.toLowerCase()]||text;
+}
+
 function translateFootballCompetition(value){
   let text=String(value||"Compétition").trim();
+  if(!text)return "Compétition";
+
+  const exact={
+    "caf africa cup of nations qualifiers":"Qualifications à la Coupe d'Afrique des Nations",
+    "africa cup of nations qualifiers":"Qualifications à la Coupe d'Afrique des Nations",
+    "africa cup of nations":"Coupe d'Afrique des Nations",
+    "brazilian serie a":"Championnat du Brésil – Série A",
+    "brazilian serie b":"Championnat du Brésil – Série B",
+    "brazilian serie c":"Championnat du Brésil – Série C",
+    "brazilian serie d":"Championnat du Brésil – Série D",
+    "copa do brasil":"Coupe du Brésil",
+    "copa libertadores":"Copa Libertadores",
+    "copa sudamericana":"Copa Sudamericana",
+    "english premier league":"Championnat d'Angleterre",
+    "spanish la liga":"Championnat d'Espagne",
+    "german bundesliga":"Championnat d'Allemagne",
+    "italian serie a":"Championnat d'Italie",
+    "french ligue 1":"Championnat de France – Ligue 1"
+  };
+
+  const known=exact[text.toLowerCase()];
+  if(known)return known;
+
   const replacements=[
-    [/\bPrimera Division\b/gi,"Première division"],
-    [/\bPrimera División\b/gi,"Première division"],
     [/\bPrimera Divisi[oó]n\b/gi,"Première division"],
     [/\bLiga Nacional\b/gi,"Ligue nationale"],
     [/\bNational League\b/gi,"Ligue nationale"],
-    [/\bPremier League\b/gi,"Premier League"],
     [/\bChampionship\b/gi,"Championnat"],
     [/\bLeague One\b/gi,"Ligue 1"],
     [/\bLeague Two\b/gi,"Ligue 2"],
     [/\bSuper League\b/gi,"Super Ligue"],
+    [/\bQualifiers\b/gi,"Qualifications"],
+    [/\bQualification\b/gi,"Qualification"],
     [/\bCup\b/gi,"Coupe"],
     [/\bCopa\b/gi,"Coupe"],
     [/\bDivision\b/gi,"Division"]
   ];
   replacements.forEach(([re,rep])=>{text=text.replace(re,rep);});
-  return text||"Compétition";
+  return text.replace(/\s+/g," ").trim()||"Compétition";
 }
-
 function translateFootballTeamName(value){
   let text=String(value||"").trim();
   if(!text)return text;
