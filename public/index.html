@@ -5700,6 +5700,8 @@ function translateFootballCompetition(value){
 function translateFootballTeamName(value){
   let text=String(value||"").trim();
   if(!text)return text;
+    const translatedCountry=translateFootballCountry(text);
+    if(translatedCountry!==text)return translatedCountry;
   const replacements=[
     [/\bBarcelona\b/gi,"Barcelone"],
     [/\bAtletico Madrid\b/gi,"Atlético Madrid"],
@@ -5988,12 +5990,12 @@ async function loadBatBotLiveSection(){
       const teams=item.teams||{},home=teams.home||{},away=teams.away||{},league=item.league||{};
       const score=footballFixtureScore(item);
       const time=formatFootballDateTime(item.fixture?.date);
-      const competition=(league.country?league.country+" · ":"")+(league.name||"Compétition");
+      const competition=(league.country?translateFootballCountry(league.country)+" · ":"")+translateFootballCompetition(league.name||"Compétition");
       return '<div class="match-card">'
         +'<div class="batbot-fixture-league"><span class="batbot-fixture-league-name">🏆 '+escapeHtml(competition)+'</span></div>'
-        +'<div class="batbot-fixture-teams"><div class="batbot-fixture-team"><span>'+escapeHtml(home.name||"Équipe 1")+'</span></div>'
+        +'<div class="batbot-fixture-teams"><div class="batbot-fixture-team"><span>'+escapeHtml(translateFootballTeamName(home.name||"Équipe 1"))+'</span></div>'
         +'<span class="batbot-fixture-vs">VS</span>'
-        +'<div class="batbot-fixture-team"><span>'+escapeHtml(away.name||"Équipe 2")+'</span></div></div>'
+        +'<div class="batbot-fixture-team"><span>'+escapeHtml(translateFootballTeamName(away.name||"Équipe 2"))+'</span></div></div>'
         +'<div class="batbot-fixture-meta"><span class="batbot-fixture-status">🔴 En direct</span>'
         +(score?'<strong>'+escapeHtml(score)+'</strong>':"")+'</div>'
         +'<p class="muted">'+escapeHtml(time)+'</p>'
@@ -6659,8 +6661,8 @@ function formatMemberPredictionDate(value){
 
 function renderMemberPredictionCard(item,adminMode){
   const id=Number(item.id||0);
-  const home=escapeHtml(item.home_team||"Équipe 1");
-  const away=escapeHtml(item.away_team||"Équipe 2");
+  const home=escapeHtml(translateFootballTeamName(item.home_team||"Équipe 1"));
+  const away=escapeHtml(translateFootballTeamName(item.away_team||"Équipe 2"));
   const username=escapeHtml(item.username||"Membre BATBOT PRO");
   const rawPick=String(item.prediction||"").trim();
   const pickMap={
