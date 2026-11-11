@@ -372,10 +372,25 @@ async function analyzeSportApiMatches(fixtures, options = {}) {
       ? teamHistoryCache.getTeamHistory.bind(teamHistoryCache)
       : fetchTeamHistory;
 
-    const [homeHistory, awayHistory] = await Promise.all([
+    const historyResults = await Promise.allSettled([
       getHistory(homeId, apiKey),
       getHistory(awayId, apiKey)
     ]);
+
+    const quotaError = historyResults
+      .filter(result => result.status === 'rejected')
+      .map(result => result.reason)
+      .find(error => error?.code === 'SPORTAPI_DAILY_LIMIT' || error?.status === 429);
+
+    if (quotaError) throw quotaError;
+
+    const homeHistory = historyResults[0].status === 'fulfilled'
+      && Array.isArray(historyResults[0].value)
+      ? historyResults[0].value : [];
+
+    const awayHistory = historyResults[1].status === 'fulfilled'
+      && Array.isArray(historyResults[1].value)
+      ? historyResults[1].value : [];
     const homeStats = collectTeamStats(homeHistory, homeId, homeName);
     const awayStats = collectTeamStats(awayHistory, awayId, awayName);
     const odds = calculateOdds({ home: homeStats, away: awayStats });

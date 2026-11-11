@@ -2898,19 +2898,8 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       });
     }
 
-    const checkedFixtures = await addAnalysisEligibilityToFixtures(validFixtures);
-    const eligibleFixtures = checkedFixtures.filter(
-      fixture => fixture.analysis_available === true
-    );
-
-    if (!eligibleFixtures.length) {
-      return res.status(422).json({
-        ok: false,
-        error: "Pronostic non disponible pour ce match. Les deux équipes ne disposent pas de suffisamment de données historiques pour produire un pronostic fiable."
-      });
-    }
-
-    const analysis = await analyzeSportApiMatches(eligibleFixtures);
+    // Les historiques seront récupérés à la demande par le moteur.
+    const analysis = await analyzeSportApiMatches(validFixtures);
     // Conserver chaque analyse exploitable comme un événement historique distinct.
     for (const item of (Array.isArray(analysis.matches) ? analysis.matches : [])) {
       const model = item?.model || {};
