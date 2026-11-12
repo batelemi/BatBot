@@ -4324,8 +4324,8 @@ function selectBatBotRecommendation(match){
 function buildBatBotTicketText(data){
   const lines=["BATBOT PRO — TICKET DE PRONOSTICS",""];
   (data?.matches||[]).forEach(function(match,index){
-    lines.push((index+1)+". "+(match.name||"Match"));
-    lines.push("Choix : "+(match.recommendation||"—"));
+    lines.push((index+1)+". "+(match.name?translateFootballMatchName(match.name):"Match"));
+    lines.push("Choix : "+(match.recommendation?translateFootballSelectionName(match.recommendation):"—"));
     const pick=selectBatBotRecommendation(match);
     if(pick)lines.push("Probabilité : "+formatPercent(pick.probability));
     const probs=(match.probabilities||[]).map(function(p){return (p.label||"")+" "+formatPercent(p.value);}).join(" • ");
@@ -4343,8 +4343,8 @@ function renderBatBotTicket(data){
     const pick=selectBatBotRecommendation(match);
     const probs=(match.probabilities||[]).map(function(p){return '<span class="ai-ticket-row"><span>'+escapeHtml(p.label||"")+'</span><strong class="ai-ticket-prob">'+escapeHtml(formatPercent(p.value))+'</strong></span>';}).join("");
     html+='<div class="ai-ticket-match">'+
-      '<div class="ai-ticket-match-name">⚽ '+escapeHtml(match.name||("Match "+(index+1)))+'</div>'+
-      (pick?'<div class="ai-ticket-row"><span>CHOIX</span><strong class="ai-ticket-pick">'+escapeHtml(pick.name)+'</strong></div>':'<div class="ai-ticket-row"><span>CHOIX</span><span class="ai-ticket-badge">ANALYSE INSUFFISANTE</span></div>')+
+      '<div class="ai-ticket-match-name">⚽ '+escapeHtml(match.name?translateFootballMatchName(match.name):("Match "+(index+1)))+'</div>'+
+      (pick?'<div class="ai-ticket-row"><span>CHOIX</span><strong class="ai-ticket-pick">'+escapeHtml(translateFootballSelectionName(pick.name))+'</strong></div>':'<div class="ai-ticket-row"><span>CHOIX</span><span class="ai-ticket-badge">ANALYSE INSUFFISANTE</span></div>')+
       (probs?'<div style="margin-top:7px">'+probs+'</div>':"")+ '<div class="ai-ticket-row"><span>DONNÉES</span><span class="ai-ticket-badge">'+escapeHtml(match.data_quality||"—")+'</span></div>'+ '</div>';
   });
   const timestamp=data?.generatedAt?new Date(data.generatedAt):new Date();
@@ -4365,7 +4365,7 @@ function downloadBatBotTicket(){
   ctx.fillStyle="#0b2c48";ctx.font="900 34px Arial";ctx.fillText("BATBOT PRO",48,58);ctx.font="600 18px Arial";ctx.fillStyle="#52687a";ctx.fillText("TICKET DE PRONOSTICS • BATBOT PRO",48,92);
   ctx.strokeStyle="#8295a5";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,116);ctx.lineTo(width-48,116);ctx.stroke();ctx.setLineDash([]);
   let y=headH;
-  matches.forEach((match,index)=>{ctx.fillStyle="#102235";ctx.font="900 23px Arial";ctx.fillText((index+1)+". "+String(match.name||"Match"),48,y);y+=38;const pick=selectBatBotRecommendation(match);ctx.font="700 18px Arial";ctx.fillText("Choix : "+String(pick?.name||"Analyse insuffisante"),48,y);if(pick){ctx.fillStyle="#087548";ctx.fillText("Probabilité : "+formatPercent(pick.probability),520,y);ctx.fillStyle="#102235";}y+=34;const probs=(match.probabilities||[]).map(p=>String(p.label||"")+" "+formatPercent(p.value)).join("   •   ");ctx.font="600 17px Arial";ctx.fillStyle="#52687a";ctx.fillText("1 / X / 2 : "+probs,48,y);y+=28;ctx.fillText("Qualité des données : "+String(match.data_quality||"—"),48,y);y+=35;ctx.strokeStyle="#a5b4bf";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(width-48,y);ctx.stroke();ctx.setLineDash([]);y+=28;});
+  matches.forEach((match,index)=>{ctx.fillStyle="#102235";ctx.font="900 23px Arial";ctx.fillText((index+1)+". "+String(match.name?translateFootballMatchName(match.name):"Match"),48,y);y+=38;const pick=selectBatBotRecommendation(match);ctx.font="700 18px Arial";ctx.fillText("Choix : "+String(pick?.name?translateFootballSelectionName(pick.name):"Analyse insuffisante"),48,y);if(pick){ctx.fillStyle="#087548";ctx.fillText("Probabilité : "+formatPercent(pick.probability),520,y);ctx.fillStyle="#102235";}y+=34;const probs=(match.probabilities||[]).map(p=>String(p.label||"")+" "+formatPercent(p.value)).join("   •   ");ctx.font="600 17px Arial";ctx.fillStyle="#52687a";ctx.fillText("1 / X / 2 : "+probs,48,y);y+=28;ctx.fillText("Qualité des données : "+String(match.data_quality||"—"),48,y);y+=35;ctx.strokeStyle="#a5b4bf";ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(width-48,y);ctx.stroke();ctx.setLineDash([]);y+=28;});
   c.toBlob(function(blob){if(!blob){showToast("Téléchargement impossible.","error");return;}const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="batbot-ticket.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);showToast("Ticket PNG téléchargé.","success");},"image/png");
 }
 function openBatBotAIModal(){
@@ -4970,7 +4970,7 @@ function renderBatBotAIResult(raw,modelData){
           '<div class="batbot-match-title">⚽ '+escapeHtml(homeName)+' vs '+escapeHtml(awayName)+'</div>'+
           statusHtml+
         '</div>'+
-        '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
+        '<div class="batbot-match-meta">🏆 '+escapeHtml(translateFootballCompetition(fixture?.competition||fixture?.league?.name||"Compétition"))+'</div>'+
         '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatFootballDateTime(fixture.date):"Date non disponible")+'</div>'+
         '<div class="batbot-real-score">'+escapeHtml(score)+'</div>'+
       '</div>';
@@ -4985,7 +4985,7 @@ function renderBatBotAIResult(raw,modelData){
             renderBatBotTeamFlag(awayFlag,awayName,awayMeta.country_code||awayMeta.countryCode||awayMeta.country,awayMeta.id??awayMeta.team_id??awayMeta.teamId,awayMeta)+escapeHtml(awayName)+
           '</div>'+statusHtml+
         '</div>'+
-        '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
+        '<div class="batbot-match-meta">🏆 '+escapeHtml(translateFootballCompetition(fixture?.competition||fixture?.league?.name||"Compétition"))+'</div>'+
         '<div class="batbot-match-meta">📅 '+escapeHtml(fixture?.date?formatFootballDateTime(fixture.date):"Date non disponible")+'</div>'+
         '<div class="batbot-ticket-muted">⚠️ Analyse insuffisante — données vérifiables insuffisantes pour afficher un pronostic fiable.</div>'+
       '</div>';
@@ -5005,7 +5005,7 @@ function renderBatBotAIResult(raw,modelData){
         statusHtml+
       '</div>'+
 
-      '<div class="batbot-match-meta">🏆 '+escapeHtml(fixture?.competition||"Compétition")+'</div>'+
+      '<div class="batbot-match-meta">🏆 '+escapeHtml(translateFootballCompetition(fixture?.competition||fixture?.league?.name||"Compétition"))+'</div>'+
 
       '<div class="batbot-match-meta">📅 '+
         escapeHtml(
@@ -5103,7 +5103,7 @@ function renderBatBotAIResult(raw,modelData){
       (match.recommendation
         ?'<div class="batbot-recommendation ai-recommendation">'+
             '<span>⭐ Choix proposé</span> '+
-            '<strong>'+escapeHtml(match.recommendation)+'</strong>'+
+            '<strong>'+escapeHtml(translateFootballSelectionName(match.recommendation))+'</strong>'+
           '</div>'
         :"")+
 
@@ -5427,7 +5427,7 @@ function footballFixtureScore(item){
 function showFinishedFootballMatch(item){
   const home=translateFootballTeamName(item?.teams?.home?.name||"Équipe 1");
   const away=translateFootballTeamName(item?.teams?.away?.name||"Équipe 2");
-  const competition=item?.league?.name||"Compétition";
+  const competition=translateFootballCompetition(item?.league?.name||"Compétition");
   const score=footballFixtureScore(item);
   const when=formatFootballDateTime(item?.fixture?.date);
   setBatBotAIModalStatus("");
@@ -5596,114 +5596,408 @@ function translateFootballStatus(value){
 function translateFootballCountry(value){
   let text=String(value||"").trim();
   if(!text)return text;
+
   const countries={
-    "ivory coast":"Côte d'Ivoire",
-    "cote d'ivoire":"Côte d'Ivoire",
+    "afghanistan":"Afghanistan",
+    "albania":"Albanie",
+    "algeria":"Algérie",
+    "american samoa":"Samoa américaines",
+    "andorra":"Andorre",
+    "angola":"Angola",
+    "anguilla":"Anguilla",
+    "antigua and barbuda":"Antigua-et-Barbuda",
+    "argentina":"Argentine",
+    "armenia":"Arménie",
+    "aruba":"Aruba",
+    "australia":"Australie",
+    "austria":"Autriche",
+    "azerbaijan":"Azerbaïdjan",
+    "bahamas":"Bahamas",
+    "bahrain":"Bahreïn",
+    "bangladesh":"Bangladesh",
+    "barbados":"Barbade",
+    "belarus":"Biélorussie",
+    "belgium":"Belgique",
+    "belize":"Belize",
+    "benin":"Bénin",
+    "bermuda":"Bermudes",
+    "bhutan":"Bhoutan",
+    "bolivia":"Bolivie",
+    "bosnia and herzegovina":"Bosnie-Herzégovine",
+    "botswana":"Botswana",
+    "brazil":"Brésil",
+    "british virgin islands":"Îles Vierges britanniques",
+    "brunei":"Brunei",
+    "bulgaria":"Bulgarie",
+    "burkina faso":"Burkina Faso",
+    "burundi":"Burundi",
+    "cambodia":"Cambodge",
+    "cameroon":"Cameroun",
+    "canada":"Canada",
+    "cape verde":"Cap-Vert",
+    "cabo verde":"Cap-Vert",
+    "cayman islands":"Îles Caïmans",
+    "central african republic":"République centrafricaine",
+    "chad":"Tchad",
+    "chile":"Chili",
+    "china":"Chine",
+    "chinese taipei":"Taipei chinois",
+    "colombia":"Colombie",
+    "comoros":"Comores",
+    "congo":"Congo",
+    "republic of the congo":"République du Congo",
+    "democratic republic of the congo":"République démocratique du Congo",
+    "costa rica":"Costa Rica",
+    "croatia":"Croatie",
+    "cuba":"Cuba",
+    "curacao":"Curaçao",
+    "cyprus":"Chypre",
+    "czech republic":"République tchèque",
+    "czechia":"Tchéquie",
+    "denmark":"Danemark",
+    "djibouti":"Djibouti",
+    "dominica":"Dominique",
+    "dominican republic":"République dominicaine",
+    "ecuador":"Équateur",
+    "egypt":"Égypte",
+    "el salvador":"Salvador",
+    "equatorial guinea":"Guinée équatoriale",
+    "eritrea":"Érythrée",
+    "estonia":"Estonie",
+    "eswatini":"Eswatini",
+    "ethiopia":"Éthiopie",
+    "faroe islands":"Îles Féroé",
+    "fiji":"Fidji",
+    "finland":"Finlande",
+    "france":"France",
+    "french guiana":"Guyane française",
+    "gabon":"Gabon",
+    "gambia":"Gambie",
+    "the gambia":"Gambie",
+    "georgia":"Géorgie",
+    "germany":"Allemagne",
+    "ghana":"Ghana",
+    "gibraltar":"Gibraltar",
+    "greece":"Grèce",
+    "grenada":"Grenade",
+    "guadeloupe":"Guadeloupe",
+    "guam":"Guam",
+    "guatemala":"Guatemala",
+    "guinea":"Guinée",
     "guinea-bissau":"Guinée-Bissau",
     "guinea bissau":"Guinée-Bissau",
-    "south korea":"Corée du Sud",
-    "north korea":"Corée du Nord",
-    "united states":"États-Unis",
-    "united kingdom":"Royaume-Uni",
-    "central african republic":"République centrafricaine",
-    "democratic republic of the congo":"République démocratique du Congo",
-    "republic of the congo":"République du Congo",
-    "equatorial guinea":"Guinée équatoriale",
-    "burkina faso":"Burkina Faso",
-    "sierra leone":"Sierra Leone",
-    "cape verde":"Cap-Vert",
-    "the gambia":"Gambie",
-    "gambia":"Gambie",
-    "morocco":"Maroc",
-    "algeria":"Algérie",
-    "tunisia":"Tunisie",
-    "egypt":"Égypte",
-    "ghana":"Ghana",
-    "nigeria":"Nigeria",
-    "senegal":"Sénégal",
-    "cameroon":"Cameroun",
-    "mali":"Mali",
-    "guinea":"Guinée",
-    "somalia":"Somalie",
-    "ethiopia":"Éthiopie",
-    "kenya":"Kenya",
-    "uganda":"Ouganda",
-    "tanzania":"Tanzanie",
-    "zambia":"Zambie",
-    "zimbabwe":"Zimbabwe",
-    "south africa":"Afrique du Sud",
-    "angola":"Angola",
-    "mozambique":"Mozambique",
-    "brazil":"Brésil",
-    "argentina":"Argentine",
-    "germany":"Allemagne",
-    "spain":"Espagne",
-    "france":"France",
-    "italy":"Italie",
-    "portugal":"Portugal",
-    "netherlands":"Pays-Bas",
-    "belgium":"Belgique",
-    "switzerland":"Suisse",
-    "turkey":"Turquie",
-    "japan":"Japon",
-    "china":"Chine",
+    "guyana":"Guyane",
+    "haiti":"Haïti",
+    "honduras":"Honduras",
+    "hong kong":"Hong Kong",
+    "hungary":"Hongrie",
+    "iceland":"Islande",
     "india":"Inde",
-    "australia":"Australie",
-    "canada":"Canada",
-    "mexico":"Mexique"
+    "indonesia":"Indonésie",
+    "iran":"Iran",
+    "iraq":"Irak",
+    "ireland":"Irlande",
+    "republic of ireland":"Irlande",
+    "israel":"Israël",
+    "italy":"Italie",
+    "ivory coast":"Côte d'Ivoire",
+    "cote d'ivoire":"Côte d'Ivoire",
+    "jamaica":"Jamaïque",
+    "japan":"Japon",
+    "jordan":"Jordanie",
+    "kazakhstan":"Kazakhstan",
+    "kenya":"Kenya",
+    "kiribati":"Kiribati",
+    "kosovo":"Kosovo",
+    "kuwait":"Koweït",
+    "kyrgyzstan":"Kirghizistan",
+    "laos":"Laos",
+    "latvia":"Lettonie",
+    "lebanon":"Liban",
+    "lesotho":"Lesotho",
+    "liberia":"Libéria",
+    "libya":"Libye",
+    "liechtenstein":"Liechtenstein",
+    "lithuania":"Lituanie",
+    "luxembourg":"Luxembourg",
+    "macau":"Macao",
+    "madagascar":"Madagascar",
+    "malawi":"Malawi",
+    "malaysia":"Malaisie",
+    "maldives":"Maldives",
+    "mali":"Mali",
+    "malta":"Malte",
+    "martinique":"Martinique",
+    "mauritania":"Mauritanie",
+    "mauritius":"Maurice",
+    "mexico":"Mexique",
+    "moldova":"Moldavie",
+    "mongolia":"Mongolie",
+    "montenegro":"Monténégro",
+    "montserrat":"Montserrat",
+    "morocco":"Maroc",
+    "mozambique":"Mozambique",
+    "myanmar":"Birmanie",
+    "namibia":"Namibie",
+    "nepal":"Népal",
+    "netherlands":"Pays-Bas",
+    "new caledonia":"Nouvelle-Calédonie",
+    "new zealand":"Nouvelle-Zélande",
+    "nicaragua":"Nicaragua",
+    "niger":"Niger",
+    "nigeria":"Nigeria",
+    "north korea":"Corée du Nord",
+    "north macedonia":"Macédoine du Nord",
+    "northern mariana islands":"Îles Mariannes du Nord",
+    "norway":"Norvège",
+    "oman":"Oman",
+    "pakistan":"Pakistan",
+    "palestine":"Palestine",
+    "panama":"Panama",
+    "papua new guinea":"Papouasie-Nouvelle-Guinée",
+    "paraguay":"Paraguay",
+    "peru":"Pérou",
+    "philippines":"Philippines",
+    "poland":"Pologne",
+    "portugal":"Portugal",
+    "puerto rico":"Porto Rico",
+    "qatar":"Qatar",
+    "romania":"Roumanie",
+    "russia":"Russie",
+    "rwanda":"Rwanda",
+    "saint kitts and nevis":"Saint-Christophe-et-Niévès",
+    "saint lucia":"Sainte-Lucie",
+    "saint vincent and the grenadines":"Saint-Vincent-et-les-Grenadines",
+    "samoa":"Samoa",
+    "san marino":"Saint-Marin",
+    "sao tome and principe":"Sao Tomé-et-Principe",
+    "saudi arabia":"Arabie saoudite",
+    "senegal":"Sénégal",
+    "serbia":"Serbie",
+    "seychelles":"Seychelles",
+    "sierra leone":"Sierra Leone",
+    "singapore":"Singapour",
+    "slovakia":"Slovaquie",
+    "slovenia":"Slovénie",
+    "solomon islands":"Îles Salomon",
+    "somalia":"Somalie",
+    "south africa":"Afrique du Sud",
+    "south korea":"Corée du Sud",
+    "south sudan":"Soudan du Sud",
+    "spain":"Espagne",
+    "sri lanka":"Sri Lanka",
+    "sudan":"Soudan",
+    "suriname":"Suriname",
+    "sweden":"Suède",
+    "switzerland":"Suisse",
+    "syria":"Syrie",
+    "tahiti":"Tahiti",
+    "taiwan":"Taïwan",
+    "tajikistan":"Tadjikistan",
+    "tanzania":"Tanzanie",
+    "thailand":"Thaïlande",
+    "timor-leste":"Timor oriental",
+    "timor leste":"Timor oriental",
+    "togo":"Togo",
+    "tonga":"Tonga",
+    "trinidad and tobago":"Trinité-et-Tobago",
+    "tunisia":"Tunisie",
+    "turkey":"Turquie",
+    "turkmenistan":"Turkménistan",
+    "uganda":"Ouganda",
+    "ukraine":"Ukraine",
+    "united arab emirates":"Émirats arabes unis",
+    "united kingdom":"Royaume-Uni",
+    "united states":"États-Unis",
+    "usa":"États-Unis",
+    "us virgin islands":"Îles Vierges américaines",
+    "uruguay":"Uruguay",
+    "uzbekistan":"Ouzbékistan",
+    "vanuatu":"Vanuatu",
+    "vatican city":"Vatican",
+    "venezuela":"Venezuela",
+    "vietnam":"Viêt Nam",
+    "wales":"Pays de Galles",
+    "yemen":"Yémen",
+    "zambia":"Zambie",
+    "zanzibar":"Zanzibar",
+    "zimbabwe":"Zimbabwe"
   };
-  return countries[text.toLowerCase()]||text;
+
+  const key=text.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[’']/g,"'")
+    .replace(/\s+/g," ")
+    .trim();
+
+  return countries[key]||text;
 }
 
 function translateFootballCompetition(value){
   let text=String(value||"Compétition").trim();
   if(!text)return "Compétition";
 
+  const normalize=s=>String(s||"")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[’']/g,"'")
+    .replace(/&/g,"and")
+    .replace(/\s+/g," ")
+    .trim();
+
   const exact={
+    "uefa champions league":"Ligue des champions de l'UEFA",
+    "champions league":"Ligue des champions",
+    "uefa europa league":"Ligue Europa",
+    "europa league":"Ligue Europa",
+    "uefa europa conference league":"Ligue Conférence de l'UEFA",
+    "uefa conference league":"Ligue Conférence",
+    "conference league":"Ligue Conférence",
+    "uefa super cup":"Supercoupe de l'UEFA",
+    "uefa nations league":"Ligue des nations de l'UEFA",
+    "uefa european championship":"Championnat d'Europe",
+    "european championship":"Championnat d'Europe",
+    "euro":"Euro",
+    "uefa european under-21 championship":"Championnat d'Europe espoirs",
+    "fifa world cup":"Coupe du monde",
+    "world cup":"Coupe du monde",
+    "fifa club world cup":"Coupe du monde des clubs",
+    "fifa world cup qualification":"Qualifications pour la Coupe du monde",
+    "world cup qualifiers":"Qualifications pour la Coupe du monde",
+    "fifa women's world cup":"Coupe du monde féminine",
+    "women's world cup":"Coupe du monde féminine",
+    "olympic football tournament":"Tournoi olympique de football",
+    "caf africa cup of nations":"Coupe d'Afrique des Nations",
+    "africa cup of nations":"Coupe d'Afrique des Nations",
+    "afcon":"Coupe d'Afrique des Nations",
     "caf africa cup of nations qualifiers":"Qualifications à la Coupe d'Afrique des Nations",
     "africa cup of nations qualifiers":"Qualifications à la Coupe d'Afrique des Nations",
-    "africa cup of nations":"Coupe d'Afrique des Nations",
+    "caf champions league":"Ligue des champions de la CAF",
+    "caf confederation cup":"Coupe de la Confédération de la CAF",
+    "caf super cup":"Supercoupe de la CAF",
+    "caf african nations championship":"Championnat d'Afrique des nations",
+    "chan":"Championnat d'Afrique des nations",
+    "african nations championship":"Championnat d'Afrique des nations",
+    "caf women's champions league":"Ligue des champions féminine de la CAF",
+    "caf u-20 africa cup of nations":"Coupe d'Afrique des nations U20",
+    "caf u-17 africa cup of nations":"Coupe d'Afrique des nations U17",
+    "africa cup of nations women":"Coupe d'Afrique des Nations féminine",
+    "afc champions league":"Ligue des champions de l'AFC",
+    "afc champions league elite":"Ligue des champions Elite de l'AFC",
+    "afc cup":"Coupe de l'AFC",
+    "afc asian cup":"Coupe d'Asie des nations",
+    "asian cup":"Coupe d'Asie des nations",
+    "afc asian cup qualifiers":"Qualifications à la Coupe d'Asie",
+    "concacaf champions cup":"Coupe des champions de la CONCACAF",
+    "concacaf champions league":"Ligue des champions de la CONCACAF",
+    "concacaf gold cup":"Gold Cup de la CONCACAF",
+    "gold cup":"Gold Cup",
+    "concacaf nations league":"Ligue des nations de la CONCACAF",
+    "concacaf caribbean cup":"Coupe des Caraïbes de la CONCACAF",
+    "conmebol copa america":"Copa América",
+    "copa america":"Copa América",
+    "copa libertadores":"Copa Libertadores",
+    "conmebol libertadores":"Copa Libertadores",
+    "copa sudamericana":"Copa Sudamericana",
+    "conmebol sudamericana":"Copa Sudamericana",
+    "recopa sudamericana":"Recopa Sudamericana",
+    "copa do brasil":"Coupe du Brésil",
     "brazilian serie a":"Championnat du Brésil – Série A",
     "brazilian serie b":"Championnat du Brésil – Série B",
     "brazilian serie c":"Championnat du Brésil – Série C",
     "brazilian serie d":"Championnat du Brésil – Série D",
-    "copa do brasil":"Coupe du Brésil",
-    "copa libertadores":"Copa Libertadores",
-    "copa sudamericana":"Copa Sudamericana",
     "english premier league":"Championnat d'Angleterre",
+    "premier league":"Championnat d'Angleterre",
+    "english championship":"Championnat d'Angleterre – deuxième division",
+    "fa cup":"Coupe d'Angleterre",
+    "efl cup":"Coupe de la Ligue anglaise",
+    "carabao cup":"Coupe de la Ligue anglaise",
+    "community shield":"Community Shield",
     "spanish la liga":"Championnat d'Espagne",
+    "la liga":"Championnat d'Espagne",
+    "copa del rey":"Coupe du Roi",
+    "spanish super cup":"Supercoupe d'Espagne",
     "german bundesliga":"Championnat d'Allemagne",
+    "bundesliga":"Championnat d'Allemagne",
+    "dfb pokal":"Coupe d'Allemagne",
     "italian serie a":"Championnat d'Italie",
-    "french ligue 1":"Championnat de France – Ligue 1"
+    "serie a":"Championnat d'Italie",
+    "coppa italia":"Coupe d'Italie",
+    "french ligue 1":"Championnat de France – Ligue 1",
+    "ligue 1":"Championnat de France – Ligue 1",
+    "coupe de france":"Coupe de France",
+    "trophee des champions":"Trophée des champions",
+    "eredivisie":"Championnat des Pays-Bas",
+    "primeira liga":"Championnat du Portugal",
+    "liga portugal":"Championnat du Portugal",
+    "jupiler pro league":"Championnat de Belgique",
+    "scottish premiership":"Championnat d'Écosse",
+    "turkish super lig":"Championnat de Turquie",
+    "saudi pro league":"Championnat d'Arabie saoudite",
+    "major league soccer":"Championnat des États-Unis",
+    "mls":"Championnat des États-Unis",
+    "liga mx":"Championnat du Mexique",
+    "j1 league":"Championnat du Japon",
+    "k league 1":"Championnat de Corée du Sud",
+    "a league":"Championnat d'Australie",
+    "russian premier league":"Championnat de Russie",
+    "greek super league":"Championnat de Grèce",
+    "super lig":"Championnat de Turquie"
   };
 
-  const known=exact[text.toLowerCase()];
-  if(known)return known;
+  const key=normalize(text);
+  if(exact[key])return exact[key];
 
-  const replacements=[
-    [/\bPrimera Divisi[oó]n\b/gi,"Première division"],
-    [/\bLiga Nacional\b/gi,"Ligue nationale"],
-    [/\bNational League\b/gi,"Ligue nationale"],
-    [/\bChampionship\b/gi,"Championnat"],
-    [/\bLeague One\b/gi,"Ligue 1"],
-    [/\bLeague Two\b/gi,"Ligue 2"],
-    [/\bSuper League\b/gi,"Super Ligue"],
-    [/\bQualifiers\b/gi,"Qualifications"],
-    [/\bQualification\b/gi,"Qualification"],
-    [/\bCup\b/gi,"Coupe"],
-    [/\bCopa\b/gi,"Coupe"],
-    [/\bDivision\b/gi,"Division"]
+  const patterns=[
+    [/\bprimera division\b/gi,"Première division"],
+    [/\bliga nacional\b/gi,"Ligue nationale"],
+    [/\bnational league\b/gi,"Ligue nationale"],
+    [/\bchampionship\b/gi,"Championnat"],
+    [/\bleague one\b/gi,"Ligue 1"],
+    [/\bleague two\b/gi,"Ligue 2"],
+    [/\bsuper league\b/gi,"Super Ligue"],
+    [/\bqualifiers\b/gi,"Qualifications"],
+    [/\bqualification\b/gi,"Qualification"],
+    [/\bdivision\b/gi,"Division"]
   ];
-  replacements.forEach(([re,rep])=>{text=text.replace(re,rep);});
+
+  patterns.forEach(([re,rep])=>{text=text.replace(re,rep);});
   return text.replace(/\s+/g," ").trim()||"Compétition";
 }
+
 function translateFootballTeamName(value){
   let text=String(value||"").trim();
   if(!text)return text;
     const translatedCountry=translateFootballCountry(text);
     if(translatedCountry!==text)return translatedCountry;
+  // Traduction des sélections nationales avec catégorie d'âge.
+  const youthMatch=text.match(/^(.*?)\s+(?:U|Under[\s-]*)(17|19|20|21|23)$/i);
+  if(youthMatch){
+    const baseCountry=youthMatch[1].trim();
+    const translatedBase=translateFootballCountry(baseCountry);
+    if(translatedBase!==baseCountry){
+      return translatedBase+" U"+youthMatch[2];
+    }
+  }
+
   const replacements=[
-    [/\bBarcelona\b/gi,"Barcelone"],
+    [/\bFC Barcelona\b/gi,"FC Barcelone"],
+    [/\b(?:Barça|Barca)\b/gi,"Barcelone"],
+    [/\bAtletico de Madrid\b/gi,"Atlético Madrid"],
+    [/\bEsperance Tunis\b/gi,"Espérance de Tunis"],
+    [/\bEsperance\b/gi,"Espérance de Tunis"],
+    [/\bEtoile du Sahel\b/gi,"Étoile du Sahel"],
+    [/\bSao Paulo\b/gi,"São Paulo"],
+    [/\bUniversidad Catolica\b/gi,"Universidad Católica"],
+    [/\bAmerica de Cali\b/gi,"América de Cali"],
+    [/\bPenarol\b/gi,"Peñarol"],
+    [/\bVelez Sarsfield\b/gi,"Vélez Sarsfield"],
+    [/\bLanus\b/gi,"Lanús"],
+    [/\bBodo Glimt\b/gi,"Bodø/Glimt"],
+    [/\bBarcelona SC\b/gi,"Barcelona SC"],
+    [/\bBarcelona\b(?!\s+SC\b)/gi,"Barcelone"],
     [/\bAtletico Madrid\b/gi,"Atlético Madrid"],
     [/\bSevilla\b/gi,"Séville"],
     [/\bValencia\b/gi,"Valence"],
@@ -5713,6 +6007,88 @@ function translateFootballTeamName(value){
   ];
   replacements.forEach(([re,rep])=>{text=text.replace(re,rep);});
   return text.replace(/\s+/g," ").trim();
+}
+
+
+function translateFootballSelectionName(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+  const key=raw.toUpperCase().replace(/\s+/g," ").trim();
+
+  const markets={
+    "1":"🏠 Victoire de l'équipe à domicile",
+    "HOME":"🏠 Victoire de l'équipe à domicile",
+    "HOME WIN":"🏠 Victoire de l'équipe à domicile",
+    "2":"✈️ Victoire de l'équipe à l'extérieur",
+    "AWAY":"✈️ Victoire de l'équipe à l'extérieur",
+    "AWAY WIN":"✈️ Victoire de l'équipe à l'extérieur",
+    "X":"🤝 Match nul",
+    "DRAW":"🤝 Match nul",
+    "12":"🛡️ Une des deux équipes gagne",
+    "1X":"🛡️ Équipe à domicile ou match nul",
+    "X2":"🛡️ Équipe à l'extérieur ou match nul",
+    "OVER15":"⚽ Plus de 1,5 but",
+    "OVER25":"⚽ Plus de 2,5 buts",
+    "OVER35":"⚽ Plus de 3,5 buts",
+    "UNDER15":"⚽ Moins de 1,5 but",
+    "UNDER25":"⚽ Moins de 2,5 buts",
+    "UNDER35":"⚽ Moins de 3,5 buts",
+    "BTTS":"🎯 Les deux équipes marquent",
+    "BTTS_YES":"🎯 Les deux équipes marquent : oui",
+    "BTTS_NO":"🎯 Les deux équipes marquent : non",
+    "BOTH TEAMS TO SCORE":"🎯 Les deux équipes marquent",
+    "BOTH TEAMS TO SCORE YES":"🎯 Les deux équipes marquent : oui",
+    "BOTH TEAMS TO SCORE - YES":"🎯 Les deux équipes marquent : oui",
+    "BOTH TEAMS TO SCORE NO":"🎯 Les deux équipes marquent : non",
+    "BOTH TEAMS TO SCORE - NO":"🎯 Les deux équipes marquent : non",
+        "BTTS OUI":"🎯 Les deux équipes marquent : oui",
+    "BTTS (LES DEUX ÉQUIPES MARQUENT)":"🎯 Les deux équipes marquent",
+    "O1.5":"⚽ Plus de 1,5 but",
+    "OVER 1.5":"⚽ Plus de 1,5 but",
+    "PLUS DE 1.5 BUTS":"⚽ Plus de 1,5 but",
+    "U1.5":"⚽ Moins de 1,5 but",
+    "UNDER 1.5":"⚽ Moins de 1,5 but",
+    "MOINS DE 1.5 BUTS":"⚽ Moins de 1,5 but",
+    "O2.5":"⚽ Plus de 2,5 buts",
+    "OVER 2.5":"⚽ Plus de 2,5 buts",
+    "PLUS DE 2.5 BUTS":"⚽ Plus de 2,5 buts",
+    "U2.5":"⚽ Moins de 2,5 buts",
+    "UNDER 2.5":"⚽ Moins de 2,5 buts",
+    "MOINS DE 2.5 BUTS":"⚽ Moins de 2,5 buts",
+    "O3.5":"⚽ Plus de 3,5 buts",
+    "OVER 3.5":"⚽ Plus de 3,5 buts",
+    "PLUS DE 3.5 BUTS":"⚽ Plus de 3,5 buts",
+    "U3.5":"⚽ Moins de 3,5 buts",
+    "UNDER 3.5":"⚽ Moins de 3,5 buts",
+    "MOINS DE 3.5 BUTS":"⚽ Moins de 3,5 buts",
+  };
+
+  if(markets[key])return markets[key];
+
+  const doubleChance=raw.match(/^(.+?)\s+or\s+(?:a\s+)?draw$/i);
+  if(doubleChance){
+    return "🛡️ "+translateFootballTeamName(doubleChance[1].trim())+" ou match nul";
+  }
+
+  const teamGoals=raw.match(/^(.+?)\s+(under|over)\s*(\d+(?:[.,]\d+)?)\s*(?:goals?|but(?:s)?)?$/i);
+  if(teamGoals){
+    const team=translateFootballTeamName(teamGoals[1].trim());
+    const threshold=teamGoals[3].replace(".",",");
+    const direction=teamGoals[2].toLowerCase()==="under"?"Moins de ":"Plus de ";
+    const suffix=Number(threshold.replace(",","."))<=1.5?" but":" buts";
+    return "⚽ "+team+" – "+direction+threshold+suffix;
+  }
+
+  return translateFootballTeamName(raw);
+}
+
+
+function translateFootballMatchName(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+  const parts=raw.split(/\s+vs\.?\s+/i);
+  if(parts.length!==2)return translateFootballTeamName(raw);
+  return translateFootballTeamName(parts[0].trim())+" vs "+translateFootballTeamName(parts[1].trim());
 }
 
 function normalizeFootballClientMatch(match,index){
@@ -8308,7 +8684,7 @@ document.addEventListener("keydown",function(event){
           'UNDER35':'Moins de 3,5 buts','BTTS_YES':'Les deux équipes marquent : oui',
           'BTTS_NO':'Les deux équipes marquent : non'
         };
-        const pickLabel=marketLabels[row.main_pick]||'Pronostic principal';
+        const pickLabel=marketLabels[row.main_pick]||translateFootballSelectionName(row.main_pick)||'Pronostic principal';
         const marketShortLabel={
           'OVER15':'+1,5','OVER25':'+2,5','OVER35':'+3,5',
           'UNDER25':'-2,5','UNDER35':'-3,5',
@@ -8323,11 +8699,11 @@ document.addEventListener("keydown",function(event){
             '<span style="display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border-radius:999px;background:'+statusBg+';color:'+statusColor+';font-size:10px;font-weight:900;white-space:nowrap">'+
               '<span style="font-size:15px">'+mark+'</span>'+statusLabel+'</span></div>'+
           '<div style="padding:14px">'+
-            (row.league_name?'<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#9DBBD4;margin-bottom:12px">'+escapeHtml(row.league_name)+'</div>':'')+
+            (row.league_name?'<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#9DBBD4;margin-bottom:12px">'+escapeHtml(translateFootballCompetition(row.league_name))+'</div>':'')+
             '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px">'+
-              '<div style="min-width:0;text-align:center;font-weight:800;overflow-wrap:anywhere">'+escapeHtml(row.home_team||'Domicile')+'</div>'+
+              '<div style="min-width:0;text-align:center;font-weight:800;overflow-wrap:anywhere">'+escapeHtml(translateFootballTeamName(row.home_team||'Domicile'))+'</div>'+
               '<div style="font-size:11px;font-weight:800;color:#8CAFCB">VS</div>'+
-              '<div style="min-width:0;text-align:center;font-weight:800;overflow-wrap:anywhere">'+escapeHtml(row.away_team||'Extérieur')+'</div></div>'+
+              '<div style="min-width:0;text-align:center;font-weight:800;overflow-wrap:anywhere">'+escapeHtml(translateFootballTeamName(row.away_team||'Extérieur'))+'</div></div>'+
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:12px;border-radius:12px;background:rgba(4,17,31,.35)">'+
               '<div><div style="font-size:10px;letter-spacing:1px;color:#9DBBD4">PRONOSTIC PRINCIPAL</div>'+
               '<div style="font-size:13px;font-weight:700;margin-top:5px">'+escapeHtml(pickLabel)+'</div></div>'+
@@ -8944,8 +9320,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
   function simpleName(name, match, fixture){
     const raw=String(name||"").trim();
     if(!raw)return "";
-
-    const key=raw.toUpperCase();
+    const key=raw.toUpperCase().replace(/\s+/g," ").trim();
 
     const sourceFixture=fixture || (match && match.fixture) || {};
     const home=translateFootballTeamName(String(
@@ -8955,7 +9330,6 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       match?.home ||
       ""
     ).trim());
-
     const away=translateFootballTeamName(String(
       sourceFixture?.teams?.away?.name ||
       sourceFixture?.away ||
@@ -8967,19 +9341,15 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     if(key==="1"){
       return home ? "🏠 Victoire de "+home : "🏠 Victoire de l'équipe 1";
     }
-
     if(key==="2"){
       return away ? "✈️ Victoire de "+away : "✈️ Victoire de l'équipe 2";
     }
-
     if(key==="X"){
       return "🤝 Match nul";
     }
-
     if(key==="1X"){
       return home ? "🛡️ "+home+" ou match nul" : "🛡️ Équipe 1 ou match nul";
     }
-
     if(key==="X2"){
       return away ? "🛡️ "+away+" ou match nul" : "🛡️ Équipe 2 ou match nul";
     }
@@ -8995,8 +9365,13 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       "BTTS_YES":"🎯 Les deux équipes marquent : oui",
       "BTTS_NO":"🎯 Les deux équipes marquent : non",
       "BTTS":"🎯 Les deux équipes marquent",
-      "BTTS OUI":"🎯 Les deux équipes marquent",
+      "BTTS OUI":"🎯 Les deux équipes marquent : oui",
       "BTTS (LES DEUX ÉQUIPES MARQUENT)":"🎯 Les deux équipes marquent",
+      "BOTH TEAMS TO SCORE":"🎯 Les deux équipes marquent",
+      "BOTH TEAMS TO SCORE - YES":"🎯 Les deux équipes marquent : oui",
+      "BOTH TEAMS TO SCORE YES":"🎯 Les deux équipes marquent : oui",
+      "BOTH TEAMS TO SCORE - NO":"🎯 Les deux équipes marquent : non",
+      "BOTH TEAMS TO SCORE NO":"🎯 Les deux équipes marquent : non",
       "O1.5":"⚽ Plus de 1,5 but",
       "OVER 1.5":"⚽ Plus de 1,5 but",
       "PLUS DE 1.5 BUTS":"⚽ Plus de 1,5 but",
@@ -9021,15 +9396,22 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
     const doubleChance=raw.match(/^(.+?)\s+or\s+(?:a\s+)?draw$/i);
     if(doubleChance){
-      return "🛡️ "+translateFootballCountry(doubleChance[1].trim())+" ou match nul";
+      return "🛡️ "+translateFootballTeamName(doubleChance[1].trim())+" ou match nul";
+    }
+
+    const teamGoals=raw.match(/^(.+?)\s+(under|over)\s*(\d+(?:[.,]\d+)?)\s*(?:goals?|but(?:s)?)?$/i);
+    if(teamGoals){
+      const team=translateFootballTeamName(teamGoals[1].trim());
+      const threshold=teamGoals[3].replace(".",",");
+      const direction=teamGoals[2].toLowerCase()==="under"?"Moins de ":"Plus de ";
+      const suffix=Number(threshold.replace(",","."))<=1.5?" but":" buts";
+      return "⚽ "+team+" – "+direction+threshold+suffix;
     }
 
     const translatedRaw=translateFootballTeamName(raw);
-
     if(/^Victoire\s+/i.test(translatedRaw)){
       return "🏆 "+translatedRaw;
     }
-
     if(/^Score exact\s+/i.test(translatedRaw)){
       return "⚽ "+translatedRaw;
     }
@@ -9797,7 +10179,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       ctx.fillStyle="#102235";
       ctx.font="900 25px Arial";
       ctx.fillText(
-        (index+1)+". "+(home&&away?[translateFootballTeamName(home),translateFootballTeamName(away)].join(" vs "):translateFootballTeamName(match.name||"Match")),
+        (index+1)+". "+(home&&away?[translateFootballTeamName(home),translateFootballTeamName(away)].join(" vs "):translateFootballMatchName(match.name||"Match")),
         50,y
       );
 
