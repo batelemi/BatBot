@@ -9019,6 +9019,11 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
     if(map[key])return map[key];
 
+    const doubleChance=raw.match(/^(.+?)\s+or\s+(?:a\s+)?draw$/i);
+    if(doubleChance){
+      return "🛡️ "+translateFootballCountry(doubleChance[1].trim())+" ou match nul";
+    }
+
     const translatedRaw=translateFootballTeamName(raw);
 
     if(/^Victoire\s+/i.test(translatedRaw)){
@@ -9614,7 +9619,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
       const currentAway=num(fixture?.goals?.away);
 
       const venue=venueName(fixture);
-      const competition=fixture?.league?.name||fixture?.competition||"";
+      const competition=translateFootballCompetition(fixture?.league?.name||fixture?.competition||"");
 
       const flagHome=home?renderBatBotTeamFlag(teamFlag(homeTeam),homeTeam.name||home,homeTeam.country_code||homeTeam.countryCode||homeTeam.country,homeTeam.id||homeTeam.team_id||homeTeam.teamId,homeTeam):"";
       const flagAway=away?renderBatBotTeamFlag(teamFlag(awayTeam),awayTeam.name||away,awayTeam.country_code||awayTeam.countryCode||awayTeam.country,awayTeam.id||awayTeam.team_id||awayTeam.teamId,awayTeam):"";
