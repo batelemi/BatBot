@@ -4324,16 +4324,16 @@ function selectBatBotRecommendation(match){
 function buildBatBotTicketText(data){
   const lines=["BATBOT PRO — TICKET DE PRONOSTICS",""];
   (data?.matches||[]).forEach(function(match,index){
-    lines.push((index+1)+". "+(match.name?translateFootballMatchName(match.name):"Match"));
-    lines.push("Choix : "+(match.recommendation?translateFootballSelectionName(match.recommendation):"—"));
     const pick=selectBatBotRecommendation(match);
+    const selection=pick?.name||match.recommendation||"—";
+    lines.push((index+1)+". "+(match.name?translateFootballMatchName(match.name):"Match"));
+    lines.push("Choix : "+(selection!=="—"?translateFootballSelectionName(selection):"—"));
     if(pick)lines.push("Probabilité : "+formatPercent(pick.probability));
     const probs=(match.probabilities||[]).map(function(p){return (p.label||"")+" "+formatPercent(p.value);}).join(" • ");
     if(probs)lines.push("1/X/2 : "+probs);
     lines.push("Qualité : "+(match.data_quality||"—"));
     lines.push("");
   });
-
   return lines.join("\n");
 }
 function renderBatBotTicket(data){
@@ -6070,11 +6070,11 @@ function translateFootballSelectionName(value){
     return "🛡️ "+translateFootballTeamName(doubleChance[1].trim())+" ou match nul";
   }
 
-  const teamGoals=raw.match(/^(.+?)\s+(under|over)\s*(\d+(?:[.,]\d+)?)\s*(?:goals?|but(?:s)?)?$/i);
+  const teamGoals=raw.match(/^(.+?)\s+(under|over|moins\s+de|plus\s+de)\s*(\d+(?:[.,]\d+)?)\s*(?:goals?|buts?|but)?$/i);
   if(teamGoals){
     const team=translateFootballTeamName(teamGoals[1].trim());
     const threshold=teamGoals[3].replace(".",",");
-    const direction=teamGoals[2].toLowerCase()==="under"?"Moins de ":"Plus de ";
+    const direction=/^(?:under|moins\s+de)$/i.test(teamGoals[2])?"Moins de ":"Plus de ";
     const suffix=Number(threshold.replace(",","."))<=1.5?" but":" buts";
     return "⚽ "+team+" – "+direction+threshold+suffix;
   }
@@ -9394,16 +9394,19 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
 
     if(map[key])return map[key];
 
+    const centralSelection=translateFootballSelectionName(raw);
+    if(centralSelection && centralSelection!==raw)return centralSelection;
+
     const doubleChance=raw.match(/^(.+?)\s+or\s+(?:a\s+)?draw$/i);
     if(doubleChance){
       return "🛡️ "+translateFootballTeamName(doubleChance[1].trim())+" ou match nul";
     }
 
-    const teamGoals=raw.match(/^(.+?)\s+(under|over)\s*(\d+(?:[.,]\d+)?)\s*(?:goals?|but(?:s)?)?$/i);
+    const teamGoals=raw.match(/^(.+?)\s+(under|over|moins\s+de|plus\s+de)\s*(\d+(?:[.,]\d+)?)\s*(?:goals?|buts?|but)?$/i);
     if(teamGoals){
       const team=translateFootballTeamName(teamGoals[1].trim());
       const threshold=teamGoals[3].replace(".",",");
-      const direction=teamGoals[2].toLowerCase()==="under"?"Moins de ":"Plus de ";
+      const direction=/^(?:under|moins\s+de)$/i.test(teamGoals[2])?"Moins de ":"Plus de ";
       const suffix=Number(threshold.replace(",","."))<=1.5?" but":" buts";
       return "⚽ "+team+" – "+direction+threshold+suffix;
     }
