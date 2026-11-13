@@ -6156,11 +6156,6 @@ function setFootballRefreshIndicator(state){
 
   if(validState==="success"){
     window.batBotFootballRefreshErrorNotified=false;
-  }else if(validState==="error"&&!window.batBotFootballRefreshErrorNotified){
-    window.batBotFootballRefreshErrorNotified=true;
-    if(typeof showToast==="function"){
-      showToast("Actualisation momentanément impossible. Cliquez sur ACTUALISER pour relancer le chargement, ou patientez quelques instants et vérifiez votre connexion Internet. Les matchs seront actualisés automatiquement.","error");
-    }
   }
 }
 function startFootballFixturesAutoRefresh(){
