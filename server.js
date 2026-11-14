@@ -1334,6 +1334,11 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Statut invalide." });
   }
 
+  const adminNote = String(req.body.admin_note || "").trim().slice(0, 1000);
+  if (status === "rejected" && !adminNote) {
+    return res.status(400).json({ error: "Veuillez indiquer le motif du refus." });
+  }
+
   const client = await pool.connect();
 
   try {
@@ -1417,10 +1422,15 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
       }
     }
 
-    const result = await client.query(
-      "UPDATE payment_requests SET status=$1, resolved_at=CURRENT_TIMESTAMP WHERE id=$2 AND status='pending'",
-      [status, request.id]
-    );
+    const result = status === "rejected"
+      ? await client.query(
+          "UPDATE payment_requests SET status=$1, admin_note=$2, resolved_at=CURRENT_TIMESTAMP WHERE id=$3 AND status='pending'",
+          [status, adminNote, request.id]
+        )
+      : await client.query(
+          "UPDATE payment_requests SET status=$1, resolved_at=CURRENT_TIMESTAMP WHERE id=$2 AND status='pending'",
+          [status, request.id]
+        );
 
     if (result.rowCount !== 1) {
       throw new Error("Cette demande a déjà été traitée.");

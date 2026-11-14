@@ -1006,6 +1006,7 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .wave-mobile-payment-title img{width:34px;height:34px;object-fit:contain;border-radius:10px;background:#fff}
 .wave-mobile-payment-actions{display:grid;gap:8px}
 .wave-mobile-payment-button{margin:0;min-height:48px;display:flex;align-items:center;gap:8px}
+.payment-receipt-submit{width:100%;max-width:100%;white-space:nowrap;flex-wrap:nowrap;min-width:0;box-sizing:border-box;padding:10px 3px;font-size:clamp(9px,3vw,12px);line-height:1.15;letter-spacing:0;overflow:hidden}
 .wave-mobile-payment-button img{width:25px;height:25px;object-fit:contain;border-radius:7px;background:#fff}
 .payment-operator-select{border:1px solid #315D82!important;font-weight:900!important;transition:background .2s,border-color .2s,color .2s}
 .payment-offer-select{border:1px solid #315D82!important;background:linear-gradient(145deg,#173B5D,#102D49)!important;color:#fff!important;font-weight:900!important;transition:background .2s,border-color .2s,color .2s,box-shadow .2s}
@@ -2536,7 +2537,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
     </div>
     <a id="wavePremiumButton" class="btn wave" hidden
       href=""
-      target="_blank" rel="noopener noreferrer"> Souscrire un abonnement</a>
+      target="_blank" rel="noopener noreferrer"> CLIQUER ICI ET PAYER</a>
     <div class="payment-confirm">
       📌 Paiement manuel. Après paiement, envoyez votre confirmation au Service BatBot si nécessaire.
     </div>
@@ -2559,7 +2560,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
           <img src="/wave.png" alt="" aria-hidden="true"> Payer avec Wave
         </a>
         <a id="waveMobilePremiumButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
-          <img src="/wave.png" alt="" aria-hidden="true"> Souscrire un abonnement
+          <img src="/wave.png" alt="" aria-hidden="true"> CLIQUER ICI ET PAYER
         </a>
       </div>
     </div>
@@ -2599,7 +2600,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
           <div><b>4.</b><span>Ouvrez ensuite votre application de paiement sur votre téléphone et effectuez le transfert.</span></div>
           <div><b>5.</b><span>Pour Wave, appuyez sur le bouton correspondant à l’offre choisie et suivez les instructions de paiement.</span></div>
           <div><b>6.</b><span>Après le paiement, revenez dans BATBOT PRO et indiquez le montant payé.</span></div>
-          <div><b>7.</b><span>Appuyez sur <strong>Valider le paiement</strong>, puis envoyez votre preuve sur WhatsApp pour vérification.</span></div>
+          <div><b>7.</b><span>Appuyez sur <strong>ENREGISTRER LE REÇU DE PAIEMENT</strong>, puis envoyez votre preuve sur WhatsApp pour vérification.</span></div>
         </div>
         <button class="btn secondary conditions-close-button" type="button" aria-label="Retour au paiement" title="Retour au paiement">×</button>
       </div>
@@ -2608,7 +2609,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
     <label class="payment-field payment-offer-field"><span class="muted">Offre payée</span><select id="paymentOffer" class="payment-offer-select" aria-label="Offre payée"><option value="Premium 7 jours">Premium 7 jours — 1 000 FCFA</option><option value="Premium 14 jours">Premium 14 jours — 2 000 FCFA</option><option value="Premium 21 jours">Premium 21 jours — 3 000 FCFA</option></select></label>
     <label class="payment-field payment-operator-field"><span class="muted">Opérateur utilisé</span><select id="paymentOperator" class="payment-operator-select" aria-label="Opérateur utilisé"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option><option>Wave</option></select></label>
     <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
-    <button class="btn orange" type="button" onclick="submitPaymentReference()">✅ VALIDER LE PAIEMENT</button>
+    <button class="btn orange payment-receipt-submit" type="button" onclick="submitPaymentReference()">ENREGISTRER LE REÇU DE PAIEMENT</button>
     <button class="btn whatsapp" type="button" hidden onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
     <div id="paymentNumberStatus" class="status"></div>
   </div>
@@ -6687,7 +6688,7 @@ function renderBatBotReceipt(x,options={}){
     "Utilisateur"
   );
   const amount=Number(x.amount)||0;
-  const adminNote=x.admin_note?`<div class="batbot-receipt-row"><span>📝 Note</span><strong>${escapeHtml(x.admin_note)}</strong></div>`:"";
+  const adminNote=x.admin_note?`<div class="batbot-receipt-row"><span>${x.status==="rejected"?"🔴 Motif du refus":"📝 Note"}</span><strong>${escapeHtml(x.admin_note)}</strong></div>`:"";
   const stampName=username.length>20?username.slice(0,20)+"…":username;
   return `
     <div class="batbot-receipt">
@@ -6956,12 +6957,21 @@ async function handlePaymentApprovalSwitch(input,id){
         async function resolvePaymentRequest(id,status,button){
           if(button?.disabled)return;
           const isSwitch=button?.type==="checkbox";
+          let adminNote="";
+          if(status==="rejected"){
+            adminNote=String(window.prompt("Indiquez le motif du refus (ex. : Fonds non reçus) :")||"").trim();
+            if(!adminNote){
+              showToast("Refus annulé : le motif est obligatoire.","error");
+              return;
+            }
+          }
           if(button){
             button.disabled=true;
             if(!isSwitch)button.innerHTML='<span class="batbot-spinner batbot-btn-spinner" aria-hidden="true"></span>Traitement…';
           }
           try{
-            const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({status})});
+            const payload=status==="rejected"?{status,admin_note:adminNote}:{status};
+            const r=await fetch("/api/admin/payment-requests/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)});
             const d=await readApiResponse(r);
             if(!r.ok)throw new Error(d.error||"Action impossible.");
             showToast(d.message||(status==="accepted"?"Paiement approuvé.":"Paiement refusé."),"success");
