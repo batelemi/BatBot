@@ -2254,7 +2254,7 @@ document.addEventListener("keydown",function(event){
       <h2>🔔 Messages</h2>
       <span id="batbotMessagesBadge" class="batbot-message-badge hidden">0</span>
     </div>
-    <p class="muted">Retrouvez ici les annonces et informations importantes de BATBOT PRO. Chaque message est conservé pendant 24 heures maximum.</p>
+
     <div id="batbotMessagesList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des messages</strong><small>Récupération des dernières informations…</small></div></div></div>
   </section>
 
@@ -2628,7 +2628,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
 
   <div id="myTransactionsCard" class="card">
     <h2>📊 Mes transactions</h2>
-    <p class="muted">Consultez vos demandes de paiement et leur statut. Elles restent consultables pendant 14 jours à compter de leur date d’enregistrement.</p>
+
     <div id="myTransactionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Actualisation des transactions</strong><small>Récupération de vos dernières demandes…</small></div></div></div>
   </div>
 
@@ -2731,7 +2731,7 @@ PSG vs Marseille"></textarea>
 
     <div class="card">
       <h2>⚙️ Paramètres modifiables</h2>
-      <p class="muted">Modifiez les numéros WhatsApp, Telegram, les liens Wave, les réseaux sociaux et les numéros Mobile Money sans toucher au code.</p>
+
       <div id="settingsList" class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des paramètres</strong><small>Récupération de la configuration…</small></div></div>
       <button class="btn primary" type="button" onclick="saveAdminSettings()">💾 Enregistrer les paramètres</button>
       <div id="settingsStatus" class="status"></div>
@@ -6954,16 +6954,95 @@ async function handlePaymentApprovalSwitch(input,id){
           if(!confirmed){input.checked=false;return;}
           await resolvePaymentRequest(id,"accepted",input);
         }
-        async function resolvePaymentRequest(id,status,button){
+
+function showPaymentRejectionReasonModal(){
+  return new Promise(function(resolve){
+    let modal=document.getElementById("batbotPaymentRejectionModal");
+    if(!modal){
+      modal=document.createElement("div");
+      modal.id="batbotPaymentRejectionModal";
+      modal.className="batbot-confirm-modal hidden";
+      modal.setAttribute("role","dialog");
+      modal.setAttribute("aria-modal","true");
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML=`
+      <div class="batbot-confirm-inner">
+        <h3>❌ Motif du refus</h3>
+        <p>Choisissez la raison du refus de ce paiement.</p>
+        <div style="margin-top:14px">
+          <label style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--white);font-size:14px">
+            <input type="radio" name="batbotPaymentRejectionReason" value="funds" checked style="width:auto;margin:0;padding:0">
+            <span>Fonds non reçus.</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--white);font-size:14px">
+            <input type="radio" name="batbotPaymentRejectionReason" value="amount" style="width:auto;margin:0;padding:0">
+            <span>Montant reçu incorrect.</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--white);font-size:14px">
+            <input type="radio" name="batbotPaymentRejectionReason" value="other" style="width:auto;margin:0;padding:0">
+            <span>Autre motif</span>
+          </label>
+          <textarea id="batbotPaymentOtherReason" maxlength="1000"
+            placeholder="Saisissez le motif du refus..."
+            style="display:none;min-height:90px"></textarea>
+        </div>
+        <div class="batbot-confirm-actions">
+          <button class="btn secondary" type="button" id="batbotPaymentReasonCancel">Annuler</button>
+          <button class="btn primary" type="button" id="batbotPaymentReasonOk">Confirmer</button>
+        </div>
+      </div>`;
+
+    modal.classList.remove("hidden");
+    document.body.style.overflow="hidden";
+
+    const otherField=modal.querySelector("#batbotPaymentOtherReason");
+    modal.querySelectorAll('input[name="batbotPaymentRejectionReason"]').forEach(function(input){
+      input.addEventListener("change",function(){
+        const isOther=input.value==="other" && input.checked;
+        otherField.style.display=isOther?"block":"none";
+        if(isOther)otherField.focus();
+      });
+    });
+
+    const close=function(value){
+      modal.classList.add("hidden");
+      document.body.style.overflow="";
+      resolve(value);
+    };
+
+    modal.querySelector("#batbotPaymentReasonCancel").onclick=function(){
+      close(null);
+    };
+
+    modal.querySelector("#batbotPaymentReasonOk").onclick=function(){
+      const selected=modal.querySelector('input[name="batbotPaymentRejectionReason"]:checked');
+      if(!selected)return;
+
+      let reason="";
+      if(selected.value==="funds")reason="Fonds non reçus.";
+      else if(selected.value==="amount")reason="Montant reçu incorrect.";
+      else{
+        reason=String(otherField.value||"").trim();
+        if(!reason){
+          showToast("Veuillez saisir le motif du refus.","error");
+          otherField.focus();
+          return;
+        }
+      }
+      close(reason);
+    };
+  });
+}
+
+async function resolvePaymentRequest(id,status,button){
           if(button?.disabled)return;
           const isSwitch=button?.type==="checkbox";
           let adminNote="";
           if(status==="rejected"){
-            adminNote=String(window.prompt("Indiquez le motif du refus (ex. : Fonds non reçus) :")||"").trim();
-            if(!adminNote){
-              showToast("Refus annulé : le motif est obligatoire.","error");
-              return;
-            }
+            adminNote=await showPaymentRejectionReasonModal();
+            if(!adminNote)return;
           }
           if(button){
             button.disabled=true;
