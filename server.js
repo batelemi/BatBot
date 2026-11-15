@@ -1262,7 +1262,7 @@ app.post("/api/payment-requests", requireUser, async (req, res) => {
   const operator = String(req.body.operator || "").trim();
   const amount = Number(req.body.amount);
   const reference = "";
-  const allowedOperators = ["Orange Money", "MTN Money", "Moov Money", "Wave"];
+  const allowedOperators = ["Djamo", "Wave", "Orange Money", "MTN Money", "Moov Money"];
   const premiumAmounts = {
     "Premium 7 jours": 1000,
     "Premium 14 jours": 2000,
@@ -1372,7 +1372,7 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
       const expected = premiumOffers[offer];
       const amount = Number(request.amount);
       const operator = String(request.operator || "").trim();
-      const allowedOperators = ["Orange Money", "MTN Money", "Moov Money", "Wave"];
+      const allowedOperators = ["Djamo", "Wave", "Orange Money", "MTN Money", "Moov Money"];
 
       if (!expected || !Number.isInteger(amount) || amount !== expected.amount || !allowedOperators.includes(operator)) {
         await client.query("ROLLBACK");

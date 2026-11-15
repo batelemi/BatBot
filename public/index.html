@@ -988,11 +988,16 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .conditions-list b{flex:0 0 auto;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#16B8E8;color:#fff}.conditions-close-button{margin-top:12px;margin-bottom:0}
 .djamo-mobile-payment-block{order:-2;margin-top:14px;padding:14px;border-radius:16px;background:linear-gradient(145deg,#102F58,#0A2038);border:1px solid rgba(83,207,255,.35);box-shadow:0 8px 22px rgba(0,0,0,.16)}
 .djamo-mobile-payment-block[hidden]{display:none!important}
+.djamo-network-title{flex-wrap:nowrap;white-space:nowrap;gap:6px;font-size:clamp(9px,2.85vw,16px);letter-spacing:-.25px;min-width:0}
+.djamo-network-title>span:last-child{white-space:nowrap;min-width:0}
+.payment-network-neutral-icon{width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#fff;color:#12395b;font-size:21px}
+.payment-network-neutral-button-icon{font-size:21px;line-height:1}
 .wave-mobile-payment-block{order:-1}
 .payment-field{display:block;margin-top:10px}
 .payment-field>.muted{display:block;margin-bottom:5px;font-weight:800}
 .payment-field select{width:100%;min-height:48px;padding:11px 40px 11px 13px;border-radius:13px;border:1px solid #315D82;background:#102F4D;color:#fff;font-weight:900;font-size:15px;outline:none}
 .payment-offer-select{border-color:rgba(0,191,255,.45)!important;background:linear-gradient(145deg,#123A5D,#0B2947)!important}
+.payment-operator-select.operator-djamo{border-color:#20B8A5!important;background:linear-gradient(145deg,#125B55,#0B2947)!important;color:#E0FFF8!important}
 .payment-operator-select.operator-orange{border-color:#F59E0B!important;background:linear-gradient(145deg,#7A4308,#3C270F)!important;color:#FFE7B0!important}
 .payment-operator-select.operator-mtn{border-color:#F5C542!important;background:linear-gradient(145deg,#6F6108,#38320B)!important;color:#FFF2A8!important}
 .payment-operator-select.operator-moov{border-color:#1683FF!important;background:linear-gradient(145deg,#124B82,#0B2947)!important;color:#D9EEFF!important}
@@ -2553,13 +2558,13 @@ onclick="if(event.target===this)closeBatBotIconModals()">
       <span class="conditions-chevron">›</span>
     </button>
     <div class="djamo-mobile-payment-block" hidden>
-      <div class="wave-mobile-payment-title">
-        <img src="/djamo-logo-transparent.png" alt="Djamo">
-        <span>Payer avec Djamo</span>
+      <div class="wave-mobile-payment-title djamo-network-title">
+        <span class="payment-network-neutral-icon" aria-hidden="true">📱</span>
+        <span>Payer avec Wave • Djamo • Orange • Moov • MTN</span>
       </div>
       <div class="wave-mobile-payment-actions">
         <a id="djamoPaymentButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
-          <img src="/djamo-logo-transparent.png" alt="" aria-hidden="true"> CLIQUEZ ICI ET PAYER
+          <span class="payment-network-neutral-button-icon" aria-hidden="true">📱</span> CLIQUEZ ICI ET PAYER
         </a>
       </div>
     </div>
@@ -2617,7 +2622,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
     </div>
 
     <label class="payment-field payment-offer-field"><span class="muted">Offre payée</span><select id="paymentOffer" class="payment-offer-select" aria-label="Offre payée"><option value="Premium 7 jours">Premium 7 jours — 1 000 FCFA</option><option value="Premium 14 jours">Premium 14 jours — 2 000 FCFA</option><option value="Premium 21 jours">Premium 21 jours — 3 000 FCFA</option></select></label>
-    <label class="payment-field payment-operator-field"><span class="muted">Opérateur utilisé</span><select id="paymentOperator" class="payment-operator-select" aria-label="Opérateur utilisé"><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option><option>Wave</option></select></label>
+    <label class="payment-field payment-operator-field"><span class="muted">Opérateur utilisé</span><select id="paymentOperator" class="payment-operator-select" aria-label="Opérateur utilisé"><option>Djamo</option><option>Wave</option><option>Orange Money</option><option>MTN Money</option><option>Moov Money</option></select></label>
     <label><span class="muted">Montant payé (FCFA)</span><input id="paymentAmount" type="number" min="1" placeholder="Ex. 1000"></label>
     <button class="btn orange payment-receipt-submit" type="button" onclick="submitPaymentReference()">ENREGISTRER LE REÇU DE PAIEMENT</button>
     <button class="btn whatsapp" type="button" hidden onclick="sendPaymentWhatsApp()">💬 Envoyer la preuve sur WhatsApp</button>
@@ -3674,8 +3679,9 @@ function updatePaymentOperatorStyle(){
   const select=document.getElementById('paymentOperator');
   if(!select)return;
   const value=select.value;
-  select.classList.remove('operator-orange','operator-mtn','operator-moov','operator-wave');
-  if(value==='Orange Money')select.classList.add('operator-orange');
+  select.classList.remove('operator-djamo','operator-orange','operator-mtn','operator-moov','operator-wave');
+  if(value==='Djamo')select.classList.add('operator-djamo');
+  else if(value==='Orange Money')select.classList.add('operator-orange');
   else if(value==='MTN Money')select.classList.add('operator-mtn');
   else if(value==='Moov Money')select.classList.add('operator-moov');
   else if(value==='Wave')select.classList.add('operator-wave');
@@ -8236,7 +8242,7 @@ function applyServiceVisibility(data){
   setVisible(mobileDjamo,wave500);
   const mobileWave=document.querySelector('.wave-mobile-payment-block');
   setVisible(mobileWave,wave1000);
-  const operatorKeys={'Orange Money':'orangeMoney','MTN Money':'mtnMoney','Moov Money':'moovMoney'};
+  const operatorKeys={'Djamo':'wave500','Orange Money':'orangeMoney','MTN Money':'mtnMoney','Moov Money':'moovMoney'};
   document.querySelectorAll('#paymentOperator option').forEach(option=>{const key=operatorKeys[option.value];if(key)option.disabled=!SERVICE_FLAGS[key];else if(option.value==='Wave')option.disabled=!SERVICE_FLAGS.wave1000;});
   const paymentOperator=document.getElementById('paymentOperator');
   if(paymentOperator){const selected=paymentOperator.options[paymentOperator.selectedIndex];if(selected&&selected.disabled){const next=Array.from(paymentOperator.options).find(option=>!option.disabled);if(next)next.selected=true;}paymentOperator.disabled=!Array.from(paymentOperator.options).some(option=>!option.disabled);}
