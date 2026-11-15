@@ -3769,6 +3769,18 @@ if(document.readyState==='loading'){
       const djamoBlock=mobile.querySelector('.djamo-mobile-payment-block');
       if(djamoBlock)djamoBlock.style.display='';
     }
+    function updateGuidedPaymentMethod(operator){
+      mobile.querySelectorAll('.payment-number').forEach(el=>{
+        const selected=operator==='Orange Money'?el.classList.contains('orange-network'):
+          operator==='MTN Money'?el.classList.contains('mtn-network'):
+          operator==='Moov Money'?el.classList.contains('moov-network'):false;
+        el.style.display=selected?'':'none';
+      });
+      const waveBlock=mobile.querySelector('.wave-mobile-payment-block');
+      if(waveBlock)waveBlock.style.display=operator==='Wave'?'':'none';
+      const djamoBlock=mobile.querySelector('.djamo-mobile-payment-block');
+      if(djamoBlock)djamoBlock.style.display=operator==='Djamo'?'':'none';
+    }
     function openPremiumSelectionWindow(){
       closePaymentWindow();
       resetGuidedPayment();
@@ -3790,7 +3802,7 @@ if(document.readyState==='loading'){
     function showPremiumOperators(offer){
       const amount={'Premium 7 jours':'1 000','Premium 14 jours':'2 000','Premium 21 jours':'3 000'}[offer];
       const operators=[
-        {name:'Djamo',key:'wave500',logo:'',icon:'📱'},
+        {name:'Djamo',label:'Tout réseau',key:'wave500',logo:'',icon:'♻️'},
         {name:'Orange Money',key:'orangeMoney',logo:'/orange-money.png'},
         {name:'MTN Money',key:'mtnMoney',logo:'/mtn-money.png'},
         {name:'Moov Money',key:'moovMoney',logo:'/moov-money.png'},
@@ -3813,8 +3825,8 @@ if(document.readyState==='loading'){
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
           ${operators.map(op=>`<button type="button" data-premium-operator="${op.name}" class="btn secondary" style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px">
-            ${op.logo?`<img src="${op.logo}" alt="${op.name}" style="width:43px;height:43px;object-fit:contain">`:`<span aria-hidden="true" style="width:43px;height:43px;display:flex;align-items:center;justify-content:center;font-size:30px">📱</span>`}
-            <strong>${op.name}</strong>
+            ${op.logo?`<img src="${op.logo}" alt="${op.name}" style="width:43px;height:43px;object-fit:contain">`:`<span aria-hidden="true" style="width:43px;height:43px;display:flex;align-items:center;justify-content:center;font-size:30px">${op.icon||'📱'}</span>`}
+            <strong>${op.label||op.name}</strong>
           </button>`).join('')}
         </div>
         ${operators.length?'':'<p class="muted">Aucun moyen de paiement n’est actuellement disponible.</p>'}
@@ -3829,24 +3841,15 @@ if(document.readyState==='loading'){
       operatorSelect.value=operator;
       if(typeof updatePaymentOfferStyle==='function')updatePaymentOfferStyle();
       if(typeof updatePaymentOperatorStyle==='function')updatePaymentOperatorStyle();
-      title.textContent='💳 Paiement — '+operator;
+      title.textContent='💳 Paiement — '+(operator==='Djamo'?'Tout réseau':operator);
       body.innerHTML='';
       mobile.style.display='';
       addNode(mobile);
-      mobile.querySelectorAll('.payment-offer-field,.payment-operator-field').forEach(el=>el.style.display='none');
-      mobile.querySelectorAll('.payment-number').forEach(el=>{
-        const selected=operator==='Orange Money'?el.classList.contains('orange-network'):
-          operator==='MTN Money'?el.classList.contains('mtn-network'):
-          operator==='Moov Money'?el.classList.contains('moov-network'):false;
-        el.style.display=selected?'':'none';
-      });
-      const waveBlock=mobile.querySelector('.wave-mobile-payment-block');
-      if(waveBlock)waveBlock.style.display=operator==='Wave'?'':'none';
-      const djamoBlock=mobile.querySelector('.djamo-mobile-payment-block');
-      if(djamoBlock)djamoBlock.style.display=operator==='Djamo'?'':'none';
+      mobile.querySelectorAll('.payment-offer-field,.payment-operator-field').forEach(el=>el.style.display='');
+      updateGuidedPaymentMethod(operator);
       body.insertAdjacentHTML('afterbegin',`
         <div style="padding:12px;margin-bottom:12px;border-radius:12px;background:#102f4d;color:#fff">
-          <strong>${offer}</strong><span style="float:right">${Number(document.getElementById('paymentAmount').value).toLocaleString('fr-FR')} FCFA</span>
+          <strong id="premiumGuidedSummaryOffer">${offer}</strong><span id="premiumGuidedSummaryAmount" style="float:right">${Number(document.getElementById('paymentAmount').value).toLocaleString('fr-FR')} FCFA</span>
         </div>
         <button type="button" class="btn secondary" data-premium-back style="margin-bottom:12px">← Changer d’opérateur</button>`);
       modal.classList.remove('hidden');
@@ -3937,6 +3940,21 @@ if(document.readyState==='loading'){
         return;
       }
       if(event.target.closest('[data-premium-receipt-close]'))closePaymentWindow();
+    });
+
+    body.addEventListener('change',event=>{
+      if(event.target?.id==='paymentOperator'){
+        updateGuidedPaymentMethod(event.target.value);
+        title.textContent='💳 Paiement — '+(event.target.value==='Djamo'?'Tout réseau':event.target.value);
+      }
+      if(event.target?.id==='paymentOffer'){
+        const amounts={'Premium 7 jours':1000,'Premium 14 jours':2000,'Premium 21 jours':3000};
+        const offer=event.target.value;
+        const summaryOffer=document.getElementById('premiumGuidedSummaryOffer');
+        const summaryAmount=document.getElementById('premiumGuidedSummaryAmount');
+        if(summaryOffer)summaryOffer.textContent=offer;
+        if(summaryAmount)summaryAmount.textContent=(amounts[offer]||0).toLocaleString('fr-FR')+' FCFA';
+      }
     });
 
     window.openBatBotPremiumPaymentWindow=function(){
