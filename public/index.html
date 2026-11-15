@@ -2071,7 +2071,7 @@ document.addEventListener("keydown",function(event){
 
 <div id="loadingScreen">
   <div class="loading-logo">
-    <img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO"
+    <img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO"
       onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
     <span class="logo-fallback hidden-fallback" aria-hidden="true">B</span>
   </div>
@@ -2088,7 +2088,7 @@ document.addEventListener("keydown",function(event){
 
   <div class="center">
     <div class="logo">
-      <img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO"
+      <img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO"
         onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden-fallback');">
       <span class="logo-fallback hidden-fallback" aria-hidden="true">B</span>
     </div>
@@ -2650,7 +2650,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
 
 
   <div class="card">
-    <h2><img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> Demander un pronostic</h2>
+    <h2><img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> Demander un pronostic</h2>
 
 
     <label>
@@ -2715,7 +2715,7 @@ PSG vs Marseille"></textarea>
 <section id="admin" class="hidden">
 
   <div class="center">
-    <div class="admin-header-icon"><img src="/assets/branding/batbot-pro-admin.png" alt="Logo administration" style="width:74px;height:74px;object-fit:contain;border-radius:50%;"></div>
+    <div class="admin-header-icon"><img src="/assets/branding/batbot-pro-admin.webp" alt="Logo administration" style="width:74px;height:74px;object-fit:contain;border-radius:50%;"></div>
     <h1>Administration<sup class="brand-mark">®</sup></h1>
     <p class="muted">Gestion des membres BATBOT PRO</p>
   </div>
@@ -2900,7 +2900,7 @@ function showLoading(message,logoPath){
   const messageElement=document.getElementById("loadingMessage");
   const logoImage=screen?screen.querySelector(".loading-logo img"):null;
   if(messageElement)messageElement.textContent=message||"Chargement…";
-  if(logoImage)logoImage.src=logoPath||"/assets/branding/batbot-pro.png";
+  if(logoImage)logoImage.src=logoPath||"/assets/branding/batbot-pro.webp";
   if(screen)screen.classList.remove("hide");
 }
 
@@ -3322,7 +3322,7 @@ async function login(){
     }
 
     showStatus("loginStatus","Connexion réussie.","success");
-    showLoading("Connexion réussie. Chargement de votre espace…","/assets/branding/batbot-pro.png");
+    showLoading("Connexion réussie. Chargement de votre espace…","/assets/branding/batbot-pro.webp");
     setTimeout(function(){
       showDashboard(data.user||data);
       hideLoading();
@@ -6634,7 +6634,7 @@ async function adminLogin(){
       return;
     }
 
-    showLoading("Connexion réussie. Chargement de l’administration…","/assets/branding/batbot-pro-admin.png");
+    showLoading("Connexion réussie. Chargement de l’administration…","/assets/branding/batbot-pro-admin.webp");
     setTimeout(function(){
       Promise.resolve().then(function(){ return loadAdmin(); })
         .catch(function(error){
@@ -6737,7 +6737,7 @@ function renderBatBotReceipt(x,options={}){
     <div class="batbot-receipt">
       <div class="batbot-receipt-head">
         <div class="batbot-receipt-brand">
-          <img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO">
+          <img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO">
           <div><div>BATBOT PRO</div><div class="batbot-receipt-subtitle">Reçu de transaction</div></div>
         </div>
         <div class="batbot-receipt-id">N° ${escapeHtml(String(x.id||"—"))}</div>
@@ -7525,7 +7525,7 @@ async function loadAdminAffiliateWithdrawals(){
         '<article class="batbot-receipt">'+
           '<div class="batbot-receipt-head">'+
             '<div class="batbot-receipt-brand">'+
-              '<img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO">'+
+              '<img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO">'+
               '<div><div>BATBOT PRO</div><div class="batbot-receipt-subtitle">REÇU DE RETRAIT</div></div>'+
             '</div>'+
             '<div class="batbot-receipt-id">N° '+escapeHtml(String(id))+'</div>'+
@@ -7907,7 +7907,7 @@ async function loadDailyMatches(){
 
       return `
         <div class="match-card">
-          <div class="match-title"><img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
+          <div class="match-title"><img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
           <div class="probability">
             <div class="prob"><strong>${escapeHtml(home)}%</strong><span>Équipe 1</span></div>
             <div class="prob"><strong>${escapeHtml(draw)}%</strong><span>Match nul</span></div>
@@ -8037,7 +8037,7 @@ async function loadAdminDailyMatches(){
 
       return `
         <div class="match-card">
-          <div class="match-title"><img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
+          <div class="match-title"><img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO" class="inline-logo" aria-hidden="true"> ${escapeHtml(match.match_name||match.name||"Match")}</div>
           <div class="probability">
             <div class="prob"><strong>${escapeHtml(home)}%</strong><span>Équipe 1</span></div>
             <div class="prob"><strong>${escapeHtml(draw)}%</strong><span>Match nul</span></div>
@@ -8988,7 +8988,7 @@ document.addEventListener("keydown",function(event){
             <article class="batbot-receipt">
               <div class="batbot-receipt-head">
                 <div class="batbot-receipt-brand">
-                  <img src="/assets/branding/batbot-pro.png" alt="Logo BATBOT PRO">
+                  <img src="/assets/branding/batbot-pro.webp" alt="Logo BATBOT PRO">
                   <div><div>BATBOT PRO</div><div class="batbot-receipt-subtitle">REÇU DE RETRAIT</div></div>
                 </div>
                 <div class="batbot-receipt-id">N° ${safe(String(x.id))}</div>
