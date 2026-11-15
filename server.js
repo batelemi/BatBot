@@ -3711,6 +3711,8 @@ app.use(express.static(path.join(__dirname, "public"), {
   setHeaders(res, filePath) {
     if (filePath.endsWith("index.html") || filePath.endsWith("sw.js")) {
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    } else if (filePath.includes(`${path.sep}football-logos${path.sep}`)) {
+      res.setHeader("Cache-Control", "public, max-age=604800");
     }
   }
 }));
