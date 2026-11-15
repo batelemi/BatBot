@@ -3244,6 +3244,27 @@ const sportApiFixturesInFlight = new Map();
 const SPORTAPI_FIXTURES_CACHE_TTL = 30 * 1000;
 let sportApiPersistentCacheReady = false;
 
+function logSportApiFixturesDiagnostic(date, fixtures, source) {
+  const counts = { NS: 0, LIVE: 0, FT: 0, UNKNOWN: 0, CANCELLED: 0 };
+  const items = Array.isArray(fixtures) ? fixtures : [];
+
+  for (const item of items) {
+    const status = String(item?.fixture?.status?.short || "UNKNOWN").toUpperCase();
+    if (Object.prototype.hasOwnProperty.call(counts, status)) {
+      counts[status]++;
+    } else {
+      counts.UNKNOWN++;
+    }
+  }
+
+  console.log(
+    `BatBot SPORTAPI DIAGNOSTIC: date=${date} source=${source} total=${items.length} ` +
+    `NS=${counts.NS} LIVE=${counts.LIVE} FT=${counts.FT} ` +
+    `UNKNOWN=${counts.UNKNOWN} CANCELLED=${counts.CANCELLED}`
+  );
+}
+
+
 
 async function initializeAiPredictionHistory() {
   await pgQuery(`CREATE TABLE IF NOT EXISTS ai_prediction_history (
@@ -3416,6 +3437,8 @@ async function loadSportApiFixturesByDate(date) {
               stale: false
             };
 
+            logSportApiFixturesDiagnostic(date, freshValue.fixtures, "background");
+
             sportApiFixturesCache.set(date, {
               value: freshValue,
               expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL
@@ -3437,7 +3460,13 @@ async function loadSportApiFixturesByDate(date) {
 
             return freshValue;
           } catch (error) {
-            console.error("BatBot: actualisation SportAPI en arrière-plan:", error.message);
+            console.error("BatBot SPORTAPI DIAGNOSTIC ERROR:", {
+              date,
+              source: "background",
+              message: error.message,
+              status: error.status || null,
+              code: error.code || null
+            });
             return staleValue;
           } finally {
             if (sportApiFixturesInFlight.get(date) === refreshRequest) {
@@ -3465,6 +3494,8 @@ async function loadSportApiFixturesByDate(date) {
         stale: false
       };
 
+      logSportApiFixturesDiagnostic(date, value.fixtures, "initial");
+
       sportApiFixturesCache.set(date, {
         value,
         expiresAt: Date.now() + SPORTAPI_FIXTURES_CACHE_TTL
@@ -3486,6 +3517,13 @@ async function loadSportApiFixturesByDate(date) {
 
       return { ...value, cached: false };
     } catch (error) {
+      console.error("BatBot SPORTAPI DIAGNOSTIC ERROR:", {
+        date,
+        source: "initial",
+        message: error.message,
+        status: error.status || null,
+        code: error.code || null
+      });
       if (persisted && Array.isArray(persisted.fixtures)) {
         return {
           source: "SportAPI.ai",
