@@ -3262,6 +3262,25 @@ function logSportApiFixturesDiagnostic(date, fixtures, source) {
     `NS=${counts.NS} LIVE=${counts.LIVE} FT=${counts.FT} ` +
     `UNKNOWN=${counts.UNKNOWN} CANCELLED=${counts.CANCELLED}`
   );
+
+  const pendingFixtures = items
+    .filter(item => String(item?.fixture?.status?.short || "UNKNOWN").toUpperCase() === "NS")
+    .map(item => ({
+      id: item?.fixture?.id || item?.sportapi?.rawId || null,
+      home: item?.teams?.home?.name || null,
+      homeId: item?.teams?.home?.id || null,
+      away: item?.teams?.away?.name || null,
+      awayId: item?.teams?.away?.id || null,
+      league: item?.league?.name || null,
+      kickoff: item?.fixture?.date || null,
+      rawStatus: item?.sportapi?.status || null
+    }));
+
+  if (pendingFixtures.length > 0) {
+    console.log(
+      `BatBot SPORTAPI NS DETAILS: date=${date} source=${source} matches=${JSON.stringify(pendingFixtures)}`
+    );
+  }
 }
 
 
