@@ -986,6 +986,8 @@ footer button{background:none;border:0;color:#49657E;font-size:11px;cursor:point
 .conditions-list{display:grid;gap:8px}
 .conditions-list>div{display:flex;gap:10px;align-items:flex-start;padding:10px 11px;border-radius:12px;background:#102F4D;border:1px solid #244F72;color:#D9E7F3;line-height:1.45;font-size:13px}
 .conditions-list b{flex:0 0 auto;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#16B8E8;color:#fff}.conditions-close-button{margin-top:12px;margin-bottom:0}
+.djamo-mobile-payment-block{order:-2;margin-top:14px;padding:14px;border-radius:16px;background:linear-gradient(145deg,#102F58,#0A2038);border:1px solid rgba(83,207,255,.35);box-shadow:0 8px 22px rgba(0,0,0,.16)}
+.djamo-mobile-payment-block[hidden]{display:none!important}
 .wave-mobile-payment-block{order:-1}
 .payment-field{display:block;margin-top:10px}
 .payment-field>.muted{display:block;margin-bottom:5px;font-weight:800}
@@ -2503,7 +2505,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
     <div class="payment-window-launcher" aria-label="Effectuer un dépôt">
       <button class="payment-window-trigger mobile-all-networks" type="button" data-payment-window="mobile">
         <span class="payment-trigger-icon-wrap">📱</span>
-        <span><strong>Effectuer un dépôt</strong><small>Wave • Orange • MTN • Moov</small></span>
+        <span><strong>Effectuer un dépôt</strong><small>Djamo • Wave • Orange • MTN • Moov</small></span>
       </button>
     </div>
   <div id="waveDayCard" class="card payment-card payment-window-source">
@@ -2550,15 +2552,23 @@ onclick="if(event.target===this)closeBatBotIconModals()">
       <span><strong>Conditions de dépôt</strong><small>Appuyez ici pour consulter les conditions</small></span>
       <span class="conditions-chevron">›</span>
     </button>
+    <div class="djamo-mobile-payment-block" hidden>
+      <div class="wave-mobile-payment-title">
+        <img src="/djamo-logo-transparent.png" alt="Djamo">
+        <span>Payer avec Djamo</span>
+      </div>
+      <div class="wave-mobile-payment-actions">
+        <a id="djamoPaymentButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
+          <img src="/djamo-logo-transparent.png" alt="" aria-hidden="true"> CLIQUEZ ICI ET PAYER
+        </a>
+      </div>
+    </div>
     <div class="wave-mobile-payment-block">
       <div class="wave-mobile-payment-title">
         <img src="/wave.png" alt="Wave">
         <span>Payer avec Wave</span>
       </div>
       <div class="wave-mobile-payment-actions">
-        <a id="waveMobileDayButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
-          <img src="/wave.png" alt="" aria-hidden="true"> Payer avec Wave
-        </a>
         <a id="waveMobilePremiumButton" class="btn wave wave-mobile-payment-button" hidden href="" target="_blank" rel="noopener noreferrer">
           <img src="/wave.png" alt="" aria-hidden="true"> CLIQUER ICI ET PAYER
         </a>
@@ -2598,7 +2608,7 @@ onclick="if(event.target===this)closeBatBotIconModals()">
           <div><b>2.</b><span>Choisissez votre moyen de paiement.</span></div>
           <div><b>3.</b><span>Pour Orange Money, MTN Money ou Moov Money, cliquez sur le petit bouton <strong>Copier</strong>. Le numéro sera automatiquement copié.</span></div>
           <div><b>4.</b><span>Ouvrez ensuite votre application de paiement sur votre téléphone et effectuez le transfert.</span></div>
-          <div><b>5.</b><span>Pour Wave, appuyez sur le bouton correspondant à l’offre choisie et suivez les instructions de paiement.</span></div>
+          <div><b>5.</b><span>Pour Djamo, appuyez sur <strong>CLIQUEZ ICI ET PAYER</strong>, saisissez le montant, puis choisissez votre réseau de paiement sur la page Djamo. Pour Wave Premium, utilisez le bouton Wave correspondant.</span></div>
           <div><b>6.</b><span>Après le paiement, revenez dans BATBOT PRO et indiquez le montant payé.</span></div>
           <div><b>7.</b><span>Appuyez sur <strong>ENREGISTRER LE REÇU DE PAIEMENT</strong>, puis envoyez votre preuve sur WhatsApp pour vérification.</span></div>
         </div>
@@ -3750,6 +3760,8 @@ if(document.readyState==='loading'){
       mobile.querySelectorAll('.payment-number').forEach(el=>el.style.display='');
       const waveBlock=mobile.querySelector('.wave-mobile-payment-block');
       if(waveBlock)waveBlock.style.display='';
+      const djamoBlock=mobile.querySelector('.djamo-mobile-payment-block');
+      if(djamoBlock)djamoBlock.style.display='';
     }
     function openPremiumSelectionWindow(){
       closePaymentWindow();
@@ -3819,6 +3831,8 @@ if(document.readyState==='loading'){
       });
       const waveBlock=mobile.querySelector('.wave-mobile-payment-block');
       if(waveBlock)waveBlock.style.display=operator==='Wave'?'':'none';
+      const djamoBlock=mobile.querySelector('.djamo-mobile-payment-block');
+      if(djamoBlock)djamoBlock.style.display='none';
       body.insertAdjacentHTML('afterbegin',`
         <div style="padding:12px;margin-bottom:12px;border-radius:12px;background:#102f4d;color:#fff">
           <strong>${offer}</strong><span style="float:right">${Number(document.getElementById('paymentAmount').value).toLocaleString('fr-FR')} FCFA</span>
@@ -4170,7 +4184,7 @@ async function deleteAdminUser(id){
 function renderSettingsForm(settings){
   const serviceFields=[
     ["whatsapp","Numéro WhatsApp agent"],["telegram","Telegram agent"],["whatsappGroup","Lien groupe WhatsApp"],["telegramGroup","Lien groupe Telegram"],
-    ["wave500","Lien Wave 500 F"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
+    ["wave500","Lien Djamo"],["wave1000","Lien Wave 1 000 F"],["orangeMoney","Numéro Orange Money"],["moovMoney","Numéro Moov Money"],["mtnMoney","Numéro MTN Money"],
     ["tiktok","Lien TikTok"],["facebook","Lien Facebook"],["instagram","Lien Instagram"]
   ];
   const ordinaryFields=[["adminPhone","Numéro administrateur"]];
@@ -4197,7 +4211,7 @@ async function loadConfig(){
         else{button.removeAttribute("href");button.classList.add("payment-link-disabled");button.setAttribute("aria-disabled","true");}
       });
     };
-    syncPaymentLink(["waveDayButton","waveMobileDayButton"],SERVICE_FLAGS.wave500?data.wave500:"");
+    syncPaymentLink(["waveDayButton","djamoPaymentButton"],SERVICE_FLAGS.wave500?data.wave500:"");
     syncPaymentLink(["wavePremiumButton","waveMobilePremiumButton"],SERVICE_FLAGS.wave1000?data.wave1000:"");
   }catch(error){console.warn("CONFIG:",error.message);}
 }
@@ -8214,14 +8228,16 @@ function applyServiceVisibility(data){
   });
   const wave500=SERVICE_FLAGS.wave500&&Boolean(data.wave500);
   const wave1000=SERVICE_FLAGS.wave1000&&Boolean(data.wave1000);
-  ['waveDayButton','waveMobileDayButton'].forEach(id=>assignLink(document.getElementById(id),'wave500',wave500?data.wave500:''));
+  ['waveDayButton','djamoPaymentButton'].forEach(id=>assignLink(document.getElementById(id),'wave500',wave500?data.wave500:''));
   ['wavePremiumButton','waveMobilePremiumButton'].forEach(id=>assignLink(document.getElementById(id),'wave1000',wave1000?data.wave1000:''));
   setVisible(document.getElementById('waveDayCard'),false);
   setVisible(document.getElementById('wavePremiumCard'),wave1000);
+  const mobileDjamo=document.querySelector('.djamo-mobile-payment-block');
+  setVisible(mobileDjamo,wave500);
   const mobileWave=document.querySelector('.wave-mobile-payment-block');
   setVisible(mobileWave,wave1000);
   const operatorKeys={'Orange Money':'orangeMoney','MTN Money':'mtnMoney','Moov Money':'moovMoney'};
-  document.querySelectorAll('#paymentOperator option').forEach(option=>{const key=operatorKeys[option.value];if(key)option.disabled=!SERVICE_FLAGS[key];else if(option.value==='Wave')option.disabled=!(SERVICE_FLAGS.wave500||SERVICE_FLAGS.wave1000);});
+  document.querySelectorAll('#paymentOperator option').forEach(option=>{const key=operatorKeys[option.value];if(key)option.disabled=!SERVICE_FLAGS[key];else if(option.value==='Wave')option.disabled=!SERVICE_FLAGS.wave1000;});
   const paymentOperator=document.getElementById('paymentOperator');
   if(paymentOperator){const selected=paymentOperator.options[paymentOperator.selectedIndex];if(selected&&selected.disabled){const next=Array.from(paymentOperator.options).find(option=>!option.disabled);if(next)next.selected=true;}paymentOperator.disabled=!Array.from(paymentOperator.options).some(option=>!option.disabled);}
   document.querySelectorAll('.payment-number.orange-network').forEach(el=>setVisible(el,SERVICE_FLAGS.orangeMoney));

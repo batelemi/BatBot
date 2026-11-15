@@ -117,7 +117,7 @@ const defaults = {
   tiktok: "https://www.tiktok.com/@batelemi92?_r=1&_t=ZS-99cD47Jhd00",
   facebook: "https://www.facebook.com/share/1L96SqLnZT/",
   instagram: "https://www.instagram.com/wonda_boss_officil?stkn=MWc0dndrYWp4c2o2cw==",
-  wave500: "https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=500",
+  wave500: "https://pay.djamo.com/t2bnw",
   wave1000: "https://pay.wave.com/m/M_ci_kpNTVGT9JGah/c/ci/?amount=1000",
   wavePromo: "WAVE22",
   promoFee: "45CFA",
