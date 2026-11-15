@@ -8242,10 +8242,11 @@ function applyServiceVisibility(data){
   setVisible(mobileDjamo,wave500);
   const mobileWave=document.querySelector('.wave-mobile-payment-block');
   setVisible(mobileWave,wave1000);
-  const operatorKeys={'Djamo':'wave500','Orange Money':'orangeMoney','MTN Money':'mtnMoney','Moov Money':'moovMoney'};
-  document.querySelectorAll('#paymentOperator option').forEach(option=>{const key=operatorKeys[option.value];if(key)option.disabled=!SERVICE_FLAGS[key];else if(option.value==='Wave')option.disabled=!SERVICE_FLAGS.wave1000;});
   const paymentOperator=document.getElementById('paymentOperator');
-  if(paymentOperator){const selected=paymentOperator.options[paymentOperator.selectedIndex];if(selected&&selected.disabled){const next=Array.from(paymentOperator.options).find(option=>!option.disabled);if(next)next.selected=true;}paymentOperator.disabled=!Array.from(paymentOperator.options).some(option=>!option.disabled);}
+  if(paymentOperator){
+    paymentOperator.querySelectorAll('option').forEach(option=>option.disabled=false);
+    paymentOperator.disabled=false;
+  }
   document.querySelectorAll('.payment-number.orange-network').forEach(el=>setVisible(el,SERVICE_FLAGS.orangeMoney));
   document.querySelectorAll('.payment-number.mtn-network').forEach(el=>setVisible(el,SERVICE_FLAGS.mtnMoney));
   document.querySelectorAll('.payment-number.moov-network').forEach(el=>setVisible(el,SERVICE_FLAGS.moovMoney));
