@@ -3790,11 +3790,16 @@ if(document.readyState==='loading'){
     function showPremiumOperators(offer){
       const amount={'Premium 7 jours':'1 000','Premium 14 jours':'2 000','Premium 21 jours':'3 000'}[offer];
       const operators=[
+        {name:'Djamo',key:'wave500',logo:'',icon:'📱'},
         {name:'Orange Money',key:'orangeMoney',logo:'/orange-money.png'},
         {name:'MTN Money',key:'mtnMoney',logo:'/mtn-money.png'},
         {name:'Moov Money',key:'moovMoney',logo:'/moov-money.png'},
         {name:'Wave',key:'wave1000',logo:'/wave.png'}
       ].filter(op=>{
+        if(op.name==='Djamo'){
+          const djamoButton=document.getElementById('djamoPaymentButton');
+          return Boolean(SERVICE_FLAGS.wave500&&djamoButton&&!djamoButton.hidden&&djamoButton.href);
+        }
         if(op.name==='Wave'){
           const waveButton=document.getElementById('waveMobilePremiumButton');
           return Boolean(SERVICE_FLAGS.wave1000&&waveButton&&!waveButton.hidden&&waveButton.href);
@@ -3808,7 +3813,7 @@ if(document.readyState==='loading'){
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
           ${operators.map(op=>`<button type="button" data-premium-operator="${op.name}" class="btn secondary" style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px">
-            <img src="${op.logo}" alt="${op.name}" style="width:43px;height:43px;object-fit:contain">
+            ${op.logo?`<img src="${op.logo}" alt="${op.name}" style="width:43px;height:43px;object-fit:contain">`:`<span aria-hidden="true" style="width:43px;height:43px;display:flex;align-items:center;justify-content:center;font-size:30px">📱</span>`}
             <strong>${op.name}</strong>
           </button>`).join('')}
         </div>
@@ -3838,7 +3843,7 @@ if(document.readyState==='loading'){
       const waveBlock=mobile.querySelector('.wave-mobile-payment-block');
       if(waveBlock)waveBlock.style.display=operator==='Wave'?'':'none';
       const djamoBlock=mobile.querySelector('.djamo-mobile-payment-block');
-      if(djamoBlock)djamoBlock.style.display='none';
+      if(djamoBlock)djamoBlock.style.display=operator==='Djamo'?'':'none';
       body.insertAdjacentHTML('afterbegin',`
         <div style="padding:12px;margin-bottom:12px;border-radius:12px;background:#102f4d;color:#fff">
           <strong>${offer}</strong><span style="float:right">${Number(document.getElementById('paymentAmount').value).toLocaleString('fr-FR')} FCFA</span>
