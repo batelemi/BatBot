@@ -429,6 +429,16 @@ app.post("/api/register", async (req, res) => {
 
     await client.query("COMMIT");
 
+    void sendTelegramRegistrationAlert({
+      userId,
+      username
+    }).catch(error => {
+      console.error(
+        "BATBOT TELEGRAM: erreur notification inscription",
+        error.name || "Erreur"
+      );
+    });
+
     const user = await pgGet(
       "SELECT * FROM users WHERE id=$1",
       [userId]
@@ -1297,6 +1307,44 @@ async function sendTelegramPaymentAlert(payment) {
   const result = await response.json();
   if (!result.ok) {
     console.error("BATBOT TELEGRAM: notification refusée par Telegram.");
+  }
+}
+
+async function sendTelegramRegistrationAlert(member) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+  if (!token || !chatId) {
+    console.warn("BATBOT TELEGRAM: configuration absente, notification inscription ignorée.");
+    return;
+  }
+
+  const message = [
+    "👤 NOUVELLE INSCRIPTION — BATBOT PRO",
+    "",
+    `Identifiant membre : ${member.userId}`,
+    `Nom d'utilisateur : ${member.username}`,
+    "Statut : Compte créé avec succès."
+  ].join("\n");
+
+  const response = await fetch(
+    `https://api.telegram.org/bot${token}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: message }),
+      signal: AbortSignal.timeout(5000)
+    }
+  );
+
+  if (!response.ok) {
+    console.error("BATBOT TELEGRAM: échec notification inscription HTTP", response.status);
+    return;
+  }
+
+  const result = await response.json();
+  if (!result.ok) {
+    console.error("BATBOT TELEGRAM: notification inscription refusée par Telegram.");
   }
 }
 
