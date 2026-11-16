@@ -50,3 +50,6 @@ android-app/.gradle/
 android-app/build/
 android-app/app/build/
 android-app/*.backup
+
+# BATBOT PRO Telegram webhook secret
+.telegram-webhook-secret

@@ -11,6 +11,9 @@ const bcrypt = require("bcryptjs");
 const { pool, query: pgQuery, get: pgGet, all: pgAll } = require("./database/postgres-db");
 const path = require("path");
 const crypto = require("crypto");
+const telegramSecurity = require("./algorithms/telegram-admin-security");
+const telegramAdminConsole = require("./algorithms/telegram-admin-console");
+const { createTelegramAdminHandler } = require("./algorithms/telegram-admin-handler");
 
 const SECURITY_QUESTIONS = [
   "Quel est le prénom de votre meilleur ami d’enfance ?",
@@ -1294,7 +1297,7 @@ async function sendTelegramPaymentAlert(payment) {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: message }),
+      body: JSON.stringify({ chat_id: chatId, text: message, reply_markup: telegramAdminConsole.buildPaymentKeyboard(payment.id) }),
       signal: AbortSignal.timeout(5000)
     }
   );
@@ -1428,38 +1431,53 @@ app.delete("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => 
   }
 });
 
-app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
-  const status = String(req.body.status || "").toLowerCase();
+
+async function resolvePaymentRequest(id, status, adminNote = "") {
+  const paymentId = Number(id);
+
+  if (!Number.isSafeInteger(paymentId) || paymentId <= 0) {
+    return { ok: false, statusCode: 400, error: "Identifiant de demande invalide." };
+  }
+
   if (!["accepted", "rejected"].includes(status)) {
-    return res.status(400).json({ error: "Statut invalide." });
+    return { ok: false, statusCode: 400, error: "Statut invalide." };
   }
 
-  const adminNote = status === "rejected"
-    ? String(req.body.admin_note || "").trim().slice(0, 1000)
+  const note = status === "rejected"
+    ? String(adminNote || "").trim().slice(0, 1000)
     : "";
-  if (status === "rejected" && !adminNote) {
-    return res.status(400).json({ error: "Veuillez sélectionner ou saisir un motif de refus." });
+
+  if (status === "rejected" && !note) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: "Veuillez sélectionner ou saisir un motif de refus."
+    };
   }
 
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     await client.query("BEGIN");
 
     const requestResult = await client.query(
       "SELECT * FROM payment_requests WHERE id=$1 FOR UPDATE",
-      [Number(req.params.id)]
+      [paymentId]
     );
+
     const request = requestResult.rows[0];
 
     if (!request) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Demande introuvable." });
+      const error = new Error("Demande introuvable.");
+      error.statusCode = 404;
+      throw error;
     }
 
     if (request.status !== "pending") {
-      await client.query("ROLLBACK");
-      return res.status(409).json({ error: "Cette demande a déjà été traitée." });
+      const error = new Error("Cette demande a déjà été traitée.");
+      error.statusCode = 409;
+      throw error;
     }
 
     if (status === "accepted") {
@@ -1469,14 +1487,25 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
         "Premium 14 jours": { amount: 2000, days: 14 },
         "Premium 21 jours": { amount: 3000, days: 21 }
       };
+
       const expected = premiumOffers[offer];
       const amount = Number(request.amount);
       const operator = String(request.operator || "").trim();
-      const allowedOperators = ["Djamo", "Wave", "Orange Money", "MTN Money", "Moov Money"];
+      const allowedOperators = [
+        "Djamo", "Wave", "Orange Money", "MTN Money", "Moov Money"
+      ];
 
-      if (!expected || !Number.isInteger(amount) || amount !== expected.amount || !allowedOperators.includes(operator)) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ error: "Demande Premium invalide : formule, montant ou moyen de paiement incorrect." });
+      if (
+        !expected ||
+        !Number.isInteger(amount) ||
+        amount !== expected.amount ||
+        !allowedOperators.includes(operator)
+      ) {
+        const error = new Error(
+          "Demande Premium invalide : formule, montant ou moyen de paiement incorrect."
+        );
+        error.statusCode = 400;
+        throw error;
       }
 
       const durationDays = expected.days;
@@ -1486,11 +1515,13 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
         "SELECT premium_until, ai_until FROM users WHERE id=$1 FOR UPDATE",
         [request.user_id]
       );
+
       const user = userResult.rows[0];
 
       if (!user) {
-        await client.query("ROLLBACK");
-        return res.status(404).json({ error: "Utilisateur introuvable." });
+        const error = new Error("Utilisateur introuvable.");
+        error.statusCode = 404;
+        throw error;
       }
 
       const currentUntil =
@@ -1507,7 +1538,6 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
         [now.toISOString(), until, request.user_id]
       );
 
-      // Enregistre le paiement et sa commission dans la même transaction.
       await recordAffiliateConfirmedPayment(
         client,
         request,
@@ -1527,7 +1557,7 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
     const result = status === "rejected"
       ? await client.query(
           "UPDATE payment_requests SET status=$1, admin_note=$2, resolved_at=CURRENT_TIMESTAMP WHERE id=$3 AND status='pending'",
-          [status, adminNote, request.id]
+          [status, note, request.id]
         )
       : await client.query(
           "UPDATE payment_requests SET status=$1, resolved_at=CURRENT_TIMESTAMP WHERE id=$2 AND status='pending'",
@@ -1540,23 +1570,54 @@ app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({
-      message: status === "accepted" ? "Paiement accepté." : "Paiement refusé."
-    });
+    return {
+      ok: true,
+      status,
+      message: status === "accepted" ? "Paiement accepté." : "Paiement refusé.",
+      adminNote: note,
+      request
+    };
   } catch (error) {
-    try {
-      await client.query("ROLLBACK");
-    } catch (_) {}
+    if (client) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (_) {}
+    }
 
     console.error("BATBOT PAYMENT REQUEST RESOLUTION:", error);
-    const message = error.message === "Cette demande a déjà été traitée."
-      ? "Cette demande a déjà été traitée."
-      : "Impossible de traiter cette demande de paiement. Réessayez.";
 
-    res.status(409).json({ error: message });
+    return {
+      ok: false,
+      statusCode: error.statusCode ||
+        (error.message === "Cette demande a déjà été traitée." ? 409 : 409),
+      error: error.statusCode
+        ? error.message
+        : error.message === "Cette demande a déjà été traitée."
+          ? "Cette demande a déjà été traitée."
+          : "Impossible de traiter cette demande de paiement. Réessayez."
+    };
   } finally {
-    client.release();
+    if (client) client.release();
   }
+}
+
+app.patch("/api/admin/payment-requests/:id", requireAdmin, async (req, res) => {
+  const status = String(req.body.status || "").toLowerCase();
+  const adminNote = status === "rejected"
+    ? String(req.body.admin_note || "").trim().slice(0, 1000)
+    : "";
+
+  const result = await resolvePaymentRequest(
+    req.params.id,
+    status,
+    adminNote
+  );
+
+  if (!result.ok) {
+    return res.status(result.statusCode).json({ error: result.error });
+  }
+
+  res.json({ message: result.message });
 });
 
 
@@ -4121,6 +4182,32 @@ app.get("/api/admin/affiliate/referrers/:userId", requireAdmin, async (req, res)
     res.status(500).json({
       error: "Impossible de charger les détails de ce parrain."
     });
+  }
+});
+
+const telegramAdminHandler = createTelegramAdminHandler({
+  pool,
+  resolvePaymentRequest
+});
+
+app.post("/api/telegram/webhook", async (req, res) => {
+  const receivedSecret = req.get("X-Telegram-Bot-Api-Secret-Token");
+
+  if (!telegramSecurity.isValidTelegramWebhookSecret(receivedSecret)) {
+    return res.sendStatus(401);
+  }
+
+  try {
+    const result = await telegramAdminHandler.handleUpdate(req.body);
+
+    if (result.statusCode === 403) {
+      return res.sendStatus(200);
+    }
+
+    return res.sendStatus(result.statusCode || 200);
+  } catch (error) {
+    console.error("BATBOT TELEGRAM WEBHOOK:", error.message);
+    return res.sendStatus(500);
   }
 });
 
