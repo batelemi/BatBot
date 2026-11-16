@@ -290,7 +290,7 @@ function createTelegramAdminHandler({
       repliedMessage.from?.is_bot !== true ||
       !message.chat ||
       message.chat.type !== "private" ||
-      String(message.chat.id) !== "6035184399" ||
+      String(message.chat.id) !== chatId ||
       !repliedMessage.chat ||
       String(repliedMessage.chat.id) !== String(message.chat.id) ||
       !Number.isSafeInteger(repliedMessage.message_id) ||
@@ -349,11 +349,13 @@ function createTelegramAdminHandler({
   }
 
   async function handleUpdate(update) {
-    if (!security.isAuthorizedTelegramUpdate(update)) {
+    const adminId = security.getTelegramAdminId(env);
+
+    if (!security.isAuthorizedTelegramUpdate(update, env)) {
       return { ok: false, statusCode: 403 };
     }
 
-    if (!token || !chatId || chatId !== "6035184399") {
+    if (!token || !chatId || !adminId || chatId !== String(adminId)) {
       logger.error("BATBOT TELEGRAM: configuration administrateur invalide.");
       return { ok: false, statusCode: 503 };
     }
