@@ -1257,6 +1257,49 @@ app.get("/api/admin/stats", requireAdmin, async (req, res) => {
   });
 });
 
+async function sendTelegramPaymentAlert(payment) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+  if (!token || !chatId) {
+    console.warn("BATBOT TELEGRAM: configuration absente, notification ignorée.");
+    return;
+  }
+
+  const message = [
+    "🔔 NOUVELLE DEMANDE PREMIUM — BATBOT PRO",
+    "",
+    `Demande : #${payment.id}`,
+    `Identifiant membre : ${payment.userId}`,
+    `Offre : ${payment.offer}`,
+    `Montant : ${payment.amount} FCFA`,
+    `Opérateur : ${payment.operator}`,
+    "Statut : En attente de vérification",
+    "",
+    "Vérifiez le paiement avant toute validation Premium."
+  ].join("\n");
+
+  const response = await fetch(
+    `https://api.telegram.org/bot${token}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: message }),
+      signal: AbortSignal.timeout(5000)
+    }
+  );
+
+  if (!response.ok) {
+    console.error("BATBOT TELEGRAM: échec HTTP", response.status);
+    return;
+  }
+
+  const result = await response.json();
+  if (!result.ok) {
+    console.error("BATBOT TELEGRAM: notification refusée par Telegram.");
+  }
+}
+
 app.post("/api/payment-requests", requireUser, async (req, res) => {
   const offer = String(req.body.offer || "").trim();
   const operator = String(req.body.operator || "").trim();
@@ -1281,6 +1324,15 @@ app.post("/api/payment-requests", requireUser, async (req, res) => {
      RETURNING id`,
     [req.session.userId, offer, operator, Math.round(amount), reference]
   );
+  void sendTelegramPaymentAlert({
+    id: result.id,
+    userId: req.session.userId,
+    offer,
+    operator,
+    amount: Math.round(amount)
+  }).catch(error => {
+    console.error("BATBOT TELEGRAM: erreur d'envoi", error.name || "Erreur");
+  });
   res.json({ message: "Demande de paiement enregistrée. Envoyez maintenant votre preuve sur WhatsApp.", id: result.id });
 });
 
