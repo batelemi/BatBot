@@ -4684,7 +4684,7 @@ function renderBatBotTeamFlag(value,teamName,countryCode,teamId,teamMetadata){
   // Les sélections nationales utilisent les drapeaux SVG locaux (sans appel API).
   if(isNational&&/^[A-Z]{2}$/.test(code)){
     const flagUrl="/football-logos/flags/"+code.toLowerCase()+".svg";
-    return '<span class="batbot-team-crest batbot-crest-national-flag'+countryClass+'" aria-label="'+escapeHtml(teamName||"")+'"><img src="'+flagUrl+'" alt="Drapeau '+escapeHtml(teamName||code)+'" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\'"><span class="batbot-team-crest-fallback" aria-hidden="true" style="display:none">'+escapeHtml(countryFlag||initials||"⚽")+'</span></span>';
+    return '<span class="batbot-team-crest batbot-crest-national-flag'+countryClass+'" aria-label="'+escapeHtml(teamName||"")+'"><img src="'+flagUrl+'" alt="Drapeau '+escapeHtml(teamName||code)+'" loading="lazy" onerror="this.onerror=null;this.style.setProperty(\'display\',\'none\',\'important\');if(this.nextElementSibling)this.nextElementSibling.style.setProperty(\'display\',\'flex\',\'important\')"><span class="batbot-team-crest-fallback" aria-hidden="true" style="display:none">'+escapeHtml(countryFlag||initials||"⚽")+'</span></span>';
   }
   const clubKey=batBotNormalizeLogoName(teamName);
   const clubAliases={
@@ -4731,14 +4731,14 @@ function renderBatBotTeamFlag(value,teamName,countryCode,teamId,teamMetadata){
     return '<span class="batbot-team-crest'+crestClass+'"'+teamFallbackStyle+'><img src="'+escapeHtml(src)
       +'" alt="'+escapeHtml(teamName||"")+'" loading="lazy" referrerpolicy="no-referrer"'
       +(local?' data-local-fallback="'+escapeHtml(local)+'"':'')
-      +' onerror="if(this.dataset.localFallback&&!this.dataset.localFallbackTried){this.dataset.localFallbackTried=\'1\';this.src=this.dataset.localFallback;}else{this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';}">'
+      +' onerror="if(this.dataset.localFallback&&!this.dataset.localFallbackTried){this.dataset.localFallbackTried=\'1\';this.src=this.dataset.localFallback;}else{this.onerror=null;this.style.setProperty(\'display\',\'none\',\'important\');if(this.nextElementSibling)this.nextElementSibling.style.setProperty(\'display\',\'flex\',\'important\');}">'
       +'<span class="batbot-team-crest-fallback" aria-hidden="true" style="display:none">'
       +escapeHtml(fallback)+'</span></span>';
   }
   if(local){
     return '<span class="batbot-team-crest'+crestClass+'"'+teamFallbackStyle+'><img src="'+escapeHtml(local)
       +'" alt="'+escapeHtml(teamName||"")+'" loading="lazy"'
-      +' onerror="this.onerror=null;this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\'">'
+      +' onerror="this.onerror=null;this.style.setProperty(\'display\',\'none\',\'important\');if(this.nextElementSibling)this.nextElementSibling.style.setProperty(\'display\',\'flex\',\'important\')">'
       +'<span class="batbot-team-crest-fallback" aria-hidden="true" style="display:none">'
       +escapeHtml(fallback)+'</span></span>';
   }
