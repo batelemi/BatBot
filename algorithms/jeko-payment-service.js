@@ -263,6 +263,26 @@ async function createJekoPayment({
     console.warn("BATBOT JEKO CREATE RESPONSE CHECKS:", {
       httpStatus: response.status,
       checks: responseChecks,
+      redirectUrlDiagnostics: (() => {
+        const value = data?.redirectUrl;
+        if (typeof value !== "string") {
+          return { valueType: typeof value, parseable: false };
+        }
+        try {
+          const url = new URL(value);
+          return {
+            parseable: true,
+            protocol: url.protocol,
+            hostname: url.hostname,
+            hasPort: Boolean(url.port),
+            hasCredentials: Boolean(url.username || url.password),
+            pathStartsCorrectly: url.pathname.startsWith("/pay_request/"),
+            pathSegmentCount: url.pathname.split("/").filter(Boolean).length
+          };
+        } catch (_) {
+          return { valueType: "string", parseable: false };
+        }
+      })(),
       responseKeys: data && typeof data === "object"
         ? Object.keys(data).slice(0, 20)
         : []
