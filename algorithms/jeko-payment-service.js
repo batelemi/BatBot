@@ -247,17 +247,27 @@ async function createJekoPayment({
     );
   }
 
-  if (
-    !data ||
-    typeof data.id !== "string" ||
-    !data.id.trim() ||
-    data.storeId !== storeId ||
-    data.reference !== reference ||
-    data.type !== "redirect" ||
-    data.paymentMethod !== method ||
-    data.status !== "pending" ||
-    !validJekoRedirectUrl(data.redirectUrl)
-  ) {
+  const responseChecks = {
+    dataPresent: Boolean(data && typeof data === "object"),
+    idIsString: typeof data?.id === "string",
+    idNotEmpty: typeof data?.id === "string" && Boolean(data.id.trim()),
+    storeIdMatches: data?.storeId === storeId,
+    referenceMatches: data?.reference === reference,
+    typeIsRedirect: data?.type === "redirect",
+    paymentMethodMatches: data?.paymentMethod === method,
+    statusIsPending: data?.status === "pending",
+    redirectUrlIsValid: validJekoRedirectUrl(data?.redirectUrl)
+  };
+
+  if (Object.values(responseChecks).some(ok => !ok)) {
+    console.warn("BATBOT JEKO CREATE RESPONSE CHECKS:", {
+      httpStatus: response.status,
+      checks: responseChecks,
+      responseKeys: data && typeof data === "object"
+        ? Object.keys(data).slice(0, 20)
+        : []
+    });
+
     await updateCreationState(
       pool, paymentId, "pending", "invalid_provider_response"
     );
