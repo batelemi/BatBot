@@ -3914,13 +3914,21 @@ if(document.readyState==='loading'){
           <span style="float:right">${amount} FCFA</span>
         </div>
         <div style="display:grid;gap:12px">
-          <button type="button" class="btn secondary" data-premium-provider="manual" style="padding:18px;text-align:left">
-            <strong>📱 Paiement manuel</strong>
-            <span style="display:block;margin-top:6px;font-size:13px">Paiement par les moyens habituels de BATBOT PRO</span>
+          <button type="button" class="btn secondary" data-premium-provider="manual" style="display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;text-align:left;border:1px solid #279fe0;border-radius:14px;background:linear-gradient(110deg,#102f4d,#164c70);color:#fff">
+            <span style="display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,#087ebc,#27c5f5);font-size:23px;font-weight:800;color:#fff;box-shadow:0 4px 12px #087ebc55">B</span>
+            <span style="display:flex;flex:1;min-width:0;flex-direction:column;gap:4px">
+              <strong style="font-size:14px;line-height:1.25">PAYER AVEC BATBOT PRO</strong>
+              <span style="font-size:12px;line-height:1.35;color:#d5eafa">Paiement manuel sécurisé · Activation après réception des fonds</span>
+            </span>
+            <i class="fa-solid fa-chevron-right" aria-hidden="true" style="color:#61caff;font-size:14px"></i>
           </button>
-          <button type="button" class="btn secondary" data-premium-provider="jeko" style="padding:18px;text-align:left;border:2px solid #25b99a">
-            <strong>⚡ Paiement automatique avec Jèko</strong>
-            <span style="display:block;margin-top:6px;font-size:13px">Paiement sécurisé et activation automatique après confirmation</span>
+          <button type="button" class="btn secondary" data-premium-provider="jeko" style="display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;text-align:left;border:1px solid #25b99a;border-radius:14px;background:linear-gradient(110deg,#103b3a,#126052);color:#fff">
+            <span style="display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,#078b76,#35d6ad);font-size:22px;color:#fff;box-shadow:0 4px 12px #078b7655"><i class="fa-solid fa-bolt" aria-hidden="true"></i></span>
+            <span style="display:flex;flex:1;min-width:0;flex-direction:column;gap:4px">
+              <strong style="font-size:14px;line-height:1.25">PAYER AVEC JÈKO</strong>
+              <span style="font-size:12px;line-height:1.35;color:#d5f4eb">Paiement sécurisé · Activation automatique après paiement</span>
+            </span>
+            <i class="fa-solid fa-chevron-right" aria-hidden="true" style="color:#69e8c4;font-size:14px"></i>
           </button>
         </div>
         <button type="button" class="btn secondary" data-premium-back="offers" style="margin-top:14px">← Retour aux offres</button>`;
