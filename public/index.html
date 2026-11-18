@@ -3991,7 +3991,10 @@ if(document.readyState==='loading'){
           redirectUrl.port||
           redirectUrl.username||
           redirectUrl.password||
-          !redirectUrl.pathname.startsWith("/pay_request/")
+          !(
+            redirectUrl.pathname.startsWith("/pay_request/pr/") ||
+            redirectUrl.pathname.startsWith("/pr/")
+          )
         ){
           throw new Error("L'adresse de paiement reçue n'est pas valide.");
         }
