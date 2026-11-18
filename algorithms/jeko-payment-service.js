@@ -277,7 +277,10 @@ async function createJekoPayment({
             hasPort: Boolean(url.port),
             hasCredentials: Boolean(url.username || url.password),
             pathStartsCorrectly: url.pathname.startsWith("/pay_request/"),
-            pathSegmentCount: url.pathname.split("/").filter(Boolean).length
+            pathSegmentCount: url.pathname.split("/").filter(Boolean).length,
+            pathShape: url.pathname.split("/").filter(Boolean)
+              .map(segment => ["pay_request", "pr"].includes(segment) ? segment : "<other>")
+              .join("/")
           };
         } catch (_) {
           return { valueType: "string", parseable: false };
