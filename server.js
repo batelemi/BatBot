@@ -89,6 +89,7 @@ const {
 } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
 const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/sportapi-quota");
+const { initializeJekoPayments, createJekoPayment, checkJekoPaymentStatus, handleJekoWebhook } = require("./algorithms/jeko-payment-service");
 
 const app = express();
 
@@ -98,7 +99,14 @@ app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "8mb" }));
+app.use(express.json({
+  limit: "8mb",
+  verify: (req, res, buffer) => {
+    if (req.path === "/api/jeko/webhook") {
+      req.rawBody = Buffer.from(buffer);
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 
 
@@ -4185,6 +4193,83 @@ app.get("/api/admin/affiliate/referrers/:userId", requireAdmin, async (req, res)
   }
 });
 
+// Paiement Premium automatisé via Jèko.
+app.post("/api/jeko/create-payment", requireUser, async (req, res) => {
+  try {
+    const payment = await createJekoPayment({
+      pool,
+      userId: req.session.userId,
+      offer: req.body?.offer,
+      paymentMethod: req.body?.paymentMethod
+    });
+
+    return res.status(201).json({
+      message: "Demande de paiement Jèko créée.",
+      ...payment
+    });
+  } catch (error) {
+    console.error("BATBOT JEKO CREATE PAYMENT:", error.message);
+    return res.status(error.statusCode || 500).json({
+      error: error.statusCode ? error.message : "Impossible de créer le paiement Jèko."
+    });
+  }
+});
+
+// Consultation sécurisée du statut d'un paiement Jèko appartenant à l'utilisateur.
+app.post("/api/jeko/check-status", requireUser, async (req, res) => {
+  try {
+    const result = await checkJekoPaymentStatus({
+      pool,
+      userId: req.session.userId,
+      reference: req.body?.reference
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    const statusCode = Number.isInteger(error.statusCode)
+      ? error.statusCode
+      : 500;
+
+    if (statusCode >= 500) {
+      console.error("BATBOT JEKO STATUS CHECK:", error.message);
+    }
+
+    return res.status(statusCode).json({
+      error: statusCode >= 500
+        ? "Impossible de vérifier le statut du paiement pour le moment."
+        : error.message
+    });
+  }
+});
+
+// Webhook Jèko : seule une confirmation authentifiée peut activer Premium.
+app.post("/api/jeko/webhook", async (req, res) => {
+  try {
+    const result = await handleJekoWebhook({
+      pool,
+      rawBody: req.rawBody,
+      signature: req.get("Jeko-Signature"),
+      eventName: req.get("Jeko-Event")
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    const statusCode = Number.isInteger(error.statusCode)
+      ? error.statusCode
+      : 500;
+
+    if (statusCode >= 500) {
+      console.error("BATBOT JEKO WEBHOOK:", error.message);
+    } else {
+      console.warn("BATBOT JEKO WEBHOOK REFUSED:", error.message);
+    }
+
+    return res.status(statusCode).json({
+      error: error.message || "Erreur de traitement du webhook Jèko."
+    });
+  }
+});
+
 const telegramAdminHandler = createTelegramAdminHandler({
   pool,
   resolvePaymentRequest
@@ -4552,6 +4637,7 @@ async function startServer() {
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();
     await initializeAffiliateSchema();
+    await initializeJekoPayments(pool);
 
     server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`BatBot démarré sur le port ${PORT}`);

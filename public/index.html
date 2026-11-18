@@ -2695,7 +2695,7 @@ PSG vs Marseille"></textarea>
     <div class="notice"><strong>1. Abonnements Premium</strong><br><br>Les abonnements Premium sont proposés à <strong>1 000 FCFA pour 7 jours</strong>, <strong>2 000 FCFA pour 14 jours</strong> et <strong>3 000 FCFA pour 21 jours</strong>.</div>
     <div class="notice"><strong>2. Abonnement</strong><br><br>Les tarifs Premium sont de <strong>1 000 FCFA pour 7 jours</strong>, <strong>2 000 FCFA pour 14 jours</strong> et <strong>3 000 FCFA pour 21 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
     <div class="notice"><strong>3. Analyse</strong><br><br>Les pronostics s’appuient sur les statistiques et les informations disponibles sur les matchs. Ils sont transmis après réception et traitement de votre demande.</div>
-      <div class="notice"><strong>4. Paiements</strong><br><br>Les paiements sont effectués manuellement par les moyens de paiement indiqués dans l'application.</div>
+      <div class="notice"><strong>4. Paiements</strong><br><br>BATBOT PRO propose le paiement manuel par les moyens indiqués dans l'application ainsi que le paiement automatisé via Jèko. Pour Jèko, l'abonnement Premium est activé uniquement après confirmation sécurisée de la transaction par le serveur.</div>
     <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
     <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportAPI.ai</strong>. BATBOT PRO utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
     </details>
@@ -3107,6 +3107,105 @@ function applyReferralCodeFromUrl(){
     input.readOnly=false;
     input.removeAttribute("aria-readonly");
   }
+}
+
+async function handleJekoReturnFromUrl(){
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const state = params.get("jeko");
+
+    if(state !== "success" && state !== "error"){
+      return;
+    }
+
+    const reference = String(params.get("reference") || "").trim();
+
+    if(!reference){
+      showToast(
+        "Référence de paiement absente. Impossible de vérifier cette demande.",
+        "error"
+      );
+      return;
+    }
+
+    showToast(
+      "Vérification du paiement auprès de BATBOT PRO…",
+      "info"
+    );
+
+    const response = await fetch("/api/jeko/check-status",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Accept":"application/json"
+      },
+      credentials:"same-origin",
+      cache:"no-store",
+      body:JSON.stringify({reference})
+    });
+
+    const result = await readApiResponse(response);
+
+    if(!response.ok){
+      throw new Error(
+        result.error || "Impossible de vérifier le statut du paiement."
+      );
+    }
+
+    if(result.status === "paid" && result.premiumActivated === true){
+      showToast(
+        "Paiement confirmé ! Votre abonnement Premium BATBOT PRO est actif.",
+        "success"
+      );
+      return;
+    }
+
+    if(result.status === "failed"){
+      showToast(
+        "Le paiement Jèko n'a pas abouti. Vous pouvez recommencer votre paiement.",
+        "error"
+      );
+      return;
+    }
+
+    if(result.status === "pending" && result.awaitingWebhook === true){
+      showToast(
+        "Jèko indique que le paiement a réussi. BATBOT PRO attend sa confirmation sécurisée avant d'activer votre Premium.",
+        "info"
+      );
+      return;
+    }
+
+    if(result.status === "pending"){
+      const delay = Number(result.retryAfterSeconds) || 0;
+      const waitMessage = delay > 0
+        ? " Vous pourrez vérifier à nouveau dans environ " + delay + " secondes."
+        : "";
+
+      showToast(
+        "Votre paiement est encore en attente de confirmation auprès de Jèko." + waitMessage,
+        "info"
+      );
+      return;
+    }
+
+    showToast(
+      "Le statut du paiement a été reçu, mais nécessite une vérification supplémentaire.",
+      "info"
+    );
+  }catch(error){
+    console.warn("BATBOT JEKO RETURN:", error);
+    showToast(
+      error.message || "Impossible de vérifier le paiement pour le moment.",
+      "error"
+    );
+  }
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", handleJekoReturnFromUrl, {once:true});
+}else{
+  handleJekoReturnFromUrl();
 }
 
 function showRegister(){
@@ -3799,6 +3898,119 @@ if(document.readyState==='loading'){
       modal.classList.remove('hidden');
       document.body.style.overflow='hidden';
     }
+    function showPremiumProviders(offer){
+      const amount={
+        "Premium 7 jours":"1 000",
+        "Premium 14 jours":"2 000",
+        "Premium 21 jours":"3 000"
+      }[offer];
+
+      if(!amount)return;
+
+      title.textContent='💳 Choisissez votre prestataire de paiement';
+      body.innerHTML=`
+        <div style="padding:12px;margin-bottom:13px;border-radius:12px;background:#102f4d;color:#fff">
+          <strong>${escapeHtml(offer)}</strong>
+          <span style="float:right">${amount} FCFA</span>
+        </div>
+        <div style="display:grid;gap:12px">
+          <button type="button" class="btn secondary" data-premium-provider="manual" style="padding:18px;text-align:left">
+            <strong>📱 Paiement manuel</strong>
+            <span style="display:block;margin-top:6px;font-size:13px">Paiement par les moyens habituels de BATBOT PRO</span>
+          </button>
+          <button type="button" class="btn secondary" data-premium-provider="jeko" style="padding:18px;text-align:left;border:2px solid #25b99a">
+            <strong>⚡ Paiement automatique avec Jèko</strong>
+            <span style="display:block;margin-top:6px;font-size:13px">Paiement sécurisé et activation automatique après confirmation</span>
+          </button>
+        </div>
+        <button type="button" class="btn secondary" data-premium-back="offers" style="margin-top:14px">← Retour aux offres</button>`;
+    }
+
+    function showJekoMethods(offer){
+      const amount={
+        "Premium 7 jours":"1 000",
+        "Premium 14 jours":"2 000",
+        "Premium 21 jours":"3 000"
+      }[offer];
+
+      if(!amount)return;
+
+      const methods=[
+        {value:"orange",name:"Orange Money",logo:"/orange-money.png"},
+        {value:"wave",name:"Wave",logo:"/wave.png"},
+        {value:"mtn",name:"MTN Money",logo:"/mtn-money.png"},
+        {value:"moov",name:"Moov Money",logo:"/moov-money.png"},
+        {value:"djamo",name:"Djamo",logo:"/djamo-logo-transparent.png"}
+      ];
+
+      title.textContent='⚡ Paiement automatique — Jèko';
+      body.innerHTML=`
+        <div style="padding:12px;margin-bottom:13px;border-radius:12px;background:#102f4d;color:#fff">
+          <strong>${escapeHtml(offer)}</strong>
+          <span style="float:right">${amount} FCFA</span>
+        </div>
+        <p class="muted" style="margin-bottom:13px">Choisissez le moyen avec lequel vous souhaitez payer.</p>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          ${methods.map(method=>`
+            <button type="button" data-jeko-method="${method.value}" class="btn secondary" style="min-height:105px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px">
+              <img src="${method.logo}" alt="${method.name}" style="width:45px;height:45px;object-fit:contain">
+              <strong>${method.name}</strong>
+            </button>
+          `).join("")}
+        </div>
+        <button type="button" class="btn secondary" data-premium-back="providers" style="margin-top:14px">← Retour au choix du paiement</button>`;
+    }
+
+    async function startJekoPayment(offer,paymentMethod,button){
+      if(!button||button.disabled)return;
+
+      const originalContent=button.innerHTML;
+      button.disabled=true;
+      button.textContent='Connexion à Jèko…';
+
+      try{
+        const response=await fetch("/api/jeko/create-payment",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          credentials:"same-origin",
+          cache:"no-store",
+          body:JSON.stringify({offer,paymentMethod})
+        });
+
+        const result=await readApiResponse(response);
+
+        if(!response.ok){
+          throw new Error(result.error||"Impossible de créer le paiement Jèko.");
+        }
+
+        const redirectUrl=new URL(String(result.redirectUrl||""));
+
+        if(
+          redirectUrl.protocol!=="https:"||
+          redirectUrl.hostname!=="pay.jeko.africa"||
+          redirectUrl.port||
+          redirectUrl.username||
+          redirectUrl.password||
+          !redirectUrl.pathname.startsWith("/pay_request/")
+        ){
+          throw new Error("L'adresse de paiement reçue n'est pas valide.");
+        }
+
+        window.location.assign(redirectUrl.href);
+      }catch(error){
+        console.error("BATBOT JEKO FRONTEND:",error);
+        const message=String(error?.message||"");
+        showToast(
+          message&&!/failed to fetch|networkerror|load failed|timeout|unexpected token/i.test(message)
+            ?message
+            :"Impossible de lancer le paiement Jèko. Vérifiez votre connexion et réessayez.",
+          "error"
+        );
+        button.disabled=false;
+        button.innerHTML=originalContent;
+      }
+    }
+
     function showPremiumOperators(offer){
       const amount={'Premium 7 jours':'1 000','Premium 14 jours':'2 000','Premium 21 jours':'3 000'}[offer];
       const operators=[
@@ -3918,30 +4130,63 @@ if(document.readyState==='loading'){
       if(offerButton){
         const offer=offerButton.dataset.premiumOffer;
         const select=document.getElementById('paymentOffer');
-        if(select){select.value=offer;if(typeof updatePaymentOfferStyle==='function')updatePaymentOfferStyle();}
-        showPremiumOperators(offer);
+        if(select){
+          select.value=offer;
+          if(typeof updatePaymentOfferStyle==='function')updatePaymentOfferStyle();
+        }
+        showPremiumProviders(offer);
         return;
       }
+
+      const providerButton=event.target.closest('[data-premium-provider]');
+      if(providerButton){
+        const offer=document.getElementById('paymentOffer')?.value;
+        if(providerButton.dataset.premiumProvider==='manual'){
+          showPremiumOperators(offer);
+        }else if(providerButton.dataset.premiumProvider==='jeko'){
+          showJekoMethods(offer);
+        }
+        return;
+      }
+
+      const jekoButton=event.target.closest('[data-jeko-method]');
+      if(jekoButton){
+        const offer=document.getElementById('paymentOffer')?.value;
+        startJekoPayment(offer,jekoButton.dataset.jekoMethod,jekoButton);
+        return;
+      }
+
       const operatorButton=event.target.closest('[data-premium-operator]');
       if(operatorButton){
         const offer=document.getElementById('paymentOffer')?.value;
         showGuidedPayment(offer,operatorButton.dataset.premiumOperator);
         return;
       }
-      if(event.target.closest('[data-premium-back]')){
-        const operatorSelect=document.getElementById('paymentOperator');
-        if(operatorSelect&&body.contains(mobile)){
-          restoreNodes();
-          resetGuidedPayment();
-          showPremiumOperators(document.getElementById('paymentOffer')?.value||'Premium 7 jours');
-        }else{
+
+      const backButton=event.target.closest('[data-premium-back]');
+      if(backButton){
+        const offer=document.getElementById('paymentOffer')?.value||'Premium 7 jours';
+        const destination=backButton.dataset.premiumBack;
+
+        if(destination==='offers'){
           openPremiumSelectionWindow();
+        }else if(destination==='providers'){
+          showPremiumProviders(offer);
+        }else{
+          const operatorSelect=document.getElementById('paymentOperator');
+          if(operatorSelect&&body.contains(mobile)){
+            restoreNodes();
+            resetGuidedPayment();
+            showPremiumOperators(offer);
+          }else{
+            openPremiumSelectionWindow();
+          }
         }
         return;
       }
+
       if(event.target.closest('[data-premium-receipt-close]'))closePaymentWindow();
     });
-
     body.addEventListener('change',event=>{
       if(event.target?.id==='paymentOperator'){
         updateGuidedPaymentMethod(event.target.value);
