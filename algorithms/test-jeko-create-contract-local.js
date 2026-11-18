@@ -77,6 +77,18 @@ global.fetch = async (url, options) => {
     data.redirectUrl = "https://faux-site.example/pay";
   }
 
+  if (responseMode === "short_url") {
+    data.redirectUrl = "https://pay.jeko.africa/pr/" + data.id;
+  }
+
+  if (responseMode === "wrong_id") {
+    data.redirectUrl = "https://pay.jeko.africa/pr/autre-identifiant";
+  }
+
+  if (responseMode === "credentials_url") {
+    data.redirectUrl = "https://utilisateur:secret@pay.jeko.africa/pr/" + data.id;
+  }
+
   return {
     ok: true,
     status: 200,
@@ -115,6 +127,31 @@ async function main() {
 
   console.log("TEST 1 : identifiant textuel et URL officielle — RÉUSSI");
   console.log("TEST 2 : montant et méthode transmis correctement — RÉUSSI");
+
+  responseMode = "short_url";
+  const shortPath = await createJekoPayment({
+    pool, userId: 8, offer: "Premium 7 jours", paymentMethod: "wave"
+  });
+  assert.equal(shortPath.redirectUrl, "https://pay.jeko.africa/pr/jeko-test-uuid-123456");
+  console.log("TEST 6 : chemin court /pr/{id} accepté — RÉUSSI");
+
+  responseMode = "wrong_id";
+  await assert.rejects(
+    createJekoPayment({
+      pool, userId: 9, offer: "Premium 7 jours", paymentMethod: "wave"
+    }),
+    error => error.statusCode === 502
+  );
+  console.log("TEST 7 : identifiant différent rejeté — RÉUSSI");
+
+  responseMode = "credentials_url";
+  await assert.rejects(
+    createJekoPayment({
+      pool, userId: 10, offer: "Premium 7 jours", paymentMethod: "wave"
+    }),
+    error => error.statusCode === 502
+  );
+  console.log("TEST 8 : URL contenant des identifiants rejetée — RÉUSSI");
 
   responseMode = "numeric_id";
 

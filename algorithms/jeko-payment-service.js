@@ -34,16 +34,39 @@ function validUserId(value) {
   }
 }
 
-function validJekoRedirectUrl(value) {
+function validJekoRedirectUrl(value, expectedId) {
   try {
+    if (typeof value !== "string" ||
+        typeof expectedId !== "string" ||
+        !expectedId.trim()) {
+      return false;
+    }
+
     const url = new URL(value);
+
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "pay.jeko.africa" ||
+      url.username ||
+      url.password ||
+      url.port
+    ) {
+      return false;
+    }
+
+    const segments = url.pathname.split("/").filter(Boolean);
+    const shortPath =
+      segments.length === 2 &&
+      segments[0] === "pr";
+
+    const documentedPath =
+      segments.length === 3 &&
+      segments[0] === "pay_request" &&
+      segments[1] === "pr";
+
     return (
-      url.protocol === "https:" &&
-      url.hostname === "pay.jeko.africa" &&
-      !url.username &&
-      !url.password &&
-      !url.port &&
-      url.pathname.startsWith("/pay_request/")
+      (shortPath || documentedPath) &&
+      segments[segments.length - 1] === expectedId
     );
   } catch (_) {
     return false;
@@ -256,7 +279,7 @@ async function createJekoPayment({
     typeIsRedirect: data?.type === "redirect",
     paymentMethodMatches: data?.paymentMethod === method,
     statusIsPending: data?.status === "pending",
-    redirectUrlIsValid: validJekoRedirectUrl(data?.redirectUrl)
+    redirectUrlIsValid: validJekoRedirectUrl(data?.redirectUrl, data?.id)
   };
 
   if (Object.values(responseChecks).some(ok => !ok)) {
@@ -276,7 +299,7 @@ async function createJekoPayment({
             hostname: url.hostname,
             hasPort: Boolean(url.port),
             hasCredentials: Boolean(url.username || url.password),
-            pathStartsCorrectly: url.pathname.startsWith("/pay_request/"),
+            pathStartsCorrectly: url.pathname.startsWith("/pay_request/") || url.pathname.startsWith("/pr/"),
             pathSegmentCount: url.pathname.split("/").filter(Boolean).length,
             pathShape: url.pathname.split("/").filter(Boolean)
               .map(segment => ["pay_request", "pr"].includes(segment) ? segment : "<other>")
