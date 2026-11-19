@@ -5482,6 +5482,7 @@ async function submitBatBotAI(){
       return;
     }
 
+    if(typeof refreshCurrentUserSilently==="function")await refreshCurrentUserSilently();
     const serverMatches=Array.isArray(d?.matches)?d.matches:[];
     const serverModels=Array.isArray(d?.models)?d.models:[];
     if(!serverMatches.length){
@@ -5596,7 +5597,7 @@ async function submitBatBotAI(){
 
 function analyzeFootballMatch(home,away,homeId,awayId,fixture){
   const currentUser=window.batBotCurrentUser||{};
-  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
+  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active||currentUser.free_prediction?.available)){
     if(typeof window.openBatBotPremiumSelectionWindow==='function')window.openBatBotPremiumSelectionWindow();else if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
     else showToast("Abonnement Premium requis. Ouvrez Plus ou Abonnement pour consulter les options d’abonnement.","error");
     return;
@@ -5621,7 +5622,7 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
 
 function analyzeFirstTwoFootballMatches(){
   const currentUser=window.batBotCurrentUser||{};
-  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
+  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active||currentUser.free_prediction?.available)){
     if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
     else showToast("Abonnement Premium requis pour recevoir un pronostic. Consultez les options dans la rubrique Abonnement.","error");
     return;

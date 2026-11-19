@@ -89,6 +89,7 @@ const {
 } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
 const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/sportapi-quota");
+const { initializeFreePredictionQuota, reserveFreePrediction, consumeFreePrediction, releaseFreePrediction, getFreePredictionStatus } = require("./algorithms/free-prediction-quota");
 const { initializeJekoPayments, createJekoPayment, checkJekoPaymentStatus, handleJekoWebhook } = require("./algorithms/jeko-payment-service");
 
 const app = express();
@@ -565,7 +566,9 @@ app.get("/api/me", requireUser, async (req, res) => {
 
     if (!user) return res.status(401).json({ error: "Session invalide." });
 
-    res.json({ user: userView(user) });
+    const userData = userView(user);
+    userData.free_prediction = await getFreePredictionStatus(pool, user.id);
+    res.json({ user: userData });
   } catch (error) {
     console.error("api/me PostgreSQL:", error);
     res.status(500).json({ error: "Impossible de récupérer le compte." });
@@ -2999,6 +3002,7 @@ app.patch("/api/admin/settings", requireAdmin, async (req, res) => {
 
 
 app.post("/api/football/odds", requireUser, async (req, res) => {
+  let freeReservation = null;
   try {
     const currentUser = await pgGet(
       "SELECT * FROM users WHERE id=$1",
@@ -3010,12 +3014,6 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       new Date(currentUser.premium_until) > new Date()
     );
 
-    if (!premiumActive) {
-      return res.status(403).json({
-        ok: false,
-        error: "Un abonnement Premium actif est nécessaire pour utiliser l'analyse statistique des cotes."
-      });
-    }
 
     const matches = Array.isArray(req.body.matches)
       ? req.body.matches
@@ -3079,8 +3077,25 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       });
     }
 
+    // Les utilisateurs sans Premium réservent leur droit gratuit unique.
+    if (!premiumActive) {
+      freeReservation = await reserveFreePrediction(pool, req.session.userId);
+
+      if (!freeReservation.ok) {
+        const alreadyUsed = freeReservation.reason === "already_used";
+        return res.status(alreadyUsed ? 403 : 409).json({
+          ok: false,
+          code: alreadyUsed ? "FREE_PREDICTION_USED" : "FREE_PREDICTION_IN_PROGRESS",
+          error: alreadyUsed
+            ? "Votre pronostic gratuit unique a déjà été utilisé. Activez Premium pour recevoir d'autres pronostics."
+            : "Votre pronostic gratuit est déjà en cours de génération. Veuillez patienter."
+        });
+      }
+    }
+
     // Les historiques seront récupérés à la demande par le moteur.
     const analysis = await analyzeSportApiMatches(validFixtures);
+
     // Conserver chaque analyse exploitable comme un événement historique distinct.
     for (const item of (Array.isArray(analysis.matches) ? analysis.matches : [])) {
       const model = item?.model || {};
@@ -3140,8 +3155,50 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
         historyClient.release();
       }
     }
+    if (freeReservation) {
+      const allowedPicksForFree = new Set([
+        "1", "X", "2", "1X", "X2", "12",
+        "OVER15", "OVER25", "OVER35", "UNDER25", "UNDER35",
+        "BTTS_YES", "BTTS_NO"
+      ]);
+
+      const hasUsablePrediction = (Array.isArray(analysis.matches) ? analysis.matches : []).some(item => {
+        const model = item?.model || {};
+        const pick = String(model.recommendationCode || item?.recommendationCode || "")
+          .trim().toUpperCase();
+
+        return item?.ready === true &&
+          item?.sufficientData === true &&
+          model?.ready === true &&
+          model?.sufficientData === true &&
+          allowedPicksForFree.has(pick);
+      });
+
+      if (hasUsablePrediction) {
+        const consumed = await consumeFreePrediction(
+          pool, req.session.userId, freeReservation.token
+        );
+
+        if (!consumed) {
+          const error = new Error("La réservation du pronostic gratuit a expiré. Veuillez réessayer.");
+          error.status = 409;
+          throw error;
+        }
+      } else {
+        await releaseFreePrediction(pool, req.session.userId, freeReservation.token);
+      }
+
+      freeReservation = null;
+    }
     return res.json({ ok: true, source: "SportAPI.ai", ...analysis });
   } catch (error) {
+    if (freeReservation?.token) {
+      try {
+        await releaseFreePrediction(pool, req.session.userId, freeReservation.token);
+      } catch (releaseError) {
+        console.error("Libération du pronostic gratuit impossible:", releaseError.message);
+      }
+    }
     console.error("SportAPI.ai odds analysis:", error.message);
 
     return res.status(error.status || 502).json({
@@ -4633,6 +4690,7 @@ async function startServer() {
     await initializeUserProfile();
     await initializeBookmakers();
     await initializeSportApiQuota(pool);
+    await initializeFreePredictionQuota(pool);
     await initializeSportApiTeamHistoryCache(pool);
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();
