@@ -3156,22 +3156,15 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       }
     }
     if (freeReservation) {
-      const allowedPicksForFree = new Set([
-        "1", "X", "2", "1X", "X2", "12",
-        "OVER15", "OVER25", "OVER35", "UNDER25", "UNDER35",
-        "BTTS_YES", "BTTS_NO"
-      ]);
-
       const hasUsablePrediction = (Array.isArray(analysis.matches) ? analysis.matches : []).some(item => {
         const model = item?.model || {};
-        const pick = String(model.recommendationCode || item?.recommendationCode || "")
-          .trim().toUpperCase();
+        const pick = String(model.recommendationCode || item?.recommendationCode || "").trim();
 
         return item?.ready === true &&
           item?.sufficientData === true &&
           model?.ready === true &&
           model?.sufficientData === true &&
-          allowedPicksForFree.has(pick);
+          Boolean(pick);
       });
 
       if (hasUsablePrediction) {
