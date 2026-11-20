@@ -459,7 +459,7 @@ app.post("/api/register", async (req, res) => {
     req.session.userId = userId;
     res.status(201).json({
       message: "Compte créé avec succès.",
-      user: userView(user)
+      user: { ...userView(user), free_prediction: await getFreePredictionStatus(pool, user.id) }
     });
   } catch (error) {
     try {
@@ -530,7 +530,7 @@ app.post("/api/login", async (req, res) => {
         : "Connexion réussie.",
       temporary_login: temporaryLogin,
       must_change_password: Boolean(user.must_change_password),
-      user: userView(user)
+      user: { ...userView(user), free_prediction: await getFreePredictionStatus(pool, user.id) }
     });
   } catch (error) {
     console.error("login PostgreSQL:", error);

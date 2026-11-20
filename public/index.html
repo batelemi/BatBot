@@ -5478,6 +5478,14 @@ async function submitBatBotAI(){
     const d=await readApiResponse(response);
 
     if(!response.ok){
+      if(d?.code==="FREE_PREDICTION_USED"){
+        if(typeof refreshCurrentUserSilently==="function")await refreshCurrentUserSilently();
+        closeBatBotAIModal();
+        if(typeof window.openBatBotPremiumSelectionWindow==="function")window.openBatBotPremiumSelectionWindow();
+        else if(typeof window.openBatBotPremiumPaymentWindow==="function")window.openBatBotPremiumPaymentWindow();
+        else showToast("Votre pronostic gratuit unique a déjà été utilisé. Activez Premium pour continuer.","error");
+        return;
+      }
       setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(d?.error||("Le serveur a répondu avec HTTP "+response.status+"."))+'</span></div>',"error");
       return;
     }
