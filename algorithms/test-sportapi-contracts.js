@@ -169,17 +169,63 @@ function historyFor(teamId) {
 
 (async () => {
   const originalFetch = global.fetch;
-  let reservedCalls = 0;
+  const dailyUsage = new Map();
+  const monthlyUsage = new Map();
 
   const fakePool = {
-    async query(sql, params) {
+    async query(sql) {
       if (sql.includes('CREATE TABLE')) return { rows: [] };
+      throw new Error(`Requête inattendue sur le pool : ${sql}`);
+    },
 
-      const [date, limit] = params;
-      if (reservedCalls >= limit) return { rows: [] };
+    async connect() {
+      let dailySnapshot;
+      let monthlySnapshot;
 
-      reservedCalls++;
-      return { rows: [{ request_count: reservedCalls }] };
+      return {
+        async query(sql, params = []) {
+          if (sql === 'BEGIN') {
+            dailySnapshot = new Map(dailyUsage);
+            monthlySnapshot = new Map(monthlyUsage);
+            return { rows: [] };
+          }
+
+          if (sql === 'COMMIT') return { rows: [] };
+
+          if (sql === 'ROLLBACK') {
+            dailyUsage.clear();
+            monthlyUsage.clear();
+
+            for (const [key, value] of dailySnapshot || []) {
+              dailyUsage.set(key, value);
+            }
+
+            for (const [key, value] of monthlySnapshot || []) {
+              monthlyUsage.set(key, value);
+            }
+
+            return { rows: [] };
+          }
+
+          const isDaily = sql.includes('INSERT INTO sportapi_daily_usage');
+          const isMonthly = sql.includes('INSERT INTO sportapi_monthly_usage');
+
+          if (!isDaily && !isMonthly) {
+            throw new Error(`Requête transactionnelle inattendue : ${sql}`);
+          }
+
+          const usage = isDaily ? dailyUsage : monthlyUsage;
+          const [date, limit] = params;
+          const count = usage.get(date) || 0;
+
+          if (count >= limit) return { rows: [] };
+
+          usage.set(date, count + 1);
+          return { rows: [{ request_count: count + 1 }] };
+        },
+
+        release() {}
+      };
     }
   };
 
