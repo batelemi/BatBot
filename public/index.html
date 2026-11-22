@@ -5478,6 +5478,14 @@ async function submitBatBotAI(){
     const d=await readApiResponse(response);
 
     if(!response.ok){
+      if(d?.code==="FREE_PREDICTION_IP_USED"){
+        setBatBotAIModalStatus(
+          '<div class="professional-status error">⚠️ <strong>Pronostic indisponible</strong><br><span>Vous avez déjà utilisé votre pronostic gratuit. Pensez à activer votre Premium pour recevoir d\'autres pronostics.</span></div>',
+          "error"
+        );
+        return;
+      }
+
       if(d?.code==="FREE_PREDICTION_USED"){
         if(typeof refreshCurrentUserSilently==="function")await refreshCurrentUserSilently();
         closeBatBotAIModal();
