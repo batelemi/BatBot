@@ -90,6 +90,7 @@ const {
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
 const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/sportapi-quota");
 const { initializeFreePredictionQuota, reserveFreePrediction, consumeFreePrediction, releaseFreePrediction, getFreePredictionStatus } = require("./algorithms/free-prediction-quota");
+const { initializeFreePredictionIp, hashClientIp, recordFreePredictionIpEvent, getFreePredictionIpRisk } = require("./algorithms/free-prediction-ip");
 const { initializeJekoPayments, createJekoPayment, checkJekoPaymentStatus, handleJekoWebhook } = require("./algorithms/jeko-payment-service");
 
 const app = express();
@@ -440,6 +441,17 @@ app.post("/api/register", async (req, res) => {
     }
 
     await client.query("COMMIT");
+
+    const registrationIpHash = hashClientIp(req);
+    if (registrationIpHash) {
+      try {
+        await recordFreePredictionIpEvent(
+          pool, userId, registrationIpHash, "registration"
+        );
+      } catch (ipError) {
+        console.error("BATBOT IP: enregistrement inscription impossible:", ipError.message);
+      }
+    }
 
     void sendTelegramRegistrationAlert({
       userId,
@@ -3003,6 +3015,7 @@ app.patch("/api/admin/settings", requireAdmin, async (req, res) => {
 
 app.post("/api/football/odds", requireUser, async (req, res) => {
   let freeReservation = null;
+  let freePredictionIpHash = null;
   try {
     const currentUser = await pgGet(
       "SELECT * FROM users WHERE id=$1",
@@ -3077,8 +3090,29 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       });
     }
 
-    // Les utilisateurs sans Premium réservent leur droit gratuit unique.
+    // Détection IP complémentaire : signal uniquement, sans blocage automatique.
     if (!premiumActive) {
+      try {
+        freePredictionIpHash = hashClientIp(req);
+
+        if (freePredictionIpHash) {
+          const ipRisk = await getFreePredictionIpRisk(
+            pool, freePredictionIpHash, req.session.userId
+          );
+
+          if (ipRisk.previousFreeAccounts > 0 || ipRisk.registrationAccounts >= 3) {
+            console.warn("BATBOT IP: activité multi-comptes à examiner.", {
+              userId: req.session.userId,
+              registrationAccounts: ipRisk.registrationAccounts,
+              previousFreeAccounts: ipRisk.previousFreeAccounts
+            });
+          }
+        }
+      } catch (ipError) {
+        freePredictionIpHash = null;
+        console.error("BATBOT IP: contrôle indisponible:", ipError.message);
+      }
+
       freeReservation = await reserveFreePrediction(pool, req.session.userId);
 
       if (!freeReservation.ok) {
@@ -3176,6 +3210,16 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
           const error = new Error("La réservation du pronostic gratuit a expiré. Veuillez réessayer.");
           error.status = 409;
           throw error;
+        }
+
+        if (freePredictionIpHash) {
+          try {
+            await recordFreePredictionIpEvent(
+              pool, req.session.userId, freePredictionIpHash, "free_prediction"
+            );
+          } catch (ipError) {
+            console.error("BATBOT IP: enregistrement pronostic impossible:", ipError.message);
+          }
         }
       } else {
         await releaseFreePrediction(pool, req.session.userId, freeReservation.token);
@@ -4684,6 +4728,7 @@ async function startServer() {
     await initializeBookmakers();
     await initializeSportApiQuota(pool);
     await initializeFreePredictionQuota(pool);
+    await initializeFreePredictionIp(pool);
     await initializeSportApiTeamHistoryCache(pool);
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();
