@@ -3028,6 +3028,10 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       new Date(currentUser.premium_until) > new Date()
     );
 
+    console.info("[BATBOT FREE IP DIAG] premium", JSON.stringify({
+      premiumActive
+    }));
+
 
     const matches = Array.isArray(req.body.matches)
       ? req.body.matches
@@ -3095,6 +3099,13 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
     if (!premiumActive) {
       freePredictionIpHash = hashClientIp(req);
 
+      console.info("[BATBOT FREE IP DIAG] empreinte", JSON.stringify({
+        ipAvailable: Boolean(freePredictionIpHash),
+        ipHashPrefix: freePredictionIpHash
+          ? freePredictionIpHash.slice(0, 12)
+          : null
+      }));
+
       if (!freePredictionIpHash) {
         return res.status(503).json({
           ok: false,
@@ -3106,6 +3117,11 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       freeIpReservation = await reserveFreePredictionIp(
         pool, req.session.userId, freePredictionIpHash
       );
+
+      console.info("[BATBOT FREE IP DIAG] reservation", JSON.stringify({
+        ok: freeIpReservation.ok,
+        reason: freeIpReservation.reason || null
+      }));
 
       if (!freeIpReservation.ok) {
         const alreadyUsed = freeIpReservation.reason === "already_used";
