@@ -5478,20 +5478,11 @@ async function submitBatBotAI(){
     const d=await readApiResponse(response);
 
     if(!response.ok){
-      if(d?.code==="FREE_PREDICTION_IP_USED"){
-        setBatBotAIModalStatus(
-          '<div class="professional-status error">⚠️ <strong>Pronostic indisponible</strong><br><span>Vous avez déjà utilisé votre pronostic gratuit. Pensez à activer votre Premium pour recevoir d\'autres pronostics.</span></div>',
-          "error"
-        );
-        return;
-      }
-
-      if(d?.code==="FREE_PREDICTION_USED"){
-        if(typeof refreshCurrentUserSilently==="function")await refreshCurrentUserSilently();
+      if(d?.code==="PREMIUM_REQUIRED"){
         closeBatBotAIModal();
         if(typeof window.openBatBotPremiumSelectionWindow==="function")window.openBatBotPremiumSelectionWindow();
         else if(typeof window.openBatBotPremiumPaymentWindow==="function")window.openBatBotPremiumPaymentWindow();
-        else showToast("Votre pronostic gratuit unique a déjà été utilisé. Activez Premium pour continuer.","error");
+        else showToast(d?.error||"Les analyses individuelles sont réservées aux membres Premium.","error");
         return;
       }
       setBatBotAIModalStatus('<div class="professional-status error">⚠️ <strong>Analyse indisponible</strong><br><span>'+escapeHtml(d?.error||("Le serveur a répondu avec HTTP "+response.status+"."))+'</span></div>',"error");
@@ -5613,7 +5604,7 @@ async function submitBatBotAI(){
 
 function analyzeFootballMatch(home,away,homeId,awayId,fixture){
   const currentUser=window.batBotCurrentUser||{};
-  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active||currentUser.free_prediction?.available)){
+  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
     if(typeof window.openBatBotPremiumSelectionWindow==='function')window.openBatBotPremiumSelectionWindow();else if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
     else showToast("Abonnement Premium requis. Ouvrez Plus ou Abonnement pour consulter les options d’abonnement.","error");
     return;
@@ -5638,7 +5629,7 @@ function analyzeFootballMatch(home,away,homeId,awayId,fixture){
 
 function analyzeFirstTwoFootballMatches(){
   const currentUser=window.batBotCurrentUser||{};
-  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active||currentUser.free_prediction?.available)){
+  if(!(currentUser.is_subscribed||currentUser.subscribed||currentUser.subscription_active)){
     if(typeof window.openBatBotPremiumPaymentWindow==='function')window.openBatBotPremiumPaymentWindow();
     else showToast("Abonnement Premium requis pour recevoir un pronostic. Consultez les options dans la rubrique Abonnement.","error");
     return;
@@ -8967,8 +8958,19 @@ document.addEventListener("keydown",function(event){
     profileCard.id='batbotMemberProfileCard';
     dashboard.appendChild(profileCard);
 
+    const freeDailyPredictionsCard=document.createElement('section');
+    freeDailyPredictionsCard.className='card hidden';
+    freeDailyPredictionsCard.id='batbotFreeDailyPredictionsCard';
+    freeDailyPredictionsCard.innerHTML=
+      '<div class="section-kicker">BATBOT PRO</div>'+
+      '<h2 style="margin-top:5px">⚽ PRONOSTICS GRATUITS</h2>'+
+      '<p style="opacity:.75">La sélection collective du jour, identique pour tous les membres.</p>'+
+      '<div id="batbotFreeDailyPredictionsList"><p>Chargement des pronostics…</p></div>';
+    dashboard.appendChild(freeDailyPredictionsCard);
+
     const cards={
       profile:()=>profileCard,
+      freeDailyPredictions:()=>freeDailyPredictionsCard,
       messages:()=>findCard(t=>t.includes('Messages')),
       predictions:()=>document.getElementById('publicMemberPredictionsCard'),
       publishPrediction:()=>document.getElementById('memberPredictionsSection'),
@@ -8995,8 +8997,14 @@ document.addEventListener("keydown",function(event){
     const body=modal.querySelector('.public-option-modal-body');
     const closeButton=modal.querySelector('.public-option-modal-close');
     let active=null;
+    let freeDailyRefreshTimer=null;
+    let freeDailyLoading=false;
 
     function closeModal(){
+      if(freeDailyRefreshTimer){
+        clearInterval(freeDailyRefreshTimer);
+        freeDailyRefreshTimer=null;
+      }
       if(aiHistoryRefreshTimer){
         clearInterval(aiHistoryRefreshTimer);
         aiHistoryRefreshTimer=null;
@@ -9477,6 +9485,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         // Les messages sont accessibles depuis la cloche de l'en-tête.
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
+        ['PRONOSTICS GRATUITS','fa-solid fa-bullseye','freeDailyPredictions'],
 
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Historique des pronostics','fa-solid fa-ticket','memberHistory'],
@@ -9497,6 +9506,100 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     sheet.setAttribute('role','dialog');
     sheet.setAttribute('aria-modal','false');
     document.body.appendChild(sheet);
+
+
+    async function loadFreeDailyPredictions(options={}){
+      const target=document.getElementById('batbotFreeDailyPredictionsList');
+      if(!target||freeDailyLoading)return;
+
+      const silent=options.silent===true;
+      freeDailyLoading=true;
+      if(!silent)target.innerHTML='<p>Chargement des pronostics…</p>';
+
+      try{
+        const response=await fetch('/api/football/free-daily-predictions',{
+          credentials:'same-origin',
+          cache:'no-store'
+        });
+        const data=await response.json();
+        if(!response.ok||!data?.ok){
+          throw new Error(data?.error||'Chargement impossible.');
+        }
+
+        const picks=Array.isArray(data.picks)?data.picks:[];
+
+        if(!data.published){
+          target.innerHTML='<div class="batbot-aff-empty">La sélection collective du jour sera bientôt disponible.</div>';
+          return;
+        }
+
+        if(!picks.length){
+          target.innerHTML='<div class="batbot-aff-empty">Aucun pronostic collectif disponible pour cette journée.</div>';
+          return;
+        }
+
+        target.innerHTML=picks.map((pick,index)=>{
+          const validated=pick.status==='validated';
+          const failed=pick.status==='not_validated';
+          const statusLabel=validated?'VALIDÉ':failed?'NON VALIDÉ':'EN ATTENTE';
+          const statusColor=validated?'#38BDF8':failed?'#F87171':'#FBBF24';
+          const statusBg=validated?'rgba(14,165,233,.13)':failed?'rgba(239,68,68,.12)':'rgba(245,158,11,.12)';
+
+          const home=escapeHtml(translateFootballTeamName(pick.homeTeam||'Domicile'));
+          const away=escapeHtml(translateFootballTeamName(pick.awayTeam||'Extérieur'));
+          const league=escapeHtml(translateFootballCompetition(pick.league?.name||'Compétition'));
+          const market=escapeHtml(pick.market?.name||pick.market?.code||'Pronostic');
+
+          const probability=Number(pick.market?.probability);
+          const probabilityLabel=Number.isFinite(probability)?Math.round(probability)+' %':'—';
+
+          const kickoff=pick.kickoff
+            ?escapeHtml(formatFootballDateTime(pick.kickoff))
+            :'Horaire indisponible';
+
+          const score=pick.score&&
+            Number.isInteger(Number(pick.score.home))&&
+            Number.isInteger(Number(pick.score.away))
+              ?Number(pick.score.home)+' - '+Number(pick.score.away)
+              :'En attente';
+
+          return '<article style="margin:13px 0;padding:14px;border:1px solid rgba(125,211,252,.25);border-radius:16px;background:rgba(4,17,31,.25);color:#F1F7FD">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px">'+
+              '<strong style="font-size:11px;color:#7DD3FC;letter-spacing:1px">MATCH '+(index+1)+'</strong>'+
+              '<span style="padding:6px 9px;border-radius:999px;background:'+statusBg+';color:'+statusColor+';font-size:10px;font-weight:900">'+statusLabel+'</span>'+
+            '</div>'+
+            '<div style="font-size:10px;letter-spacing:1px;color:#9DBBD4;margin-bottom:10px">'+league+'</div>'+
+            '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px">'+
+              '<strong style="min-width:0;text-align:center;overflow-wrap:anywhere">'+home+'</strong>'+
+              '<span style="font-size:11px;color:#8CAFCB;font-weight:800">VS</span>'+
+              '<strong style="min-width:0;text-align:center;overflow-wrap:anywhere">'+away+'</strong>'+
+            '</div>'+
+            '<div style="margin-top:13px;padding:12px;border-radius:12px;background:rgba(4,17,31,.45)">'+
+              '<div style="font-size:10px;color:#9DBBD4;letter-spacing:1px">PRONOSTIC</div>'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px">'+
+                '<strong style="font-size:13px">'+market+'</strong>'+
+                '<strong style="color:#7DD3FC;white-space:nowrap">'+probabilityLabel+'</strong>'+
+              '</div>'+
+            '</div>'+
+            '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:12px">'+
+              '<span style="color:#9DBBD4">Coup d’envoi</span><strong>'+kickoff+'</strong>'+
+            '</div>'+
+            '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:9px;font-size:12px">'+
+              '<span style="color:#9DBBD4">Score</span><strong>'+escapeHtml(score)+'</strong>'+
+            '</div>'+
+          '</article>';
+        }).join('');
+
+      }catch(error){
+        if(!silent){
+          target.innerHTML='<div class="batbot-aff-empty">Impossible de charger les pronostics. Vérifie ta connexion puis réessaie.</div>';
+        }else{
+          console.warn('BATBOT : actualisation des pronostics gratuits impossible.',error.message||'erreur réseau');
+        }
+      }finally{
+        freeDailyLoading=false;
+      }
+    }
 
     function closeSheet(){sheet.classList.remove('open');sheetBackdrop.classList.remove('open');}
     function renderSheet(key){
@@ -9530,6 +9633,19 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
           if(item[2]==='leagues')loadFootballFixtures(getFootballSelectedDate());
           if(item[2]==='predictions')loadMemberPredictions();
           if(item[2]==='batbotLive')loadBatBotLiveSection();
+          if(item[2]==='freeDailyPredictions'){
+            loadFreeDailyPredictions();
+            if(freeDailyRefreshTimer)clearInterval(freeDailyRefreshTimer);
+            freeDailyRefreshTimer=setInterval(()=>{
+              if(
+                active===freeDailyPredictionsCard &&
+                !modal.classList.contains('hidden') &&
+                !document.hidden
+              ){
+                loadFreeDailyPredictions({silent:true});
+              }
+            },30000);
+          }
         });
         actions.appendChild(button);
       });

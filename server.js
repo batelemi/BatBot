@@ -89,8 +89,16 @@ const {
 } = require("./algorithms/sportapi-odds-service");
 const { fetchFixtures: fetchSportApiFixtures } = require("./algorithms/sportapi-fixtures-service");
 const { initializeSportApiQuota, reserveSportApiCall } = require("./algorithms/sportapi-quota");
-const { initializeFreePredictionQuota, reserveFreePrediction, releaseFreePrediction, getFreePredictionStatus } = require("./algorithms/free-prediction-quota");
-const { initializeFreePredictionIp, hashClientIp, recordFreePredictionIpEvent, reserveFreePredictionIp, consumeFreePredictionWithIp, releaseFreePredictionIp } = require("./algorithms/free-prediction-ip");
+
+const { initializeFreePredictionIp, hashClientIp, recordFreePredictionIpEvent } = require("./algorithms/free-prediction-ip");
+
+
+const {
+  initializeFreeDailyPredictions,
+  startFreeDailyPredictionScheduler,
+  getActiveDailyPicks
+} = require("./algorithms/free-daily-predictions");
+
 const { initializeJekoPayments, createJekoPayment, checkJekoPaymentStatus, handleJekoWebhook } = require("./algorithms/jeko-payment-service");
 
 const app = express();
@@ -471,7 +479,7 @@ app.post("/api/register", async (req, res) => {
     req.session.userId = userId;
     res.status(201).json({
       message: "Compte créé avec succès.",
-      user: { ...userView(user), free_prediction: await getFreePredictionStatus(pool, user.id) }
+      user: userView(user)
     });
   } catch (error) {
     try {
@@ -542,7 +550,7 @@ app.post("/api/login", async (req, res) => {
         : "Connexion réussie.",
       temporary_login: temporaryLogin,
       must_change_password: Boolean(user.must_change_password),
-      user: { ...userView(user), free_prediction: await getFreePredictionStatus(pool, user.id) }
+      user: userView(user)
     });
   } catch (error) {
     console.error("login PostgreSQL:", error);
@@ -579,7 +587,6 @@ app.get("/api/me", requireUser, async (req, res) => {
     if (!user) return res.status(401).json({ error: "Session invalide." });
 
     const userData = userView(user);
-    userData.free_prediction = await getFreePredictionStatus(pool, user.id);
     res.json({ user: userData });
   } catch (error) {
     console.error("api/me PostgreSQL:", error);
@@ -3014,23 +3021,24 @@ app.patch("/api/admin/settings", requireAdmin, async (req, res) => {
 
 
 app.post("/api/football/odds", requireUser, async (req, res) => {
-  let freeReservation = null;
-  let freePredictionIpHash = null;
-  let freeIpReservation = null;
   try {
     const currentUser = await pgGet(
       "SELECT * FROM users WHERE id=$1",
       [req.session.userId]
     );
     const premiumActive = !!(
-      currentUser &&
-      currentUser.premium_until &&
-      new Date(currentUser.premium_until) > new Date()
-    );
+        currentUser &&
+        currentUser.premium_until &&
+        new Date(currentUser.premium_until) > new Date()
+      );
 
-    console.info("[BATBOT FREE IP DIAG] premium", JSON.stringify({
-      premiumActive
-    }));
+      if (!premiumActive) {
+        return res.status(403).json({
+          ok: false,
+          code: "PREMIUM_REQUIRED",
+          error: "Les analyses individuelles sont réservées aux membres Premium. Consultez la rubrique PRONOSTICS GRATUITS pour les pronostics collectifs du jour."
+        });
+      }
 
 
     const matches = Array.isArray(req.body.matches)
@@ -3095,71 +3103,7 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
       });
     }
 
-    // Verrouillage IP : un seul pronostic gratuit par adresse sur 90 jours.
-    if (!premiumActive) {
-      freePredictionIpHash = hashClientIp(req);
-
-      console.info("[BATBOT FREE IP DIAG] empreinte", JSON.stringify({
-        ipAvailable: Boolean(freePredictionIpHash),
-        ipHashPrefix: freePredictionIpHash
-          ? freePredictionIpHash.slice(0, 12)
-          : null
-      }));
-
-      if (!freePredictionIpHash) {
-        return res.status(503).json({
-          ok: false,
-          code: "FREE_PREDICTION_IP_UNAVAILABLE",
-          error: "La vérification de sécurité est temporairement indisponible. Veuillez réessayer."
-        });
-      }
-
-      freeIpReservation = await reserveFreePredictionIp(
-        pool, req.session.userId, freePredictionIpHash
-      );
-
-      console.info("[BATBOT FREE IP DIAG] reservation", JSON.stringify({
-        ok: freeIpReservation.ok,
-        reason: freeIpReservation.reason || null
-      }));
-
-      if (!freeIpReservation.ok) {
-        const alreadyUsed = freeIpReservation.reason === "already_used";
-        const inProgress = freeIpReservation.reason === "in_progress";
-
-        return res.status(alreadyUsed ? 403 : 409).json({
-          ok: false,
-          code: alreadyUsed
-            ? "FREE_PREDICTION_IP_USED"
-            : "FREE_PREDICTION_IP_IN_PROGRESS",
-          error: alreadyUsed
-            ? "Le pronostic gratuit associé à cette adresse Internet a déjà été utilisé. Activez Premium pour recevoir d'autres pronostics."
-            : "Une demande de pronostic gratuit est déjà en cours ou cette adresse Internet est temporairement réservée. Veuillez réessayer."
-        });
-      }
-
-      freeReservation = await reserveFreePrediction(
-        pool, req.session.userId
-      );
-
-      if (!freeReservation.ok) {
-        await releaseFreePredictionIp(
-          pool, req.session.userId, freePredictionIpHash, freeIpReservation.token
-        );
-        freeIpReservation = null;
-
-        const alreadyUsed = freeReservation.reason === "already_used";
-        return res.status(alreadyUsed ? 403 : 409).json({
-          ok: false,
-          code: alreadyUsed ? "FREE_PREDICTION_USED" : "FREE_PREDICTION_IN_PROGRESS",
-          error: alreadyUsed
-            ? "Votre pronostic gratuit unique a déjà été utilisé. Activez Premium pour recevoir d'autres pronostics."
-            : "Votre pronostic gratuit est déjà en cours de génération. Veuillez patienter."
-        });
-      }
-    }
-
-    // Les historiques seront récupérés à la demande par le moteur.
+      // Les historiques seront récupérés à la demande par le moteur.
     const analysis = await analyzeSportApiMatches(validFixtures);
 
     // Conserver chaque analyse exploitable comme un événement historique distinct.
@@ -3221,67 +3165,8 @@ app.post("/api/football/odds", requireUser, async (req, res) => {
         historyClient.release();
       }
     }
-    if (freeReservation) {
-      const hasUsablePrediction = (Array.isArray(analysis.matches) ? analysis.matches : []).some(item => {
-        const model = item?.model || {};
-        const pick = String(model.recommendationCode || item?.recommendationCode || "").trim();
-
-        return item?.ready === true &&
-          item?.sufficientData === true &&
-          model?.ready === true &&
-          model?.sufficientData === true &&
-          Boolean(pick);
-      });
-
-      if (hasUsablePrediction) {
-        const consumed = await consumeFreePredictionWithIp(
-          pool,
-          req.session.userId,
-          freeReservation.token,
-          freePredictionIpHash,
-          freeIpReservation?.token
-        );
-
-        if (!consumed.ok) {
-          const error = new Error(
-            "La réservation du pronostic gratuit ou de l'adresse Internet a expiré. Veuillez réessayer."
-          );
-          error.status = 409;
-          throw error;
-        }
-
-        freeReservation = null;
-        freeIpReservation = null;
-      } else {
-        await releaseFreePrediction(
-          pool, req.session.userId, freeReservation.token
-        );
-        await releaseFreePredictionIp(
-          pool, req.session.userId, freePredictionIpHash, freeIpReservation?.token
-        );
-
-        freeReservation = null;
-        freeIpReservation = null;
-      }
-    }
     return res.json({ ok: true, source: "SportAPI.ai", ...analysis });
   } catch (error) {
-    if (freeReservation?.token) {
-      try {
-        await releaseFreePrediction(pool, req.session.userId, freeReservation.token);
-      } catch (releaseError) {
-        console.error("Libération du pronostic gratuit impossible:", releaseError.message);
-      }
-    }
-    if (freeIpReservation?.token) {
-      try {
-        await releaseFreePredictionIp(
-          pool, req.session.userId, freePredictionIpHash, freeIpReservation.token
-        );
-      } catch (releaseError) {
-        console.error("Libération de la réservation IP impossible:", releaseError.message);
-      }
-    }
     console.error("SportAPI.ai odds analysis:", error.message);
 
     return res.status(error.status || 502).json({
@@ -3542,6 +3427,27 @@ function currentAbidjanDate() {
   }).format(new Date());
 }
 
+
+app.get("/api/football/free-daily-predictions", requireUser, async (_req, res) => {
+  try {
+    const publication = await getActiveDailyPicks();
+
+    res.set("Cache-Control", "no-store");
+
+    return res.json({
+      ok: true,
+      title: "PRONOSTICS GRATUITS",
+      date: publication.date,
+      published: publication.published,
+      picks: publication.picks
+    });
+  } catch (error) {
+    console.error("BATBOT : lecture des pronostics collectifs impossible :", error.message);
+    return res.status(500).json({
+      error: "Impossible de charger les pronostics gratuits pour le moment."
+    });
+  }
+});
 
 app.get("/api/football/access", requireUser, async (_req, res) => {
   return res.json({ ok: true, source: "SportAPI.ai", access: true });
@@ -4773,13 +4679,14 @@ async function startServer() {
     await initializeUserProfile();
     await initializeBookmakers();
     await initializeSportApiQuota(pool);
-    await initializeFreePredictionQuota(pool);
     await initializeFreePredictionIp(pool);
     await initializeSportApiTeamHistoryCache(pool);
     await initializeSportApiFixturesCache();
     await initializeAiPredictionHistory();
     await initializeAffiliateSchema();
     await initializeJekoPayments(pool);
+    await initializeFreeDailyPredictions(pool);
+    startFreeDailyPredictionScheduler();
 
     server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`BatBot démarré sur le port ${PORT}`);
