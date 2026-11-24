@@ -8964,7 +8964,6 @@ document.addEventListener("keydown",function(event){
     freeDailyPredictionsCard.innerHTML=
       '<div class="section-kicker">BATBOT PRO</div>'+
       '<h2 style="margin-top:5px">⚽ PRONOSTICS GRATUITS</h2>'+
-      '<p style="opacity:.75">La sélection collective du jour, identique pour tous les membres.</p>'+
       '<div id="batbotFreeDailyPredictionsList"><p>Chargement des pronostics…</p></div>';
     dashboard.appendChild(freeDailyPredictionsCard);
 
@@ -9485,8 +9484,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         // Les messages sont accessibles depuis la cloche de l'en-tête.
       ]},
       more:{title:'Plus',icon:'fa-solid fa-gear',subtitle:'Paramètres, aide et support',items:[
-        ['PRONOSTICS GRATUITS','fa-solid fa-bullseye','freeDailyPredictions'],
-
+        ['Abonnement','fa-solid fa-wallet','finances'],
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Historique des pronostics','fa-solid fa-ticket','memberHistory'],
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
@@ -9629,6 +9627,10 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
             openMemberProfile();
             return;
           }
+          if(item[2]==='finances'){
+            renderSheet('finances');
+            return;
+          }
           const card=cards[item[2]]();
           openModal(card,item[0]);
           if(item[2]==='dailyMatches')loadFootballFixtures(getFootballSelectedDate());
@@ -9668,7 +9670,7 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
     nav.innerHTML=''
       +'<button type="button" class="batbot-nav-item active" data-tab="home" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Accueil</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="analyses"><i class="fa-solid fa-trophy" aria-hidden="true"></i><span>Ligues</span></button>'
-      +'<button type="button" class="batbot-nav-item" data-tab="finances"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Abonnement</span></button>'
+      +'<button type="button" class="batbot-nav-item" data-tab="freeDailyPredictions"><i class="fa-solid fa-bullseye" aria-hidden="true"></i><span>Pronostics</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="community"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Communauté</span></button>'
       +'<button type="button" class="batbot-nav-item" data-tab="more"><i class="fa-solid fa-gear" aria-hidden="true"></i><span>Plus</span></button>';
     document.body.appendChild(nav);
@@ -9686,6 +9688,23 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         if(tab==='home'){
           closeSheet();setActive('home');
           window.scrollTo({top:0,behavior:'smooth'});
+          return;
+        }
+        if(tab==='freeDailyPredictions'){
+          closeSheet();
+          setActive('freeDailyPredictions');
+          openModal(cards.freeDailyPredictions(),'PRONOSTICS GRATUITS');
+          loadFreeDailyPredictions();
+          if(freeDailyRefreshTimer)clearInterval(freeDailyRefreshTimer);
+          freeDailyRefreshTimer=setInterval(()=>{
+            if(
+              active===freeDailyPredictionsCard &&
+              !modal.classList.contains('hidden') &&
+              !document.hidden
+            ){
+              loadFreeDailyPredictions({silent:true});
+            }
+          },30000);
           return;
         }
         const wasOpen=sheet.classList.contains('open') && nav.querySelector('.batbot-nav-item.active')?.dataset.tab===tab;
