@@ -2139,6 +2139,13 @@ document.addEventListener("keydown",function(event){
     <input id="registerSecurityAnswer" type="text" autocomplete="off" maxlength="100"
       placeholder="Votre réponse secrète (à retenir)">
 
+    <div class="register-terms-acceptance">
+      <a href="#" id="termsLink" class="terms-link">Lire les Conditions d’utilisation</a>
+      <label for="acceptTerms" style="display:flex;align-items:flex-start;gap:9px;margin:12px 0;font-size:13px;line-height:1.5;color:#D9E7F3">
+        <input id="acceptTerms" type="checkbox" style="width:19px;height:19px;flex:0 0 19px;margin-top:1px">
+        <span>J’ai lu et j’accepte les Conditions d’utilisation de BATBOT PRO.</span>
+      </label>
+    </div>
     <button id="registerButton" class="btn primary" type="button" onclick="register()">✨ Créer mon compte</button>
     <div id="registerStatus" class="status"></div>
 
@@ -2223,8 +2230,6 @@ document.addEventListener("keydown",function(event){
   </div>
 
 <footer id="appFooter">
-  <a href="#" id="termsLink" class="terms-link">Conditions d’utilisation</a>
-  <span class="footer-separator" aria-hidden="true"> · </span>
   <span>BATBOT PRO — ÇA SORT DÈH !</span>
 </footer>
 
@@ -2686,29 +2691,6 @@ PSG vs Marseille"></textarea>
     <div id="publicMemberPredictionsList"><div class="professional-loading"><span class="batbot-spinner"></span><div><strong>Chargement des pronostics</strong><small>Récupération des publications…</small></div></div></div>
   </section>
 
-
-
-  <div class="card compact-conditions">
-    <h2>📋 Conditions d'utilisation</h2>
-    <details>
-      <summary>🔎 Cliquez ici pour lire les conditions</summary>
-    <div class="notice"><strong>1. Abonnements Premium</strong><br><br>Les abonnements Premium sont proposés à <strong>1 000 FCFA pour 7 jours</strong>, <strong>2 000 FCFA pour 14 jours</strong> et <strong>3 000 FCFA pour 21 jours</strong>.</div>
-    <div class="notice"><strong>2. Abonnement</strong><br><br>Les tarifs Premium sont de <strong>1 000 FCFA pour 7 jours</strong>, <strong>2 000 FCFA pour 14 jours</strong> et <strong>3 000 FCFA pour 21 jours</strong>.<br><br>Les utilisateurs abonnés bénéficient d'un <strong>badge bleu</strong> sur leur profil.</div>
-    <div class="notice"><strong>3. Analyse</strong><br><br>Les pronostics s’appuient sur les statistiques et les informations disponibles sur les matchs. Ils sont transmis après réception et traitement de votre demande.</div>
-      <div class="notice"><strong>4. Paiements</strong><br><br>BATBOT PRO propose le paiement manuel par les moyens indiqués dans l'application ainsi que le paiement automatisé via Jèko. Pour Jèko, l'abonnement Premium est activé uniquement après confirmation sécurisée de la transaction par le serveur.</div>
-    <div class="notice"><strong>5. Responsabilité</strong><br><br>L'utilisateur reste responsable de ses décisions et doit utiliser les services de manière responsable.</div>
-    <div class="notice"><strong>6. Sources des données</strong><br><br>Les informations relatives aux matchs, scores et événements sportifs utilisées par BATBOT peuvent provenir de sources de données sportives externes, notamment <strong>SportAPI.ai</strong>. BATBOT PRO utilise ces informations pour alimenter ses analyses statistiques et ses pronostics.</div>
-    </details>
-  </div>
-
-  <div class="card">
-    <h2>ℹ️ Comment ça fonctionne ?</h2>
-    <div class="step"><div class="step-number">1</div><div class="step-text"><strong>Créez votre compte</strong><span>Inscrivez-vous avec votre nom d'utilisateur et votre mot de passe.</span></div></div>
-    <div class="step"><div class="step-number">2</div><div class="step-text"><strong>Choisissez votre abonnement Premium</strong><span>Choisissez l'abonnement Premium de 7, 14 ou 21 jours selon votre besoin.</span></div></div>
-    <div class="step"><div class="step-number">3</div><div class="step-text"><strong>Envoyez vos matchs</strong><span>Envoyez les noms des matchs. Pour ajouter une capture, utilisez directement WhatsApp ou Telegram.</span></div></div>
-    <div class="step"><div class="step-number">4</div><div class="step-text"><strong>Recevez vos pronostics</strong><span>L'agent reçoit votre demande et procède à l'analyse.</span></div></div>
-  </div>
-
   <button class="btn danger batbot-nav-only" type="button" onclick="logout()">🚪 Se déconnecter</button>
 </section>
 
@@ -2847,17 +2829,56 @@ PSG vs Marseille"></textarea>
       <button type="button" class="terms-modal-close" data-close-terms aria-label="Fermer">×</button>
     </div>
     <div class="terms-modal-body">
-      <p><strong>Bienvenue sur BATBOT PRO.</strong> En créant un compte ou en utilisant l’application, vous acceptez les règles suivantes.</p>
-      <h3>1. Utilisation du service</h3>
-      <p>BATBOT PRO propose des analyses et informations sportives à titre informatif. Les résultats sportifs restent incertains et aucune prédiction ne garantit un gain.</p>
-      <h3>2. Responsabilité de l’utilisateur</h3>
-      <p>Vous êtes responsable de votre compte, de la confidentialité de vos identifiants et de l’usage que vous faites des informations affichées.</p>
-      <h3>3. Paiements et abonnements</h3>
-      <p>Vérifiez les offres, montants et conditions affichés avant toute transaction. En cas de doute, contactez le service BATBOT PRO avant de payer.</p>
-      <h3>4. Usage interdit</h3>
-      <p>Il est interdit de tenter d’accéder sans autorisation aux espaces privés, de perturber le service ou d’utiliser l’application à des fins frauduleuses.</p>
-      <h3>5. Évolution du service</h3>
-      <p>Les fonctionnalités et présentes conditions peuvent évoluer. L’utilisation continue de BATBOT PRO vaut acceptation des conditions mises à jour.</p>
+      <p><strong>Bienvenue sur BATBOT PRO.</strong> Les présentes Conditions d’utilisation expliquent le fonctionnement de la plateforme et les règles applicables à ses utilisateurs. En créant un compte ou en utilisant BATBOT PRO, vous reconnaissez en avoir pris connaissance et les accepter.</p>
+
+      <h3>1. Rôle et fonctionnement de BATBOT PRO</h3>
+      <p>BATBOT PRO est une application spécialisée dans l’analyse sportive et la fourniture de pronostics de football. Son rôle est de mettre à la disposition des utilisateurs des analyses, des informations sportives et des pronostics générés à partir des données et statistiques disponibles.</p>
+      <p>L’utilisateur peut demander un pronostic et recevoir le résultat de l’analyse effectuée par BATBOT PRO. Les demandes d’analyse sont traitées après leur réception. Selon les modalités proposées dans l’application, les utilisateurs peuvent transmettre les informations relatives aux matchs, notamment par les moyens de contact WhatsApp ou Telegram indiqués par BATBOT PRO.</p>
+      <h3>Parcours d’utilisation</h3>
+      <ol>
+        <li><strong>Créer un compte :</strong> s’inscrire sur BATBOT PRO avec un nom d’utilisateur et un mot de passe.</li>
+        <li><strong>Choisir une formule :</strong> souscrire à une formule Premium de 7, 14 ou 21 jours pour accéder aux demandes de pronostics Pro. La sélection quotidienne gratuite reste accessible sans abonnement Premium.</li>
+        <li><strong>Envoyer les matchs :</strong> transmettre les matchs à analyser et, si nécessaire, leurs captures d’écran par les moyens de contact WhatsApp ou Telegram proposés par BATBOT PRO.</li>
+        <li><strong>Recevoir les pronostics :</strong> consulter les pronostics après réception et traitement de la demande par BATBOT PRO.</li>
+      </ol>
+
+      <h3>2. Pronostics gratuits quotidiens</h3>
+      <p>BATBOT PRO met à disposition des utilisateurs une sélection collective de <strong>5 à 10 pronostics gratuits par jour</strong>, selon la publication quotidienne disponible dans l’application. Cette sélection est accessible aux utilisateurs sans abonnement Premium.</p>
+
+      <h3>3. Pronostics Pro et abonnements Premium</h3>
+      <p>L’accès aux demandes de pronostics Pro est réservé aux utilisateurs disposant d’un abonnement Premium actif, conformément aux offres proposées dans l’application.</p>
+      <p>Les formules Premium sont proposées aux tarifs suivants :</p>
+      <ul>
+        <li><strong>1 000 FCFA pour 7 jours ;</strong></li>
+        <li><strong>2 000 FCFA pour 14 jours ;</strong></li>
+        <li><strong>3 000 FCFA pour 21 jours.</strong></li>
+      </ul>
+      <p>Les utilisateurs disposant d’un abonnement Premium actif bénéficient également d’un badge bleu sur leur profil. La durée de l’abonnement dépend de la formule choisie et validée.</p>
+
+      <h3>4. Utilisation des pronostics auprès des bookmakers</h3>
+      <p><strong>BATBOT PRO n’est pas un bookmaker et n’exerce pas d’activité de prise de paris.</strong> La plateforme fournit uniquement des analyses et des pronostics à ses utilisateurs.</p>
+      <p>Un utilisateur qui le souhaite peut recopier lui-même un pronostic reçu sur BATBOT PRO et le saisir sur son propre compte auprès du bookmaker de son choix. Il choisit personnellement le bookmaker, le marché, le montant de sa mise et décide librement de placer ou non un pari.</p>
+      <p>BATBOT PRO ne crée ni ne gère les comptes des utilisateurs chez les bookmakers, ne reçoit pas leurs mises, ne place pas de paris à leur place, ne conserve pas de fonds destinés aux paris et ne verse aucun gain de bookmaker. Les comptes, mises, paris, transactions, résultats et règlements effectués auprès d’un bookmaker relèvent de la relation directe entre l’utilisateur et ce bookmaker.</p>
+
+      <h3>5. Paiements et abonnements BATBOT PRO</h3>
+      <p>Les paiements des services BATBOT PRO sont effectués au moyen des méthodes manuelles indiquées dans l’application ou par le paiement automatisé via Jèko lorsqu’il est proposé. Pour un paiement Jèko, l’abonnement Premium est activé uniquement après confirmation sécurisée de la transaction par le serveur.</p>
+      <p>L’utilisateur doit vérifier la formule, le montant et les informations affichés avant de réaliser un paiement. En cas de doute, il peut contacter le service BATBOT PRO avant toute transaction.</p>
+
+      <h3>6. Responsabilité de l’utilisateur</h3>
+      <p>L’utilisateur est responsable de ses décisions et de l’utilisation qu’il fait des analyses et pronostics reçus. Il est également responsable de la confidentialité de ses identifiants et de la sécurité de son compte BATBOT PRO.</p>
+      <p>Les analyses et pronostics reposent sur les statistiques et les informations disponibles au moment de leur préparation. Les résultats sportifs restent incertains et aucune prédiction ne garantit un résultat ou un gain.</p>
+
+      <h3>7. Sources des données sportives</h3>
+      <p>Les informations relatives aux matchs, équipes, compétitions, scores et événements sportifs utilisées par BATBOT PRO peuvent provenir de sources de données sportives externes, notamment <strong>SportAPI.ai</strong>. Ces informations servent à alimenter les analyses statistiques et la génération des pronostics.</p>
+
+      <h3>8. Utilisation interdite</h3>
+      <p>Il est interdit de tenter d’accéder sans autorisation aux espaces privés ou aux données d’autres utilisateurs, de perturber le fonctionnement de la plateforme, de contourner ses protections ou d’utiliser BATBOT PRO à des fins frauduleuses.</p>
+
+      <h3>9. Évolution du service et des conditions</h3>
+      <p>Les fonctionnalités, offres et présentes conditions peuvent évoluer. Les nouvelles versions des conditions sont publiées dans l’application. L’utilisateur est invité à les consulter lorsqu’elles sont mises à jour.</p>
+
+      <h3>10. Acceptation</h3>
+      <p>La création d’un compte nécessite l’acceptation des présentes Conditions d’utilisation au moyen de la case prévue dans le formulaire d’inscription.</p>
     </div>
     <button type="button" class="btn primary terms-modal-done" data-close-terms>J’ai compris</button>
   </section>
@@ -3334,12 +3355,16 @@ async function register(){
   const password2=document.getElementById("registerPassword2").value;
   const securityQuestion=document.getElementById("registerSecurityQuestion").value;
   const securityAnswer=document.getElementById("registerSecurityAnswer").value.trim();
+  const acceptTerms=document.getElementById("acceptTerms");
   applyReferralCodeFromUrl();
   const referralInput=document.getElementById("registerReferralCode");
   const referralCode=String((referralInput && referralInput.value)||"").trim().toUpperCase();
 
   if(!username||!password||!password2||!securityQuestion||!securityAnswer)
     return showStatus("registerStatus","Remplissez tous les champs, y compris la question et la réponse secrètes.","error");
+
+  if(!acceptTerms || !acceptTerms.checked)
+    return showStatus("registerStatus","Veuillez lire et accepter les Conditions d’utilisation de BATBOT PRO pour créer votre compte.","error");
 
   if(username.length<3)
     return showStatus("registerStatus","Le nom d'utilisateur doit contenir au moins 3 caractères.","error");
@@ -3360,7 +3385,7 @@ async function register(){
       method:"POST",
       headers:{"Content-Type":"application/json","Accept":"application/json"},
       credentials:"same-origin",
-      body:JSON.stringify({username,password,name:username,security_question:securityQuestion,security_answer:securityAnswer,referral_code:referralCode})
+      body:JSON.stringify({username,password,name:username,security_question:securityQuestion,security_answer:securityAnswer,referral_code:referralCode,accept_terms:acceptTerms.checked})
     });
 
     const data=await readApiResponse(response);
@@ -8982,8 +9007,6 @@ document.addEventListener("keydown",function(event){
       daily:()=>findCard(t=>t.includes('Probabilités des matchs du jour')),
       partners:()=>findCard(t=>t.includes('Partenaires authentifiés')),
 
-      terms:()=>findCard(t=>t.includes("Conditions d'utilisation")),
-      how:()=>findCard(t=>t.includes('Comment ça fonctionne'))
     };
 
     const modal=document.createElement('div');
@@ -9488,11 +9511,10 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
         ['Demander un pronostic','fa-solid fa-paper-plane','analysisRequest'],
         ['Historique des pronostics','fa-solid fa-ticket','memberHistory'],
         ['Partenaires authentifiés','fa-solid fa-shield-halved','partners'],
-          ['Comment ça fonctionne ?','fa-solid fa-circle-question','how'],
         // L'assistance reste accessible depuis l'icône dédiée sous les matchs.
 
 
-        ["Conditions d'utilisation",'fa-solid fa-file-contract','terms']
+
       ]}
     };
 

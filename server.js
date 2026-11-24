@@ -351,6 +351,12 @@ app.post("/api/register", async (req, res) => {
     .trim()
     .toUpperCase();
 
+  if (req.body.accept_terms !== true) {
+    return res.status(400).json({
+      error: "Vous devez accepter les Conditions d’utilisation de BATBOT PRO pour créer votre compte."
+    });
+  }
+
   if (!username || password.length < 6) {
     return res.status(400).json({
       error: "Nom d'utilisateur et mot de passe valides requis (6 caractères minimum)."
