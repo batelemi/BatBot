@@ -9545,8 +9545,10 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
           const statusColor=validated?'#38BDF8':failed?'#F87171':'#FBBF24';
           const statusBg=validated?'rgba(14,165,233,.13)':failed?'rgba(239,68,68,.12)':'rgba(245,158,11,.12)';
 
-          const home=escapeHtml(translateFootballTeamName(pick.homeTeam||'Domicile'));
-          const away=escapeHtml(translateFootballTeamName(pick.awayTeam||'Extérieur'));
+          const homeValue=typeof pick.homeTeam==='string'?pick.homeTeam:(pick.homeTeam?.name||pick.homeTeam?.team?.name||'Domicile');
+          const awayValue=typeof pick.awayTeam==='string'?pick.awayTeam:(pick.awayTeam?.name||pick.awayTeam?.team?.name||'Extérieur');
+          const home=escapeHtml(translateFootballTeamName(homeValue));
+          const away=escapeHtml(translateFootballTeamName(awayValue));
           const league=escapeHtml(translateFootballCompetition(pick.league?.name||'Compétition'));
           const market=escapeHtml(pick.market?.name||pick.market?.code||'Pronostic');
 
