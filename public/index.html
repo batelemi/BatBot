@@ -8952,6 +8952,144 @@ document.addEventListener("keydown",function(event){
 .batbot-aff-detail .batbot-aff-close:active{transform:scale(.98)}
 @media(min-width:520px){.batbot-aff-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
+
+/* BATBOT PRO — Ticket professionnel des pronostics gratuits */
+.batbot-free-ticket{
+  position:relative;
+  overflow:hidden;
+  margin:15px 0;
+  padding:16px;
+  border:1px solid rgba(83,207,255,.32);
+  border-radius:18px;
+  background:linear-gradient(155deg,#102e49 0%,#081b2e 58%,#071525 100%);
+  color:#f1f7fd;
+  box-shadow:0 8px 24px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.batbot-free-ticket:before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:16px;
+  right:16px;
+  height:2px;
+  border-radius:0 0 5px 5px;
+  background:linear-gradient(90deg,transparent,#53cfff,transparent);
+}
+.batbot-free-ticket-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px;
+}
+.batbot-free-ticket-number{
+  color:#7dd3fc;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:1.3px;
+}
+.batbot-free-ticket-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.35px;
+  white-space:nowrap;
+}
+.batbot-free-ticket-league{
+  margin-bottom:12px;
+  color:#a8c6df;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  overflow-wrap:anywhere;
+}
+.batbot-free-ticket-teams{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  gap:9px;
+  padding:8px 0 15px;
+}
+.batbot-free-ticket-team{
+  min-width:0;
+  color:#fff;
+  font-size:14px;
+  font-weight:850;
+  line-height:1.4;
+  text-align:center;
+  overflow-wrap:anywhere;
+}
+.batbot-free-ticket-vs{
+  color:#7ca5c5;
+  font-size:10px;
+  font-weight:900;
+}
+.batbot-free-ticket-pick{
+  padding:13px;
+  border:1px solid rgba(83,207,255,.15);
+  border-radius:13px;
+  background:rgba(3,13,25,.48);
+}
+.batbot-free-ticket-pick-label{
+  color:#8fb3d0;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:1.1px;
+}
+.batbot-free-ticket-pick-value{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-top:7px;
+}
+.batbot-free-ticket-market{
+  min-width:0;
+  color:#fff;
+  font-size:13px;
+  font-weight:850;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.batbot-free-ticket-probability{
+  color:#7dd3fc;
+  font-size:13px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.batbot-free-ticket-info{
+  display:grid;
+  gap:9px;
+  margin-top:13px;
+}
+.batbot-free-ticket-info-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  font-size:12px;
+  line-height:1.45;
+}
+.batbot-free-ticket-info-row span{
+  color:#9dbbd4;
+}
+.batbot-free-ticket-info-row strong{
+  color:#f1f7fd;
+  text-align:right;
+  overflow-wrap:anywhere;
+}
+@media(max-width:380px){
+  .batbot-free-ticket{padding:12px}
+  .batbot-free-ticket-team{font-size:12px}
+  .batbot-free-ticket-market{font-size:12px}
+  .batbot-free-ticket-pick{padding:10px}
+}
+
 </style>
 
 <script id="batbot-public-options-script">
@@ -9585,29 +9723,31 @@ document.getElementById('headerNotificationsButton')?.addEventListener('click',f
               ?Number(pick.score.home)+' - '+Number(pick.score.away)
               :'En attente';
 
-          return '<article style="margin:13px 0;padding:14px;border:1px solid rgba(125,211,252,.25);border-radius:16px;background:rgba(4,17,31,.25);color:#F1F7FD">'+
-            '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px">'+
-              '<strong style="font-size:11px;color:#7DD3FC;letter-spacing:1px">MATCH '+(index+1)+'</strong>'+
-              '<span style="padding:6px 9px;border-radius:999px;background:'+statusBg+';color:'+statusColor+';font-size:10px;font-weight:900">'+statusLabel+'</span>'+
+          return '<article class="batbot-free-ticket">'+
+            '<div class="batbot-free-ticket-head">'+
+              '<strong class="batbot-free-ticket-number">MATCH '+(index+1)+'</strong>'+
+              '<span class="batbot-free-ticket-status" style="background:'+statusBg+';color:'+statusColor+'">'+statusLabel+'</span>'+
             '</div>'+
-            '<div style="font-size:10px;letter-spacing:1px;color:#9DBBD4;margin-bottom:10px">'+league+'</div>'+
-            '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px">'+
-              '<strong style="min-width:0;text-align:center;overflow-wrap:anywhere">'+home+'</strong>'+
-              '<span style="font-size:11px;color:#8CAFCB;font-weight:800">VS</span>'+
-              '<strong style="min-width:0;text-align:center;overflow-wrap:anywhere">'+away+'</strong>'+
+            '<div class="batbot-free-ticket-league">'+league+'</div>'+
+            '<div class="batbot-free-ticket-teams">'+
+              '<strong class="batbot-free-ticket-team">'+home+'</strong>'+
+              '<span class="batbot-free-ticket-vs">VS</span>'+
+              '<strong class="batbot-free-ticket-team">'+away+'</strong>'+
             '</div>'+
-            '<div style="margin-top:13px;padding:12px;border-radius:12px;background:rgba(4,17,31,.45)">'+
-              '<div style="font-size:10px;color:#9DBBD4;letter-spacing:1px">PRONOSTIC</div>'+
-              '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px">'+
-                '<strong style="font-size:13px">'+market+'</strong>'+
-                '<strong style="color:#7DD3FC;white-space:nowrap">'+probabilityLabel+'</strong>'+
+            '<div class="batbot-free-ticket-pick">'+
+              '<div class="batbot-free-ticket-pick-label">PRONOSTIC</div>'+
+              '<div class="batbot-free-ticket-pick-value">'+
+                '<strong class="batbot-free-ticket-market">'+market+'</strong>'+
+                '<strong class="batbot-free-ticket-probability">'+probabilityLabel+'</strong>'+
               '</div>'+
             '</div>'+
-            '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:12px">'+
-              '<span style="color:#9DBBD4">Coup d’envoi</span><strong>'+kickoff+'</strong>'+
-            '</div>'+
-            '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:9px;font-size:12px">'+
-              '<span style="color:#9DBBD4">Score</span><strong>'+escapeHtml(score)+'</strong>'+
+            '<div class="batbot-free-ticket-info">'+
+              '<div class="batbot-free-ticket-info-row">'+
+                '<span>Coup d’envoi</span><strong>'+kickoff+'</strong>'+
+              '</div>'+
+              '<div class="batbot-free-ticket-info-row">'+
+                '<span>Score</span><strong>'+escapeHtml(score)+'</strong>'+
+              '</div>'+
             '</div>'+
           '</article>';
         }).join('');
